@@ -1,0 +1,22 @@
+id: C4
+name: SQL Injection
+category: code-analysis
+severity: critical
+owasp: MCP03-command-injection
+mitre: null
+detect:
+  type: regex
+  patterns:
+    - "(?i)(?:query|execute)\\s*\\(\\s*[`'\"]\\s*(?:SELECT|INSERT|UPDATE|DELETE|DROP).*\\$\\{"
+    - "(?i)(?:query|execute)\\s*\\(\\s*[`'\"].*\\+\\s*(?:req|input|param|args)"
+    - "(?i)f['\"]\\s*(?:SELECT|INSERT|UPDATE|DELETE).*\\{.*\\}"
+    - "(?i)%s.*(?:SELECT|INSERT|UPDATE|DELETE)"
+    - "(?i)\\.format\\s*\\(.*\\).*(?:SELECT|INSERT|UPDATE|DELETE)"
+  context: source_code
+  exclude_patterns:
+    - "parameterized"
+    - "prepared statement"
+    - "$1"
+    - "\\?"
+remediation: "Use parameterized queries or prepared statements. Never concatenate user input into SQL strings."
+enabled: true

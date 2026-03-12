@@ -1,0 +1,22 @@
+id: C3
+name: Server-Side Request Forgery (SSRF)
+category: code-analysis
+severity: high
+owasp: MCP04-data-exfiltration
+mitre: null
+detect:
+  type: regex
+  patterns:
+    - "(?i)fetch\\s*\\(\\s*(?:req|input|param|args|url)"
+    - "(?i)axios\\.(?:get|post|put|delete)\\s*\\(\\s*(?:req|input|param)"
+    - "(?i)requests\\.(?:get|post|put|delete)\\s*\\(\\s*(?:req|input|param|url)"
+    - "(?i)http\\.(?:get|request)\\s*\\(\\s*(?:req|input|param|url)"
+    - "(?i)urllib\\.request\\.urlopen\\s*\\("
+  context: source_code
+  exclude_patterns:
+    - "allowlist"
+    - "whitelist"
+    - "allowed_hosts"
+    - "URL_ALLOWLIST"
+remediation: "Validate URLs against an allowlist of permitted hosts. Block requests to internal IPs (127.0.0.1, 169.254.x.x, 10.x.x.x, 172.16-31.x.x, 192.168.x.x)."
+enabled: true

@@ -1,0 +1,13 @@
+id: D1
+name: Known CVEs in Dependencies
+category: dependency-analysis
+severity: high
+owasp: MCP08-dependency-vuln
+mitre: null
+detect:
+  type: composite
+  conditions:
+    check: dependency_cve_audit
+  context: metadata
+remediation: "Update dependencies to versions that patch known CVEs. Run 'npm audit fix' or 'pip-audit' to identify and resolve vulnerable dependencies."
+enabled: true

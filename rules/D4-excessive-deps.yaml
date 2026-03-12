@@ -1,0 +1,14 @@
+id: D4
+name: Excessive Dependency Count
+category: dependency-analysis
+severity: low
+owasp: MCP08-dependency-vuln
+mitre: null
+detect:
+  type: schema-check
+  conditions:
+    check: dependency_count_exceeds
+    threshold: 50
+  context: metadata
+remediation: "Reduce the number of direct dependencies. Each dependency increases the attack surface. Consider whether lighter alternatives exist."
+enabled: true

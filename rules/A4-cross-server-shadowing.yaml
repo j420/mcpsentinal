@@ -1,0 +1,24 @@
+id: A4
+name: Cross-Server Tool Name Shadowing
+category: description-analysis
+severity: high
+owasp: MCP02-tool-poisoning
+mitre: AML.T0054
+detect:
+  type: composite
+  conditions:
+    check: tool_name_shadows_common
+    common_tool_names:
+      - read_file
+      - write_file
+      - execute_command
+      - search
+      - query
+      - list_files
+      - get_contents
+      - run_sql
+      - send_email
+      - fetch_url
+  context: metadata
+remediation: "Use unique, namespaced tool names that don't shadow common tools from well-known servers. Prefix tool names with your server's namespace (e.g., 'myserver_read_file' instead of 'read_file')."
+enabled: true

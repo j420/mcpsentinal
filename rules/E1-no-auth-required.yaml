@@ -1,0 +1,13 @@
+id: E1
+name: No Authentication Required
+category: behavioral-analysis
+severity: medium
+owasp: MCP07-insecure-config
+mitre: null
+detect:
+  type: behavioral
+  conditions:
+    check: connection_no_auth
+  context: metadata
+remediation: "Require authentication for MCP server connections. Use API keys, bearer tokens, or OAuth to authenticate clients before allowing tool enumeration or invocation."
+enabled: true

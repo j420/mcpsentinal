@@ -1,0 +1,25 @@
+id: C1
+name: Command Injection
+category: code-analysis
+severity: critical
+owasp: MCP03-command-injection
+mitre: AML.T0054
+detect:
+  type: regex
+  patterns:
+    - "exec\\s*\\("
+    - "execSync\\s*\\("
+    - "child_process"
+    - "os\\.system\\s*\\("
+    - "subprocess\\.call\\s*\\("
+    - "subprocess\\.run\\s*\\([^)]*shell\\s*=\\s*True"
+    - "subprocess\\.Popen\\s*\\([^)]*shell\\s*=\\s*True"
+    - "eval\\s*\\("
+    - "os\\.popen\\s*\\("
+  context: source_code
+  exclude_patterns:
+    - "// safe: sanitized input"
+    - "# safe: sanitized input"
+    - "execFile\\s*\\("
+remediation: "Replace exec() with execFile() and validate all inputs against an allowlist. Never pass user input directly to shell commands."
+enabled: true

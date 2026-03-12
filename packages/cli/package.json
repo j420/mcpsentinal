@@ -1,0 +1,31 @@
+{
+  "name": "mcp-sentinel",
+  "version": "0.1.0",
+  "description": "Scan your MCP server configurations for security issues",
+  "type": "module",
+  "bin": {
+    "mcp-sentinel": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "cli": "tsx src/cli.ts"
+  },
+  "dependencies": {
+    "@mcp-sentinel/analyzer": "workspace:*",
+    "@mcp-sentinel/database": "workspace:*",
+    "@mcp-sentinel/scorer": "workspace:*",
+    "yaml": "^2.4.0",
+    "zod": "^3.23.0",
+    "pino": "^9.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0",
+    "tsx": "^4.19.0"
+  },
+  "keywords": ["mcp", "security", "scanner", "model-context-protocol"],
+  "license": "MIT"
+}

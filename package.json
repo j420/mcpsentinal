@@ -1,0 +1,23 @@
+{
+  "name": "mcp-sentinel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The world's most comprehensive MCP security intelligence registry",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "db:migrate": "pnpm --filter=@mcp-sentinel/database run migrate",
+    "db:seed": "pnpm --filter=@mcp-sentinel/database run seed",
+    "db:reset": "pnpm --filter=@mcp-sentinel/database run reset",
+    "crawl": "pnpm --filter=@mcp-sentinel/crawler run crawl",
+    "scan": "pnpm --filter=@mcp-sentinel/analyzer run scan",
+    "score": "pnpm --filter=@mcp-sentinel/scorer run score",
+    "cli": "pnpm --filter=@mcp-sentinel/cli run cli"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

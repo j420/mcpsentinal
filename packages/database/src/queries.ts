@@ -1,0 +1,426 @@
+import pg from "pg";
+import type {
+  DiscoveredServer,
+  FindingInput,
+  Server,
+  ServerListQuery,
+} from "./schemas.js";
+
+export class DatabaseQueries {
+  constructor(private pool: pg.Pool) {}
+
+  // ─── Server Operations ─────────────────────────────────────────────────────
+
+  async upsertServer(discovered: DiscoveredServer): Promise<string> {
+    const slug = this.slugify(discovered.name);
+
+    const result = await this.pool.query(
+      `INSERT INTO servers (name, slug, description, author, github_url, npm_package, pypi_package, category, language, license)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       ON CONFLICT (slug) DO UPDATE SET
+         description = COALESCE(EXCLUDED.description, servers.description),
+         author = COALESCE(EXCLUDED.author, servers.author),
+         github_url = COALESCE(EXCLUDED.github_url, servers.github_url),
+         npm_package = COALESCE(EXCLUDED.npm_package, servers.npm_package),
+         pypi_package = COALESCE(EXCLUDED.pypi_package, servers.pypi_package),
+         category = COALESCE(EXCLUDED.category, servers.category),
+         language = COALESCE(EXCLUDED.language, servers.language),
+         license = COALESCE(EXCLUDED.license, servers.license),
+         updated_at = NOW()
+       RETURNING id`,
+      [
+        discovered.name,
+        slug,
+        discovered.description,
+        discovered.author,
+        discovered.github_url,
+        discovered.npm_package,
+        discovered.pypi_package,
+        discovered.category,
+        discovered.language,
+        discovered.license,
+      ]
+    );
+
+    const serverId = result.rows[0].id;
+
+    // Record source
+    await this.pool.query(
+      `INSERT INTO sources (server_id, source_name, source_url, external_id, raw_metadata)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (server_id, source_name, external_id) DO UPDATE SET
+         raw_metadata = EXCLUDED.raw_metadata,
+         last_synced = NOW()`,
+      [
+        serverId,
+        discovered.source_name,
+        discovered.source_url,
+        discovered.external_id,
+        JSON.stringify(discovered.raw_metadata),
+      ]
+    );
+
+    return serverId;
+  }
+
+  async findServerByGithubUrl(url: string): Promise<Server | null> {
+    const result = await this.pool.query(
+      "SELECT * FROM servers WHERE github_url = $1 LIMIT 1",
+      [url]
+    );
+    return result.rows[0] || null;
+  }
+
+  async findServerByNpmPackage(pkg: string): Promise<Server | null> {
+    const result = await this.pool.query(
+      "SELECT * FROM servers WHERE npm_package = $1 LIMIT 1",
+      [pkg]
+    );
+    return result.rows[0] || null;
+  }
+
+  async findServerBySlug(slug: string): Promise<Server | null> {
+    const result = await this.pool.query(
+      "SELECT * FROM servers WHERE slug = $1 LIMIT 1",
+      [slug]
+    );
+    return result.rows[0] || null;
+  }
+
+  async searchServers(query: ServerListQuery) {
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    let paramIdx = 1;
+
+    if (query.q) {
+      conditions.push(
+        `(search_vector @@ plainto_tsquery('english', $${paramIdx}) OR name ILIKE $${paramIdx + 1})`
+      );
+      params.push(query.q, `%${query.q}%`);
+      paramIdx += 2;
+    }
+
+    if (query.category) {
+      conditions.push(`category = $${paramIdx}`);
+      params.push(query.category);
+      paramIdx++;
+    }
+
+    if (query.min_score !== undefined) {
+      conditions.push(`latest_score >= $${paramIdx}`);
+      params.push(query.min_score);
+      paramIdx++;
+    }
+
+    if (query.max_score !== undefined) {
+      conditions.push(`latest_score <= $${paramIdx}`);
+      params.push(query.max_score);
+      paramIdx++;
+    }
+
+    const where =
+      conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+    const sortColumn: Record<string, string> = {
+      score: "latest_score",
+      name: "name",
+      stars: "github_stars",
+      updated: "updated_at",
+      downloads: "npm_downloads",
+    };
+    const sort = sortColumn[query.sort] || "latest_score";
+    const order = query.order === "asc" ? "ASC" : "DESC";
+    const offset = (query.page - 1) * query.limit;
+
+    const countResult = await this.pool.query(
+      `SELECT COUNT(*) as total FROM servers ${where}`,
+      params
+    );
+
+    const dataResult = await this.pool.query(
+      `SELECT * FROM servers ${where}
+       ORDER BY ${sort} ${order} NULLS LAST
+       LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
+      [...params, query.limit, offset]
+    );
+
+    return {
+      servers: dataResult.rows as Server[],
+      total: parseInt(countResult.rows[0].total, 10),
+      page: query.page,
+      limit: query.limit,
+    };
+  }
+
+  // ─── Tool Operations ───────────────────────────────────────────────────────
+
+  async upsertTools(
+    serverId: string,
+    tools: Array<{
+      name: string;
+      description: string | null;
+      input_schema: Record<string, unknown> | null;
+    }>
+  ): Promise<void> {
+    for (const tool of tools) {
+      const result = await this.pool.query(
+        `INSERT INTO tools (server_id, name, description, input_schema)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (server_id, name) DO UPDATE SET
+           description = EXCLUDED.description,
+           input_schema = EXCLUDED.input_schema,
+           updated_at = NOW()
+         RETURNING id`,
+        [serverId, tool.name, tool.description, JSON.stringify(tool.input_schema)]
+      );
+
+      // Extract and store parameters from input_schema
+      if (tool.input_schema?.properties) {
+        const toolId = result.rows[0].id;
+        const required = (tool.input_schema.required as string[]) || [];
+        const properties = tool.input_schema.properties as Record<
+          string,
+          Record<string, unknown>
+        >;
+
+        for (const [paramName, paramDef] of Object.entries(properties)) {
+          await this.pool.query(
+            `INSERT INTO parameters (tool_id, name, type, required, description, constraints)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             ON CONFLICT (tool_id, name) DO UPDATE SET
+               type = EXCLUDED.type,
+               required = EXCLUDED.required,
+               description = EXCLUDED.description,
+               constraints = EXCLUDED.constraints`,
+            [
+              toolId,
+              paramName,
+              (paramDef.type as string) || "string",
+              required.includes(paramName),
+              paramDef.description || null,
+              JSON.stringify(paramDef),
+            ]
+          );
+        }
+      }
+    }
+  }
+
+  async getToolsForServer(serverId: string) {
+    return (
+      await this.pool.query(
+        "SELECT * FROM tools WHERE server_id = $1 ORDER BY name",
+        [serverId]
+      )
+    ).rows;
+  }
+
+  // ─── Scan Operations ───────────────────────────────────────────────────────
+
+  async createScan(
+    serverId: string,
+    rulesVersion: string
+  ): Promise<string> {
+    const result = await this.pool.query(
+      `INSERT INTO scans (server_id, status, rules_version)
+       VALUES ($1, 'running', $2) RETURNING id`,
+      [serverId, rulesVersion]
+    );
+    return result.rows[0].id;
+  }
+
+  async completeScan(
+    scanId: string,
+    findingsCount: number,
+    error: string | null = null
+  ): Promise<void> {
+    await this.pool.query(
+      `UPDATE scans SET
+         status = $1,
+         completed_at = NOW(),
+         findings_count = $2,
+         error = $3
+       WHERE id = $4`,
+      [error ? "failed" : "completed", findingsCount, error, scanId]
+    );
+  }
+
+  // ─── Finding Operations ────────────────────────────────────────────────────
+
+  async insertFindings(
+    serverId: string,
+    scanId: string,
+    findings: FindingInput[]
+  ): Promise<void> {
+    for (const finding of findings) {
+      await this.pool.query(
+        `INSERT INTO findings (server_id, scan_id, rule_id, severity, evidence, remediation, owasp_category, mitre_technique)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          serverId,
+          scanId,
+          finding.rule_id,
+          finding.severity,
+          finding.evidence,
+          finding.remediation,
+          finding.owasp_category,
+          finding.mitre_technique,
+        ]
+      );
+    }
+  }
+
+  async getFindingsForServer(serverId: string) {
+    return (
+      await this.pool.query(
+        `SELECT f.* FROM findings f
+         JOIN scans s ON f.scan_id = s.id
+         WHERE f.server_id = $1
+         AND s.id = (SELECT id FROM scans WHERE server_id = $1 AND status = 'completed' ORDER BY completed_at DESC LIMIT 1)
+         ORDER BY
+           CASE f.severity WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5 END`,
+        [serverId]
+      )
+    ).rows;
+  }
+
+  // ─── Score Operations ──────────────────────────────────────────────────────
+
+  async insertScore(score: {
+    server_id: string;
+    scan_id: string;
+    total_score: number;
+    code_score: number;
+    deps_score: number;
+    config_score: number;
+    description_score: number;
+    behavior_score: number;
+    owasp_coverage: Record<string, boolean>;
+  }): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO scores (server_id, scan_id, total_score, code_score, deps_score, config_score, description_score, behavior_score, owasp_coverage)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       ON CONFLICT (server_id, scan_id) DO UPDATE SET
+         total_score = EXCLUDED.total_score,
+         code_score = EXCLUDED.code_score,
+         deps_score = EXCLUDED.deps_score,
+         config_score = EXCLUDED.config_score,
+         description_score = EXCLUDED.description_score,
+         behavior_score = EXCLUDED.behavior_score,
+         owasp_coverage = EXCLUDED.owasp_coverage`,
+      [
+        score.server_id,
+        score.scan_id,
+        score.total_score,
+        score.code_score,
+        score.deps_score,
+        score.config_score,
+        score.description_score,
+        score.behavior_score,
+        JSON.stringify(score.owasp_coverage),
+      ]
+    );
+
+    // Update server's latest score
+    await this.pool.query(
+      "UPDATE servers SET latest_score = $1, updated_at = NOW() WHERE id = $2",
+      [score.total_score, score.server_id]
+    );
+
+    // Record in history
+    const findingsCount = await this.pool.query(
+      "SELECT COUNT(*) as cnt FROM findings WHERE server_id = $1 AND scan_id = $2",
+      [score.server_id, score.scan_id]
+    );
+
+    await this.pool.query(
+      `INSERT INTO score_history (server_id, score, findings_count)
+       VALUES ($1, $2, $3)`,
+      [score.server_id, score.total_score, parseInt(findingsCount.rows[0].cnt, 10)]
+    );
+  }
+
+  async getScoreHistory(serverId: string) {
+    return (
+      await this.pool.query(
+        "SELECT * FROM score_history WHERE server_id = $1 ORDER BY recorded_at DESC",
+        [serverId]
+      )
+    ).rows;
+  }
+
+  // ─── Ecosystem Stats ──────────────────────────────────────────────────────
+
+  async getEcosystemStats() {
+    const [total, scanned, avgScore, categories, severities] =
+      await Promise.all([
+        this.pool.query("SELECT COUNT(*) as cnt FROM servers"),
+        this.pool.query(
+          "SELECT COUNT(*) as cnt FROM servers WHERE latest_score IS NOT NULL"
+        ),
+        this.pool.query(
+          "SELECT AVG(latest_score) as avg FROM servers WHERE latest_score IS NOT NULL"
+        ),
+        this.pool.query(
+          "SELECT category, COUNT(*) as cnt FROM servers WHERE category IS NOT NULL GROUP BY category ORDER BY cnt DESC"
+        ),
+        this.pool.query(
+          `SELECT severity, COUNT(*) as cnt FROM findings f
+           JOIN scans s ON f.scan_id = s.id
+           WHERE s.status = 'completed'
+           GROUP BY severity`
+        ),
+      ]);
+
+    return {
+      total_servers: parseInt(total.rows[0].cnt, 10),
+      total_scanned: parseInt(scanned.rows[0].cnt, 10),
+      average_score: Math.round(parseFloat(avgScore.rows[0].avg) || 0),
+      category_breakdown: Object.fromEntries(
+        categories.rows.map((r) => [r.category, parseInt(r.cnt, 10)])
+      ),
+      severity_breakdown: Object.fromEntries(
+        severities.rows.map((r) => [r.severity, parseInt(r.cnt, 10)])
+      ),
+    };
+  }
+
+  // ─── Servers needing scan ─────────────────────────────────────────────────
+
+  async getUnscannedServers(limit: number = 100) {
+    return (
+      await this.pool.query(
+        `SELECT s.* FROM servers s
+         WHERE NOT EXISTS (SELECT 1 FROM scans sc WHERE sc.server_id = s.id AND sc.status = 'completed')
+         ORDER BY s.github_stars DESC NULLS LAST
+         LIMIT $1`,
+        [limit]
+      )
+    ).rows as Server[];
+  }
+
+  async getServersNeedingRescan(daysSinceLastScan: number = 7, limit: number = 100) {
+    return (
+      await this.pool.query(
+        `SELECT s.* FROM servers s
+         WHERE s.id NOT IN (
+           SELECT server_id FROM scans
+           WHERE status = 'completed' AND completed_at > NOW() - INTERVAL '1 day' * $1
+         )
+         ORDER BY s.github_stars DESC NULLS LAST
+         LIMIT $2`,
+        [daysSinceLastScan, limit]
+      )
+    ).rows as Server[];
+  }
+
+  // ─── Helpers ───────────────────────────────────────────────────────────────
+
+  private slugify(name: string): string {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .substring(0, 500);
+  }
+}

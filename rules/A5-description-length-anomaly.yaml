@@ -1,0 +1,14 @@
+id: A5
+name: Description Length Anomaly
+category: description-analysis
+severity: low
+owasp: MCP01-prompt-injection
+mitre: null
+detect:
+  type: schema-check
+  conditions:
+    description_min_length: 2000
+    description_contains_newlines: true
+  context: tool_description
+remediation: "Keep tool descriptions concise (under 500 characters). Excessively long descriptions may hide prompt injection payloads or confuse AI models."
+enabled: true

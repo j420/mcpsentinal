@@ -1,0 +1,17 @@
+id: F2
+name: High-Risk Capability Profile
+category: ecosystem-context
+severity: medium
+owasp: MCP06-excessive-permissions
+mitre: null
+detect:
+  type: composite
+  conditions:
+    check: capability_risk_profile
+    high_risk_combinations:
+      - ["executes-code", "sends-network"]
+      - ["accesses-filesystem", "sends-network"]
+      - ["manages-credentials", "sends-network"]
+  context: metadata
+remediation: "This server combines high-risk capabilities. Ensure each capability is necessary and properly sandboxed. Consider if the server can be split into lower-privilege components."
+enabled: true

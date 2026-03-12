@@ -1,0 +1,26 @@
+{
+  "name": "@mcp-sentinel/analyzer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "scan": "tsx src/cli.ts"
+  },
+  "dependencies": {
+    "@mcp-sentinel/database": "workspace:*",
+    "yaml": "^2.4.0",
+    "zod": "^3.23.0",
+    "pino": "^9.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0",
+    "tsx": "^4.19.0"
+  }
+}

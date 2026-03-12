@@ -1,0 +1,21 @@
+id: D3
+name: Typosquatting Risk in Dependencies
+category: dependency-analysis
+severity: high
+owasp: MCP10-supply-chain
+mitre: null
+detect:
+  type: composite
+  conditions:
+    check: dependency_name_similarity
+    known_packages:
+      - "@modelcontextprotocol/sdk"
+      - "fastmcp"
+      - "express"
+      - "axios"
+      - "lodash"
+      - "zod"
+    similarity_threshold: 0.85
+  context: metadata
+remediation: "Verify dependency names carefully. Check that package names match the intended package exactly. Use lockfiles to prevent supply chain attacks."
+enabled: true

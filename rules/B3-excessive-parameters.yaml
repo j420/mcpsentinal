@@ -1,0 +1,14 @@
+id: B3
+name: Excessive Parameter Count
+category: schema-analysis
+severity: low
+owasp: MCP06-excessive-permissions
+mitre: null
+detect:
+  type: schema-check
+  conditions:
+    check: parameter_count_exceeds
+    threshold: 15
+  context: parameter_schema
+remediation: "Reduce the number of parameters per tool. Consider splitting complex tools into focused sub-tools. High parameter counts increase attack surface and user confusion."
+enabled: true

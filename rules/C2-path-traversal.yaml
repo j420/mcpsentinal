@@ -1,0 +1,21 @@
+id: C2
+name: Path Traversal
+category: code-analysis
+severity: critical
+owasp: MCP05-privilege-escalation
+mitre: null
+detect:
+  type: regex
+  patterns:
+    - "(?i)fs\\.(read|write|append|unlink|rm|mkdir|access).*\\+.*req"
+    - "(?i)path\\.join\\s*\\([^)]*(?:req|input|param|args)"
+    - "(?i)open\\s*\\([^)]*(?:req|input|param|user)"
+    - "(?i)readFile\\s*\\([^)]*(?:req|input|param)"
+  context: source_code
+  exclude_patterns:
+    - "path.resolve"
+    - "path.normalize"
+    - "realpath"
+    - "sanitize"
+remediation: "Use path.resolve() to normalize paths and verify they stay within the allowed directory. Never concatenate user input into file paths without validation."
+enabled: true

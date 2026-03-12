@@ -1,0 +1,21 @@
+id: A3
+name: Suspicious URLs in Tool Description
+category: description-analysis
+severity: medium
+owasp: MCP04-data-exfiltration
+mitre: null
+detect:
+  type: regex
+  patterns:
+    - "(?i)https?://[^\\s]+\\.(tk|ml|ga|cf|gq)/"
+    - "(?i)https?://\\d+\\.\\d+\\.\\d+\\.\\d+"
+    - "(?i)https?://[^\\s]*webhook"
+    - "(?i)https?://[^\\s]*ngrok"
+    - "(?i)https?://[^\\s]*requestbin"
+    - "(?i)https?://[^\\s]*pipedream"
+  context: tool_description
+  exclude_patterns:
+    - "example.com"
+    - "localhost"
+remediation: "Remove external URLs from tool descriptions. If the tool communicates with external services, document this in a dedicated configuration section, not in the description."
+enabled: true
