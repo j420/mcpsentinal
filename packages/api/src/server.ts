@@ -143,6 +143,11 @@ app.get("/api/v1/ecosystem/stats", async (_req, res) => {
   }
 });
 
+// Root
+app.get("/", (_req, res) => {
+  res.json({ name: "MCP Sentinel API", version: "1.0.0", docs: "/api/v1" });
+});
+
 // Health check
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
