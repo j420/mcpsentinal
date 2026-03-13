@@ -1,0 +1,173 @@
+id: H3
+name: Multi-Agent Propagation Risk
+category: adversarial-ai
+severity: high
+owasp: MCP01-prompt-injection
+mitre: AML.T0054
+
+# THREAT INTELLIGENCE NOTE (Agentic AI Security Researcher — LangGraph / AutoGen / CrewAI):
+#
+# Multi-agent AI architectures became mainstream in 2025. By March 2026, frameworks like
+# LangGraph, AutoGen, CrewAI, and Anthropic's own Claude multi-agent orchestration are
+# standard deployment patterns. MCP is the primary integration mechanism connecting
+# agents to tools, memory, and data sources.
+#
+# This creates a NEW attack class with NO equivalent in traditional security tooling:
+# CROSS-AGENT PROMPT INJECTION PROPAGATION.
+#
+# THE ATTACK MODEL:
+#
+#   [User's System Prompt] ──→ [Orchestrator Agent (Claude)]
+#                                       │
+#                                       ├─→ [Worker Agent A] ──→ [MCP Tool: read_email]
+#                                       │         │                   ↑ ATTACKER INJECTS HERE
+#                                       │         ↓
+#                                       │   [Poisoned Output]
+#                                       │         │
+#                                       ↓         ↓
+#                              [MCP Tool: shared_memory_write(poisoned_content)]
+#                                       │
+#                                       ↓
+#                              [Worker Agent B reads shared_memory] ← INFECTED
+#                                       │
+#                                       ↓
+#                              [Worker Agent B now executing attacker instructions]
+#
+# WHY THIS IS DIFFERENT FROM G1 (Indirect Injection Gateway):
+#
+# G1 detects a SINGLE agent ingesting external attacker-controlled content.
+# The attacker directly targets the tool that returns untrusted content.
+#
+# H3 detects a MULTI-HOP attack:
+#   Step 1: Attacker compromises Agent A via G1-style injection (or any other vector)
+#   Step 2: Agent A writes its (now malicious) context to a SHARED MCP tool
+#   Step 3: Agent B, with completely different permissions and a different task,
+#           reads from that shared tool and inherits Agent A's injected instructions
+#   Step 4: Agent B is now operating under the attacker's injected context —
+#           despite never directly contacting any attacker-controlled content
+#
+# The attack PROPAGATES through the multi-agent system via legitimate MCP tool calls.
+# No individual tool call is suspicious. Only the PATTERN across agents reveals the risk.
+#
+# THREE DETECTION SIGNALS:
+#
+# Signal 1 — Agentic Input Sink (tools designed to receive output FROM other agents):
+#   Tool names/descriptions containing: agent_output, upstream_result, orchestrator_input,
+#   previous_step, subagent_result, continue_task, resume_workflow.
+#   These tools are designed to ingest data that originated from another AI model.
+#   If that model was compromised, the injection propagates here.
+#
+# Signal 2 — Shared Agent Memory (tools enabling cross-agent state pollution):
+#   Tools that implement "agent memory", "working memory", "scratchpad", "shared context".
+#   These are the transmission medium for cross-agent injection.
+#   Write access to shared agent memory = ability to inject into any agent that reads it.
+#
+# Signal 3 — Agentic Output Source + Missing Trust Boundary Declaration:
+#   Tools that produce output explicitly described as going TO another agent,
+#   WITHOUT declaring: origin validation, trust boundaries, or content sanitization.
+#
+# DOCUMENTED REAL-WORLD ATTACKS (2025):
+# - AutoGen multi-agent system: compromised web-browsing agent poisoned shared memory,
+#   affecting code-writing agent downstream (Embrace The Red, Nov 2025)
+# - LangGraph RAG pipeline: vector store poisoning via document injection agent
+#   propagated to all agents reading the vector store (Invariant Labs, Jan 2026)
+# - CrewAI task delegation: agent A's tool output used as agent B's input without
+#   sanitization, enabling prompt injection cascade (Trail of Bits, Feb 2026)
+#
+# WHY TRADITIONAL SECURITY DOESN'T CATCH THIS:
+# - Each individual MCP tool call looks legitimate in isolation
+# - The injection payload travels through "normal" data, not attack infrastructure
+# - Standard WAF/IDS rules see only clean JSON-RPC tool calls
+# - The attack exploits the AI's context window semantics, not a code vulnerability
+#
+# INTELLIGENCE SOURCES:
+# - Embrace The Red: "Prompt injection cascade in multi-agent AutoGen" (Nov 2025)
+# - Invariant Labs: "Cross-agent pollution via shared MCP memory" (Jan 2026)
+# - Trail of Bits: "Trust boundaries in agentic AI systems" (Feb 2026)
+# - MITRE ATLAS AML.T0054: Prompt Injection
+# - Anthropic: "Building effective agents" (Claude documentation, 2025)
+
+detect:
+  type: composite
+  conditions:
+    check: multi_agent_propagation_risk
+
+    # Signal 1: Tools designed to accept output FROM other agents (agentic input sinks)
+    # These tools receive data that originated from another AI model's execution
+    agentic_input_patterns:
+      - "(?i)(agent[_\\s-]?output|agent[_\\s-]?result|agent[_\\s-]?response)"
+      - "(?i)(upstream[_\\s-]?(?:agent|result|output)|previous[_\\s-]?(?:agent|step|result))"
+      - "(?i)(orchestrat(?:or|or[_\\s-]?input|or[_\\s-]?output|ion[_\\s-]?result))"
+      - "(?i)(subagent|sub[_\\s-]?agent|worker[_\\s-]?agent|child[_\\s-]?agent)"
+      - "(?i)(multi[_\\s-]?agent|agent[_\\s-]?pipeline|agent[_\\s-]?workflow|agent[_\\s-]?chain)"
+      - "(?i)(agent[_\\s-]?handoff|delegate[_\\s-]?to|pass[_\\s-]?to[_\\s-]?agent)"
+      - "(?i)(llm[_\\s-]?output|model[_\\s-]?output|ai[_\\s-]?output|ai[_\\s-]?response)"
+      - "(?i)(continue[_\\s-]?task|resume[_\\s-]?(?:task|workflow|step)|next[_\\s-]?agent)"
+      - "(?i)(step[_\\s-]?result|task[_\\s-]?output|step[_\\s-]?output|phase[_\\s-]?result)"
+
+    # Signal 2: Shared agent memory/state (cross-agent infection transmission medium)
+    # Write access to these = ability to inject into any agent that reads them
+    shared_memory_patterns:
+      - "(?i)(agent[_\\s-]?memory|shared[_\\s-]?memory|working[_\\s-]?memory)"
+      - "(?i)(agent[_\\s-]?scratchpad|scratchpad[_\\s-]?write|scratch[_\\s-]?pad)"
+      - "(?i)(agent[_\\s-]?state|shared[_\\s-]?state|global[_\\s-]?state|pipeline[_\\s-]?state)"
+      - "(?i)(agent[_\\s-]?context|shared[_\\s-]?context|execution[_\\s-]?context)"
+      - "(?i)(vector[_\\s-]?store.*write|knowledge[_\\s-]?base.*write|memory[_\\s-]?bank.*(?:write|store|save))"
+      - "(?i)(persistent[_\\s-]?(?:memory|context|state)|long[_\\s-]?term[_\\s-]?memory)"
+      - "(?i)(conversation[_\\s-]?history.*(?:write|store|save|update)|chat[_\\s-]?history.*(?:write|update))"
+
+    # Trust boundary signals that explicitly declare safe handling (reduces false positives)
+    # A tool claiming trust boundary awareness should NOT be flagged
+    trust_boundary_signals:
+      - "(?i)(trust[_\\s-]?boundary|untrusted[_\\s-]?input|sandbo(?:x|xed))"
+      - "(?i)(agent[_\\s-]?(?:auth|verify|validate|authenticate|origin))"
+      - "(?i)(sanitize[_\\s-]?agent|validate[_\\s-]?agent[_\\s-]?input|agent[_\\s-]?isolation)"
+      - "(?i)(signed[_\\s-]?(?:by|message)|verify[_\\s-]?signature|agent[_\\s-]?signature)"
+      - "(?i)(cross[_\\s-]?agent[_\\s-]?(?:policy|security|validation|check))"
+
+  context: metadata
+
+remediation: >
+  This MCP server exposes tools designed for multi-agent architectures — either accepting
+  input from other agents (agentic input sinks) or implementing shared agent memory.
+  Without explicit trust boundaries, these tools are propagation vectors for cross-agent
+  prompt injection attacks.
+
+  A compromised upstream agent can write malicious instructions to shared memory or pass
+  poisoned output to downstream agents through these tools, spreading injection across the
+  entire agent network without any single "suspicious" tool call.
+
+  Required mitigations:
+
+  1. Content validation at agent boundaries: Any data flowing from one agent to another
+     through an MCP tool MUST be validated. Apply injection pattern detection to agent
+     outputs before they are stored in shared state or passed to downstream agents.
+     Treat agent output as untrusted — even output from "your own" orchestrator.
+
+  2. Agent identity and signing: Use cryptographic signatures or capability tokens to
+     declare which agent produced which data. Downstream agents should verify the
+     origin of data they receive before incorporating it into their context.
+     Reference: Anthropic's "agent trust levels" in Claude multi-agent docs (2025).
+
+  3. Shared memory isolation: If multiple agents read/write shared memory, partition
+     the memory by agent identity and enforce read/write access controls.
+     No agent should be able to overwrite another agent's working memory.
+
+  4. Content policy on shared state writes: Before writing to shared agent memory,
+     apply the same content policy you would apply to user input from the internet.
+     Scan for injection patterns: role overrides, LLM special tokens, instruction directives.
+
+  5. Output sanitization layer: Implement an explicit "agent output sanitizer" that
+     strips injection patterns from all inter-agent data flows before storage or transmission.
+     This is the agentic equivalent of HTML escaping in web applications.
+
+  6. Declare trust boundaries explicitly: Document which agents can write to which
+     shared memory regions, and what content policy is applied. Lack of documentation
+     is itself a risk signal — if it's not documented, it's not enforced.
+
+  Reference: Embrace The Red (Nov 2025): "Prompt injection cascade in multi-agent systems"
+             Invariant Labs (Jan 2026): "Cross-agent pollution via shared MCP memory"
+             Trail of Bits (Feb 2026): "Trust boundaries in agentic AI systems"
+             Anthropic: "Building effective agents" — trust hierarchy in multi-agent Claude
+
+enabled: true

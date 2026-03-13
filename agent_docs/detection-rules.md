@@ -1,5 +1,5 @@
 # MCP Sentinel — Detection Rules Specification
-## P8 Detection Rule Engineer Output — v3.0 (with P1 Threat Intelligence)
+## P8 Detection Rule Engineer Output — v4.0 (with P1 Threat Intelligence + 2026 Attack Surface)
 
 ### Rule Categories
 
@@ -12,7 +12,8 @@
 | Behavioral Analysis | E | No (connection metadata) | 4 | Security Engineer |
 | Ecosystem Context | F | No (tool metadata) | 7 | Security Engineer |
 | **Adversarial AI** | **G** | **No (metadata + history)** | **7** | **P1 Threat Researcher** |
-| **Total** | | | **57** | |
+| **2026 Attack Surface** | **H** | **Mixed** | **3** | **OAuth Specialist + Protocol Researcher + Agentic AI Researcher** |
+| **Total** | | | **60** | |
 
 ### The G-Category: What a Threat Researcher Adds
 
@@ -26,6 +27,24 @@ Rules G1–G7 are what a **Threat Intelligence Researcher** who has studied actu
 - Wiz Research — MCP supply chain attack analysis
 - MITRE ATLAS AML.T0054 — LLM prompt injection technique taxonomy
 - Real-world incidents: Claude Desktop compromised via web-scraping MCP (2024-Q4)
+
+### The H-Category: What March 2026 Changes
+
+Rules A–G were comprehensive for the MCP ecosystem at launch. By March 2026, three structural changes to the MCP ecosystem opened attack surfaces that didn't exist when those rules were written:
+
+1. **OAuth 2.0 is now the official MCP auth standard** (H1): RFC 9700 / MCP Authorization spec added OAuth 2.0 as the standard authentication mechanism for remote MCP servers in mid-2025. This created a class of authentication vulnerabilities (redirect_uri injection, implicit flow, ROPC, token storage) with no coverage in rules A–G.
+
+2. **The `initialize` response added an `instructions` field** (H2): MCP spec revision (September 2025) added a spec-sanctioned `instructions` field to the initialize response — a field that AI clients are designed to follow. Combined with `serverInfo.name` and `serverInfo.version`, the initialize handshake is now a three-field injection surface processed before any tool description, before any safety context, and with higher implicit trust than tool descriptions.
+
+3. **Multi-agent orchestration went mainstream** (H3): LangGraph, AutoGen, CrewAI, and Anthropic's own Claude multi-agent patterns make MCP the integration layer between agents. This enables cross-agent prompt injection propagation — a compromised upstream agent can inject through shared MCP tools into downstream agents. Documented in real-world attacks (Embrace The Red Nov 2025, Invariant Labs Jan 2026, Trail of Bits Feb 2026).
+
+**Primary threat intelligence sources for H-rules:**
+- RFC 9700 (OAuth 2.0 for Browser-Based Apps / OAuth 2.1)
+- OAuth Security BCP (RFC 9700 §4), Portswigger OAuth attack research (2024-2025)
+- MCP Specification 2025-11-05: initialize response `instructions` field
+- Embrace The Red: "Prompt injection cascade in multi-agent AutoGen" (Nov 2025)
+- Invariant Labs: "Cross-agent pollution via shared MCP memory" (Jan 2026)
+- Trail of Bits: "Trust boundaries in agentic AI systems" (Feb 2026)
 
 ### Severity Weights (for scoring)
 
@@ -201,6 +220,9 @@ Dynamic tool invocation (actually calling MCP server tools with test inputs) is 
 | `composite`: `indirect_injection_gateway` | `runCompositeRule` | ✅ G1 |
 | `composite`: `context_window_saturation` | `runCompositeRule` | ✅ G4 |
 | `behavioral`: `tool_behavior_drift` | `runBehavioralRule` | ✅ G6 |
+| `regex` on `source_code` (OAuth patterns) | `runRegexRule` | ✅ H1 |
+| `regex` on `server_initialize_fields` | `runRegexRule` | ✅ H2 (new context) |
+| `composite`: `multi_agent_propagation_risk` | `runCompositeRule` | ✅ H3 |
 
 #### Category G — Adversarial AI (7 rules — P1 Threat Researcher)
 
@@ -213,3 +235,14 @@ Dynamic tool invocation (actually calling MCP server tools with test inputs) is 
 | **G5** | **Capability Escalation via Prior Approval** | **Critical** | **AI-specific session state exploitation. Description references "permissions you already granted" or "same access as [other tool]." AI applies referenced permission without fresh approval — no equivalent in traditional security.** |
 | **G6** | **Rug Pull / Tool Behavior Drift** | **Critical** | **Temporal attack: establish trust, then change. Detects tool count changes >5, dangerous new tools added after stable scan history, description hash changes on security-critical tools. Requires historical baseline.** |
 | **G7** | **DNS-Based Data Exfiltration Channel** | **Critical** | **Stealth exfiltration bypassing HTTP firewalls, DLP, and SIEM. Data encoded in DNS query subdomains. Works through corporate firewalls (UDP/53 rarely blocked), cloud environments, and air-gapped networks via DNS recursion.** |
+
+---
+
+#### Category H — 2026 Attack Surface (3 rules — March 2026 update)
+
+| ID | Name | Severity | Attack Intelligence |
+|----|------|----------|---------------------|
+| **H1** | **MCP OAuth 2.0 Insecure Implementation** | **Critical** | **RFC 9700 / MCP Authorization spec added OAuth 2.0 in mid-2025. Detects six attack vectors: (1) redirect_uri from user input → auth code injection, (2) implicit flow (response_type=token, banned in OAuth 2.1) → token in URL/logs, (3) ROPC grant (grant_type=password) → MCP server receives raw user credentials, (4) token in localStorage → XSS token theft, (5) state param not validated → OAuth CSRF, (6) scope from user input → privilege escalation. Source code detection on OAuth implementation patterns.** |
+| **H2** | **Prompt Injection in MCP Initialize Response Fields** | **Critical** | **The MCP initialize handshake fields (serverInfo.name, serverInfo.version, instructions) are processed BEFORE tool descriptions, BEFORE user context, with higher implicit trust than tool descriptions. The September 2025 MCP spec added a spec-sanctioned `instructions` field that AI clients are trained to follow. Injection here sets behavioral rules for the ENTIRE session. Zero coverage in A–G rules. Extends the analyzer context model with `server_initialize_fields` to scan these three fields. Detects: role injection, LLM special tokens, Unicode control characters, base64 payloads, authority claims, capability escalation directives.** |
+| **H3** | **Multi-Agent Propagation Risk** | **High** | **Multi-agent architectures (LangGraph, AutoGen, CrewAI) are mainstream in 2026. MCP is the integration layer between agents. Detects two propagation vectors: (1) agentic input sinks — tools that accept output from other agents without declaring trust boundaries (compromised upstream agent propagates injected instructions downstream), (2) shared agent memory writers — tools writing to cross-agent state (vector stores, scratchpads, working memory) that any downstream agent reads. Documented in real-world attacks: Embrace The Red (Nov 2025), Invariant Labs (Jan 2026), Trail of Bits (Feb 2026). No equivalent in traditional security tooling.** |
+

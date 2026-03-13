@@ -28,6 +28,11 @@ export interface AnalysisContext {
     transport: string;
     response_time_ms: number;
   } | null;
+  // H2: Fields from the MCP initialize response (serverInfo.name is in server.name)
+  initialize_metadata?: {
+    server_version?: string | null;
+    server_instructions?: string | null;
+  };
 }
 
 export class AnalysisEngine {
@@ -990,6 +995,75 @@ export class AnalysisEngine {
         }
         break;
       }
+
+      case "multi_agent_propagation_risk": {
+        // H3: Detect MCP tools that form propagation vectors in multi-agent architectures.
+        //
+        // Agentic AI systems (LangGraph, AutoGen, CrewAI) use MCP as the integration
+        // layer between agents. A compromised upstream agent can inject malicious
+        // instructions through shared MCP tools to ALL downstream agents — without any
+        // single tool call appearing suspicious in isolation.
+        //
+        // We flag two categories:
+        // 1. Agentic input sinks: tools explicitly designed to receive output FROM other
+        //    agents, without declaring trust boundary or input validation.
+        // 2. Shared memory writers: tools that write to cross-agent state (vector stores,
+        //    working memory, scratchpads) — the transmission medium for cross-agent injection.
+        const agenticInputPatterns = (conditions.agentic_input_patterns as string[]) || [];
+        const sharedMemoryPatterns = (conditions.shared_memory_patterns as string[]) || [];
+        const trustBoundarySignals = (conditions.trust_boundary_signals as string[]) || [];
+
+        const propagationSinkTools: string[] = [];
+        const sharedMemoryTools: string[] = [];
+
+        for (const tool of context.tools) {
+          const toolText = `${tool.name} ${tool.description || ""}`;
+
+          const isAgenticInputSink = agenticInputPatterns.some((p) => {
+            try { return new RegExp(p, "i").test(toolText); } catch { return false; }
+          });
+
+          if (isAgenticInputSink) {
+            // Only flag if there is no explicit trust boundary declaration
+            const hasTrustBoundary = trustBoundarySignals.some((p) => {
+              try { return new RegExp(p, "i").test(toolText); } catch { return false; }
+            });
+            if (!hasTrustBoundary) {
+              propagationSinkTools.push(tool.name);
+            }
+          }
+
+          const isSharedMemoryWriter = sharedMemoryPatterns.some((p) => {
+            try { return new RegExp(p, "i").test(toolText); } catch { return false; }
+          });
+          if (isSharedMemoryWriter) {
+            sharedMemoryTools.push(tool.name);
+          }
+        }
+
+        if (propagationSinkTools.length > 0 || sharedMemoryTools.length > 0) {
+          const evidenceParts: string[] = [];
+          if (propagationSinkTools.length > 0) {
+            evidenceParts.push(
+              `agentic input sinks without trust boundaries: [${propagationSinkTools.join(", ")}]`
+            );
+          }
+          if (sharedMemoryTools.length > 0) {
+            evidenceParts.push(
+              `shared agent memory/state tools (cross-agent infection vectors): [${sharedMemoryTools.join(", ")}]`
+            );
+          }
+          findings.push({
+            rule_id: rule.id,
+            severity: rule.severity,
+            evidence: `Multi-agent propagation risk — ${evidenceParts.join("; ")}. A compromised upstream agent can propagate injected instructions to downstream agents through these tools without any individual call appearing suspicious.`,
+            remediation: rule.remediation,
+            owasp_category: rule.owasp,
+            mitre_technique: rule.mitre,
+          });
+        }
+        break;
+      }
     }
 
     return findings;
@@ -1056,6 +1130,33 @@ export class AnalysisEngine {
             location: "metadata",
           },
         ];
+
+      // H2: Scans fields from the MCP initialize handshake response.
+      // serverInfo.name is the first string an AI processes when connecting to a server —
+      // processed before tool descriptions, before conversation, before any user context.
+      // server_version and server_instructions (MCP spec 2025-11+) add two more surfaces.
+      case "server_initialize_fields": {
+        const initTexts: Array<{ text: string; location: string }> = [];
+        if (context.server.name) {
+          initTexts.push({
+            text: context.server.name,
+            location: "initialize:serverInfo.name",
+          });
+        }
+        if (context.initialize_metadata?.server_version) {
+          initTexts.push({
+            text: context.initialize_metadata.server_version,
+            location: "initialize:serverInfo.version",
+          });
+        }
+        if (context.initialize_metadata?.server_instructions) {
+          initTexts.push({
+            text: context.initialize_metadata.server_instructions,
+            location: "initialize:instructions",
+          });
+        }
+        return initTexts;
+      }
 
       default:
         return [];
