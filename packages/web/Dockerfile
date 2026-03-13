@@ -1,15 +1,16 @@
-FROM node:20-alpine AS builder
+FROM node:20-alpine AS base
+RUN corepack enable && corepack prepare pnpm@10.29.3 --activate
+
+# ─── Builder ──────────────────────────────────────────────────────────────────
+FROM base AS builder
 WORKDIR /app
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml turbo.json tsconfig.base.json ./
+COPY packages/web/package.json ./packages/web/
+RUN pnpm install --frozen-lockfile --filter=@mcp-sentinel/web...
 
-# Copy package manifest and install deps
-# (no pnpm lockfile here — web has no workspace dependencies)
-COPY package.json ./
-RUN npm install
-
-# Copy source
-COPY . .
+COPY packages/web/ ./packages/web/
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build
+RUN pnpm --filter=@mcp-sentinel/web build
 
 # ─── Runner ───────────────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
@@ -20,9 +21,9 @@ ENV HOSTNAME="0.0.0.0"
 
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder /app/packages/web/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/packages/web/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/packages/web/.next/static ./.next/static
 
 USER nextjs
 EXPOSE 3000
