@@ -32,7 +32,7 @@ function makeSource(
   return {
     name: name as CrawlerSource["name"],
     crawl: vi.fn().mockResolvedValue({
-      source: name,
+      source: name as CrawlerSource["name"],
       servers_found: servers.length,
       new_unique: servers.length,
       duplicates: 0,
