@@ -23,7 +23,7 @@ const MIGRATIONS = [
         pypi_package VARCHAR(500),
         category VARCHAR(50),
         language VARCHAR(50),
-        license VARCHAR(100),
+        license TEXT,
         github_stars INTEGER,
         npm_downloads INTEGER,
         last_commit TIMESTAMPTZ,
@@ -190,6 +190,10 @@ const MIGRATIONS = [
         applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
     `,
+  },
+  {
+    id: "002_widen_license_column",
+    sql: `ALTER TABLE servers ALTER COLUMN license TYPE TEXT;`,
   },
 ];
 
