@@ -1,0 +1,17 @@
+[build]
+builder = "nixpacks"
+
+[build.env]
+NIXPACKS_NODE_VERSION = "20"
+
+[[services]]
+name = "api"
+rootDirectory = "."
+buildCommand = "corepack enable && pnpm install --frozen-lockfile && pnpm build"
+startCommand = "node packages/api/dist/server.js"
+
+[[services]]
+name = "web"
+rootDirectory = "."
+buildCommand = "corepack enable && pnpm install --frozen-lockfile && pnpm build"
+startCommand = "node packages/web/.next/standalone/server.js"
