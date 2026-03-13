@@ -4,7 +4,7 @@ RUN corepack enable && corepack prepare pnpm@10.29.3 --activate
 # ─── Builder ──────────────────────────────────────────────────────────────────
 FROM base AS builder
 WORKDIR /app
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml turbo.json ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml turbo.json tsconfig.base.json ./
 COPY packages/web/package.json ./packages/web/
 RUN pnpm install --frozen-lockfile --filter=@mcp-sentinel/web...
 
