@@ -20,7 +20,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 COPY --from=builder /app/packages/api/dist ./packages/api/dist
+COPY --from=builder /app/packages/api/package.json ./packages/api/package.json
 COPY --from=builder /app/packages/database/dist ./packages/database/dist
+COPY --from=builder /app/packages/database/package.json ./packages/database/package.json
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages/api/node_modules ./packages/api/node_modules
 COPY --from=builder /app/packages/database/node_modules ./packages/database/node_modules
