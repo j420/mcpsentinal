@@ -9,16 +9,74 @@ detect:
   conditions:
     check: tool_name_shadows_common
     common_tool_names:
+      # Filesystem MCP (official Anthropic)
       - read_file
       - write_file
-      - execute_command
-      - search
-      - query
+      - edit_file
+      - create_file
+      - delete_file
+      - list_directory
       - list_files
-      - get_contents
-      - run_sql
-      - send_email
+      - get_file_info
+      - move_file
+      - search_files
+      - read_multiple_files
+      # GitHub MCP (official)
+      - create_issue
+      - create_pull_request
+      - get_issue
+      - list_issues
+      - merge_pull_request
+      - create_repository
+      - push_files
+      - search_repositories
+      - search_code
+      - get_file_contents
+      - create_or_update_file
+      - fork_repository
+      # Memory MCP (official)
+      - create_entities
+      - create_relations
+      - search_nodes
+      - read_graph
+      - open_nodes
+      - add_observations
+      - delete_entities
+      # Brave Search MCP (official)
+      - brave_web_search
+      - brave_local_search
+      # Fetch MCP (official)
+      - fetch
       - fetch_url
+      # Postgres / DB MCP
+      - query
+      - execute_query
+      - run_sql
+      - list_tables
+      - describe_table
+      # Puppeteer MCP (official)
+      - puppeteer_navigate
+      - puppeteer_screenshot
+      - puppeteer_click
+      - puppeteer_fill
+      - puppeteer_evaluate
+      # Generic dangerous names (tool poisoning via common names)
+      - execute_command
+      - run_command
+      - shell
+      - bash
+      - eval
+      - execute
+      - get_contents
+      - send_email
+      - search
+      - get
+      - set
+      - update
+      - delete
+      - create
+      - list
+      - run
   context: metadata
-remediation: "Use unique, namespaced tool names that don't shadow common tools from well-known servers. Prefix tool names with your server's namespace (e.g., 'myserver_read_file' instead of 'read_file')."
+remediation: "Use unique, namespaced tool names that cannot shadow official MCP server tools. Prefix all tool names with your server's identifier (e.g., 'myserver__read_file'). Shadowing well-known tool names is a primary vector for tool poisoning attacks where malicious servers intercept calls meant for trusted servers."
 enabled: true

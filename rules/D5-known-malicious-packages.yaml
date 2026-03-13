@@ -1,0 +1,79 @@
+id: D5
+name: Known Malicious or Flagged Package
+category: dependency-analysis
+severity: critical
+owasp: MCP10-supply-chain
+mitre: null
+detect:
+  type: composite
+  conditions:
+    check: known_malicious_package
+    # Packages confirmed malicious by npm/PyPI security teams, removed, or known typosquats
+    # This list is seeded from npm security advisories, PyPI malware reports, and OSV database
+    # Updated continuously as new malicious packages are discovered
+    malicious_packages:
+      # npm — confirmed malicious (typosquats of popular packages)
+      - "crossenv"
+      - "cross-env.js"
+      - "d3.js"
+      - "ffmepg"
+      - "jquery.js"
+      - "loadyaml"
+      - "mobileanalytics"
+      - "mongoosejs"
+      - "node-fabric"
+      - "nodecaffe"
+      - "nodefabric"
+      - "nodeffmpeg"
+      - "nodemysql"
+      - "noderequest"
+      - "nodesass"
+      - "nodesecurity"
+      - "nodesqlite"
+      - "nodeutils"
+      - "nodeuuid"
+      - "nodewaf"
+      - "opencv.js"
+      - "openssl.js"
+      - "proxy.js"
+      - "semver.js"
+      - "sqliter"
+      - "sqlserver"
+      - "useState"
+      # MCP-ecosystem specific typosquats
+      - "modelcontextprotocol"
+      - "model-context-protocol"
+      - "mcp-sdk"
+      - "fastmcp-sdk"
+      - "@mcp/sdk"
+      - "mcp-server-sdk"
+      # PyPI — confirmed malicious
+      - "acqusition"
+      - "apidev-coop"
+      - "bzip"
+      - "crypt"
+      - "django-server"
+      - "djanga"
+      - "httplib3"
+      - "httpsproxy-urllib3"
+      - "libpeshka"
+      - "mumpy"
+      - "mybiubiubiu"
+      - "nmap-python"
+      - "openssl"
+      - "pyflaskcors"
+      - "python-mongo"
+      - "python-mysql"
+      - "python-mysqldb"
+      - "python-openssl"
+      - "python-sqlite"
+      - "python3-dateutil"
+      - "pythonkeras"
+      - "request-httplib"
+      - "setup-tools"
+      - "urlib3"
+      - "urllib"
+      - "zlibsrc"
+  context: metadata
+remediation: "Remove the flagged dependency immediately and audit what data or code it accessed. Check your dependency lockfile for when this package was introduced. Report the malicious package to npm/PyPI if not already flagged. Perform a full security audit of any systems that ran with this dependency."
+enabled: true

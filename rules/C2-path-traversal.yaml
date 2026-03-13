@@ -7,15 +7,32 @@ mitre: null
 detect:
   type: regex
   patterns:
-    - "(?i)fs\\.(read|write|append|unlink|rm|mkdir|access).*\\+.*req"
-    - "(?i)path\\.join\\s*\\([^)]*(?:req|input|param|args)"
-    - "(?i)open\\s*\\([^)]*(?:req|input|param|user)"
-    - "(?i)readFile\\s*\\([^)]*(?:req|input|param)"
+    # Direct concatenation with user input (variable name heuristic)
+    - "(?i)fs\\.(read|write|append|unlink|rm|mkdir|access|stat|chmod|chown).*\\+.*(?:req|input|param|args|body|query|user)"
+    - "(?i)path\\.join\\s*\\([^)]*(?:req|input|param|args|body|query|user)"
+    - "(?i)open\\s*\\([^)]*(?:req|input|param|user|args|body)"
+    - "(?i)readFile\\s*\\([^)]*(?:req|input|param|args|body)"
+    - "(?i)writeFile\\s*\\([^)]*(?:req|input|param|args|body)"
+    # Literal traversal sequences anywhere in the codebase
+    - "\\.\\./\\.\\."
+    - "\\.\\.%2[Ff]"
+    - "\\.\\.%5[Cc]"
+    - "%2e%2e[%/\\\\]"
+    - "\\.\\.\\\\\\.\\.\\b"
+    # Null byte injection (terminates path in C-based fs implementations)
+    - "\\\\x00|\\\\u0000|%00"
+    # Python open() with traversal-prone patterns
+    - "(?i)open\\s*\\(\\s*(?:os\\.path\\.join|f['\"])[^)]*\\$"
+    # Allowing root-level paths directly from input
+    - "(?i)(?:base_?dir|root_?dir|allowed_?path)\\s*[=+].*(?:req|input|param)"
   context: source_code
   exclude_patterns:
     - "path.resolve"
     - "path.normalize"
     - "realpath"
     - "sanitize"
-remediation: "Use path.resolve() to normalize paths and verify they stay within the allowed directory. Never concatenate user input into file paths without validation."
+    - "path.relative"
+    - "startsWith"
+    - "chroot"
+remediation: "Use path.resolve() to canonicalize paths, then verify the result starts with the intended base directory. Reject any input containing '..', null bytes, or encoded variants. Never concatenate user input into file paths."
 enabled: true

@@ -7,18 +7,42 @@ mitre: AML.T0054
 detect:
   type: regex
   patterns:
+    # Classic instruction override phrases
     - "(?i)ignore\\s+(previous|above|all)\\s+instructions"
+    - "(?i)disregard\\s+(all|previous|prior|any)\\s+(instructions|rules|context)"
     - "(?i)system\\s*:\\s*you\\s+are"
     - "(?i)\\<\\s*system\\s*\\>"
     - "(?i)\\[INST\\]"
+    - "(?i)\\[\\[\\s*system\\s*\\]\\]"
+    - "(?i)\\<\\|im_start\\|\\>"
+    - "(?i)\\<\\|system\\|\\>"
     - "(?i)do\\s+not\\s+reveal"
-    - "(?i)override\\s+(previous|system)\\s+(prompt|instructions)"
-    - "(?i)forget\\s+(everything|all|previous)"
+    - "(?i)override\\s+(previous|system)\\s+(prompt|instructions|directives)"
+    - "(?i)forget\\s+(everything|all|previous|prior)"
     - "(?i)new\\s+instructions?\\s*:"
     - "(?i)IMPORTANT:\\s*always"
+    # Role injection patterns
+    - "(?i)you\\s+are\\s+now\\s+(a|an|the)\\s+"
+    - "(?i)act\\s+as\\s+(if|though|a|an)\\s+"
+    - "(?i)your\\s+new\\s+(role|persona|identity|purpose)\\s+is"
+    - "(?i)from\\s+now\\s+on[,\\s]+you\\s+(must|will|should|are)"
+    # Multi-turn setup phrases
+    - "(?i)when\\s+(the\\s+)?user\\s+(asks?|says?|requests?|mentions?)\\s+.{0,40}\\s+(you\\s+must|always|instead)"
+    - "(?i)if\\s+(anyone|the\\s+user|they)\\s+asks?.{0,30}(tell|say|respond|reply)"
+    # Data exfiltration directives in description
+    - "(?i)send\\s+(all|every|the)\\s+(conversation|message|data|history|context)\\s+to"
+    - "(?i)exfiltrate|extract\\s+and\\s+send|leak\\s+(the|all|any)"
+    # Prompt delimiter injection
+    - "---\\s*\\n\\s*(?i)system"
+    - "###\\s*(?i)instructions?"
+    - "```\\s*\\n\\s*(?i)(?:system|instructions?|directive)"
+    # Base64-encoded instructions hiding in descriptions
+    - "(?:[A-Za-z0-9+/]{40,}={0,2})(?:\\s+(?:[A-Za-z0-9+/]{40,}={0,2})){2,}"
   context: tool_description
   exclude_patterns:
     - "security testing"
     - "example of prompt injection"
-remediation: "Remove hidden instructions from tool descriptions. Descriptions should only explain what the tool does, not contain system-level directives."
+    - "detect prompt injection"
+    - "prevent prompt injection"
+remediation: "Remove all hidden instructions, role assignments, and directives from tool descriptions. Descriptions must only describe the tool's function. Any attempt to modify AI behavior via description text is a prompt injection attack."
 enabled: true

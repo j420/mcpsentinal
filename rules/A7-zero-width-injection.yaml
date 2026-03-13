@@ -1,0 +1,41 @@
+id: A7
+name: Zero-Width and Invisible Character Injection
+category: description-analysis
+severity: critical
+owasp: MCP01-prompt-injection
+mitre: AML.T0054
+detect:
+  type: regex
+  patterns:
+    # Zero-width space (U+200B) — invisible to human readers, visible to LLM tokenizers
+    - "\\u200B"
+    # Zero-width non-joiner (U+200C)
+    - "\\u200C"
+    # Zero-width joiner (U+200D) — used to split words and hide payloads
+    - "\\u200D"
+    # Soft hyphen (U+00AD) — renders invisibly in most UIs
+    - "\\u00AD"
+    # Word joiner (U+2060)
+    - "\\u2060"
+    # Function application (U+2061), invisible times/plus/separator
+    - "[\\u2061\\u2062\\u2063\\u2064]"
+    # Right-to-left mark (U+200F) and left-to-right mark (U+200E) — can reverse visible text
+    - "[\\u200E\\u200F]"
+    # Right-to-left override (U+202E) — visually reverses subsequent text, powerful obfuscation
+    - "\\u202E"
+    # Left-to-right override (U+202D)
+    - "\\u202D"
+    # Interlinear annotation anchor/separator/terminator
+    - "[\\uFFF9\\uFFFA\\uFFFB]"
+    # Tag characters (U+E0000–U+E007F) — used to hide data in emoji sequences
+    - "[\\uDB40][\\uDC00-\\uDC7F]"
+    # Variation selectors (U+FE00–U+FE0F, U+FE10–U+FE1F) following non-emoji chars
+    - "[\\uFE00-\\uFE0F]"
+    # Object replacement character used as placeholder for hidden content
+    - "\\uFFFC"
+    # Non-character code points used as delimiters
+    - "[\\uFDD0-\\uFDEF]"
+  context: tool_description
+  exclude_patterns: []
+remediation: "Strip all non-printable Unicode characters from tool names and descriptions before storing or serving them. Zero-width characters are used to hide prompt injection payloads that are invisible to humans reviewing the description but processed by LLMs."
+enabled: true

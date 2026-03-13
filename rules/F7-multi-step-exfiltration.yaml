@@ -1,0 +1,32 @@
+id: F7
+name: Multi-Step Exfiltration Chain
+category: ecosystem-context
+severity: critical
+owasp: MCP04-data-exfiltration
+mitre: AML.T0054
+detect:
+  type: composite
+  conditions:
+    check: multi_step_exfiltration_chain
+    # Classic multi-step exfiltration: attacker chains tool calls to:
+    # Step 1: Read sensitive data (files, env vars, secrets, DB)
+    # Step 2: Transform/encode it (to avoid content filters)
+    # Step 3: Exfiltrate via a seemingly-innocent channel (DNS, HTTP, email, webhooks)
+    # No single step looks dangerous; the chain is the threat.
+    step1_read_patterns:
+      - "(?i)(read_?file|get_?file|open_?file|file_?content|env|environ|secret|credential|password|config|setting)"
+      - "(?i)(query|sql|database|db_?read|db_?query|run_?query)"
+      - "(?i)(history|message|conversation|context|memory|cache)"
+    step2_transform_patterns:
+      - "(?i)(encode|encrypt|compress|base64|hash|convert|transform|format|serialize)"
+      - "(?i)(replace|substitute|obfuscate|scramble|chunk|split)"
+    step3_exfil_patterns:
+      - "(?i)(http_?request|fetch_?url|webhook|post_?to|send_?to|upload|notify)"
+      - "(?i)(dns_?lookup|dns_?resolve|nslookup)"
+      - "(?i)(send_?email|email|smtp|send_?message|slack|telegram|discord|notify)"
+      - "(?i)(create_?issue|create_?pr|create_?gist|commit|push)"
+    # Chain is detected when all 3 step types are present in the same server
+    requires_all_steps: true
+  context: metadata
+remediation: "This server provides a complete multi-step data exfiltration chain (read → transform → exfiltrate). Separate these capabilities into isolated servers with different trust levels. Add data flow logging and human-in-the-loop approval for any tool call that combines data reading with external communication."
+enabled: true

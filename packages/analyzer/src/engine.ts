@@ -224,6 +224,84 @@ export class AnalysisEngine {
         }
         break;
       }
+
+      case "additional_properties_allowed": {
+        // B6: additionalProperties: true (or not set to false) is a security risk
+        for (const tool of context.tools) {
+          if (!tool.input_schema) continue;
+          const schema = tool.input_schema as Record<string, unknown>;
+          // Flag if additionalProperties is explicitly true, or if properties exist but
+          // additionalProperties is not explicitly false
+          const hasProps = schema.properties && Object.keys(schema.properties as object).length > 0;
+          const additionalProps = schema.additionalProperties;
+          if (hasProps && additionalProps !== false) {
+            findings.push({
+              rule_id: rule.id,
+              severity: rule.severity,
+              evidence: `Tool "${tool.name}" schema has additionalProperties: ${JSON.stringify(additionalProps ?? "not set")} — arbitrary extra parameters are accepted`,
+              remediation: rule.remediation,
+              owasp_category: rule.owasp,
+              mitre_technique: rule.mitre,
+            });
+          }
+        }
+        break;
+      }
+
+      case "dangerous_parameter_defaults": {
+        // B7: detect dangerous default values in schemas
+        const dangerousDefaults = (conditions.dangerous_defaults as Array<{
+          pattern?: string;
+          context?: string;
+          key?: string;
+          value?: unknown;
+        }>) || [];
+
+        for (const tool of context.tools) {
+          const props = tool.input_schema?.properties as Record<string, Record<string, unknown>> | undefined;
+          if (!props) continue;
+
+          for (const [paramName, paramDef] of Object.entries(props)) {
+            if (!("default" in paramDef)) continue;
+            const defaultVal = paramDef.default;
+
+            for (const rule_ of dangerousDefaults) {
+              // Pattern-based: match string defaults against regex
+              if (rule_.pattern && typeof defaultVal === "string") {
+                try {
+                  if (new RegExp(rule_.pattern).test(defaultVal)) {
+                    findings.push({
+                      rule_id: rule.id,
+                      severity: rule.severity,
+                      evidence: `Tool "${tool.name}", parameter "${paramName}" has dangerous default value "${defaultVal}" (${rule_.context || rule_.pattern})`,
+                      remediation: rule.remediation,
+                      owasp_category: rule.owasp,
+                      mitre_technique: rule.mitre,
+                    });
+                    break;
+                  }
+                } catch { /* invalid pattern */ }
+              }
+              // Key+value based: match parameter name and boolean default
+              if (rule_.key && rule_.value !== undefined) {
+                const keyPattern = new RegExp(rule_.key, "i");
+                if (keyPattern.test(paramName) && defaultVal === rule_.value) {
+                  findings.push({
+                    rule_id: rule.id,
+                    severity: rule.severity,
+                    evidence: `Tool "${tool.name}", parameter "${paramName}" defaults to ${JSON.stringify(defaultVal)} — this is a dangerous default that grants broad permissions`,
+                    remediation: rule.remediation,
+                    owasp_category: rule.owasp,
+                    mitre_technique: rule.mitre,
+                  });
+                  break;
+                }
+              }
+            }
+          }
+        }
+        break;
+      }
     }
 
     return findings;
@@ -330,6 +408,30 @@ export class AnalysisEngine {
         break;
       }
 
+      case "dependency_name_similarity": {
+        // D3: typosquatting detection via Levenshtein distance
+        const knownPackages = (conditions.known_packages as string[]) || [];
+        const similarityThreshold = (conditions.similarity_threshold as number) || 0.85;
+
+        for (const dep of context.dependencies) {
+          for (const known of knownPackages) {
+            if (dep.name === known) continue; // exact match is fine
+            const sim = this.stringSimilarity(dep.name, known);
+            if (sim >= similarityThreshold) {
+              findings.push({
+                rule_id: rule.id,
+                severity: rule.severity,
+                evidence: `Dependency "${dep.name}" is suspiciously similar to "${known}" (similarity: ${(sim * 100).toFixed(1)}%) — possible typosquat`,
+                remediation: rule.remediation,
+                owasp_category: rule.owasp,
+                mitre_technique: rule.mitre,
+              });
+            }
+          }
+        }
+        break;
+      }
+
       case "lethal_trifecta": {
         const capabilities = new Set<string>();
         for (const tool of context.tools) {
@@ -397,10 +499,16 @@ export class AnalysisEngine {
         );
 
         if (hasSources && hasSinks) {
+          const sourceTools = context.tools
+            .filter((t) => sourcePatterns.some((p) => t.name.toLowerCase().includes(p)))
+            .map((t) => t.name);
+          const sinkTools = context.tools
+            .filter((t) => sinkPatterns.some((p) => t.name.toLowerCase().includes(p)))
+            .map((t) => t.name);
           findings.push({
             rule_id: rule.id,
             severity: rule.severity,
-            evidence: `Server contains both data-reading and data-sending tools, creating potential exfiltration paths`,
+            evidence: `Server contains data-reading tools [${sourceTools.join(", ")}] and data-sending tools [${sinkTools.join(", ")}], creating potential exfiltration paths`,
             remediation: rule.remediation,
             owasp_category: rule.owasp,
             mitre_technique: rule.mitre,
@@ -425,6 +533,293 @@ export class AnalysisEngine {
         }
         break;
       }
+
+      case "spec_compliance": {
+        // F4: Check that server metadata meets MCP spec requirements
+        const requiredFields = (conditions.required_fields as string[]) || [];
+        const recommendedFields = (conditions.recommended_fields as string[]) || [];
+        const missing: string[] = [];
+        const serverMeta = context.server as Record<string, unknown>;
+
+        for (const field of requiredFields) {
+          if (!serverMeta[field]) missing.push(`required:${field}`);
+        }
+        for (const field of recommendedFields) {
+          if (!serverMeta[field]) missing.push(`recommended:${field}`);
+        }
+
+        // Check tool descriptions
+        if (recommendedFields.includes("tool_descriptions")) {
+          const toolsWithoutDesc = context.tools.filter((t) => !t.description || t.description.trim().length < 10);
+          if (toolsWithoutDesc.length > 0) {
+            missing.push(`tool_descriptions missing on: ${toolsWithoutDesc.map((t) => t.name).join(", ")}`);
+          }
+        }
+
+        if (missing.length > 0) {
+          findings.push({
+            rule_id: rule.id,
+            severity: rule.severity,
+            evidence: `Server fails MCP spec compliance checks: ${missing.join("; ")}`,
+            remediation: rule.remediation,
+            owasp_category: rule.owasp,
+            mitre_technique: rule.mitre,
+          });
+        }
+        break;
+      }
+
+      case "description_capability_mismatch": {
+        // A8: Description claims read-only but parameters suggest write operations
+        const readonlyClaimPatterns = (conditions.readonly_claim_patterns as string[]) || [];
+        const writeParamPatterns = (conditions.write_parameter_patterns as string[]) || [];
+
+        for (const tool of context.tools) {
+          const desc = `${tool.description || ""}`;
+          const claimsReadOnly = readonlyClaimPatterns.some((p) => {
+            try { return new RegExp(p, "i").test(desc); } catch { return false; }
+          });
+
+          if (!claimsReadOnly) continue;
+
+          const props = tool.input_schema?.properties as Record<string, Record<string, unknown>> | undefined;
+          if (!props) continue;
+
+          const writeParams = Object.keys(props).filter((paramName) =>
+            writeParamPatterns.some((p) => {
+              try { return new RegExp(p, "i").test(paramName); } catch { return false; }
+            })
+          );
+
+          if (writeParams.length > 0) {
+            findings.push({
+              rule_id: rule.id,
+              severity: rule.severity,
+              evidence: `Tool "${tool.name}" describes itself as read-only/non-destructive but has write-capable parameters: [${writeParams.join(", ")}]`,
+              remediation: rule.remediation,
+              owasp_category: rule.owasp,
+              mitre_technique: rule.mitre,
+            });
+          }
+        }
+        break;
+      }
+
+      case "known_malicious_package": {
+        // D5: Check against known malicious package name list
+        const maliciousPackages = (conditions.malicious_packages as string[]) || [];
+        for (const dep of context.dependencies) {
+          if (maliciousPackages.includes(dep.name.toLowerCase())) {
+            findings.push({
+              rule_id: rule.id,
+              severity: rule.severity,
+              evidence: `Dependency "${dep.name}@${dep.version}" is on the known malicious packages list — this package has been confirmed malicious or is a known typosquat`,
+              remediation: rule.remediation,
+              owasp_category: rule.owasp,
+              mitre_technique: rule.mitre,
+            });
+          }
+        }
+        break;
+      }
+
+      case "weak_crypto_deps": {
+        // D6: Check for known weak/deprecated cryptographic dependencies
+        const weakPackages = (conditions.weak_packages as Array<{
+          name: string;
+          max_version?: string;
+          reason: string;
+        }>) || [];
+
+        for (const dep of context.dependencies) {
+          for (const weak of weakPackages) {
+            if (dep.name.toLowerCase() !== weak.name.toLowerCase()) continue;
+
+            // If max_version specified, only flag if dep version is <= max_version
+            if (weak.max_version && dep.version) {
+              if (!this.versionLessThanOrEqual(dep.version, weak.max_version)) continue;
+            }
+
+            findings.push({
+              rule_id: rule.id,
+              severity: rule.severity,
+              evidence: `Dependency "${dep.name}@${dep.version || "unknown"}" uses weak/deprecated cryptography: ${weak.reason}`,
+              remediation: rule.remediation,
+              owasp_category: rule.owasp,
+              mitre_technique: rule.mitre,
+            });
+            break;
+          }
+        }
+        break;
+      }
+
+      case "dependency_confusion_risk": {
+        // D7: Detect dependency confusion risk signals
+        const signals = (conditions.signals as Array<{
+          pattern?: string;
+          description: string;
+        }>) || [];
+
+        for (const dep of context.dependencies) {
+          for (const signal of signals) {
+            if (!signal.pattern) continue;
+            try {
+              if (new RegExp(signal.pattern).test(dep.name)) {
+                // Additional check: version suspiciously high (attacker trick)
+                if (dep.version && /^[0-9]{3,}\./.test(dep.version)) {
+                  findings.push({
+                    rule_id: rule.id,
+                    severity: rule.severity,
+                    evidence: `Dependency "${dep.name}@${dep.version}" has a suspiciously high version number — classic dependency confusion attack signature (${signal.description})`,
+                    remediation: rule.remediation,
+                    owasp_category: rule.owasp,
+                    mitre_technique: rule.mitre,
+                  });
+                  break;
+                }
+              }
+            } catch { /* invalid regex */ }
+          }
+        }
+        break;
+      }
+
+      case "namespace_squatting": {
+        // F5: Detect servers impersonating official namespaces
+        const protectedNamespaces = (conditions.protected_namespaces as Array<{
+          pattern: string;
+          owner: string;
+          verified_github_orgs: string[];
+        }>) || [];
+        const knownServerNames = (conditions.known_server_names as string[]) || [];
+
+        const serverName = context.server.name.toLowerCase();
+        const githubUrl = context.server.github_url?.toLowerCase() || "";
+
+        for (const ns of protectedNamespaces) {
+          try {
+            if (!new RegExp(ns.pattern).test(serverName)) continue;
+
+            // Check if the server's GitHub org matches a verified org
+            const isVerified = ns.verified_github_orgs.some((org) =>
+              githubUrl.includes(`github.com/${org}/`) ||
+              githubUrl.includes(`github.com/${org.toLowerCase()}/`)
+            );
+
+            if (!isVerified) {
+              findings.push({
+                rule_id: rule.id,
+                severity: rule.severity,
+                evidence: `Server name "${context.server.name}" matches protected namespace pattern for "${ns.owner}" but is not from a verified GitHub org (expected: ${ns.verified_github_orgs.join(", ")})`,
+                remediation: rule.remediation,
+                owasp_category: rule.owasp,
+                mitre_technique: rule.mitre,
+              });
+              break;
+            }
+          } catch { /* invalid regex */ }
+        }
+
+        // Check for high-similarity matches to known official server names
+        for (const knownName of knownServerNames) {
+          if (serverName === knownName) continue;
+          const sim = this.stringSimilarity(serverName, knownName);
+          if (sim >= 0.85) {
+            findings.push({
+              rule_id: rule.id,
+              severity: rule.severity,
+              evidence: `Server name "${context.server.name}" is suspiciously similar to known official server "${knownName}" (similarity: ${(sim * 100).toFixed(1)}%)`,
+              remediation: rule.remediation,
+              owasp_category: rule.owasp,
+              mitre_technique: rule.mitre,
+            });
+          }
+        }
+        break;
+      }
+
+      case "circular_data_loop": {
+        // F6: Detect write+read on same data store — persistent prompt injection vector
+        const writePatterns = (conditions.write_tool_patterns as string[]) || [];
+        const readPatterns = (conditions.read_tool_patterns as string[]) || [];
+        const storeIndicators = (conditions.store_indicators as string[]) || [];
+
+        const writeTools: string[] = [];
+        const readTools: string[] = [];
+
+        for (const tool of context.tools) {
+          const text = `${tool.name} ${tool.description || ""}`.toLowerCase();
+          const hasStore = storeIndicators.some((p) => {
+            try { return new RegExp(p, "i").test(text); } catch { return false; }
+          });
+          if (!hasStore) continue;
+
+          const isWrite = writePatterns.some((p) => {
+            try { return new RegExp(p, "i").test(text); } catch { return false; }
+          });
+          const isRead = readPatterns.some((p) => {
+            try { return new RegExp(p, "i").test(text); } catch { return false; }
+          });
+
+          if (isWrite) writeTools.push(tool.name);
+          if (isRead) readTools.push(tool.name);
+        }
+
+        if (writeTools.length > 0 && readTools.length > 0) {
+          findings.push({
+            rule_id: rule.id,
+            severity: rule.severity,
+            evidence: `Server has write tools [${writeTools.join(", ")}] and read tools [${readTools.join(", ")}] operating on the same data store — circular data loop enables persistent prompt injection`,
+            remediation: rule.remediation,
+            owasp_category: rule.owasp,
+            mitre_technique: rule.mitre,
+          });
+        }
+        break;
+      }
+
+      case "multi_step_exfiltration_chain": {
+        // F7: Detect 3-step exfiltration chain (read → transform → exfiltrate)
+        const step1Patterns = (conditions.step1_read_patterns as string[]) || [];
+        const step2Patterns = (conditions.step2_transform_patterns as string[]) || [];
+        const step3Patterns = (conditions.step3_exfil_patterns as string[]) || [];
+
+        const step1Tools: string[] = [];
+        const step2Tools: string[] = [];
+        const step3Tools: string[] = [];
+
+        for (const tool of context.tools) {
+          const text = `${tool.name} ${tool.description || ""}`.toLowerCase();
+
+          if (step1Patterns.some((p) => { try { return new RegExp(p, "i").test(text); } catch { return false; } })) {
+            step1Tools.push(tool.name);
+          }
+          if (step2Patterns.some((p) => { try { return new RegExp(p, "i").test(text); } catch { return false; } })) {
+            step2Tools.push(tool.name);
+          }
+          if (step3Patterns.some((p) => { try { return new RegExp(p, "i").test(text); } catch { return false; } })) {
+            step3Tools.push(tool.name);
+          }
+        }
+
+        const requiresAll = conditions.requires_all_steps !== false;
+        const chainComplete = requiresAll
+          ? step1Tools.length > 0 && step2Tools.length > 0 && step3Tools.length > 0
+          : step1Tools.length > 0 && step3Tools.length > 0;
+
+        if (chainComplete) {
+          findings.push({
+            rule_id: rule.id,
+            severity: rule.severity,
+            evidence: `Server provides a complete multi-step exfiltration chain — Step 1 (read): [${step1Tools.join(", ")}] → Step 2 (transform): [${step2Tools.join(", ")}] → Step 3 (exfiltrate): [${step3Tools.join(", ")}]`,
+            remediation: rule.remediation,
+            owasp_category: rule.owasp,
+            mitre_technique: rule.mitre,
+          });
+        }
+        break;
+      }
     }
 
     return findings;
@@ -440,6 +835,32 @@ export class AnalysisEngine {
           text: `${t.name} ${t.description || ""}`,
           location: `tool:${t.name}`,
         }));
+
+      case "parameter_description": {
+        // B5: Scan parameter-level description fields — a secondary injection surface
+        return context.tools.flatMap((t) => {
+          const props = t.input_schema?.properties as Record<string, Record<string, unknown>> | undefined;
+          if (!props) return [];
+          return Object.entries(props).flatMap(([name, def]) => {
+            const results: Array<{ text: string; location: string }> = [];
+            // Scan the parameter's description field
+            if (def.description && typeof def.description === "string") {
+              results.push({
+                text: def.description,
+                location: `tool:${t.name}/param:${name}/description`,
+              });
+            }
+            // Also scan parameter name + title
+            if (def.title && typeof def.title === "string") {
+              results.push({
+                text: `${name} ${def.title}`,
+                location: `tool:${t.name}/param:${name}/title`,
+              });
+            }
+            return results;
+          });
+        });
+      }
 
       case "parameter_schema":
         return context.tools.flatMap((t) => {
@@ -496,5 +917,55 @@ export class AnalysisEngine {
     }
 
     return caps;
+  }
+
+  /**
+   * Compute normalized Levenshtein similarity between two strings.
+   * Returns a value between 0 (completely different) and 1 (identical).
+   */
+  private stringSimilarity(a: string, b: string): number {
+    const longer = a.length > b.length ? a : b;
+    const shorter = a.length > b.length ? b : a;
+    if (longer.length === 0) return 1.0;
+    const distance = this.levenshteinDistance(longer, shorter);
+    return (longer.length - distance) / longer.length;
+  }
+
+  private levenshteinDistance(a: string, b: string): number {
+    const matrix: number[][] = [];
+    for (let i = 0; i <= b.length; i++) {
+      matrix[i] = [i];
+    }
+    for (let j = 0; j <= a.length; j++) {
+      matrix[0][j] = j;
+    }
+    for (let i = 1; i <= b.length; i++) {
+      for (let j = 1; j <= a.length; j++) {
+        if (b.charAt(i - 1) === a.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j - 1] + 1,
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j] + 1
+          );
+        }
+      }
+    }
+    return matrix[b.length][a.length];
+  }
+
+  /**
+   * Simple semver comparison: returns true if version <= maxVersion.
+   * Only handles major.minor.patch format.
+   */
+  private versionLessThanOrEqual(version: string, maxVersion: string): boolean {
+    const parse = (v: string) =>
+      v.replace(/[^0-9.]/g, "").split(".").map(Number);
+    const [aMaj, aMin = 0, aPatch = 0] = parse(version);
+    const [bMaj, bMin = 0, bPatch = 0] = parse(maxVersion);
+    if (aMaj !== bMaj) return aMaj < bMaj;
+    if (aMin !== bMin) return aMin < bMin;
+    return aPatch <= bPatch;
   }
 }

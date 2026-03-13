@@ -1,0 +1,38 @@
+id: C13
+name: Server-Side Template Injection (SSTI)
+category: code-analysis
+severity: critical
+owasp: MCP03-command-injection
+mitre: null
+detect:
+  type: regex
+  patterns:
+    # Python Jinja2 / Mako — render with user input
+    - "(?i)(?:render_template_string|from_string|Template)\\s*\\(\\s*(?:req|input|param|args|body|query|user|f['\"])"
+    - "(?i)jinja2\\.Template\\s*\\(\\s*(?:req|input|param|args|body)"
+    - "(?i)mako\\.template\\.Template\\s*\\(\\s*(?:req|input|param|args)"
+    # Python .format() on SQL/HTML/command strings with user input
+    - "(?i)['\"][^'\"]*\\{[^}]*\\}[^'\"]*['\"]\\s*\\.format\\s*\\(.*(?:req|input|param|args|body)"
+    # JavaScript template literals passed to eval or Function
+    - "eval\\s*\\(`[^`]*\\$\\{(?:req|input|param|args|body|query)"
+    - "new\\s+Function\\s*\\([^)]*`[^`]*\\$\\{(?:req|input|param|args)"
+    # Handlebars compile from user input
+    - "(?i)Handlebars\\.compile\\s*\\(\\s*(?:req|input|param|args|body)"
+    # Mustache / EJS render with user template string
+    - "(?i)(?:Mustache\\.render|ejs\\.render)\\s*\\(\\s*(?:req|input|param|args|body)"
+    # Pug/Jade compile from user input
+    - "(?i)(?:pug|jade)\\.compile\\s*\\(\\s*(?:req|input|param|args|body)"
+    # Twig (PHP) / Twig.js
+    - "(?i)twig\\.(?:render|renderFile)\\s*\\([^)]*(?:req|input|param|\\$_)"
+    # Nunjucks
+    - "(?i)nunjucks\\.renderString\\s*\\(\\s*(?:req|input|param|args|body)"
+    # String interpolation in f-strings passed to template engines
+    - "f['\"][^'\"]*\\{[^}]*(?:req|input|param|args)\\.[^}]*\\}[^'\"]*['\"]"
+  context: source_code
+  exclude_patterns:
+    - "// safe: static template"
+    - "autoescape"
+    - "escape()"
+    - "sanitize"
+remediation: "Never pass user-supplied strings directly to template engines as the template itself. Pass user data only as template variables (context). Enable autoescaping. If dynamic templates are required, use a sandboxed environment with no access to server internals."
+enabled: true

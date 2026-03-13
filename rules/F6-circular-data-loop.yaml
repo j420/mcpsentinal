@@ -1,0 +1,26 @@
+id: F6
+name: Circular Data Loop — Persistent Prompt Injection Storage Risk
+category: ecosystem-context
+severity: high
+owasp: MCP01-prompt-injection
+mitre: AML.T0054
+detect:
+  type: composite
+  conditions:
+    check: circular_data_loop
+    # A circular data loop exists when a server can:
+    # 1. Write content to a persistent store (file, DB, memory, note)
+    # 2. Later read from the same store and return content to the AI
+    # This creates a persistent prompt injection vector: attacker poisons stored content once,
+    # AI reads it on every subsequent invocation and executes the injected instructions.
+    write_tool_patterns:
+      - "(?i)(write|save|store|create|insert|append|update|set|put|add|note|remember|record|log)"
+    read_tool_patterns:
+      - "(?i)(read|get|fetch|load|retrieve|list|query|search|recall|remember|open)"
+    # Same-server write+read detected when both pattern sets match different tools
+    # AND tool descriptions suggest they operate on overlapping data stores
+    store_indicators:
+      - "(?i)(file|database|db|memory|store|cache|storage|note|record|log|history|context)"
+  context: metadata
+remediation: "Implement content validation on read operations — never return stored content directly to an AI agent without sanitizing for injection patterns. Add a human approval step for write operations, or store content with a provenance tag so AI agents know it came from a prior tool call and not a trusted source. This is the primary vector for persistent prompt injection attacks."
+enabled: true
