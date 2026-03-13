@@ -7,6 +7,7 @@ import { PyPICrawler } from "./sources/pypi.js";
 import { PulseMCPCrawler } from "./sources/pulsemcp.js";
 import { SmitheryCrawler } from "./sources/smithery.js";
 import { McpRegistryCrawler } from "./sources/mcpregistry.js";
+import { ModelcontextprotocolRepoCrawler } from "./sources/modelcontextprotocol-repo.js";
 
 const logger = pino({ name: "crawler:orchestrator" });
 
@@ -20,11 +21,16 @@ export class CrawlOrchestrator {
     }
 
     const allSources: CrawlerSource[] = [
+      // Official sources run first — highest trust signal, seeds dedup keys
       new McpRegistryCrawler(),
+      new ModelcontextprotocolRepoCrawler(),
+      // Community registries
       new PulseMCPCrawler(),
       new SmitheryCrawler(),
+      // Package registries
       new NpmCrawler(),
       new PyPICrawler(),
+      // Broad GitHub search — widest net, highest duplicates
       new GitHubCrawler(),
     ];
 
