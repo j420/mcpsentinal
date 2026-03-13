@@ -4,12 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       source:
-        description: "Single source to crawl (leave blank for all)"
+        description: "Source to crawl"
         required: false
-        default: ""
+        default: "all"
         type: choice
         options:
-          - ""
+          - all
           - official-registry
           - pulsemcp
           - smithery
@@ -21,18 +21,15 @@ on:
   schedule:
     - cron: "0 2 * * 0"
 
-# ── Shared setup ─────────────────────────────────────────────────────────────
 env:
   NODE_VERSION: "20"
 
 jobs:
-  # ── migrations must run before any crawler writes ──────────────────────────
+  # ── Always run migrations first ───────────────────────────────────────────
   migrate:
     name: DB Migrations
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Skip if a specific source was requested (migrations already applied)
-    if: github.event_name == 'schedule' || github.event.inputs.source == ''
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -47,6 +44,9 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
+  # ── Shared setup steps as a reusable anchor ───────────────────────────────
+  # (GH Actions doesn't support YAML anchors, so steps are repeated per job)
+
   # ── Smithery ──────────────────────────────────────────────────────────────
   crawl-smithery:
     name: "Crawl: Smithery"
@@ -54,10 +54,9 @@ jobs:
     timeout-minutes: 30
     needs: [migrate]
     if: |
-      always() &&
-      (needs.migrate.result == 'success' || needs.migrate.result == 'skipped') &&
+      needs.migrate.result == 'success' &&
       (github.event_name == 'schedule' ||
-       github.event.inputs.source == '' ||
+       github.event.inputs.source == 'all' ||
        github.event.inputs.source == 'smithery')
     steps:
       - uses: actions/checkout@v4
@@ -81,10 +80,9 @@ jobs:
     timeout-minutes: 30
     needs: [migrate]
     if: |
-      always() &&
-      (needs.migrate.result == 'success' || needs.migrate.result == 'skipped') &&
+      needs.migrate.result == 'success' &&
       (github.event_name == 'schedule' ||
-       github.event.inputs.source == '' ||
+       github.event.inputs.source == 'all' ||
        github.event.inputs.source == 'pulsemcp')
     steps:
       - uses: actions/checkout@v4
@@ -107,10 +105,9 @@ jobs:
     timeout-minutes: 30
     needs: [migrate]
     if: |
-      always() &&
-      (needs.migrate.result == 'success' || needs.migrate.result == 'skipped') &&
+      needs.migrate.result == 'success' &&
       (github.event_name == 'schedule' ||
-       github.event.inputs.source == '' ||
+       github.event.inputs.source == 'all' ||
        github.event.inputs.source == 'npm')
     steps:
       - uses: actions/checkout@v4
@@ -133,10 +130,9 @@ jobs:
     timeout-minutes: 30
     needs: [migrate]
     if: |
-      always() &&
-      (needs.migrate.result == 'success' || needs.migrate.result == 'skipped') &&
+      needs.migrate.result == 'success' &&
       (github.event_name == 'schedule' ||
-       github.event.inputs.source == '' ||
+       github.event.inputs.source == 'all' ||
        github.event.inputs.source == 'pypi')
     steps:
       - uses: actions/checkout@v4
@@ -159,10 +155,9 @@ jobs:
     timeout-minutes: 30
     needs: [migrate]
     if: |
-      always() &&
-      (needs.migrate.result == 'success' || needs.migrate.result == 'skipped') &&
+      needs.migrate.result == 'success' &&
       (github.event_name == 'schedule' ||
-       github.event.inputs.source == '' ||
+       github.event.inputs.source == 'all' ||
        github.event.inputs.source == 'github')
     steps:
       - uses: actions/checkout@v4
@@ -186,10 +181,9 @@ jobs:
     timeout-minutes: 30
     needs: [migrate]
     if: |
-      always() &&
-      (needs.migrate.result == 'success' || needs.migrate.result == 'skipped') &&
+      needs.migrate.result == 'success' &&
       (github.event_name == 'schedule' ||
-       github.event.inputs.source == '' ||
+       github.event.inputs.source == 'all' ||
        github.event.inputs.source == 'official-registry')
     steps:
       - uses: actions/checkout@v4
@@ -221,11 +215,14 @@ jobs:
       - name: Report results
         run: |
           echo "## Crawl Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Source | Result |" >> $GITHUB_STEP_SUMMARY
           echo "|--------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Smithery        | ${{ needs.crawl-smithery.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| PulseMCP        | ${{ needs.crawl-pulsemcp.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| npm             | ${{ needs.crawl-npm.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| PyPI            | ${{ needs.crawl-pypi.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| GitHub          | ${{ needs.crawl-github.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Smithery         | ${{ needs.crawl-smithery.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| PulseMCP         | ${{ needs.crawl-pulsemcp.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| npm              | ${{ needs.crawl-npm.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| PyPI             | ${{ needs.crawl-pypi.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| GitHub           | ${{ needs.crawl-github.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Official Registry | ${{ needs.crawl-official-registry.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> **Note:** If DATABASE_URL secret is not set, crawlers run in dry-run mode (data is fetched but not persisted)." >> $GITHUB_STEP_SUMMARY
