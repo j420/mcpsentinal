@@ -215,20 +215,23 @@ describe("CrawlOrchestrator.crawlAll()", () => {
 // ─── crawlAndPersist ──────────────────────────────────────────────────────────
 
 describe("CrawlOrchestrator.crawlAndPersist()", () => {
-  it("calls upsertServer once per unique server", async () => {
+  it("calls upsertServer for every discovered server (including cross-source duplicates)", async () => {
     const shared = makeServer({ github_url: "https://github.com/user/repo" });
     const db = mockDb();
 
     const orch = new CrawlOrchestrator(undefined, [
       makeSource("pulsemcp", [shared, makeServer({ github_url: "https://github.com/user/repo2" })]),
-      makeSource("smithery", [shared]), // duplicate
+      makeSource("smithery", [shared]), // duplicate — still upserted so DB can enrich
     ]);
 
     const stats = await orch.crawlAndPersist(db);
 
-    expect(db.upsertServer).toHaveBeenCalledTimes(2);
-    expect(stats.persisted).toBe(2);
+    // 3 total server occurrences across sources → 3 upserts (DB COALESCE handles enrichment)
+    expect(db.upsertServer).toHaveBeenCalledTimes(3);
+    expect(stats.persisted).toBe(3);
     expect(stats.persist_errors).toBe(0);
+    // stats still reflect logical uniqueness
+    expect(stats.new_unique).toBe(2);
   });
 
   it("counts persist_errors when upsertServer throws, continues remaining", async () => {
@@ -278,7 +281,7 @@ describe("CrawlOrchestrator.crawlAndPersist()", () => {
     expect(stats.persist_errors).toBe(0);
   });
 
-  it("does not call upsertServer for cross-source duplicates", async () => {
+  it("calls upsertServer for every source occurrence to allow cross-source enrichment", async () => {
     const server = makeServer({ github_url: "https://github.com/user/repo" });
     const db = mockDb();
 
@@ -290,7 +293,7 @@ describe("CrawlOrchestrator.crawlAndPersist()", () => {
 
     await orch.crawlAndPersist(db);
 
-    // 3 sources, all same server → only 1 upsert
-    expect(db.upsertServer).toHaveBeenCalledTimes(1);
+    // 3 source occurrences → 3 upserts; DB COALESCE ensures no data loss
+    expect(db.upsertServer).toHaveBeenCalledTimes(3);
   });
 });
