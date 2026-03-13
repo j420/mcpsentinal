@@ -1,7 +1,6 @@
 name: Crawl MCP Registry
 
 on:
-  # Trigger manually from GitHub UI → Actions tab → "Run workflow"
   workflow_dispatch:
     inputs:
       source:
@@ -22,43 +21,211 @@ on:
   schedule:
     - cron: "0 2 * * 0"
 
-jobs:
-  crawl:
-    name: Crawl → Persist
-    runs-on: ubuntu-latest
-    timeout-minutes: 90
+# ── Shared setup ─────────────────────────────────────────────────────────────
+env:
+  NODE_VERSION: "20"
 
+jobs:
+  # ── migrations must run before any crawler writes ──────────────────────────
+  migrate:
+    name: DB Migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Skip if a specific source was requested (migrations already applied)
+    if: github.event_name == 'schedule' || github.event.inputs.source == ''
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
-
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "pnpm"
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build workspace packages
-        run: pnpm --filter=@mcp-sentinel/database build
-
-      - name: Run database migrations
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter=@mcp-sentinel/database build
+      - name: Run migrations
         run: pnpm db:migrate
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
-      - name: Run crawl
-        run: |
-          SOURCE="${{ github.event.inputs.source }}"
-          if [ -n "$SOURCE" ]; then
-            echo "Crawling single source: $SOURCE"
-            pnpm --filter=@mcp-sentinel/crawler run crawl "$SOURCE"
-          else
-            echo "Crawling all sources"
-            pnpm crawl
-          fi
+  # ── Smithery ──────────────────────────────────────────────────────────────
+  crawl-smithery:
+    name: "Crawl: Smithery"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [migrate]
+    if: |
+      always() &&
+      (needs.migrate.result == 'success' || needs.migrate.result == 'skipped') &&
+      (github.event_name == 'schedule' ||
+       github.event.inputs.source == '' ||
+       github.event.inputs.source == 'smithery')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter=@mcp-sentinel/database build
+      - name: Crawl Smithery
+        run: pnpm --filter=@mcp-sentinel/crawler run crawl smithery
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SMITHERY_API_KEY: ${{ secrets.SMITHERY_API_KEY }}
+
+  # ── PulseMCP ──────────────────────────────────────────────────────────────
+  crawl-pulsemcp:
+    name: "Crawl: PulseMCP"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [migrate]
+    if: |
+      always() &&
+      (needs.migrate.result == 'success' || needs.migrate.result == 'skipped') &&
+      (github.event_name == 'schedule' ||
+       github.event.inputs.source == '' ||
+       github.event.inputs.source == 'pulsemcp')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter=@mcp-sentinel/database build
+      - name: Crawl PulseMCP
+        run: pnpm --filter=@mcp-sentinel/crawler run crawl pulsemcp
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+  # ── npm ───────────────────────────────────────────────────────────────────
+  crawl-npm:
+    name: "Crawl: npm"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [migrate]
+    if: |
+      always() &&
+      (needs.migrate.result == 'success' || needs.migrate.result == 'skipped') &&
+      (github.event_name == 'schedule' ||
+       github.event.inputs.source == '' ||
+       github.event.inputs.source == 'npm')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter=@mcp-sentinel/database build
+      - name: Crawl npm
+        run: pnpm --filter=@mcp-sentinel/crawler run crawl npm
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+  # ── PyPI ──────────────────────────────────────────────────────────────────
+  crawl-pypi:
+    name: "Crawl: PyPI"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [migrate]
+    if: |
+      always() &&
+      (needs.migrate.result == 'success' || needs.migrate.result == 'skipped') &&
+      (github.event_name == 'schedule' ||
+       github.event.inputs.source == '' ||
+       github.event.inputs.source == 'pypi')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter=@mcp-sentinel/database build
+      - name: Crawl PyPI
+        run: pnpm --filter=@mcp-sentinel/crawler run crawl pypi
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+  # ── GitHub ────────────────────────────────────────────────────────────────
+  crawl-github:
+    name: "Crawl: GitHub"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [migrate]
+    if: |
+      always() &&
+      (needs.migrate.result == 'success' || needs.migrate.result == 'skipped') &&
+      (github.event_name == 'schedule' ||
+       github.event.inputs.source == '' ||
+       github.event.inputs.source == 'github')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter=@mcp-sentinel/database build
+      - name: Crawl GitHub
+        run: pnpm --filter=@mcp-sentinel/crawler run crawl github
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── Official MCP Registry ─────────────────────────────────────────────────
+  crawl-official-registry:
+    name: "Crawl: Official Registry"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [migrate]
+    if: |
+      always() &&
+      (needs.migrate.result == 'success' || needs.migrate.result == 'skipped') &&
+      (github.event_name == 'schedule' ||
+       github.event.inputs.source == '' ||
+       github.event.inputs.source == 'official-registry')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter=@mcp-sentinel/database build
+      - name: Crawl Official Registry
+        run: pnpm --filter=@mcp-sentinel/crawler run crawl official-registry
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+  # ── Summary ───────────────────────────────────────────────────────────────
+  crawl-summary:
+    name: Crawl Summary
+    runs-on: ubuntu-latest
+    needs:
+      - crawl-smithery
+      - crawl-pulsemcp
+      - crawl-npm
+      - crawl-pypi
+      - crawl-github
+      - crawl-official-registry
+    if: always()
+    steps:
+      - name: Report results
+        run: |
+          echo "## Crawl Results" >> $GITHUB_STEP_SUMMARY
+          echo "| Source | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Smithery        | ${{ needs.crawl-smithery.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| PulseMCP        | ${{ needs.crawl-pulsemcp.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| npm             | ${{ needs.crawl-npm.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| PyPI            | ${{ needs.crawl-pypi.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| GitHub          | ${{ needs.crawl-github.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Official Registry | ${{ needs.crawl-official-registry.result }} |" >> $GITHUB_STEP_SUMMARY

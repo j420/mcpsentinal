@@ -40,9 +40,11 @@ export class SmitheryCrawler implements CrawlerSource {
         const url = `${SMITHERY_API}/servers?${params}`;
         logger.info({ cursor }, "Fetching Smithery servers");
 
-        const response = await fetch(url, {
-          headers: { Accept: "application/json" },
-        });
+        const headers: Record<string, string> = { Accept: "application/json" };
+        const apiKey = process.env.SMITHERY_API_KEY;
+        if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
+
+        const response = await fetch(url, { headers });
 
         if (!response.ok) {
           logger.warn({ status: response.status }, "Smithery request failed");
