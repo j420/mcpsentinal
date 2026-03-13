@@ -101,7 +101,9 @@ export class AnalysisEngine {
       });
       if (excluded) continue;
 
-      for (const pattern of patterns) {
+      for (const rawPattern of patterns) {
+        // Strip inline (?i) flag — engine already passes "gi" to RegExp
+        const pattern = rawPattern.replace(/^\(\?i\)/, "");
         try {
           const regex = new RegExp(pattern, "gi");
           const match = regex.exec(text);

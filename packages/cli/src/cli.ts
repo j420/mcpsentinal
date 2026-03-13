@@ -2,11 +2,13 @@
 
 import { readFileSync, existsSync } from "fs";
 import { join, resolve } from "path";
+import { fileURLToPath } from "url";
 import { AnalysisEngine, loadRules, getRulesVersion } from "@mcp-sentinel/analyzer";
 import { computeScore } from "@mcp-sentinel/scorer";
 import type { AnalysisContext } from "@mcp-sentinel/analyzer";
 
-const RULES_DIR = resolve(import.meta.dirname || __dirname, "../../../rules");
+const __dirname = fileURLToPath(new URL(".", import.meta.url));
+const RULES_DIR = resolve(__dirname, "../../../rules");
 
 interface MCPConfig {
   mcpServers?: Record<

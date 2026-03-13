@@ -1,17 +1,19 @@
-import express from "express";
+import express, { type Express } from "express";
 import cors from "cors";
 import pg from "pg";
-import pinoHttp from "pino-http";
 import pino from "pino";
 import { DatabaseQueries, ServerListQuerySchema } from "@mcp-sentinel/database";
 import { createBadgeSvg } from "./badge.js";
 
 const logger = pino({ name: "api" });
 
-const app = express();
+const app: Express = express();
 app.use(cors());
 app.use(express.json());
-app.use(pinoHttp({ logger }));
+app.use((req, _res, next) => {
+  logger.info({ method: req.method, url: req.url }, "request");
+  next();
+});
 
 // Database connection
 const pool = new pg.Pool({

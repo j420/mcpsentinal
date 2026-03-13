@@ -8,7 +8,6 @@
     "build": "turbo run build",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
-    "lint": "turbo run lint",
     "db:migrate": "pnpm --filter=@mcp-sentinel/database run migrate",
     "db:seed": "pnpm --filter=@mcp-sentinel/database run seed",
     "db:reset": "pnpm --filter=@mcp-sentinel/database run reset",
@@ -16,6 +15,11 @@
     "scan": "pnpm --filter=@mcp-sentinel/analyzer run scan",
     "score": "pnpm --filter=@mcp-sentinel/scorer run score",
     "cli": "pnpm --filter=@mcp-sentinel/cli run cli"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
   },
   "engines": {
     "node": ">=20.0.0",

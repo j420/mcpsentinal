@@ -1,4 +1,4 @@
-import type { DiscoveredServer } from "@mcp-sentinel/database";
+import type { DiscoveredServer, ServerCategory } from "@mcp-sentinel/database";
 import pino from "pino";
 import type { CrawlerSource, CrawlResult } from "../types.js";
 
@@ -151,10 +151,10 @@ export class GitHubCrawler implements CrawlerSource {
     name: string,
     description: string | null,
     topics: string[]
-  ): string | null {
+  ): ServerCategory | null {
     const text = `${name} ${description || ""} ${topics.join(" ")}`.toLowerCase();
 
-    const categories: [string, string[]][] = [
+    const categories: [ServerCategory, string[]][] = [
       ["database", ["postgres", "mysql", "sqlite", "mongo", "redis", "database", "sql", "db"]],
       ["filesystem", ["filesystem", "file-system", "files", "directory"]],
       ["api-integration", ["api", "slack", "github", "jira", "notion", "stripe", "twilio"]],
