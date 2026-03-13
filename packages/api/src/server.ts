@@ -2,7 +2,7 @@ import express, { type Express } from "express";
 import cors from "cors";
 import pg from "pg";
 import pino from "pino";
-import { DatabaseQueries, ServerListQuerySchema } from "@mcp-sentinel/database";
+import { DatabaseQueries, ServerListQuerySchema, migrate } from "@mcp-sentinel/database";
 import { createBadgeSvg } from "./badge.js";
 
 const logger = pino({ name: "api" });
@@ -151,8 +151,25 @@ app.get("/health", (_req, res) => {
 // ─── Start ───────────────────────────────────────────────────────────────────
 
 const PORT = parseInt(process.env.PORT || "3100", 10);
-app.listen(PORT, () => {
-  logger.info({ port: PORT }, "MCP Sentinel API started");
-});
+
+async function start() {
+  const dbUrl = process.env.DATABASE_URL;
+  if (dbUrl) {
+    try {
+      await migrate(dbUrl);
+      logger.info("Migrations complete");
+    } catch (err) {
+      logger.error(err, "Migration failed — continuing without migration");
+    }
+  } else {
+    logger.warn("DATABASE_URL not set, skipping migrations");
+  }
+
+  app.listen(PORT, () => {
+    logger.info({ port: PORT }, "MCP Sentinel API started");
+  });
+}
+
+start();
 
 export { app };

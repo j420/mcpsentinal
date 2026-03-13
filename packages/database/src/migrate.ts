@@ -236,13 +236,21 @@ export async function migrate(connectionString: string): Promise<void> {
   }
 }
 
-// CLI entrypoint
-const dbUrl = process.env.DATABASE_URL;
-if (dbUrl) {
-  migrate(dbUrl).catch((err) => {
-    logger.error(err, "Migration failed");
+// CLI entrypoint — only runs when executed directly (not when imported as a module)
+if (
+  process.argv[1] &&
+  (process.argv[1].endsWith("migrate.js") ||
+    process.argv[1].endsWith("migrate.ts"))
+) {
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) {
+    logger.error("DATABASE_URL not set");
     process.exit(1);
-  });
-} else {
-  logger.warn("DATABASE_URL not set, skipping migration");
+  }
+  migrate(dbUrl)
+    .then(() => process.exit(0))
+    .catch((err) => {
+      logger.error(err, "Migration failed");
+      process.exit(1);
+    });
 }
