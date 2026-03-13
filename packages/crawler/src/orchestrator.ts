@@ -1,5 +1,6 @@
 import pino from "pino";
 import type { CrawlerSource, CrawlResult, CrawlStats } from "./types.js";
+import type { DiscoveredServer, DatabaseQueries } from "@mcp-sentinel/database";
 import { NpmCrawler } from "./sources/npm.js";
 import { GitHubCrawler } from "./sources/github.js";
 import { PyPICrawler } from "./sources/pypi.js";
@@ -30,8 +31,62 @@ export class CrawlOrchestrator {
   }
 
   async crawlAll(): Promise<CrawlStats> {
+    const { results, uniqueServers } = await this._runCrawlers();
+    return this._buildStats(results, uniqueServers);
+  }
+
+  async crawlAndPersist(
+    db: DatabaseQueries
+  ): Promise<CrawlStats & { persisted: number; persist_errors: number }> {
+    const { results, uniqueServers } = await this._runCrawlers();
+
+    const serverList = Array.from(uniqueServers.values());
+    let persisted = 0;
+    let persist_errors = 0;
+
+    logger.info(
+      { total: serverList.length },
+      "Persisting unique servers to database"
+    );
+
+    for (const server of serverList) {
+      try {
+        await db.upsertServer(server);
+        persisted++;
+        if (persisted % 100 === 0) {
+          logger.info(
+            { persisted, total: serverList.length },
+            "Persist progress"
+          );
+        }
+      } catch (err) {
+        persist_errors++;
+        logger.error({ server: server.name, err }, "Failed to persist server");
+      }
+    }
+
+    const stats = this._buildStats(results, uniqueServers);
+
+    logger.info(
+      { persisted, persist_errors, unique: stats.new_unique },
+      "Crawl+persist run complete"
+    );
+
+    return { ...stats, persisted, persist_errors };
+  }
+
+  getResults(): CrawlerSource[] {
+    return this.sources;
+  }
+
+  // ─── Private helpers ────────────────────────────────────────────────────────
+
+  private async _runCrawlers(): Promise<{
+    results: CrawlResult[];
+    uniqueServers: Map<string, DiscoveredServer>;
+  }> {
     const results: CrawlResult[] = [];
-    const allServers = new Map<string, boolean>();
+    const uniqueServers = new Map<string, DiscoveredServer>();
 
     logger.info(
       { sources: this.sources.map((s) => s.name) },
@@ -45,12 +100,11 @@ export class CrawlOrchestrator {
         const result = await source.crawl();
         results.push(result);
 
-        // Track unique servers across all sources
         let newUnique = 0;
         for (const server of result.servers) {
-          const key = this.deduplicationKey(server);
-          if (!allServers.has(key)) {
-            allServers.set(key, true);
+          const key = this._deduplicationKey(server);
+          if (!uniqueServers.has(key)) {
+            uniqueServers.set(key, server);
             newUnique++;
           }
         }
@@ -82,11 +136,18 @@ export class CrawlOrchestrator {
       }
     }
 
-    // Compute quality metrics
+    return { results, uniqueServers };
+  }
+
+  private _buildStats(
+    results: CrawlResult[],
+    uniqueServers: Map<string, DiscoveredServer>
+  ): CrawlStats {
     const allDiscovered = results.flatMap((r) => r.servers);
+
     const stats: CrawlStats = {
       total_discovered: allDiscovered.length,
-      new_unique: allServers.size,
+      new_unique: uniqueServers.size,
       per_source: results.map((r) => ({
         source: r.source,
         found: r.servers_found,
@@ -114,14 +175,10 @@ export class CrawlOrchestrator {
     return stats;
   }
 
-  getResults(): CrawlerSource[] {
-    return this.sources;
-  }
-
   /**
    * Deduplication key: normalized GitHub URL > npm package > pypi package > name+author
    */
-  private deduplicationKey(server: {
+  private _deduplicationKey(server: {
     github_url?: string | null;
     npm_package?: string | null;
     pypi_package?: string | null;
