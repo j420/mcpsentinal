@@ -4,7 +4,7 @@ import type { CrawlerSource, CrawlResult } from "../types.js";
 
 const logger = pino({ name: "crawler:smithery" });
 
-const SMITHERY_API = "https://registry.smithery.ai/api";
+const SMITHERY_API = "https://registry.smithery.ai";
 
 interface SmitheryServer {
   qualifiedName: string;
@@ -12,13 +12,20 @@ interface SmitheryServer {
   description?: string;
   homepage?: string;
   repository?: string;
-  author?: string;
-  license?: string;
+  iconUrl?: string;
+  useCount?: number;
+  isDeployed?: boolean;
+  createdAt?: string;
 }
 
 interface SmitheryResponse {
   servers: SmitheryServer[];
-  pageInfo?: { hasNextPage: boolean; endCursor: string };
+  pagination?: {
+    currentPage: number;
+    pageSize: number;
+    totalPages: number;
+    totalCount: number;
+  };
 }
 
 export class SmitheryCrawler implements CrawlerSource {
@@ -30,15 +37,18 @@ export class SmitheryCrawler implements CrawlerSource {
     let errors = 0;
 
     try {
-      let cursor: string | undefined;
-      let hasMore = true;
+      const PAGE_SIZE = 100;
+      let page = 1;
+      let totalPages = 1;
 
-      while (hasMore) {
-        const params = new URLSearchParams({ pageSize: "100" });
-        if (cursor) params.set("cursor", cursor);
+      while (page <= totalPages) {
+        const params = new URLSearchParams({
+          pageSize: String(PAGE_SIZE),
+          page: String(page),
+        });
 
         const url = `${SMITHERY_API}/servers?${params}`;
-        logger.info({ cursor }, "Fetching Smithery servers");
+        logger.info({ page, totalPages }, "Fetching Smithery servers");
 
         const headers: Record<string, string> = { Accept: "application/json" };
         const apiKey = process.env.SMITHERY_API_KEY;
@@ -54,6 +64,10 @@ export class SmitheryCrawler implements CrawlerSource {
 
         const data = (await response.json()) as SmitheryResponse;
 
+        if (data.pagination) {
+          totalPages = data.pagination.totalPages;
+        }
+
         for (const server of data.servers) {
           const githubUrl = server.repository?.includes("github.com")
             ? server.repository
@@ -62,26 +76,26 @@ export class SmitheryCrawler implements CrawlerSource {
           servers.push({
             name: server.displayName || server.qualifiedName,
             description: server.description || null,
-            author: server.author || null,
+            author: null,
             github_url: githubUrl,
             npm_package: null,
             pypi_package: null,
             category: null,
             language: null,
-            license: server.license || null,
+            license: null,
             source_name: "smithery",
             source_url: `https://smithery.ai/server/${server.qualifiedName}`,
             external_id: server.qualifiedName,
             raw_metadata: {
               homepage: server.homepage,
               qualifiedName: server.qualifiedName,
+              useCount: server.useCount,
+              isDeployed: server.isDeployed,
             },
           });
         }
 
-        hasMore = data.pageInfo?.hasNextPage ?? false;
-        cursor = data.pageInfo?.endCursor;
-
+        page++;
         await new Promise((r) => setTimeout(r, 300));
       }
     } catch (err) {
