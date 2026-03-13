@@ -41,12 +41,16 @@ export class PulseMCPCrawler implements CrawlerSource {
         logger.info({ offset }, "Fetching PulseMCP servers");
 
         const response = await fetch(url, {
-          headers: { Accept: "application/json" },
+          headers: {
+            Accept: "application/json",
+            "User-Agent": "mcp-sentinel-crawler/1.0",
+          },
         });
 
         if (!response.ok) {
+          const body = await response.text().catch(() => "");
           logger.warn(
-            { status: response.status },
+            { status: response.status, body },
             "PulseMCP request failed"
           );
           errors++;

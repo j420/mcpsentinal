@@ -57,7 +57,8 @@ export class SmitheryCrawler implements CrawlerSource {
         const response = await fetch(url, { headers });
 
         if (!response.ok) {
-          logger.warn({ status: response.status }, "Smithery request failed");
+          const body = await response.text().catch(() => "");
+          logger.warn({ status: response.status, body }, "Smithery request failed");
           errors++;
           break;
         }
