@@ -6,6 +6,7 @@ import { GitHubCrawler } from "./sources/github.js";
 import { PyPICrawler } from "./sources/pypi.js";
 import { PulseMCPCrawler } from "./sources/pulsemcp.js";
 import { SmitheryCrawler } from "./sources/smithery.js";
+import { McpRegistryCrawler } from "./sources/mcpregistry.js";
 
 const logger = pino({ name: "crawler:orchestrator" });
 
@@ -19,6 +20,7 @@ export class CrawlOrchestrator {
     }
 
     const allSources: CrawlerSource[] = [
+      new McpRegistryCrawler(),
       new PulseMCPCrawler(),
       new SmitheryCrawler(),
       new NpmCrawler(),
