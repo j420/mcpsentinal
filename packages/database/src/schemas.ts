@@ -71,6 +71,7 @@ export const OwaspCategory = z.enum([
   "MCP05-privilege-escalation",
   "MCP06-excessive-permissions",
   "MCP07-insecure-config",
+  "MCP07-insecure-configuration",
   "MCP08-dependency-vuln",
   "MCP09-logging-monitoring",
   "MCP10-supply-chain",
@@ -267,6 +268,8 @@ export const DetectionRuleSchema = z.object({
     "dependency-analysis",
     "behavioral-analysis",
     "ecosystem-context",
+    "adversarial-ai",
+    "auth-analysis",
   ]),
   severity: Severity,
   owasp: OwaspCategory.nullable().default(null),
@@ -275,7 +278,14 @@ export const DetectionRuleSchema = z.object({
     type: z.enum(["regex", "ast", "schema-check", "behavioral", "composite"]),
     patterns: z.array(z.string()).optional(),
     context: z
-      .enum(["source_code", "tool_description", "parameter_schema", "metadata"])
+      .enum([
+        "source_code",
+        "tool_description",
+        "parameter_schema",
+        "metadata",
+        "parameter_description",
+        "server_initialize_fields",
+      ])
       .optional(),
     exclude_patterns: z.array(z.string()).optional(),
     conditions: z.record(z.unknown()).optional(),

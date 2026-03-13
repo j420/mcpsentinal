@@ -51,7 +51,7 @@ const DEFAULT_STALE_DAYS = 7;
 // Resolve rules directory relative to the monorepo root.
 // __dirname is packages/scanner/src/  → ../../../../rules resolves to <root>/rules
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
-const DEFAULT_RULES_DIR = path.resolve(__dirname, "../../../../rules");
+const DEFAULT_RULES_DIR = path.resolve(__dirname, "../../../rules");
 
 export interface PipelineConfig {
   /** Override the rules directory path (default: <monorepo-root>/rules) */
