@@ -1,0 +1,149 @@
+id: H1
+name: MCP OAuth 2.0 Insecure Implementation
+category: auth-analysis
+severity: critical
+owasp: MCP07-insecure-configuration
+mitre: AML.T0056
+
+# THREAT INTELLIGENCE NOTE (OAuth 2.0 Security Specialist — RFC 9700 / BCP 212):
+#
+# OAuth 2.0 was added to the official MCP specification in mid-2025 (MCP Authorization spec,
+# built on RFC 9700 / OAuth 2.1). This makes MCP servers potential OAuth authorization
+# servers or resource servers — and opens a class of authentication attack that
+# NO existing A–G rule covers.
+#
+# WHY MCP SERVERS ARE HIGH-VALUE OAUTH TARGETS:
+# An MCP server acting as an OAuth gateway (granting tool access to the user's Google Drive,
+# GitHub repos, Slack workspace, email account) is a single point of failure. A single
+# compromised OAuth flow grants persistent access to all connected services.
+# The AI assistant auto-executes these flows without user review of individual tokens.
+#
+# THE SIX ATTACK VECTORS DETECTED HERE:
+#
+# 1. AUTHORIZATION CODE INJECTION (redirect_uri manipulation)
+#    The most common OAuth vulnerability (Portswigger top 5 OAuth attacks, 2024).
+#    Server accepts redirect_uri from the incoming request without validating it
+#    against a pre-registered allowlist. Attacker substitutes attacker.com/callback.
+#    Result: authorization code delivered to attacker → full token theft.
+#    Reference: RFC 9700 §4.1.3, OAuth Security BCP §4.10
+#    CVSS: 9.1 (Critical) — documented in dozens of real-world breaches.
+#
+# 2. IMPLICIT FLOW USAGE (response_type=token)
+#    OAuth 2.1 / RFC 9700 removes the implicit grant entirely.
+#    Tokens delivered in URL fragments appear in: browser history, server access logs,
+#    Referer headers, JavaScript accessible via window.location.
+#    Attacker with any XSS or log access gets persistent access tokens.
+#    In MCP context: the AI processes the callback URL, exposing the token
+#    in the conversation history or tool call parameters.
+#
+# 3. RESOURCE OWNER PASSWORD CREDENTIALS (grant_type=password)
+#    Banned in OAuth 2.1. Server receives raw user username + password.
+#    The MCP server becomes a credential collector — whether malicious or not,
+#    this violates OAuth's core "no credential sharing" security model.
+#    In MCP context: an AI calling this tool hands user credentials to the server
+#    without the user understanding what is being transmitted.
+#
+# 4. TOKEN IN LOCALSTORAGE (XSS-accessible storage)
+#    Access and refresh tokens stored in localStorage or sessionStorage are
+#    accessible to any JavaScript running on the same origin — including
+#    injected scripts from XSS. This is the primary post-auth token theft vector.
+#    Reference: OWASP ASVS v4.0 §3.4.3
+#
+# 5. MISSING STATE PARAMETER VALIDATION (OAuth CSRF)
+#    The OAuth state parameter exists specifically to prevent CSRF attacks on the
+#    callback endpoint. Reading state from the request without comparing it to a
+#    stored server-side value allows cross-site request forgery of the OAuth flow.
+#    An attacker can hijack the authorization flow mid-flight and bind their
+#    victim's OAuth token to the attacker's session.
+#
+# 6. SCOPE FROM USER INPUT (privilege escalation)
+#    Accepting the requested OAuth scope from user-controlled input without
+#    validating against a server-side allowlist allows scope inflation.
+#    An attacker can request admin or write scopes not intended by the server.
+#
+# INTELLIGENCE SOURCES:
+# - RFC 9700 (OAuth 2.0 for Browser-Based Apps / OAuth 2.1)
+# - OAuth 2.0 Security BCP (RFC 9700 §4)
+# - Portswigger Web Security Academy: OAuth 2.0 Attack Techniques (2024-2025)
+# - PortSwigger research: "Stealing OAuth tokens via redirect_uri flaws" (2024)
+# - Wiz Research: Cloud OAuth misconfiguration attacks (2025)
+# - OWASP ASVS v4.0, Section 3 (Session Management)
+
+detect:
+  type: regex
+  patterns:
+    # 1. Redirect URI from user input — authorization code injection
+    #    Matches: redirect_uri = req.body.redirect_uri / params.redirect_uri / etc.
+    - "(?i)redirect_uri\\s*[:=]+\\s*(?:req\\.(?:body|query|params)|params\\.|body\\.|query\\.)(?:redirect_uri|redirect|uri|url|callback)"
+    - "(?i)redirect_uri\\s*[:=]+\\s*(?:request|ctx|context)\\.(?:body|query|params)(?:\\[|\\.)(?:redirect|uri|url)"
+
+    # 2. Implicit flow (response_type=token) — banned in OAuth 2.1
+    - "(?i)[\"'`]response_type[\"'`]\\s*:\\s*[\"'`]token[\"'`]"
+    - "(?i)response_type\\s*=\\s*[\"'`]token[\"'`]"
+    - "(?i)responseType\\s*[:=]+\\s*[\"'`]token[\"'`]"
+
+    # 3. Resource Owner Password Credentials (grant_type=password) — banned in OAuth 2.1
+    - "(?i)[\"'`]grant_type[\"'`]\\s*:\\s*[\"'`]password[\"'`]"
+    - "(?i)grant_type\\s*=\\s*[\"'`]password[\"'`]"
+    - "(?i)grantType\\s*[:=]+\\s*[\"'`]password[\"'`]"
+
+    # 4. OAuth token in localStorage (XSS-accessible)
+    - "(?i)localStorage\\.setItem\\s*\\([^,)]*(?:access_token|refresh_token|id_token|oauth_token|bearer_token)"
+    - "(?i)sessionStorage\\.setItem\\s*\\([^,)]*(?:access_token|refresh_token|id_token|oauth_token)"
+
+    # 5. OAuth state not validated (CSRF bypass)
+    #    Matches: state = req.query.state (without following validate/compare/equal)
+    - "(?i)(?:^|\\s)state\\s*[:=]+\\s*(?:req\\.(?:query|body)|params|body|query)(?:\\[|\\.)(?:state|oauth_state)"
+
+    # 6. Scope from user input without validation (scope escalation)
+    - "(?i)scope\\s*[:=]+\\s*(?:req\\.(?:body|query)|params|body|query)(?:\\[|\\.)scope(?!.*(?:split|includes|allowlist|whitelist|valid|check|match|permit))"
+
+    # 7. Authorization/token endpoint URL from user-controlled config (open redirect to malicious AS)
+    - "(?i)(?:authorization_endpoint|token_endpoint|userinfo_endpoint|jwks_uri)\\s*[:=]+\\s*(?:req\\.(?:body|query|params)|params\\.|body\\.)"
+
+  context: source_code
+  exclude_patterns:
+    # Test files and documentation
+    - "// safe:"
+    - "# safe:"
+    - "test("
+    - "describe("
+    - "it("
+    - "beforeEach("
+    - "mock"
+    - "fixture"
+    - "example.com"
+
+remediation: >
+  Your MCP server implements OAuth 2.0 with one or more high-severity vulnerabilities.
+  Required fixes per RFC 9700 (OAuth 2.1) and OAuth Security BCP:
+
+  1. Redirect URI (CRITICAL): Validate redirect_uri against an exact-match pre-registered
+     allowlist stored server-side. Never accept redirect_uri from the incoming request.
+     Reject any request where redirect_uri does not exactly match a registered value.
+     Code: const allowed = ['https://your-app.com/callback']; if (!allowed.includes(redirectUri)) throw new Error('Invalid redirect_uri');
+
+  2. Implicit flow (CRITICAL): Remove response_type=token entirely. Use authorization code
+     flow with PKCE (RFC 7636). OAuth 2.1 removes implicit flow. Tokens must never
+     appear in URL fragments, browser history, or server logs.
+
+  3. ROPC grant (CRITICAL): Remove grant_type=password. Use authorization code + PKCE.
+     An MCP server must never receive raw user credentials — this defeats OAuth delegation.
+
+  4. Token storage (HIGH): Store tokens only in:
+     - Memory (for SPAs) — lost on page refresh, not persistent
+     - HttpOnly + Secure + SameSite=Strict cookies — inaccessible to JavaScript
+     Never use localStorage, sessionStorage, or non-HttpOnly cookies.
+
+  5. State validation (HIGH): Generate state with crypto.randomBytes(32).
+     Store server-side in session. On callback, reject if state doesn't match.
+     Use crypto.timingSafeEqual() for comparison, not ===.
+
+  6. Scope validation (HIGH): Maintain a server-side allowlist of valid scopes.
+     Reject any requested scope not in the allowlist regardless of request source.
+
+  Reference: RFC 9700 (https://datatracker.ietf.org/doc/html/rfc9700)
+             OAuth Security BCP (https://datatracker.ietf.org/doc/html/rfc9700#section-4)
+             Portswigger OAuth attack techniques (2024-2025)
+
+enabled: true

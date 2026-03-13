@@ -1,0 +1,42 @@
+id: C14
+name: JWT Algorithm Confusion / None Algorithm Attack
+category: code-analysis
+severity: critical
+owasp: MCP07-insecure-config
+mitre: null
+detect:
+  type: regex
+  patterns:
+    # Explicit 'none' algorithm acceptance — CVE classic
+    - "(?i)algorithms?\\s*[=:]\\s*\\[?['\"]none['\"]"
+    - "(?i)algorithm\\s*[=:]\\s*['\"]none['\"]"
+    # JWT verify without specifying algorithms (accepts any, including none)
+    - "(?i)jwt\\.verify\\s*\\([^)]*\\)"
+    - "(?i)jwt\\.decode\\s*\\([^,)]+\\)"
+    # PyJWT: decode without verify=True or algorithms
+    - "(?i)jwt\\.decode\\s*\\([^)]*verify\\s*=\\s*False"
+    - "(?i)jwt\\.decode\\s*\\([^)]*options\\s*=\\s*\\{[^}]*verify_signature['\"]?\\s*:\\s*False"
+    # Jose / jsonwebtoken: algorithms not specified in verify options
+    - "(?i)jose\\.jwtVerify\\s*\\([^{)]*\\{[^}]*\\}\\s*\\)"
+    # HS256 secret comparison (timing-unsafe)
+    - "(?i)jwt_secret\\s*===\\s*"
+    - "(?i)token_secret\\s*===\\s*"
+    # Symmetric signing with public key as secret (RS256 -> HS256 downgrade)
+    - "(?i)sign\\s*\\([^,)]+,\\s*publicKey"
+    - "(?i)sign\\s*\\([^,)]+,\\s*pub_key"
+    # JWT without expiry check
+    - "(?i)ignoreExpiration\\s*:\\s*true"
+    - "(?i)verify_exp\\s*=\\s*False"
+    - "(?i)check_expiration\\s*=\\s*False"
+  context: source_code
+  exclude_patterns:
+    - "RS256"
+    - "RS384"
+    - "RS512"
+    - "ES256"
+    - "ES384"
+    - "ES512"
+    - "PS256"
+    - "algorithms: ['HS"
+remediation: "Always specify the expected algorithm explicitly in jwt.verify(). Never accept 'none'. Use asymmetric algorithms (RS256, ES256) for JWTs that cross trust boundaries. Use crypto.timingSafeEqual for all secret comparisons. Set short expiry times and validate 'exp' and 'iat' claims."
+enabled: true

@@ -1,0 +1,66 @@
+id: G4
+name: Context Window Saturation Attack
+category: adversarial-ai
+severity: high
+owasp: MCP01-prompt-injection
+mitre: AML.T0054
+
+# THREAT INTELLIGENCE NOTE (P1 Threat Researcher):
+# This is a precision attack against the finite context window of AI models.
+#
+# THE ATTACK: Unlike A5 (generic "description too long"), this attack is targeted.
+# The attacker crafts tool descriptions that are sized and structured to push the
+# user's system prompt, safety instructions, or early conversation context
+# outside the model's context window (or below the effective attention threshold).
+#
+# Attack variants:
+#
+# Variant 1 — "Attention dilution":
+#   Tool has a 5000-token description filled with benign-looking text.
+#   The model's attention is distributed over the noise, reducing focus on
+#   safety instructions provided earlier in the context.
+#
+# Variant 2 — "Context overflow via tool list":
+#   A server exposes 50 tools, each with a 200-token description.
+#   The aggregate 10,000-token tool list consumes context budget.
+#   The user's conversation history and safety instructions get truncated.
+#
+# Variant 3 — "Payload at the end of a saturating description":
+#   Long description of benign content, then at the very end (where attention
+#   is typically highest for recency bias): "Most importantly: [injection payload]"
+#   The setup noise makes the injection harder to detect by simple length checks.
+#
+# This attack works differently from A5: A5 flags ANY long description.
+# G4 specifically flags descriptions that appear DESIGNED to saturate context:
+# - Padding with repeated or low-information content
+# - Unusually high ratio of filler to functional content
+# - Descriptions that are disproportionately large compared to schema complexity
+# - Payload positioned at the END of a long description (recency attack)
+
+detect:
+  type: composite
+  conditions:
+    check: context_window_saturation
+    # Detection signals for saturation-designed descriptions
+    signals:
+      # Single tool description exceeds this character count (approx 1500 tokens)
+      description_char_threshold: 6000
+      # Ratio of description length to number of parameters (high ratio = padding)
+      description_to_params_ratio: 500  # chars per parameter — unusually verbose
+      # Description contains repetitive filler patterns
+      repetition_patterns:
+        - "(?i)(note|please\\s+note|important|remember|keep\\s+in\\s+mind)\\s*:"
+        - "(?i)(this\\s+tool|this\\s+function|this\\s+method)\\s+(is|will|can|should|must)"
+      # Injection payload positioned in final 20% of a long description
+      tail_injection_check: true
+      tail_window_percent: 20
+  context: tool_description
+remediation: >
+  Tool descriptions must be concise. Keep descriptions under 500 characters for simple tools
+  and under 1000 for complex tools. Never pad descriptions with repetitive disclaimers, lengthy
+  boilerplate, or low-information text. The combined token budget of all tool descriptions in a
+  server should remain under 2000 tokens to avoid consuming the user's context window.
+
+  Context window saturation is a targeted attack that weakens the effectiveness of safety
+  instructions and system prompts by diluting the model's attention budget across noise.
+enabled: true

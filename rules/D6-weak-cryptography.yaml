@@ -1,0 +1,53 @@
+id: D6
+name: Weak or Deprecated Cryptography Dependencies
+category: dependency-analysis
+severity: high
+owasp: MCP07-insecure-config
+mitre: null
+detect:
+  type: composite
+  conditions:
+    check: weak_crypto_deps
+    weak_packages:
+      # MD5 — collision attacks proven, not suitable for security
+      - name: "md5"
+        reason: "MD5 is cryptographically broken. Collisions can be generated in seconds."
+      - name: "md5-file"
+        reason: "MD5 is cryptographically broken."
+      # SHA1 — collision attacks proven (SHAttered, 2017)
+      - name: "sha1"
+        reason: "SHA-1 has known collision attacks. Use SHA-256 or higher."
+      - name: "sha.js"
+        reason: "Includes SHA-1 support; audit usage."
+      # RC4 stream cipher — completely broken
+      - name: "rc4"
+        reason: "RC4 is broken and should not be used for any purpose."
+      # DES / 3DES
+      - name: "des.js"
+        reason: "DES has a 56-bit key and is brute-forceable. 3DES is deprecated by NIST."
+      # node-forge versions with known vulns
+      - name: "node-forge"
+        max_version: "1.3.0"
+        reason: "node-forge <1.3.0 has multiple CVEs including prototype pollution and RSA signature forgery (CVE-2022-0122, CVE-2022-24771)."
+      # Old versions of jsonwebtoken
+      - name: "jsonwebtoken"
+        max_version: "8.5.1"
+        reason: "jsonwebtoken <8.5.1 has algorithm confusion vulnerability allowing secret injection."
+      # Old versions of bcrypt-nodejs (unmaintained, use bcrypt or bcryptjs)
+      - name: "bcrypt-nodejs"
+        reason: "bcrypt-nodejs is unmaintained and has known vulnerabilities. Use 'bcrypt' or 'bcryptjs'."
+      # blowfish — outdated
+      - name: "blowfish"
+        reason: "Blowfish has a max key size of 448 bits and known weaknesses with short passwords. Use AES-256-GCM."
+      # CryptoJS — outdated, no longer maintained for security
+      - name: "crypto-js"
+        max_version: "4.1.1"
+        reason: "CryptoJS versions <4.2.0 have PBKDF2 weakness (CVE-2023-46133) — only 1 SHA1 iteration by default."
+      # Python equivalents
+      - name: "pycrypto"
+        reason: "pycrypto is unmaintained and has multiple CVEs. Use pycryptodome."
+      - name: "Crypto"
+        reason: "pycrypto/Crypto is unmaintained. Migrate to pycryptodome."
+  context: metadata
+remediation: "Replace weak cryptographic dependencies with modern, maintained alternatives. Use AES-256-GCM for symmetric encryption, RSA-4096 or Ed25519 for asymmetric, SHA-256/SHA-3 for hashing, and Argon2/bcrypt/PBKDF2 with high iteration counts for password hashing."
+enabled: true

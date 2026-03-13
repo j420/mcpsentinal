@@ -46,7 +46,7 @@ function printSummary(
   console.log(`New unique:       ${stats.new_unique}`);
 
   if (persisted !== undefined) {
-    console.log(`Persisted to DB:  ${persisted}`);
+    console.log(`Upsert calls:     ${persisted} (includes cross-source enrichment)`);
     if (persistErrors) {
       console.log(`Persist errors:   ${persistErrors}`);
     }

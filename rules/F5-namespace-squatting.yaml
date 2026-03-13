@@ -1,0 +1,62 @@
+id: F5
+name: Official Namespace Squatting
+category: ecosystem-context
+severity: critical
+owasp: MCP02-tool-poisoning
+mitre: AML.T0054
+detect:
+  type: composite
+  conditions:
+    check: namespace_squatting
+    # Protected namespaces: only verified organizations should use these name patterns
+    protected_namespaces:
+      # Official Anthropic / MCP ecosystem
+      - pattern: "(?i)^@?anthropic[/-]"
+        owner: "Anthropic PBC"
+        verified_github_orgs: ["anthropics"]
+      - pattern: "(?i)^@?modelcontextprotocol[/-]"
+        owner: "Anthropic PBC"
+        verified_github_orgs: ["modelcontextprotocol"]
+      - pattern: "(?i)^mcp-official"
+        owner: "Anthropic PBC"
+        verified_github_orgs: ["modelcontextprotocol"]
+      # Major AI labs
+      - pattern: "(?i)^@?openai[/-]"
+        owner: "OpenAI"
+        verified_github_orgs: ["openai"]
+      - pattern: "(?i)^@?google[/-](?:ai|deepmind|mcp)"
+        owner: "Google"
+        verified_github_orgs: ["google", "google-deepmind"]
+      - pattern: "(?i)^@?microsoft[/-]"
+        owner: "Microsoft"
+        verified_github_orgs: ["microsoft"]
+      - pattern: "(?i)^@?aws[/-]"
+        owner: "Amazon Web Services"
+        verified_github_orgs: ["aws", "awslabs"]
+      # Popular MCP server authors with known namespaces
+      - pattern: "(?i)^@?github[/-]mcp"
+        owner: "GitHub"
+        verified_github_orgs: ["github"]
+      - pattern: "(?i)^@?stripe[/-]mcp"
+        owner: "Stripe"
+        verified_github_orgs: ["stripe"]
+      - pattern: "(?i)^@?cloudflare[/-]mcp"
+        owner: "Cloudflare"
+        verified_github_orgs: ["cloudflare"]
+    # Name similarity detection for known MCP server names
+    known_server_names:
+      - "filesystem"
+      - "github"
+      - "memory"
+      - "brave-search"
+      - "fetch"
+      - "puppeteer"
+      - "postgres"
+      - "sqlite"
+      - "slack"
+      - "google-maps"
+      - "sequential-thinking"
+      - "everything"
+  context: metadata
+remediation: "This server's name appears to impersonate an official or well-known MCP server namespace. Rename to a unique name that clearly identifies your organization as the author. Using official-looking names to gain implicit trust is a supply chain attack vector."
+enabled: true

@@ -1,0 +1,67 @@
+id: G6
+name: Tool Behavior Drift (Rug Pull Detection)
+category: adversarial-ai
+severity: critical
+owasp: MCP02-tool-poisoning
+mitre: AML.T0054
+
+# THREAT INTELLIGENCE NOTE (P1 Threat Researcher):
+# Rug pull attacks in the MCP ecosystem follow the same pattern as in crypto:
+# establish trust, gain adoption, then change behavior.
+#
+# THE ATTACK LIFECYCLE:
+# Week 1-4: Server published with legitimate, well-described tools. Gains users.
+# Week 5:   Server description quietly updated. "This tool now also..." appended.
+#           Or: a tool that was read-only now accepts a "mode" parameter that enables writes.
+#           Or: a new tool is added silently that wasn't there before.
+#           Or: the tool descriptions change to contain injection payloads.
+#
+# This is a TEMPORAL attack. No single scan can detect it — only comparison
+# against a baseline (previous known-good state) can.
+#
+# What this rule does:
+# This rule defines the SIGNALS of a rug pull for the scoring/history engine to act on.
+# When combined with historical scan data, it triggers on:
+# - Tool count change > threshold since last scan
+# - Tool description hash change on security-critical tools
+# - New tools added with dangerous capability profiles after a period of stable scans
+# - Server name or description change post-registration
+#
+# This rule is BEHAVIORAL — it requires historical context from the database.
+# The engine marks it as "needs_history" and the scanner pipeline evaluates it
+# when prior scan data is available.
+
+detect:
+  type: behavioral
+  conditions:
+    check: tool_behavior_drift
+    # Thresholds for what constitutes suspicious drift
+    tool_count_increase_threshold: 5       # More than 5 new tools in one scan = suspicious
+    tool_count_decrease_threshold: 3       # Tools disappearing = rug pull signal
+    description_change_on_critical: true   # Any description change on dangerous-capability tools = flag
+    # Tools classified as high-risk that should never silently change description
+    critical_capability_patterns:
+      - "(?i)(credential|secret|password|key|token|auth)"
+      - "(?i)(delete|remove|destroy|drop|wipe|clear|purge)"
+      - "(?i)(admin|root|sudo|privilege|escalat)"
+      - "(?i)(exec|shell|command|run|script)"
+      - "(?i)(send|email|webhook|notify|upload|post)"
+    # Server metadata that changed is suspicious
+    metadata_drift_fields:
+      - server_description
+      - server_name
+      - github_url
+  context: metadata
+remediation: >
+  This server has exhibited drift from its previously known-good state — a pattern consistent
+  with rug pull attacks where a server gains user trust before introducing malicious changes.
+
+  Actions required:
+  1. Compare current tool descriptions against the last-known-good baseline
+  2. Audit any new tools added since the last clean scan
+  3. Verify with the server author that changes were intentional and announce them
+  4. Re-review all tools marked as high-risk with changed descriptions
+  5. Consider requiring re-approval from users who previously authorized this server
+
+  Track: https://mcp-sentinel.com/server/{id}/history for full diff history.
+enabled: true

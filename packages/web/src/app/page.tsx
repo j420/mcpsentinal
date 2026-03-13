@@ -1,4 +1,14 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "MCP Server Security Registry",
+  description:
+    "Search thousands of MCP servers. Compare security scores. Evaluate the safety of every Model Context Protocol integration before you deploy.",
+};
+
 const API_URL = process.env.API_URL || "http://localhost:3100";
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface Server {
   id: string;
@@ -7,212 +17,468 @@ interface Server {
   description: string | null;
   author: string | null;
   category: string | null;
-  latest_score: number | null;
+  language: string | null;
   github_stars: number | null;
+  npm_downloads: number | null;
+  latest_score: number | null;
+  last_commit: string | null;
 }
 
-async function getServers(query?: string): Promise<{ servers: Server[]; total: number }> {
-  try {
-    const params = new URLSearchParams({ limit: "50", sort: "score", order: "desc" });
-    if (query) params.set("q", query);
+interface Pagination {
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+}
 
-    const res = await fetch(`${API_URL}/api/v1/servers?${params}`, {
+interface EcosystemStats {
+  total_servers: number;
+  total_scanned: number;
+  average_score: number;
+  category_breakdown: Record<string, number>;
+  severity_breakdown: Record<string, number>;
+  score_distribution: Array<{ range: string; count: number }>;
+}
+
+// ── Data fetching ─────────────────────────────────────────────────────────────
+
+async function getServers(params: {
+  q?: string;
+  category?: string;
+  sort?: string;
+  order?: string;
+  page?: number;
+  min_score?: string;
+}): Promise<{ servers: Server[]; pagination: Pagination }> {
+  try {
+    const sp = new URLSearchParams();
+    sp.set("limit", "25");
+    sp.set("sort", params.sort || "score");
+    sp.set("order", params.order || "desc");
+    if (params.q) sp.set("q", params.q);
+    if (params.category && params.category !== "all")
+      sp.set("category", params.category);
+    if (params.page && params.page > 1) sp.set("page", String(params.page));
+    if (params.min_score) sp.set("min_score", params.min_score);
+
+    const res = await fetch(`${API_URL}/api/v1/servers?${sp}`, {
       next: { revalidate: 300 },
     });
-    if (!res.ok) return { servers: [], total: 0 };
+    if (!res.ok) return { servers: [], pagination: { total: 0, page: 1, limit: 25, pages: 0 } };
     const data = await res.json();
-    return { servers: data.data || [], total: data.pagination?.total || 0 };
+    return {
+      servers: data.data || [],
+      pagination: data.pagination || { total: 0, page: 1, limit: 25, pages: 0 },
+    };
   } catch {
-    return { servers: [], total: 0 };
+    return { servers: [], pagination: { total: 0, page: 1, limit: 25, pages: 0 } };
   }
 }
 
-async function getStats() {
+async function getStats(): Promise<EcosystemStats | null> {
   try {
     const res = await fetch(`${API_URL}/api/v1/ecosystem/stats`, {
       next: { revalidate: 300 },
     });
     if (!res.ok) return null;
     const data = await res.json();
-    return data.data;
+    return data.data ?? null;
   } catch {
     return null;
   }
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function scoreClass(score: number | null): string {
+  if (score === null) return "score-unscanned";
+  if (score >= 80) return "score-good";
+  if (score >= 60) return "score-moderate";
+  if (score >= 40) return "score-poor";
+  return "score-critical";
+}
+
+function fmtNum(n: number | null | undefined): string {
+  if (n == null) return "—";
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return n.toLocaleString();
+}
+
+const CATEGORIES = [
+  "database",
+  "filesystem",
+  "api-integration",
+  "dev-tools",
+  "ai-ml",
+  "communication",
+  "cloud-infra",
+  "security",
+  "data-processing",
+  "monitoring",
+  "search",
+  "browser-web",
+  "code-execution",
+  "other",
+];
+
+const SORT_OPTIONS = [
+  { value: "score", label: "Score" },
+  { value: "stars", label: "Stars" },
+  { value: "downloads", label: "Downloads" },
+  { value: "name", label: "Name" },
+  { value: "updated", label: "Last Updated" },
+];
+
+// ── Components ────────────────────────────────────────────────────────────────
+
 function ScoreBadge({ score }: { score: number | null }) {
-  if (score === null) {
-    return (
-      <span style={{ color: "#666", fontSize: "14px" }}>Unscanned</span>
-    );
-  }
-
-  let color = "#e05d44";
-  if (score >= 80) color = "#4c1";
-  else if (score >= 60) color = "#dfb317";
-  else if (score >= 40) color = "#fe7d37";
-
+  const cls = scoreClass(score);
   return (
-    <span
-      style={{
-        backgroundColor: color,
-        color: "#fff",
-        padding: "2px 8px",
-        borderRadius: "4px",
-        fontSize: "14px",
-        fontWeight: 700,
-      }}
-    >
-      {score}
+    <span className={`score-badge ${cls}`}>
+      {score === null ? "Unscanned" : score}
     </span>
   );
 }
 
-export default async function HomePage() {
-  const [{ servers, total }, stats] = await Promise.all([
-    getServers(),
+function CategoryChip({ cat }: { cat: string | null }) {
+  if (!cat) return <span className="text-muted">—</span>;
+  return <span className="category-chip">{cat}</span>;
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    q?: string;
+    category?: string;
+    sort?: string;
+    order?: string;
+    page?: string;
+    min_score?: string;
+  }>;
+}) {
+  const sp = await searchParams;
+  const page = Number(sp.page || 1);
+
+  const [{ servers, pagination }, stats] = await Promise.all([
+    getServers({
+      q: sp.q,
+      category: sp.category,
+      sort: sp.sort,
+      order: sp.order,
+      page,
+      min_score: sp.min_score,
+    }),
     getStats(),
   ]);
 
+  const avgScoreColor =
+    stats && stats.average_score >= 80
+      ? "var(--good)"
+      : stats && stats.average_score >= 60
+        ? "var(--moderate)"
+        : stats && stats.average_score >= 40
+          ? "var(--poor)"
+          : "var(--critical)";
+
   return (
-    <div>
-      {/* Hero */}
-      <section style={{ textAlign: "center", padding: "48px 0 32px" }}>
-        <h1 style={{ fontSize: "36px", margin: "0 0 12px" }}>
-          MCP Server Security Registry
+    <>
+      {/* ── Hero ──────────────────────────────────────── */}
+      <section className="hero">
+        <div className="hero-eyebrow">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+            <path
+              d="M8 1L14 4V8C14 11.5 11.5 14.5 8 15.5C4.5 14.5 2 11.5 2 8V4L8 1Z"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+              fill="none"
+            />
+          </svg>
+          Security Intelligence Registry
+        </div>
+        <h1 className="hero-title">
+          Trust Every <span>MCP Server</span>
+          <br />
+          Before It Touches Your Agent
         </h1>
-        <p style={{ color: "#888", fontSize: "18px", maxWidth: "600px", margin: "0 auto" }}>
-          Search {stats?.total_servers?.toLocaleString() || "thousands of"} MCP
-          servers. Compare security scores. Make informed decisions.
+        <p className="hero-sub">
+          {stats?.total_servers
+            ? `${stats.total_servers.toLocaleString()} MCP servers scanned across ${Object.keys(stats.category_breakdown || {}).length} categories.`
+            : "Thousands of MCP servers."}{" "}
+          60 detection rules. Zero guesswork.
         </p>
       </section>
 
-      {/* Stats */}
+      {/* ── Stats strip ───────────────────────────────── */}
       {stats && (
-        <section
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: "16px",
-            marginBottom: "32px",
-          }}
-        >
-          <StatCard label="Total Servers" value={stats.total_servers?.toLocaleString() || "0"} />
-          <StatCard label="Scanned" value={stats.total_scanned?.toLocaleString() || "0"} />
-          <StatCard label="Average Score" value={`${stats.average_score || 0}/100`} />
-          <StatCard
-            label="Categories"
-            value={Object.keys(stats.category_breakdown || {}).length.toString()}
-          />
+        <section className="stats-grid" aria-label="Ecosystem statistics">
+          <div className="stat-card">
+            <span className="stat-value">
+              {stats.total_servers.toLocaleString()}
+            </span>
+            <span className="stat-label">Total Servers</span>
+          </div>
+          <div className="stat-card">
+            <span className="stat-value">
+              {stats.total_scanned.toLocaleString()}
+            </span>
+            <span className="stat-label">Scanned</span>
+          </div>
+          <div className="stat-card">
+            <span
+              className="stat-value"
+              style={{ color: avgScoreColor }}
+            >
+              {stats.average_score ?? 0}
+              <span
+                style={{
+                  fontSize: "16px",
+                  color: "var(--text-3)",
+                  fontWeight: 400,
+                }}
+              >
+                /100
+              </span>
+            </span>
+            <span className="stat-label">Average Score</span>
+          </div>
+          <div className="stat-card">
+            <span className="stat-value">60</span>
+            <span className="stat-label">Detection Rules</span>
+          </div>
         </section>
       )}
 
-      {/* Search */}
-      <section style={{ marginBottom: "24px" }}>
-        <form action="/" method="GET">
+      {/* ── Search + Filters ──────────────────────────── */}
+      <form method="GET" action="/">
+        <div className="search-bar">
+          <span className="search-icon" aria-hidden="true">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            >
+              <circle cx="8.5" cy="8.5" r="5.5" />
+              <path d="M13.5 13.5L17 17" />
+            </svg>
+          </span>
           <input
+            className="search-input"
             type="search"
             name="q"
-            placeholder="Search MCP servers by name, author, or category..."
-            style={{
-              width: "100%",
-              padding: "12px 16px",
-              fontSize: "16px",
-              backgroundColor: "#1a1a1a",
-              border: "1px solid #333",
-              borderRadius: "8px",
-              color: "#ededed",
-              boxSizing: "border-box",
-            }}
+            defaultValue={sp.q || ""}
+            placeholder="Search by name, author, or description…"
+            autoComplete="off"
           />
-        </form>
-      </section>
+        </div>
 
-      {/* Server List */}
-      <section>
-        <h2 style={{ fontSize: "18px", marginBottom: "16px" }}>
-          Top Servers by Security Score ({total} total)
-        </h2>
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-          }}
-        >
+        <div className="filter-row">
+          <span className="filter-label">Filter:</span>
+
+          <select
+            className="filter-select"
+            name="category"
+            defaultValue={sp.category || "all"}
+          >
+            <option value="all">All categories</option>
+            {CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="filter-select"
+            name="min_score"
+            defaultValue={sp.min_score || ""}
+          >
+            <option value="">Any score</option>
+            <option value="80">Good (80+)</option>
+            <option value="60">Moderate (60+)</option>
+            <option value="40">Poor (40+)</option>
+          </select>
+
+          <select
+            className="filter-select"
+            name="sort"
+            defaultValue={sp.sort || "score"}
+          >
+            {SORT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                Sort by {o.label}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="filter-select"
+            name="order"
+            defaultValue={sp.order || "desc"}
+          >
+            <option value="desc">Descending</option>
+            <option value="asc">Ascending</option>
+          </select>
+
+          <button
+            type="submit"
+            className="btn-primary"
+            style={{ padding: "7px 16px", fontSize: "13px" }}
+          >
+            Search
+          </button>
+
+          <span className="result-count">
+            {pagination.total.toLocaleString()} server
+            {pagination.total !== 1 ? "s" : ""}
+          </span>
+        </div>
+      </form>
+
+      {/* ── Server Table ──────────────────────────────── */}
+      {servers.length === 0 ? (
+        <div className="empty-state">
+          <h3>No servers found</h3>
+          <p>Try a different search term or remove filters.</p>
+        </div>
+      ) : (
+        <table className="data-table" aria-label="MCP server registry">
           <thead>
-            <tr style={{ borderBottom: "1px solid #333", textAlign: "left" }}>
-              <th style={{ padding: "8px", color: "#888" }}>Server</th>
-              <th style={{ padding: "8px", color: "#888" }}>Category</th>
-              <th style={{ padding: "8px", color: "#888" }}>Author</th>
-              <th style={{ padding: "8px", color: "#888", textAlign: "right" }}>Stars</th>
-              <th style={{ padding: "8px", color: "#888", textAlign: "right" }}>Score</th>
+            <tr>
+              <th>Server</th>
+              <th>Category</th>
+              <th>Language</th>
+              <th className="right">Stars</th>
+              <th className="right">Downloads</th>
+              <th className="right">Score</th>
             </tr>
           </thead>
           <tbody>
             {servers.map((server) => (
-              <tr
-                key={server.id}
-                style={{ borderBottom: "1px solid #1a1a1a" }}
-              >
-                <td style={{ padding: "12px 8px" }}>
+              <tr key={server.id}>
+                <td>
                   <a
                     href={`/server/${server.slug}`}
-                    style={{ color: "#58a6ff", textDecoration: "none" }}
+                    className="server-name-link"
                   >
                     {server.name}
                   </a>
                   {server.description && (
+                    <p className="server-desc">{server.description}</p>
+                  )}
+                  {server.author && (
                     <p
                       style={{
-                        color: "#666",
-                        fontSize: "13px",
-                        margin: "4px 0 0",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        maxWidth: "400px",
+                        color: "var(--text-3)",
+                        fontSize: "11px",
+                        marginTop: "2px",
                       }}
                     >
-                      {server.description}
+                      by {server.author}
                     </p>
                   )}
                 </td>
-                <td style={{ padding: "12px 8px", color: "#888", fontSize: "13px" }}>
-                  {server.category || "—"}
+                <td>
+                  <CategoryChip cat={server.category} />
                 </td>
-                <td style={{ padding: "12px 8px", color: "#888", fontSize: "13px" }}>
-                  {server.author || "—"}
+                <td style={{ color: "var(--text-3)", fontSize: "13px" }}>
+                  {server.language || "—"}
                 </td>
-                <td style={{ padding: "12px 8px", textAlign: "right", color: "#888", fontSize: "13px" }}>
-                  {server.github_stars?.toLocaleString() || "—"}
+                <td
+                  className="right"
+                  style={{ color: "var(--text-2)", fontSize: "13px" }}
+                >
+                  {fmtNum(server.github_stars)}
                 </td>
-                <td style={{ padding: "12px 8px", textAlign: "right" }}>
+                <td
+                  className="right"
+                  style={{ color: "var(--text-2)", fontSize: "13px" }}
+                >
+                  {fmtNum(server.npm_downloads)}
+                </td>
+                <td className="right">
                   <ScoreBadge score={server.latest_score} />
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-      </section>
-    </div>
+      )}
+
+      {/* ── Pagination ────────────────────────────────── */}
+      {pagination.pages > 1 && (
+        <nav className="pagination" aria-label="Page navigation">
+          {page > 1 && (
+            <a
+              href={buildPageUrl(sp, page - 1)}
+              className="page-btn"
+              aria-label="Previous page"
+            >
+              ←
+            </a>
+          )}
+          {Array.from({ length: Math.min(pagination.pages, 7) }, (_, i) => {
+            const p = i + 1;
+            return (
+              <a
+                key={p}
+                href={buildPageUrl(sp, p)}
+                className={`page-btn${p === page ? " active" : ""}`}
+                aria-current={p === page ? "page" : undefined}
+              >
+                {p}
+              </a>
+            );
+          })}
+          {pagination.pages > 7 && page < pagination.pages && (
+            <>
+              <span
+                style={{ color: "var(--text-3)", fontSize: "14px" }}
+              >
+                …
+              </span>
+              <a
+                href={buildPageUrl(sp, pagination.pages)}
+                className="page-btn"
+              >
+                {pagination.pages}
+              </a>
+            </>
+          )}
+          {page < pagination.pages && (
+            <a
+              href={buildPageUrl(sp, page + 1)}
+              className="page-btn"
+              aria-label="Next page"
+            >
+              →
+            </a>
+          )}
+        </nav>
+      )}
+    </>
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div
-      style={{
-        backgroundColor: "#1a1a1a",
-        border: "1px solid #333",
-        borderRadius: "8px",
-        padding: "16px",
-        textAlign: "center",
-      }}
-    >
-      <div style={{ fontSize: "24px", fontWeight: 700 }}>{value}</div>
-      <div style={{ color: "#888", fontSize: "13px", marginTop: "4px" }}>
-        {label}
-      </div>
-    </div>
-  );
+function buildPageUrl(
+  sp: Record<string, string | undefined>,
+  page: number
+): string {
+  const params = new URLSearchParams();
+  if (sp.q) params.set("q", sp.q);
+  if (sp.category && sp.category !== "all") params.set("category", sp.category);
+  if (sp.sort && sp.sort !== "score") params.set("sort", sp.sort);
+  if (sp.order && sp.order !== "desc") params.set("order", sp.order);
+  if (sp.min_score) params.set("min_score", sp.min_score);
+  if (page > 1) params.set("page", String(page));
+  const qs = params.toString();
+  return qs ? `/?${qs}` : "/";
 }

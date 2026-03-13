@@ -1,0 +1,13 @@
+id: B6
+name: Schema Allows Unconstrained Additional Properties
+category: schema-analysis
+severity: medium
+owasp: MCP07-insecure-config
+mitre: null
+detect:
+  type: schema-check
+  conditions:
+    check: additional_properties_allowed
+  context: parameter_schema
+remediation: "Set 'additionalProperties: false' on all tool input schemas. Allowing additional properties bypasses all parameter validation, enabling clients to pass arbitrary keys that server-side code may process unsafely."
+enabled: true

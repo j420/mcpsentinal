@@ -28,6 +28,11 @@ export interface AnalysisContext {
     transport: string;
     response_time_ms: number;
   } | null;
+  // H2: Fields from the MCP initialize response (serverInfo.name is in server.name)
+  initialize_metadata?: {
+    server_version?: string | null;
+    server_instructions?: string | null;
+  };
 }
 
 export class AnalysisEngine {
@@ -224,6 +229,84 @@ export class AnalysisEngine {
         }
         break;
       }
+
+      case "additional_properties_allowed": {
+        // B6: additionalProperties: true (or not set to false) is a security risk
+        for (const tool of context.tools) {
+          if (!tool.input_schema) continue;
+          const schema = tool.input_schema as Record<string, unknown>;
+          // Flag if additionalProperties is explicitly true, or if properties exist but
+          // additionalProperties is not explicitly false
+          const hasProps = schema.properties && Object.keys(schema.properties as object).length > 0;
+          const additionalProps = schema.additionalProperties;
+          if (hasProps && additionalProps !== false) {
+            findings.push({
+              rule_id: rule.id,
+              severity: rule.severity,
+              evidence: `Tool "${tool.name}" schema has additionalProperties: ${JSON.stringify(additionalProps ?? "not set")} — arbitrary extra parameters are accepted`,
+              remediation: rule.remediation,
+              owasp_category: rule.owasp,
+              mitre_technique: rule.mitre,
+            });
+          }
+        }
+        break;
+      }
+
+      case "dangerous_parameter_defaults": {
+        // B7: detect dangerous default values in schemas
+        const dangerousDefaults = (conditions.dangerous_defaults as Array<{
+          pattern?: string;
+          context?: string;
+          key?: string;
+          value?: unknown;
+        }>) || [];
+
+        for (const tool of context.tools) {
+          const props = tool.input_schema?.properties as Record<string, Record<string, unknown>> | undefined;
+          if (!props) continue;
+
+          for (const [paramName, paramDef] of Object.entries(props)) {
+            if (!("default" in paramDef)) continue;
+            const defaultVal = paramDef.default;
+
+            for (const rule_ of dangerousDefaults) {
+              // Pattern-based: match string defaults against regex
+              if (rule_.pattern && typeof defaultVal === "string") {
+                try {
+                  if (new RegExp(rule_.pattern).test(defaultVal)) {
+                    findings.push({
+                      rule_id: rule.id,
+                      severity: rule.severity,
+                      evidence: `Tool "${tool.name}", parameter "${paramName}" has dangerous default value "${defaultVal}" (${rule_.context || rule_.pattern})`,
+                      remediation: rule.remediation,
+                      owasp_category: rule.owasp,
+                      mitre_technique: rule.mitre,
+                    });
+                    break;
+                  }
+                } catch { /* invalid pattern */ }
+              }
+              // Key+value based: match parameter name and boolean default
+              if (rule_.key && rule_.value !== undefined) {
+                const keyPattern = new RegExp(rule_.key, "i");
+                if (keyPattern.test(paramName) && defaultVal === rule_.value) {
+                  findings.push({
+                    rule_id: rule.id,
+                    severity: rule.severity,
+                    evidence: `Tool "${tool.name}", parameter "${paramName}" defaults to ${JSON.stringify(defaultVal)} — this is a dangerous default that grants broad permissions`,
+                    remediation: rule.remediation,
+                    owasp_category: rule.owasp,
+                    mitre_technique: rule.mitre,
+                  });
+                  break;
+                }
+              }
+            }
+          }
+        }
+        break;
+      }
     }
 
     return findings;
@@ -282,6 +365,71 @@ export class AnalysisEngine {
         }
         break;
       }
+
+      case "tool_behavior_drift": {
+        // G6: Rug pull detection — requires historical context stored in connection_metadata.
+        // The scanner pipeline is expected to embed prior_tool_count and prior_tool_names
+        // into connection_metadata when historical data is available.
+        const metaExt = meta as typeof meta & {
+          prior_tool_count?: number;
+          prior_tool_names?: string[];
+          prior_description_hashes?: Record<string, string>;
+        };
+
+        const increaseThreshold = (conditions.tool_count_increase_threshold as number) || 5;
+        const decreaseThreshold = (conditions.tool_count_decrease_threshold as number) || 3;
+        const criticalPatterns = (conditions.critical_capability_patterns as string[]) || [];
+
+        if (metaExt.prior_tool_count !== undefined) {
+          const currentCount = context.tools.length;
+          const delta = currentCount - metaExt.prior_tool_count;
+
+          if (delta > increaseThreshold) {
+            findings.push({
+              rule_id: rule.id,
+              severity: rule.severity,
+              evidence: `Server tool count increased by ${delta} tools since last scan (${metaExt.prior_tool_count} → ${currentCount}) — rug pull signal`,
+              remediation: rule.remediation,
+              owasp_category: rule.owasp,
+              mitre_technique: rule.mitre,
+            });
+          } else if (-delta > decreaseThreshold) {
+            findings.push({
+              rule_id: rule.id,
+              severity: rule.severity,
+              evidence: `Server tool count decreased by ${-delta} tools since last scan (${metaExt.prior_tool_count} → ${currentCount}) — tool removal after trust established`,
+              remediation: rule.remediation,
+              owasp_category: rule.owasp,
+              mitre_technique: rule.mitre,
+            });
+          }
+        }
+
+        // Check if any new tools have dangerous capability profiles
+        if (metaExt.prior_tool_names) {
+          const priorNames = new Set(metaExt.prior_tool_names);
+          const newTools = context.tools.filter((t) => !priorNames.has(t.name));
+
+          for (const newTool of newTools) {
+            const toolText = `${newTool.name} ${newTool.description || ""}`.toLowerCase();
+            const isDangerous = criticalPatterns.some((p) => {
+              try { return new RegExp(p, "i").test(toolText); } catch { return false; }
+            });
+
+            if (isDangerous) {
+              findings.push({
+                rule_id: rule.id,
+                severity: rule.severity,
+                evidence: `New tool "${newTool.name}" added since last scan matches dangerous capability patterns — server behavior drift detected`,
+                remediation: rule.remediation,
+                owasp_category: rule.owasp,
+                mitre_technique: rule.mitre,
+              });
+            }
+          }
+        }
+        break;
+      }
     }
 
     return findings;
@@ -325,6 +473,30 @@ export class AnalysisEngine {
               owasp_category: rule.owasp,
               mitre_technique: rule.mitre,
             });
+          }
+        }
+        break;
+      }
+
+      case "dependency_name_similarity": {
+        // D3: typosquatting detection via Levenshtein distance
+        const knownPackages = (conditions.known_packages as string[]) || [];
+        const similarityThreshold = (conditions.similarity_threshold as number) || 0.85;
+
+        for (const dep of context.dependencies) {
+          for (const known of knownPackages) {
+            if (dep.name === known) continue; // exact match is fine
+            const sim = this.stringSimilarity(dep.name, known);
+            if (sim >= similarityThreshold) {
+              findings.push({
+                rule_id: rule.id,
+                severity: rule.severity,
+                evidence: `Dependency "${dep.name}" is suspiciously similar to "${known}" (similarity: ${(sim * 100).toFixed(1)}%) — possible typosquat`,
+                remediation: rule.remediation,
+                owasp_category: rule.owasp,
+                mitre_technique: rule.mitre,
+              });
+            }
           }
         }
         break;
@@ -397,10 +569,16 @@ export class AnalysisEngine {
         );
 
         if (hasSources && hasSinks) {
+          const sourceTools = context.tools
+            .filter((t) => sourcePatterns.some((p) => t.name.toLowerCase().includes(p)))
+            .map((t) => t.name);
+          const sinkTools = context.tools
+            .filter((t) => sinkPatterns.some((p) => t.name.toLowerCase().includes(p)))
+            .map((t) => t.name);
           findings.push({
             rule_id: rule.id,
             severity: rule.severity,
-            evidence: `Server contains both data-reading and data-sending tools, creating potential exfiltration paths`,
+            evidence: `Server contains data-reading tools [${sourceTools.join(", ")}] and data-sending tools [${sinkTools.join(", ")}], creating potential exfiltration paths`,
             remediation: rule.remediation,
             owasp_category: rule.owasp,
             mitre_technique: rule.mitre,
@@ -425,6 +603,467 @@ export class AnalysisEngine {
         }
         break;
       }
+
+      case "spec_compliance": {
+        // F4: Check that server metadata meets MCP spec requirements
+        const requiredFields = (conditions.required_fields as string[]) || [];
+        const recommendedFields = (conditions.recommended_fields as string[]) || [];
+        const missing: string[] = [];
+        const serverMeta = context.server as Record<string, unknown>;
+
+        for (const field of requiredFields) {
+          if (!serverMeta[field]) missing.push(`required:${field}`);
+        }
+        for (const field of recommendedFields) {
+          if (!serverMeta[field]) missing.push(`recommended:${field}`);
+        }
+
+        // Check tool descriptions
+        if (recommendedFields.includes("tool_descriptions")) {
+          const toolsWithoutDesc = context.tools.filter((t) => !t.description || t.description.trim().length < 10);
+          if (toolsWithoutDesc.length > 0) {
+            missing.push(`tool_descriptions missing on: ${toolsWithoutDesc.map((t) => t.name).join(", ")}`);
+          }
+        }
+
+        if (missing.length > 0) {
+          findings.push({
+            rule_id: rule.id,
+            severity: rule.severity,
+            evidence: `Server fails MCP spec compliance checks: ${missing.join("; ")}`,
+            remediation: rule.remediation,
+            owasp_category: rule.owasp,
+            mitre_technique: rule.mitre,
+          });
+        }
+        break;
+      }
+
+      case "description_capability_mismatch": {
+        // A8: Description claims read-only but parameters suggest write operations
+        const readonlyClaimPatterns = (conditions.readonly_claim_patterns as string[]) || [];
+        const writeParamPatterns = (conditions.write_parameter_patterns as string[]) || [];
+
+        for (const tool of context.tools) {
+          const desc = `${tool.description || ""}`;
+          const claimsReadOnly = readonlyClaimPatterns.some((p) => {
+            try { return new RegExp(p, "i").test(desc); } catch { return false; }
+          });
+
+          if (!claimsReadOnly) continue;
+
+          const props = tool.input_schema?.properties as Record<string, Record<string, unknown>> | undefined;
+          if (!props) continue;
+
+          const writeParams = Object.keys(props).filter((paramName) =>
+            writeParamPatterns.some((p) => {
+              try { return new RegExp(p, "i").test(paramName); } catch { return false; }
+            })
+          );
+
+          if (writeParams.length > 0) {
+            findings.push({
+              rule_id: rule.id,
+              severity: rule.severity,
+              evidence: `Tool "${tool.name}" describes itself as read-only/non-destructive but has write-capable parameters: [${writeParams.join(", ")}]`,
+              remediation: rule.remediation,
+              owasp_category: rule.owasp,
+              mitre_technique: rule.mitre,
+            });
+          }
+        }
+        break;
+      }
+
+      case "known_malicious_package": {
+        // D5: Check against known malicious package name list
+        const maliciousPackages = (conditions.malicious_packages as string[]) || [];
+        for (const dep of context.dependencies) {
+          if (maliciousPackages.includes(dep.name.toLowerCase())) {
+            findings.push({
+              rule_id: rule.id,
+              severity: rule.severity,
+              evidence: `Dependency "${dep.name}@${dep.version}" is on the known malicious packages list — this package has been confirmed malicious or is a known typosquat`,
+              remediation: rule.remediation,
+              owasp_category: rule.owasp,
+              mitre_technique: rule.mitre,
+            });
+          }
+        }
+        break;
+      }
+
+      case "weak_crypto_deps": {
+        // D6: Check for known weak/deprecated cryptographic dependencies
+        const weakPackages = (conditions.weak_packages as Array<{
+          name: string;
+          max_version?: string;
+          reason: string;
+        }>) || [];
+
+        for (const dep of context.dependencies) {
+          for (const weak of weakPackages) {
+            if (dep.name.toLowerCase() !== weak.name.toLowerCase()) continue;
+
+            // If max_version specified, only flag if dep version is <= max_version
+            if (weak.max_version && dep.version) {
+              if (!this.versionLessThanOrEqual(dep.version, weak.max_version)) continue;
+            }
+
+            findings.push({
+              rule_id: rule.id,
+              severity: rule.severity,
+              evidence: `Dependency "${dep.name}@${dep.version || "unknown"}" uses weak/deprecated cryptography: ${weak.reason}`,
+              remediation: rule.remediation,
+              owasp_category: rule.owasp,
+              mitre_technique: rule.mitre,
+            });
+            break;
+          }
+        }
+        break;
+      }
+
+      case "dependency_confusion_risk": {
+        // D7: Detect dependency confusion risk signals
+        const signals = (conditions.signals as Array<{
+          pattern?: string;
+          description: string;
+        }>) || [];
+
+        for (const dep of context.dependencies) {
+          for (const signal of signals) {
+            if (!signal.pattern) continue;
+            try {
+              if (new RegExp(signal.pattern).test(dep.name)) {
+                // Additional check: version suspiciously high (attacker trick)
+                if (dep.version && /^[0-9]{3,}\./.test(dep.version)) {
+                  findings.push({
+                    rule_id: rule.id,
+                    severity: rule.severity,
+                    evidence: `Dependency "${dep.name}@${dep.version}" has a suspiciously high version number — classic dependency confusion attack signature (${signal.description})`,
+                    remediation: rule.remediation,
+                    owasp_category: rule.owasp,
+                    mitre_technique: rule.mitre,
+                  });
+                  break;
+                }
+              }
+            } catch { /* invalid regex */ }
+          }
+        }
+        break;
+      }
+
+      case "namespace_squatting": {
+        // F5: Detect servers impersonating official namespaces
+        const protectedNamespaces = (conditions.protected_namespaces as Array<{
+          pattern: string;
+          owner: string;
+          verified_github_orgs: string[];
+        }>) || [];
+        const knownServerNames = (conditions.known_server_names as string[]) || [];
+
+        const serverName = context.server.name.toLowerCase();
+        const githubUrl = context.server.github_url?.toLowerCase() || "";
+
+        for (const ns of protectedNamespaces) {
+          try {
+            if (!new RegExp(ns.pattern).test(serverName)) continue;
+
+            // Check if the server's GitHub org matches a verified org
+            const isVerified = ns.verified_github_orgs.some((org) =>
+              githubUrl.includes(`github.com/${org}/`) ||
+              githubUrl.includes(`github.com/${org.toLowerCase()}/`)
+            );
+
+            if (!isVerified) {
+              findings.push({
+                rule_id: rule.id,
+                severity: rule.severity,
+                evidence: `Server name "${context.server.name}" matches protected namespace pattern for "${ns.owner}" but is not from a verified GitHub org (expected: ${ns.verified_github_orgs.join(", ")})`,
+                remediation: rule.remediation,
+                owasp_category: rule.owasp,
+                mitre_technique: rule.mitre,
+              });
+              break;
+            }
+          } catch { /* invalid regex */ }
+        }
+
+        // Check for high-similarity matches to known official server names
+        for (const knownName of knownServerNames) {
+          if (serverName === knownName) continue;
+          const sim = this.stringSimilarity(serverName, knownName);
+          if (sim >= 0.85) {
+            findings.push({
+              rule_id: rule.id,
+              severity: rule.severity,
+              evidence: `Server name "${context.server.name}" is suspiciously similar to known official server "${knownName}" (similarity: ${(sim * 100).toFixed(1)}%)`,
+              remediation: rule.remediation,
+              owasp_category: rule.owasp,
+              mitre_technique: rule.mitre,
+            });
+          }
+        }
+        break;
+      }
+
+      case "circular_data_loop": {
+        // F6: Detect write+read on same data store — persistent prompt injection vector
+        const writePatterns = (conditions.write_tool_patterns as string[]) || [];
+        const readPatterns = (conditions.read_tool_patterns as string[]) || [];
+        const storeIndicators = (conditions.store_indicators as string[]) || [];
+
+        const writeTools: string[] = [];
+        const readTools: string[] = [];
+
+        for (const tool of context.tools) {
+          const text = `${tool.name} ${tool.description || ""}`.toLowerCase();
+          const hasStore = storeIndicators.some((p) => {
+            try { return new RegExp(p, "i").test(text); } catch { return false; }
+          });
+          if (!hasStore) continue;
+
+          const isWrite = writePatterns.some((p) => {
+            try { return new RegExp(p, "i").test(text); } catch { return false; }
+          });
+          const isRead = readPatterns.some((p) => {
+            try { return new RegExp(p, "i").test(text); } catch { return false; }
+          });
+
+          if (isWrite) writeTools.push(tool.name);
+          if (isRead) readTools.push(tool.name);
+        }
+
+        if (writeTools.length > 0 && readTools.length > 0) {
+          findings.push({
+            rule_id: rule.id,
+            severity: rule.severity,
+            evidence: `Server has write tools [${writeTools.join(", ")}] and read tools [${readTools.join(", ")}] operating on the same data store — circular data loop enables persistent prompt injection`,
+            remediation: rule.remediation,
+            owasp_category: rule.owasp,
+            mitre_technique: rule.mitre,
+          });
+        }
+        break;
+      }
+
+      case "indirect_injection_gateway": {
+        // G1: Tools that ingest untrusted external content without declared sanitization
+        // This is the #1 real-world MCP attack vector (Rehberger / Invariant Labs research)
+        const ingestionPatterns = (conditions.ingestion_tool_patterns as string[]) || [];
+        const sanitizationSignals = (conditions.sanitization_signals as string[]) || [];
+
+        const gatewayTools: string[] = [];
+
+        for (const tool of context.tools) {
+          const toolText = `${tool.name} ${tool.description || ""}`.toLowerCase();
+
+          const isIngestionTool = ingestionPatterns.some((p) => {
+            try { return new RegExp(p, "i").test(toolText); } catch { return false; }
+          });
+
+          if (!isIngestionTool) continue;
+
+          // Check if description mentions any sanitization
+          const hasSanitization = sanitizationSignals.some((p) => {
+            try { return new RegExp(p, "i").test(toolText); } catch { return false; }
+          });
+
+          if (!hasSanitization) {
+            gatewayTools.push(tool.name);
+          }
+        }
+
+        if (gatewayTools.length > 0) {
+          findings.push({
+            rule_id: rule.id,
+            severity: rule.severity,
+            evidence: `Server has tools that ingest untrusted external content without declared sanitization: [${gatewayTools.join(", ")}]. These are indirect prompt injection gateways — attackers can inject instructions into the content these tools fetch.`,
+            remediation: rule.remediation,
+            owasp_category: rule.owasp,
+            mitre_technique: rule.mitre,
+          });
+        }
+        break;
+      }
+
+      case "context_window_saturation": {
+        // G4: Detect descriptions designed to exhaust the AI's context window
+        const charThreshold = (conditions.description_char_threshold as number) || 6000;
+        const descToParamsRatio = (conditions.description_to_params_ratio as number) || 500;
+        const tailWindowPct = (conditions.tail_window_percent as number) || 20;
+
+        for (const tool of context.tools) {
+          const desc = tool.description || "";
+          const descLen = desc.length;
+
+          // Check 1: Raw length threshold
+          if (descLen > charThreshold) {
+            findings.push({
+              rule_id: rule.id,
+              severity: rule.severity,
+              evidence: `Tool "${tool.name}" description is ${descLen} characters (threshold: ${charThreshold}) — potential context window saturation attack`,
+              remediation: rule.remediation,
+              owasp_category: rule.owasp,
+              mitre_technique: rule.mitre,
+            });
+            continue;
+          }
+
+          // Check 2: Disproportionate description vs parameter count
+          const props = tool.input_schema?.properties as Record<string, unknown> | undefined;
+          const paramCount = props ? Object.keys(props).length : 0;
+          if (paramCount > 0 && descLen / paramCount > descToParamsRatio && descLen > 1000) {
+            findings.push({
+              rule_id: rule.id,
+              severity: rule.severity,
+              evidence: `Tool "${tool.name}" has ${descLen} char description for only ${paramCount} parameters (${Math.round(descLen / paramCount)} chars/param, threshold: ${descToParamsRatio}) — description padding detected`,
+              remediation: rule.remediation,
+              owasp_category: rule.owasp,
+              mitre_technique: rule.mitre,
+            });
+            continue;
+          }
+
+          // Check 3: Injection payload in tail position of a long description (recency attack)
+          if (descLen > 2000) {
+            const tailStart = Math.floor(descLen * (1 - tailWindowPct / 100));
+            const tail = desc.substring(tailStart);
+            const injectionPatterns = [
+              /ignore\s+(previous|above|all)\s+instructions/i,
+              /you\s+are\s+now\s+(a|an|the)\s+/i,
+              /from\s+now\s+on[,\s]+you\s+(must|will|should)/i,
+              /new\s+instructions?\s*:/i,
+              /override\s+(previous|system)\s+(prompt|instructions)/i,
+            ];
+            const tailInjection = injectionPatterns.some((r) => r.test(tail));
+            if (tailInjection) {
+              findings.push({
+                rule_id: rule.id,
+                severity: rule.severity,
+                evidence: `Tool "${tool.name}" has a ${descLen}-char description with an injection payload in the final ${tailWindowPct}% — context saturation + tail injection attack`,
+                remediation: rule.remediation,
+                owasp_category: rule.owasp,
+                mitre_technique: rule.mitre,
+              });
+            }
+          }
+        }
+        break;
+      }
+
+      case "multi_step_exfiltration_chain": {
+        // F7: Detect 3-step exfiltration chain (read → transform → exfiltrate)
+        const step1Patterns = (conditions.step1_read_patterns as string[]) || [];
+        const step2Patterns = (conditions.step2_transform_patterns as string[]) || [];
+        const step3Patterns = (conditions.step3_exfil_patterns as string[]) || [];
+
+        const step1Tools: string[] = [];
+        const step2Tools: string[] = [];
+        const step3Tools: string[] = [];
+
+        for (const tool of context.tools) {
+          const text = `${tool.name} ${tool.description || ""}`.toLowerCase();
+
+          if (step1Patterns.some((p) => { try { return new RegExp(p, "i").test(text); } catch { return false; } })) {
+            step1Tools.push(tool.name);
+          }
+          if (step2Patterns.some((p) => { try { return new RegExp(p, "i").test(text); } catch { return false; } })) {
+            step2Tools.push(tool.name);
+          }
+          if (step3Patterns.some((p) => { try { return new RegExp(p, "i").test(text); } catch { return false; } })) {
+            step3Tools.push(tool.name);
+          }
+        }
+
+        const requiresAll = conditions.requires_all_steps !== false;
+        const chainComplete = requiresAll
+          ? step1Tools.length > 0 && step2Tools.length > 0 && step3Tools.length > 0
+          : step1Tools.length > 0 && step3Tools.length > 0;
+
+        if (chainComplete) {
+          findings.push({
+            rule_id: rule.id,
+            severity: rule.severity,
+            evidence: `Server provides a complete multi-step exfiltration chain — Step 1 (read): [${step1Tools.join(", ")}] → Step 2 (transform): [${step2Tools.join(", ")}] → Step 3 (exfiltrate): [${step3Tools.join(", ")}]`,
+            remediation: rule.remediation,
+            owasp_category: rule.owasp,
+            mitre_technique: rule.mitre,
+          });
+        }
+        break;
+      }
+
+      case "multi_agent_propagation_risk": {
+        // H3: Detect MCP tools that form propagation vectors in multi-agent architectures.
+        //
+        // Agentic AI systems (LangGraph, AutoGen, CrewAI) use MCP as the integration
+        // layer between agents. A compromised upstream agent can inject malicious
+        // instructions through shared MCP tools to ALL downstream agents — without any
+        // single tool call appearing suspicious in isolation.
+        //
+        // We flag two categories:
+        // 1. Agentic input sinks: tools explicitly designed to receive output FROM other
+        //    agents, without declaring trust boundary or input validation.
+        // 2. Shared memory writers: tools that write to cross-agent state (vector stores,
+        //    working memory, scratchpads) — the transmission medium for cross-agent injection.
+        const agenticInputPatterns = (conditions.agentic_input_patterns as string[]) || [];
+        const sharedMemoryPatterns = (conditions.shared_memory_patterns as string[]) || [];
+        const trustBoundarySignals = (conditions.trust_boundary_signals as string[]) || [];
+
+        const propagationSinkTools: string[] = [];
+        const sharedMemoryTools: string[] = [];
+
+        for (const tool of context.tools) {
+          const toolText = `${tool.name} ${tool.description || ""}`;
+
+          const isAgenticInputSink = agenticInputPatterns.some((p) => {
+            try { return new RegExp(p, "i").test(toolText); } catch { return false; }
+          });
+
+          if (isAgenticInputSink) {
+            // Only flag if there is no explicit trust boundary declaration
+            const hasTrustBoundary = trustBoundarySignals.some((p) => {
+              try { return new RegExp(p, "i").test(toolText); } catch { return false; }
+            });
+            if (!hasTrustBoundary) {
+              propagationSinkTools.push(tool.name);
+            }
+          }
+
+          const isSharedMemoryWriter = sharedMemoryPatterns.some((p) => {
+            try { return new RegExp(p, "i").test(toolText); } catch { return false; }
+          });
+          if (isSharedMemoryWriter) {
+            sharedMemoryTools.push(tool.name);
+          }
+        }
+
+        if (propagationSinkTools.length > 0 || sharedMemoryTools.length > 0) {
+          const evidenceParts: string[] = [];
+          if (propagationSinkTools.length > 0) {
+            evidenceParts.push(
+              `agentic input sinks without trust boundaries: [${propagationSinkTools.join(", ")}]`
+            );
+          }
+          if (sharedMemoryTools.length > 0) {
+            evidenceParts.push(
+              `shared agent memory/state tools (cross-agent infection vectors): [${sharedMemoryTools.join(", ")}]`
+            );
+          }
+          findings.push({
+            rule_id: rule.id,
+            severity: rule.severity,
+            evidence: `Multi-agent propagation risk — ${evidenceParts.join("; ")}. A compromised upstream agent can propagate injected instructions to downstream agents through these tools without any individual call appearing suspicious.`,
+            remediation: rule.remediation,
+            owasp_category: rule.owasp,
+            mitre_technique: rule.mitre,
+          });
+        }
+        break;
+      }
     }
 
     return findings;
@@ -440,6 +1079,32 @@ export class AnalysisEngine {
           text: `${t.name} ${t.description || ""}`,
           location: `tool:${t.name}`,
         }));
+
+      case "parameter_description": {
+        // B5: Scan parameter-level description fields — a secondary injection surface
+        return context.tools.flatMap((t) => {
+          const props = t.input_schema?.properties as Record<string, Record<string, unknown>> | undefined;
+          if (!props) return [];
+          return Object.entries(props).flatMap(([name, def]) => {
+            const results: Array<{ text: string; location: string }> = [];
+            // Scan the parameter's description field
+            if (def.description && typeof def.description === "string") {
+              results.push({
+                text: def.description,
+                location: `tool:${t.name}/param:${name}/description`,
+              });
+            }
+            // Also scan parameter name + title
+            if (def.title && typeof def.title === "string") {
+              results.push({
+                text: `${name} ${def.title}`,
+                location: `tool:${t.name}/param:${name}/title`,
+              });
+            }
+            return results;
+          });
+        });
+      }
 
       case "parameter_schema":
         return context.tools.flatMap((t) => {
@@ -465,6 +1130,33 @@ export class AnalysisEngine {
             location: "metadata",
           },
         ];
+
+      // H2: Scans fields from the MCP initialize handshake response.
+      // serverInfo.name is the first string an AI processes when connecting to a server —
+      // processed before tool descriptions, before conversation, before any user context.
+      // server_version and server_instructions (MCP spec 2025-11+) add two more surfaces.
+      case "server_initialize_fields": {
+        const initTexts: Array<{ text: string; location: string }> = [];
+        if (context.server.name) {
+          initTexts.push({
+            text: context.server.name,
+            location: "initialize:serverInfo.name",
+          });
+        }
+        if (context.initialize_metadata?.server_version) {
+          initTexts.push({
+            text: context.initialize_metadata.server_version,
+            location: "initialize:serverInfo.version",
+          });
+        }
+        if (context.initialize_metadata?.server_instructions) {
+          initTexts.push({
+            text: context.initialize_metadata.server_instructions,
+            location: "initialize:instructions",
+          });
+        }
+        return initTexts;
+      }
 
       default:
         return [];
@@ -496,5 +1188,55 @@ export class AnalysisEngine {
     }
 
     return caps;
+  }
+
+  /**
+   * Compute normalized Levenshtein similarity between two strings.
+   * Returns a value between 0 (completely different) and 1 (identical).
+   */
+  private stringSimilarity(a: string, b: string): number {
+    const longer = a.length > b.length ? a : b;
+    const shorter = a.length > b.length ? b : a;
+    if (longer.length === 0) return 1.0;
+    const distance = this.levenshteinDistance(longer, shorter);
+    return (longer.length - distance) / longer.length;
+  }
+
+  private levenshteinDistance(a: string, b: string): number {
+    const matrix: number[][] = [];
+    for (let i = 0; i <= b.length; i++) {
+      matrix[i] = [i];
+    }
+    for (let j = 0; j <= a.length; j++) {
+      matrix[0][j] = j;
+    }
+    for (let i = 1; i <= b.length; i++) {
+      for (let j = 1; j <= a.length; j++) {
+        if (b.charAt(i - 1) === a.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j - 1] + 1,
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j] + 1
+          );
+        }
+      }
+    }
+    return matrix[b.length][a.length];
+  }
+
+  /**
+   * Simple semver comparison: returns true if version <= maxVersion.
+   * Only handles major.minor.patch format.
+   */
+  private versionLessThanOrEqual(version: string, maxVersion: string): boolean {
+    const parse = (v: string) =>
+      v.replace(/[^0-9.]/g, "").split(".").map(Number);
+    const [aMaj, aMin = 0, aPatch = 0] = parse(version);
+    const [bMaj, bMin = 0, bPatch = 0] = parse(maxVersion);
+    if (aMaj !== bMaj) return aMaj < bMaj;
+    if (aMin !== bMin) return aMin < bMin;
+    return aPatch <= bPatch;
   }
 }
