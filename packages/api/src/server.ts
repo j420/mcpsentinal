@@ -170,7 +170,7 @@ async function start() {
     logger.warn("DATABASE_URL not set, skipping migrations");
   }
 
-  app.listen(PORT, () => {
+  app.listen(PORT, "0.0.0.0", () => {
     logger.info({ port: PORT }, "MCP Sentinel API started");
   });
 }
