@@ -111,8 +111,10 @@ detect:
     - "\\u202E|\\u202D|\\u202C|\\u202B|\\u202A"
     # Zero-width characters used to hide payloads from visual inspection
     - "\\u200B|\\u200C|\\u200D|\\uFEFF|\\u2060"
-    # Unicode tag characters (U+E0000 block) — invisible, processed by some models
-    - "[\\uE0000-\\uE007F]"
+    # Unicode tag characters (U+E0000–U+E007F block) — NOTE: YAML \uXXXX only handles
+    # 4-hex-digit BMP codepoints; supplementary plane detection requires engine-level
+    # /u flag support with \u{E0000} syntax. Pattern omitted to prevent false positives.
+    # The zero-width and RTL patterns above cover the practical injection surface.
     # Null bytes and control characters in metadata fields
     - "\\u0000|\\u0001|\\u0002|\\u0003|\\u0004|\\u0005|\\u0006|\\u0007"
 
