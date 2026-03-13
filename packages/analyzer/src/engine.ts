@@ -360,6 +360,71 @@ export class AnalysisEngine {
         }
         break;
       }
+
+      case "tool_behavior_drift": {
+        // G6: Rug pull detection — requires historical context stored in connection_metadata.
+        // The scanner pipeline is expected to embed prior_tool_count and prior_tool_names
+        // into connection_metadata when historical data is available.
+        const metaExt = meta as typeof meta & {
+          prior_tool_count?: number;
+          prior_tool_names?: string[];
+          prior_description_hashes?: Record<string, string>;
+        };
+
+        const increaseThreshold = (conditions.tool_count_increase_threshold as number) || 5;
+        const decreaseThreshold = (conditions.tool_count_decrease_threshold as number) || 3;
+        const criticalPatterns = (conditions.critical_capability_patterns as string[]) || [];
+
+        if (metaExt.prior_tool_count !== undefined) {
+          const currentCount = context.tools.length;
+          const delta = currentCount - metaExt.prior_tool_count;
+
+          if (delta > increaseThreshold) {
+            findings.push({
+              rule_id: rule.id,
+              severity: rule.severity,
+              evidence: `Server tool count increased by ${delta} tools since last scan (${metaExt.prior_tool_count} → ${currentCount}) — rug pull signal`,
+              remediation: rule.remediation,
+              owasp_category: rule.owasp,
+              mitre_technique: rule.mitre,
+            });
+          } else if (-delta > decreaseThreshold) {
+            findings.push({
+              rule_id: rule.id,
+              severity: rule.severity,
+              evidence: `Server tool count decreased by ${-delta} tools since last scan (${metaExt.prior_tool_count} → ${currentCount}) — tool removal after trust established`,
+              remediation: rule.remediation,
+              owasp_category: rule.owasp,
+              mitre_technique: rule.mitre,
+            });
+          }
+        }
+
+        // Check if any new tools have dangerous capability profiles
+        if (metaExt.prior_tool_names) {
+          const priorNames = new Set(metaExt.prior_tool_names);
+          const newTools = context.tools.filter((t) => !priorNames.has(t.name));
+
+          for (const newTool of newTools) {
+            const toolText = `${newTool.name} ${newTool.description || ""}`.toLowerCase();
+            const isDangerous = criticalPatterns.some((p) => {
+              try { return new RegExp(p, "i").test(toolText); } catch { return false; }
+            });
+
+            if (isDangerous) {
+              findings.push({
+                rule_id: rule.id,
+                severity: rule.severity,
+                evidence: `New tool "${newTool.name}" added since last scan matches dangerous capability patterns — server behavior drift detected`,
+                remediation: rule.remediation,
+                owasp_category: rule.owasp,
+                mitre_technique: rule.mitre,
+              });
+            }
+          }
+        }
+        break;
+      }
     }
 
     return findings;
@@ -775,6 +840,111 @@ export class AnalysisEngine {
             owasp_category: rule.owasp,
             mitre_technique: rule.mitre,
           });
+        }
+        break;
+      }
+
+      case "indirect_injection_gateway": {
+        // G1: Tools that ingest untrusted external content without declared sanitization
+        // This is the #1 real-world MCP attack vector (Rehberger / Invariant Labs research)
+        const ingestionPatterns = (conditions.ingestion_tool_patterns as string[]) || [];
+        const sanitizationSignals = (conditions.sanitization_signals as string[]) || [];
+
+        const gatewayTools: string[] = [];
+
+        for (const tool of context.tools) {
+          const toolText = `${tool.name} ${tool.description || ""}`.toLowerCase();
+
+          const isIngestionTool = ingestionPatterns.some((p) => {
+            try { return new RegExp(p, "i").test(toolText); } catch { return false; }
+          });
+
+          if (!isIngestionTool) continue;
+
+          // Check if description mentions any sanitization
+          const hasSanitization = sanitizationSignals.some((p) => {
+            try { return new RegExp(p, "i").test(toolText); } catch { return false; }
+          });
+
+          if (!hasSanitization) {
+            gatewayTools.push(tool.name);
+          }
+        }
+
+        if (gatewayTools.length > 0) {
+          findings.push({
+            rule_id: rule.id,
+            severity: rule.severity,
+            evidence: `Server has tools that ingest untrusted external content without declared sanitization: [${gatewayTools.join(", ")}]. These are indirect prompt injection gateways — attackers can inject instructions into the content these tools fetch.`,
+            remediation: rule.remediation,
+            owasp_category: rule.owasp,
+            mitre_technique: rule.mitre,
+          });
+        }
+        break;
+      }
+
+      case "context_window_saturation": {
+        // G4: Detect descriptions designed to exhaust the AI's context window
+        const charThreshold = (conditions.description_char_threshold as number) || 6000;
+        const descToParamsRatio = (conditions.description_to_params_ratio as number) || 500;
+        const tailWindowPct = (conditions.tail_window_percent as number) || 20;
+
+        for (const tool of context.tools) {
+          const desc = tool.description || "";
+          const descLen = desc.length;
+
+          // Check 1: Raw length threshold
+          if (descLen > charThreshold) {
+            findings.push({
+              rule_id: rule.id,
+              severity: rule.severity,
+              evidence: `Tool "${tool.name}" description is ${descLen} characters (threshold: ${charThreshold}) — potential context window saturation attack`,
+              remediation: rule.remediation,
+              owasp_category: rule.owasp,
+              mitre_technique: rule.mitre,
+            });
+            continue;
+          }
+
+          // Check 2: Disproportionate description vs parameter count
+          const props = tool.input_schema?.properties as Record<string, unknown> | undefined;
+          const paramCount = props ? Object.keys(props).length : 0;
+          if (paramCount > 0 && descLen / paramCount > descToParamsRatio && descLen > 1000) {
+            findings.push({
+              rule_id: rule.id,
+              severity: rule.severity,
+              evidence: `Tool "${tool.name}" has ${descLen} char description for only ${paramCount} parameters (${Math.round(descLen / paramCount)} chars/param, threshold: ${descToParamsRatio}) — description padding detected`,
+              remediation: rule.remediation,
+              owasp_category: rule.owasp,
+              mitre_technique: rule.mitre,
+            });
+            continue;
+          }
+
+          // Check 3: Injection payload in tail position of a long description (recency attack)
+          if (descLen > 2000) {
+            const tailStart = Math.floor(descLen * (1 - tailWindowPct / 100));
+            const tail = desc.substring(tailStart);
+            const injectionPatterns = [
+              /ignore\s+(previous|above|all)\s+instructions/i,
+              /you\s+are\s+now\s+(a|an|the)\s+/i,
+              /from\s+now\s+on[,\s]+you\s+(must|will|should)/i,
+              /new\s+instructions?\s*:/i,
+              /override\s+(previous|system)\s+(prompt|instructions)/i,
+            ];
+            const tailInjection = injectionPatterns.some((r) => r.test(tail));
+            if (tailInjection) {
+              findings.push({
+                rule_id: rule.id,
+                severity: rule.severity,
+                evidence: `Tool "${tool.name}" has a ${descLen}-char description with an injection payload in the final ${tailWindowPct}% — context saturation + tail injection attack`,
+                remediation: rule.remediation,
+                owasp_category: rule.owasp,
+                mitre_technique: rule.mitre,
+              });
+            }
+          }
         }
         break;
       }

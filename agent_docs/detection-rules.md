@@ -1,17 +1,31 @@
 # MCP Sentinel — Detection Rules Specification
-## P8 Detection Rule Engineer Output — v2.0
+## P8 Detection Rule Engineer Output — v3.0 (with P1 Threat Intelligence)
 
 ### Rule Categories
 
-| Category | Code | Requires Source Code | Rule Count |
-|----------|------|---------------------|------------|
-| Description Analysis | A | No | 9 |
-| Schema Analysis | B | No | 7 |
-| Code Analysis | C | Yes | 16 |
-| Dependency Analysis | D | Yes (package manifest) | 7 |
-| Behavioral Analysis | E | No (connection metadata) | 4 |
-| Ecosystem Context | F | No (tool metadata) | 7 |
-| **Total** | | | **50** |
+| Category | Code | Requires Source Code | Rule Count | Authored By |
+|----------|------|---------------------|------------|-------------|
+| Description Analysis | A | No | 9 | Security Engineer |
+| Schema Analysis | B | No | 7 | Security Engineer |
+| Code Analysis | C | Yes | 16 | Security Engineer |
+| Dependency Analysis | D | Yes (package manifest) | 7 | Security Engineer |
+| Behavioral Analysis | E | No (connection metadata) | 4 | Security Engineer |
+| Ecosystem Context | F | No (tool metadata) | 7 | Security Engineer |
+| **Adversarial AI** | **G** | **No (metadata + history)** | **7** | **P1 Threat Researcher** |
+| **Total** | | | **57** | |
+
+### The G-Category: What a Threat Researcher Adds
+
+Rules A–F are what a skilled security engineer produces by applying OWASP and classic vulnerability research to MCP. They detect flaws that exist independent of AI.
+
+Rules G1–G7 are what a **Threat Intelligence Researcher** who has studied actual LLM exploitation produces. These rules detect attacks that **only work because the target is an AI** — they require deep understanding of how language models reason, what they implicitly trust, and how they process tool metadata differently from humans.
+
+**Primary threat intelligence sources for G-rules:**
+- Johann Rehberger (Embrace The Red) — indirect prompt injection demonstrations against Claude/GPT-4 (2024)
+- Invariant Labs — MCP indirect injection research paper (2025)
+- Wiz Research — MCP supply chain attack analysis
+- MITRE ATLAS AML.T0054 — LLM prompt injection technique taxonomy
+- Real-world incidents: Claude Desktop compromised via web-scraping MCP (2024-Q4)
 
 ### Severity Weights (for scoring)
 
@@ -184,3 +198,18 @@ Dynamic tool invocation (actually calling MCP server tools with test inputs) is 
 | `composite`: `namespace_squatting` | `runCompositeRule` | ✅ New |
 | `composite`: `circular_data_loop` | `runCompositeRule` | ✅ New |
 | `composite`: `multi_step_exfiltration_chain` | `runCompositeRule` | ✅ New |
+| `composite`: `indirect_injection_gateway` | `runCompositeRule` | ✅ G1 |
+| `composite`: `context_window_saturation` | `runCompositeRule` | ✅ G4 |
+| `behavioral`: `tool_behavior_drift` | `runBehavioralRule` | ✅ G6 |
+
+#### Category G — Adversarial AI (7 rules — P1 Threat Researcher)
+
+| ID | Name | Severity | Attack Intelligence |
+|----|------|----------|---------------------|
+| **G1** | **Indirect Prompt Injection Gateway** | **Critical** | **#1 real-world attack vector. Rehberger (2024): "web scraping MCP returns page controlled by attacker containing injection payload." Email readers, issue trackers, Slack bots, file readers — any tool ingesting external content is a gateway.** |
+| **G2** | **Trust Assertion Injection** | **Critical** | **AI-native social engineering. Tool description claims "Approved by Anthropic" or "security certified." LLMs are trained to respect authority — this causes skip of user confirmation and trust escalation.** |
+| **G3** | **Tool Response Format Injection** | **Critical** | **Confused deputy attack on the parsing layer. Tool claims to return MCP protocol messages or JSON-RPC tool calls. AI mistakes data for executable code.** |
+| **G4** | **Context Window Saturation** | **High** | **Precision attack: description sized to push safety instructions below the model's effective attention threshold. Detects: padding detection, description-to-parameter ratio, tail injection (payload at end of long description exploiting recency bias).** |
+| **G5** | **Capability Escalation via Prior Approval** | **Critical** | **AI-specific session state exploitation. Description references "permissions you already granted" or "same access as [other tool]." AI applies referenced permission without fresh approval — no equivalent in traditional security.** |
+| **G6** | **Rug Pull / Tool Behavior Drift** | **Critical** | **Temporal attack: establish trust, then change. Detects tool count changes >5, dangerous new tools added after stable scan history, description hash changes on security-critical tools. Requires historical baseline.** |
+| **G7** | **DNS-Based Data Exfiltration Channel** | **Critical** | **Stealth exfiltration bypassing HTTP firewalls, DLP, and SIEM. Data encoded in DNS query subdomains. Works through corporate firewalls (UDP/53 rarely blocked), cloud environments, and air-gapped networks via DNS recursion.** |
