@@ -345,7 +345,7 @@ export class SourceFetcher {
     if (requirementsContent) {
       for (const line of requirementsContent.split("\n")) {
         const clean = line.trim().split("#")[0].trim(); // strip inline comments
-        if (!clean || clean.startsWith("-") || clean.startsWith("http")) continue;
+        if (!clean || clean.startsWith("-") || clean.startsWith("http://") || clean.startsWith("https://")) continue;
         const match = clean.match(/^([A-Za-z0-9_.-]+)\s*(?:[=><~!]+\s*([^\s,;]+))?/);
         if (match) addDep(match[1], match[2]);
       }
