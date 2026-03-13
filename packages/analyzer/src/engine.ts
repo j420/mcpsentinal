@@ -92,7 +92,7 @@ export class AnalysisEngine {
       if (!text) continue;
 
       // Check exclude patterns first
-      const excluded = excludePatterns.some((ep) => {
+      const excluded = excludePatterns.some((ep: string) => {
         try {
           return new RegExp(ep, "i").test(text);
         } catch {
