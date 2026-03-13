@@ -31,7 +31,7 @@ export class PulseMCPCrawler implements CrawlerSource {
     let errors = 0;
 
     try {
-      const PAGE_SIZE = 500;
+      const PAGE_SIZE = 250;
       let offset = 0;
       let hasMore = true;
 
