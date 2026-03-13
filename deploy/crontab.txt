@@ -1,0 +1,8 @@
+# MCP Sentinel scheduled jobs
+# Install with: crontab deploy/crontab.txt
+
+# Crawl all sources daily at 2 AM
+0 2 * * * cd /opt/mcp-sentinel && docker compose exec -T api node -e "require('./packages/crawler/dist/index.js')" >> /var/log/sentinel-crawl.log 2>&1
+
+# Re-scan all servers every 7 days (Sunday 3 AM)
+0 3 * * 0 cd /opt/mcp-sentinel && docker compose exec -T api node -e "require('./packages/analyzer/dist/index.js')" >> /var/log/sentinel-scan.log 2>&1
