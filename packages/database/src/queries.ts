@@ -414,6 +414,73 @@ export class DatabaseQueries {
     ).rows as Server[];
   }
 
+  // ─── Scanner Support Queries ──────────────────────────────────────────────
+
+  async getServerById(id: string): Promise<Server | null> {
+    const result = await this.pool.query(
+      "SELECT * FROM servers WHERE id = $1 LIMIT 1",
+      [id]
+    );
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Return all source records for a server, including raw_metadata.
+   * Used by the scanner to discover live HTTP endpoints embedded in
+   * raw_metadata by PulseMCP, Smithery, Glama, and other registries.
+   */
+  async getServerSources(serverId: string): Promise<
+    Array<{
+      source_name: string;
+      source_url: string | null;
+      raw_metadata: Record<string, unknown>;
+    }>
+  > {
+    const result = await this.pool.query(
+      "SELECT source_name, source_url, raw_metadata FROM sources WHERE server_id = $1",
+      [serverId]
+    );
+    return result.rows;
+  }
+
+  /**
+   * Upsert enriched dependencies for a server.
+   * Called after the OSV CVE audit step in the scan pipeline.
+   * Uses UNIQUE(server_id, name, ecosystem) conflict resolution.
+   */
+  async upsertDependencies(
+    serverId: string,
+    deps: Array<{
+      name: string;
+      version: string | null;
+      ecosystem: string;
+      has_known_cve: boolean;
+      cve_ids: string[];
+      last_updated: Date | null;
+    }>
+  ): Promise<void> {
+    for (const dep of deps) {
+      await this.pool.query(
+        `INSERT INTO dependencies (server_id, name, version, ecosystem, has_known_cve, cve_ids, last_updated)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         ON CONFLICT (server_id, name, ecosystem) DO UPDATE SET
+           version = COALESCE(EXCLUDED.version, dependencies.version),
+           has_known_cve = EXCLUDED.has_known_cve,
+           cve_ids = EXCLUDED.cve_ids,
+           last_updated = COALESCE(EXCLUDED.last_updated, dependencies.last_updated)`,
+        [
+          serverId,
+          dep.name,
+          dep.version,
+          dep.ecosystem,
+          dep.has_known_cve,
+          dep.cve_ids,
+          dep.last_updated,
+        ]
+      );
+    }
+  }
+
   // ─── Helpers ───────────────────────────────────────────────────────────────
 
   private slugify(name: string): string {

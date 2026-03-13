@@ -12,7 +12,7 @@
     "db:seed": "pnpm --filter=@mcp-sentinel/database run seed",
     "db:reset": "pnpm --filter=@mcp-sentinel/database run reset",
     "crawl": "pnpm --filter=@mcp-sentinel/crawler run crawl",
-    "scan": "pnpm --filter=@mcp-sentinel/analyzer run scan",
+    "scan": "pnpm --filter=@mcp-sentinel/scanner run scan",
     "score": "pnpm --filter=@mcp-sentinel/scorer run score",
     "cli": "pnpm --filter=@mcp-sentinel/cli run cli"
   },
