@@ -42,27 +42,27 @@ export class CrawlOrchestrator {
     return this._buildStats(results, uniqueServers);
   }
 
+
   async crawlAndPersist(
     db: DatabaseQueries
   ): Promise<CrawlStats & { persisted: number; persist_errors: number }> {
-    const { results, uniqueServers } = await this._runCrawlers();
+    const { results, uniqueServers, allServers } = await this._runCrawlers();
 
-    const serverList = Array.from(uniqueServers.values());
     let persisted = 0;
     let persist_errors = 0;
 
     logger.info(
-      { total: serverList.length },
-      "Persisting unique servers to database"
+      { total: allServers.length, unique: uniqueServers.size },
+      "Persisting all discovered servers to database (DB handles enrichment via COALESCE)"
     );
 
-    for (const server of serverList) {
+    for (const server of allServers) {
       try {
         await db.upsertServer(server);
         persisted++;
         if (persisted % 100 === 0) {
           logger.info(
-            { persisted, total: serverList.length },
+            { persisted, total: allServers.length },
             "Persist progress"
           );
         }
@@ -91,9 +91,11 @@ export class CrawlOrchestrator {
   private async _runCrawlers(): Promise<{
     results: CrawlResult[];
     uniqueServers: Map<string, DiscoveredServer>;
+    allServers: DiscoveredServer[];
   }> {
     const results: CrawlResult[] = [];
     const uniqueServers = new Map<string, DiscoveredServer>();
+    const allServers: DiscoveredServer[] = [];
 
     logger.info(
       { sources: this.sources.map((s) => s.name) },
@@ -109,6 +111,7 @@ export class CrawlOrchestrator {
 
         let newUnique = 0;
         for (const server of result.servers) {
+          allServers.push(server);
           const key = this._deduplicationKey(server);
           if (!uniqueServers.has(key)) {
             uniqueServers.set(key, server);
@@ -143,7 +146,7 @@ export class CrawlOrchestrator {
       }
     }
 
-    return { results, uniqueServers };
+    return { results, uniqueServers, allServers };
   }
 
   private _buildStats(
