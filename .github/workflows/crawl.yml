@@ -1,0 +1,60 @@
+name: Crawl MCP Registry
+
+on:
+  # Trigger manually from GitHub UI → Actions tab → "Run workflow"
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "Single source to crawl (leave blank for all)"
+        required: false
+        default: ""
+        type: choice
+        options:
+          - ""
+          - pulsemcp
+          - smithery
+          - npm
+          - pypi
+          - github
+
+  # Re-crawl every Sunday at 02:00 UTC
+  schedule:
+    - cron: "0 2 * * 0"
+
+jobs:
+  crawl:
+    name: Crawl → Persist
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run database migrations
+        run: pnpm db:migrate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Run crawl
+        run: |
+          SOURCE="${{ github.event.inputs.source }}"
+          if [ -n "$SOURCE" ]; then
+            echo "Crawling single source: $SOURCE"
+            pnpm --filter=@mcp-sentinel/crawler run crawl "$SOURCE"
+          else
+            echo "Crawling all sources"
+            pnpm crawl
+          fi
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

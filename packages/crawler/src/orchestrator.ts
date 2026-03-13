@@ -12,7 +12,12 @@ const logger = pino({ name: "crawler:orchestrator" });
 export class CrawlOrchestrator {
   private sources: CrawlerSource[];
 
-  constructor(sourceNames?: string[]) {
+  constructor(sourceNames?: string[], injectSources?: CrawlerSource[]) {
+    if (injectSources) {
+      this.sources = injectSources;
+      return;
+    }
+
     const allSources: CrawlerSource[] = [
       new PulseMCPCrawler(),
       new SmitheryCrawler(),
