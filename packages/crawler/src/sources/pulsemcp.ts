@@ -4,27 +4,22 @@ import type { CrawlerSource, CrawlResult } from "../types.js";
 
 const logger = pino({ name: "crawler:pulsemcp" });
 
-const PULSEMCP_API = "https://api.pulsemcp.com/v0beta1";
+const PULSEMCP_API = "https://api.pulsemcp.com/v0beta";
 
 interface PulseMCPServer {
   name: string;
-  description?: string;
+  short_description?: string;
+  url?: string;
   source_code_url?: string;
   package_registry?: string;
-  download_count?: number;
   github_stars?: number;
-  security_analysis?: Record<string, unknown>;
-  popularity_score?: number;
-  author?: string;
-  category?: string;
-  created_at?: string;
-  updated_at?: string;
+  integrations?: unknown[];
 }
 
 interface PulseMCPResponse {
   servers: PulseMCPServer[];
-  next_cursor?: string;
   total_count?: number;
+  next?: string;
 }
 
 export class PulseMCPCrawler implements CrawlerSource {
@@ -36,15 +31,14 @@ export class PulseMCPCrawler implements CrawlerSource {
     let errors = 0;
 
     try {
-      let cursor: string | undefined;
+      const PAGE_SIZE = 500;
+      let offset = 0;
       let hasMore = true;
 
       while (hasMore) {
-        const url = cursor
-          ? `${PULSEMCP_API}/servers?cursor=${cursor}&limit=100`
-          : `${PULSEMCP_API}/servers?limit=100`;
+        const url = `${PULSEMCP_API}/servers?count_per_page=${PAGE_SIZE}&offset=${offset}`;
 
-        logger.info({ cursor }, "Fetching PulseMCP servers");
+        logger.info({ offset }, "Fetching PulseMCP servers");
 
         const response = await fetch(url, {
           headers: { Accept: "application/json" },
@@ -62,9 +56,9 @@ export class PulseMCPCrawler implements CrawlerSource {
         const data = (await response.json()) as PulseMCPResponse;
 
         for (const server of data.servers) {
-          const githubUrl = server.source_code_url?.includes("github.com")
-            ? server.source_code_url
-            : null;
+          // source_code_url is the repo link; url is the server homepage
+          const repoUrl = server.source_code_url || server.url;
+          const githubUrl = repoUrl?.includes("github.com") ? repoUrl : null;
 
           const npmPackage = server.package_registry?.includes("npmjs.com")
             ? this.extractNpmPackage(server.package_registry)
@@ -72,28 +66,26 @@ export class PulseMCPCrawler implements CrawlerSource {
 
           servers.push({
             name: server.name,
-            description: server.description || null,
-            author: server.author || null,
+            description: server.short_description || null,
+            author: null,
             github_url: githubUrl,
             npm_package: npmPackage,
             pypi_package: null,
-            category: server.category as any || null,
+            category: null,
             language: null,
             license: null,
             source_name: "pulsemcp",
             source_url: `https://pulsemcp.com/servers`,
             external_id: server.name,
             raw_metadata: {
-              download_count: server.download_count,
               github_stars: server.github_stars,
-              security_analysis: server.security_analysis,
-              popularity_score: server.popularity_score,
+              url: server.url,
             },
           });
         }
 
-        cursor = data.next_cursor;
-        hasMore = !!cursor;
+        offset += data.servers.length;
+        hasMore = !!data.next && data.servers.length === PAGE_SIZE;
 
         await new Promise((r) => setTimeout(r, 500));
       }
