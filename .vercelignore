@@ -1,0 +1,12 @@
+packages/crawler
+packages/connector
+packages/analyzer
+packages/scorer
+packages/database
+packages/cli
+packages/api
+node_modules
+tests
+deploy
+data
+rules
