@@ -7,14 +7,16 @@
  *
  * Usage:
  *   tsx packages/scanner/src/test-scan.ts [github-url]
+ *   tsx packages/scanner/src/test-scan.ts --local    # use built-in vulnerable fixture
  *
  * Examples:
- *   tsx packages/scanner/src/test-scan.ts
+ *   tsx packages/scanner/src/test-scan.ts --local
  *   tsx packages/scanner/src/test-scan.ts https://github.com/modelcontextprotocol/servers
- *   GITHUB_TOKEN=ghp_xxx tsx packages/scanner/src/test-scan.ts
+ *   GITHUB_TOKEN=ghp_xxx tsx packages/scanner/src/test-scan.ts https://github.com/owner/repo
  */
 
 import path from "node:path";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { AnalysisEngine, loadRules, getRulesVersion } from "@mcp-sentinel/analyzer";
 import { computeScore } from "@mcp-sentinel/scorer";
@@ -23,13 +25,11 @@ import { DependencyAuditor } from "./auditor.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const RULES_DIR = path.resolve(__dirname, "../../../rules");
+const FIXTURE_PATH = path.resolve(__dirname, "fixtures/vulnerable-server.ts");
 
-// ── Target server ─────────────────────────────────────────────────────────────
-// Default: official Anthropic MCP servers monorepo (100% real, well-maintained)
-// Change this to any GitHub-hosted MCP server for testing
-const DEFAULT_TARGET = "https://github.com/modelcontextprotocol/servers";
-
-const target = process.argv[2] ?? DEFAULT_TARGET;
+const arg = process.argv[2];
+const useLocal = arg === "--local";
+const target = useLocal ? "local://fixture/vulnerable-server" : (arg ?? "https://github.com/modelcontextprotocol/servers");
 
 // ── Run ───────────────────────────────────────────────────────────────────────
 async function main() {
@@ -38,8 +38,8 @@ async function main() {
   console.log("  MCP SENTINEL — Standalone Security Scan");
   console.log(separator);
   console.log(`  Target  : ${target}`);
+  console.log(`  Mode    : ${useLocal ? "LOCAL FIXTURE (no network)" : "GitHub fetch"}`);
   console.log(`  Rules   : ${RULES_DIR}`);
-  console.log(`  GitHub  : ${process.env.GITHUB_TOKEN ? "authenticated" : "unauthenticated (rate-limited)"}`);
   console.log(separator + "\n");
 
   // ── Step 1: Load detection rules ──────────────────────────────────────────
@@ -52,44 +52,58 @@ async function main() {
 
   const engine = new AnalysisEngine(rules);
 
-  // ── Step 2: Fetch source code + dependencies from GitHub ──────────────────
-  process.stdout.write("Fetching source code from GitHub... ");
-  const fetcher = new SourceFetcher();
-  const t1 = Date.now();
-  const fetched = await fetcher.fetchFromGitHub(target);
-  const fetchMs = Date.now() - t1;
-
-  if (fetched.error) {
-    console.log(`\n  ⚠  Fetch error: ${fetched.error}`);
-  } else {
-    console.log(
-      `${fetched.files_fetched.length} files, ${(fetched.source_code?.length ?? 0).toLocaleString()} bytes (${fetchMs}ms)`
-    );
-    if (fetched.files_fetched.length > 0) {
-      console.log(`     Files: ${fetched.files_fetched.join(", ")}`);
-    }
-  }
-  console.log(`  Dependencies found: ${fetched.raw_dependencies.length}`);
-
-  // ── Step 3: CVE audit via OSV ──────────────────────────────────────────────
+  // ── Step 2: Get source code ────────────────────────────────────────────────
+  let sourceCode: string | null = null;
   let enrichedDeps: Awaited<ReturnType<DependencyAuditor["audit"]>> = [];
+  let filesFetched: string[] = [];
 
-  if (fetched.raw_dependencies.length > 0) {
-    process.stdout.write(`Auditing ${fetched.raw_dependencies.length} dependencies via OSV... `);
-    const auditor = new DependencyAuditor();
-    const t2 = Date.now();
-    enrichedDeps = await auditor.audit(fetched.raw_dependencies);
-    const auditMs = Date.now() - t2;
-    const vulnDeps = enrichedDeps.filter((d) => d.has_known_cve);
-    console.log(`done (${auditMs}ms)`);
-    if (vulnDeps.length > 0) {
-      console.log(`  ⚠  ${vulnDeps.length} dependencies with known CVEs:`);
-      for (const d of vulnDeps.slice(0, 5)) {
-        console.log(`     • ${d.name}@${d.version ?? "?"} → ${d.cve_ids.slice(0, 3).join(", ")}`);
-      }
-      if (vulnDeps.length > 5) console.log(`     ... and ${vulnDeps.length - 5} more`);
+  if (useLocal) {
+    // Local fixture mode — instant, no network needed
+    console.log("Using local vulnerable fixture (fixtures/vulnerable-server.ts)");
+    sourceCode = readFileSync(FIXTURE_PATH, "utf-8");
+    filesFetched = ["fixtures/vulnerable-server.ts"];
+    console.log(`  Source: ${sourceCode.length.toLocaleString()} bytes loaded from fixture\n`);
+  } else {
+    // GitHub fetch mode
+    process.stdout.write("Fetching source code from GitHub... ");
+    const fetcher = new SourceFetcher();
+    const t1 = Date.now();
+    const fetched = await fetcher.fetchFromGitHub(target);
+    const fetchMs = Date.now() - t1;
+
+    if (fetched.error) {
+      console.log(`\n  ⚠  Fetch error: ${fetched.error}`);
     } else {
-      console.log("  ✓ No known CVEs found in dependencies");
+      console.log(
+        `${fetched.files_fetched.length} files, ${(fetched.source_code?.length ?? 0).toLocaleString()} bytes (${fetchMs}ms)`
+      );
+      if (fetched.files_fetched.length > 0) {
+        console.log(`     Files: ${fetched.files_fetched.join(", ")}`);
+      }
+    }
+    console.log(`  Dependencies found: ${fetched.raw_dependencies.length}`);
+
+    sourceCode = fetched.source_code;
+    filesFetched = fetched.files_fetched;
+
+    // ── Step 3: CVE audit via OSV ────────────────────────────────────────────
+    if (fetched.raw_dependencies.length > 0) {
+      process.stdout.write(`Auditing ${fetched.raw_dependencies.length} dependencies via OSV... `);
+      const auditor = new DependencyAuditor();
+      const t2 = Date.now();
+      enrichedDeps = await auditor.audit(fetched.raw_dependencies);
+      const auditMs = Date.now() - t2;
+      const vulnDeps = enrichedDeps.filter((d) => d.has_known_cve);
+      console.log(`done (${auditMs}ms)`);
+      if (vulnDeps.length > 0) {
+        console.log(`  ⚠  ${vulnDeps.length} dependencies with known CVEs:`);
+        for (const d of vulnDeps.slice(0, 5)) {
+          console.log(`     • ${d.name}@${d.version ?? "?"} → ${d.cve_ids.slice(0, 3).join(", ")}`);
+        }
+        if (vulnDeps.length > 5) console.log(`     ... and ${vulnDeps.length - 5} more`);
+      } else {
+        console.log("  ✓ No known CVEs found in dependencies");
+      }
     }
   }
 
@@ -99,12 +113,12 @@ async function main() {
   const context = {
     server: {
       id: synthId,
-      name: target.split("/").slice(-2).join("/"), // owner/repo
-      description: `Scanned from ${target}`,
-      github_url: target,
+      name: useLocal ? "vulnerable-fixture" : target.split("/").slice(-2).join("/"),
+      description: useLocal ? "Intentionally vulnerable MCP server fixture for rule validation" : `Scanned from ${target}`,
+      github_url: useLocal ? null : target,
     },
     tools: [],                  // No live connection in standalone mode
-    source_code: fetched.source_code,
+    source_code: sourceCode,
     dependencies: enrichedDeps.map((d) => ({
       name: d.name,
       version: d.version,
@@ -127,14 +141,15 @@ async function main() {
   const score = computeScore(findings, ruleCategories);
 
   // ── Report ────────────────────────────────────────────────────────────────
-  printReport(target, score, findings, fetched, enrichedDeps);
+  printReport(target, score, findings, filesFetched, sourceCode, enrichedDeps);
 }
 
 function printReport(
   target: string,
   score: ReturnType<typeof computeScore>,
   findings: ReturnType<InstanceType<typeof AnalysisEngine>["analyze"]>,
-  fetched: Awaited<ReturnType<SourceFetcher["fetchFromGitHub"]>>,
+  filesFetched: string[],
+  sourceCode: string | null,
   deps: Awaited<ReturnType<DependencyAuditor["audit"]>>
 ) {
   const separator = "─".repeat(62);
@@ -146,7 +161,7 @@ function printReport(
   console.log(`  Server     : ${target}`);
   console.log(`  Score      : ${badge} ${score.total_score}/100`);
   console.log(`  Findings   : ${findings.length}`);
-  console.log(`  Source     : ${fetched.files_fetched.length} files, ${(fetched.source_code?.length ?? 0).toLocaleString()} bytes`);
+  console.log(`  Source     : ${filesFetched.length} files, ${(sourceCode?.length ?? 0).toLocaleString()} bytes`);
   console.log(`  Deps       : ${deps.length} total, ${deps.filter((d) => d.has_known_cve).length} with CVEs`);
   console.log(separator);
 
