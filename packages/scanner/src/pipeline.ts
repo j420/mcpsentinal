@@ -267,6 +267,7 @@ export class ScanPipeline {
       // ── Stage 3+4: Discover endpoint and attempt live connection ───────────
       let connectionMetadata: AnalysisContext["connection_metadata"] = null;
       let liveTools: AnalysisContext["tools"] = [];
+      let initMetadata: AnalysisContext["initialize_metadata"] = undefined;
 
       const endpoint = await this.discoverEndpoint(server);
 
@@ -289,8 +290,21 @@ export class ScanPipeline {
             response_time_ms: enumeration.response_time_ms,
           };
 
+          // Capture initialize response fields for H2 rule (Initialize Response Injection).
+          // serverInfo.version and instructions are the two fields H2 scans beyond server.name.
+          // server.name is already in context.server.name; the analyzer combines all three.
+          initMetadata = {
+            server_version: enumeration.server_version ?? null,
+            server_instructions: enumeration.server_instructions ?? null,
+          };
+
           log.info(
-            { tools: liveTools.length, response_time_ms: enumeration.response_time_ms },
+            {
+              tools: liveTools.length,
+              response_time_ms: enumeration.response_time_ms,
+              server_version: enumeration.server_version ?? null,
+              has_instructions: !!enumeration.server_instructions,
+            },
             "Stage 3+4: Live connection succeeded — tools enumerated"
           );
         } else {
@@ -328,10 +342,7 @@ export class ScanPipeline {
           last_updated: d.last_updated,
         })),
         connection_metadata: connectionMetadata,
-        // H2 (initialize fields injection) requires connector enhancement in v1.1
-        // The MCPConnector does not yet expose serverInfo/instructions from the
-        // initialize response. When added, populate initialize_metadata here.
-        initialize_metadata: undefined,
+        initialize_metadata: initMetadata,
       };
 
       // ── Stage 5: Run all detection rules ──────────────────────────────────

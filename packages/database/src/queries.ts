@@ -79,6 +79,162 @@ export class DatabaseQueries {
     return result.rows[0] || null;
   }
 
+  async findServerByPypiPackage(pkg: string): Promise<Server | null> {
+    const result = await this.pool.query(
+      "SELECT * FROM servers WHERE pypi_package = $1 LIMIT 1",
+      [pkg]
+    );
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Upsert with canonical deduplication priority:
+   *   github_url → npm_package → pypi_package → slug (new server)
+   *
+   * When an existing record is found by a canonical identifier, the existing
+   * record is enriched with any non-null fields from the new discovery
+   * (COALESCE semantics: never overwrites data we already have).
+   *
+   * Returns { id, is_new } — is_new=false means an existing record was enriched.
+   *
+   * This is the correct method for crawlAndPersist. The legacy upsertServer()
+   * (slug-only conflict) is kept for backward compatibility and as the final
+   * fallback in this chain.
+   */
+  async upsertServerDedup(
+    discovered: DiscoveredServer
+  ): Promise<{ id: string; is_new: boolean }> {
+    // Priority 1: canonical GitHub URL — most reliable cross-source identifier
+    if (discovered.github_url) {
+      const existing = await this.findServerByGithubUrl(discovered.github_url);
+      if (existing) {
+        await this._enrichServer(existing.id, discovered);
+        return { id: existing.id, is_new: false };
+      }
+    }
+
+    // Priority 2: npm package name
+    if (discovered.npm_package) {
+      const existing = await this.findServerByNpmPackage(discovered.npm_package);
+      if (existing) {
+        await this._enrichServer(existing.id, discovered);
+        return { id: existing.id, is_new: false };
+      }
+    }
+
+    // Priority 3: PyPI package name
+    if (discovered.pypi_package) {
+      const existing = await this.findServerByPypiPackage(discovered.pypi_package);
+      if (existing) {
+        await this._enrichServer(existing.id, discovered);
+        return { id: existing.id, is_new: false };
+      }
+    }
+
+    // No canonical match — insert as new server (slug-based conflict resolution)
+    const id = await this.upsertServer(discovered);
+    return { id, is_new: true };
+  }
+
+  /**
+   * Enrich an existing server record with data from a new discovery.
+   * Uses COALESCE: fills null fields, never overwrites data we already have.
+   * Also upserts the source record so we track all registries listing this server.
+   */
+  private async _enrichServer(
+    serverId: string,
+    discovered: DiscoveredServer
+  ): Promise<void> {
+    await this.pool.query(
+      `UPDATE servers SET
+         description  = COALESCE(servers.description,  $2),
+         author       = COALESCE(servers.author,       $3),
+         github_url   = COALESCE(servers.github_url,   $4),
+         npm_package  = COALESCE(servers.npm_package,  $5),
+         pypi_package = COALESCE(servers.pypi_package, $6),
+         category     = COALESCE(servers.category,     $7),
+         language     = COALESCE(servers.language,     $8),
+         license      = COALESCE(servers.license,      $9),
+         updated_at   = NOW()
+       WHERE id = $1`,
+      [
+        serverId,
+        discovered.description,
+        discovered.author,
+        discovered.github_url,
+        discovered.npm_package,
+        discovered.pypi_package,
+        discovered.category,
+        discovered.language,
+        discovered.license,
+      ]
+    );
+
+    // Record this source occurrence even though the server already existed
+    await this.pool.query(
+      `INSERT INTO sources (server_id, source_name, source_url, external_id, raw_metadata)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (server_id, source_name, external_id) DO UPDATE SET
+         raw_metadata = EXCLUDED.raw_metadata,
+         last_synced  = NOW()`,
+      [
+        serverId,
+        discovered.source_name,
+        discovered.source_url,
+        discovered.external_id,
+        JSON.stringify(discovered.raw_metadata),
+      ]
+    );
+  }
+
+  /**
+   * Persist a crawl run summary for historical yield tracking.
+   * Append-only — never updated after insert (ADR-008).
+   */
+  async insertCrawlRun(run: {
+    started_at: Date;
+    completed_at: Date;
+    total_discovered: number;
+    new_to_db: number;
+    enriched_existing: number;
+    persist_errors: number;
+    per_source: Array<{
+      source: string;
+      found: number;
+      unique: number;
+      duplicates: number;
+      errors: number;
+      elapsed_ms: number;
+    }>;
+    data_quality: {
+      with_github_url: number;
+      with_npm_package: number;
+      with_description: number;
+      with_category: number;
+    };
+    elapsed_ms: number;
+  }): Promise<string> {
+    const result = await this.pool.query(
+      `INSERT INTO crawl_runs
+         (started_at, completed_at, total_discovered, new_to_db, enriched_existing,
+          persist_errors, per_source, data_quality, elapsed_ms)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING id`,
+      [
+        run.started_at,
+        run.completed_at,
+        run.total_discovered,
+        run.new_to_db,
+        run.enriched_existing,
+        run.persist_errors,
+        JSON.stringify(run.per_source),
+        JSON.stringify(run.data_quality),
+        run.elapsed_ms,
+      ]
+    );
+    return result.rows[0].id;
+  }
+
   async findServerBySlug(slug: string): Promise<Server | null> {
     const result = await this.pool.query(
       "SELECT * FROM servers WHERE slug = $1 LIMIT 1",

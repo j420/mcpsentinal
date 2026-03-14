@@ -195,6 +195,28 @@ const MIGRATIONS = [
     id: "002_widen_license_column",
     sql: `ALTER TABLE servers ALTER COLUMN license TYPE TEXT;`,
   },
+  {
+    id: "003_crawl_runs",
+    sql: `
+      -- Crawl run history: persists aggregate stats for every crawl execution.
+      -- Enables yield trend analysis per source over time (was it worth crawling?).
+      -- Append-only — never UPDATE (ADR-008: history by default).
+      CREATE TABLE IF NOT EXISTS crawl_runs (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        completed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        total_discovered INTEGER NOT NULL DEFAULT 0,
+        new_to_db INTEGER NOT NULL DEFAULT 0,
+        enriched_existing INTEGER NOT NULL DEFAULT 0,
+        persist_errors INTEGER NOT NULL DEFAULT 0,
+        per_source JSONB NOT NULL DEFAULT '[]',
+        data_quality JSONB NOT NULL DEFAULT '{}',
+        elapsed_ms INTEGER NOT NULL DEFAULT 0
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_crawl_runs_started_at ON crawl_runs(started_at);
+    `,
+  },
 ];
 
 export async function migrate(connectionString: string): Promise<void> {

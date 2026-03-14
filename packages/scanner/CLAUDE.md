@@ -27,25 +27,17 @@ Stage 7: Persist                → insertFindings + insertScore + completeScan
 - `src/cli.ts` — `pnpm scan` CLI entry point
 - `src/types.ts` — `ScanOptions`, `ScanServerResult`, `ScanRunStats`
 
-## Known Issue — P0 Bug (H2 Rule Blind)
+## Initialize Metadata (H2 Rule)
 
-**Line ~230 in `pipeline.ts`:**
-```typescript
-// H2 (initialize fields injection) requires connector enhancement in v1.1
-initialize_metadata: undefined,
-```
+`initialize_metadata` is populated from `ToolEnumeration.server_version` and
+`server_instructions` when the live connection succeeds. When no endpoint is found,
+or the connection fails, `initialize_metadata` remains `undefined` and H2 falls back
+to scanning only `context.server.name` (the name from the DB record).
 
-`initialize_metadata` is always `undefined`. Rule H2 (Initialize Response Injection) fires on zero servers because it has no data to analyze.
-
-**Fix:** The `MCPConnector.enumerate()` must be updated to return `InitializeResult` fields, then `pipeline.ts` must populate:
-```typescript
-initialize_metadata: {
-  server_version: enumeration.server_version ?? null,
-  server_instructions: enumeration.server_instructions ?? null,
-}
-```
-
-See `packages/connector/CLAUDE.md` for the connector-side fix.
+The analyzer's `server_initialize_fields` context combines:
+1. `context.server.name` — always present (from DB)
+2. `context.initialize_metadata.server_version` — present when connection succeeded
+3. `context.initialize_metadata.server_instructions` — present when server provides them
 
 ## Concurrency
 Default: 5 parallel server scans (`DEFAULT_CONCURRENCY = 5`).

@@ -29,11 +29,11 @@
 - [x] Crawler for Smithery
 - [x] Crawler for Official MCP Registry
 - [x] Crawler for modelcontextprotocol GitHub repo
-- [ ] Crawler for MCP Server Cards (.well-known/mcp) — new official spec discovery standard
-- [ ] Crawler for Glama (SourceName enum exists, no crawler)
-- [ ] Crawler for awesome-mcp-servers (SourceName enum exists, no crawler)
-- [ ] Deduplication pipeline (integrated with DB)
-- [ ] Crawl orchestration with logging
+- [~] Crawler for MCP Server Cards (.well-known/mcp) — PARKED: resume when crawler expansion resumes
+- [~] Crawler for Glama — PARKED: SourceName enum exists, implement when expanding sources
+- [~] Crawler for awesome-mcp-servers — PARKED: SourceName enum exists, implement when expanding sources
+- [~] Deduplication pipeline — PARKED: only worth building once crawl volume justifies it (10k+ servers)
+- [~] Crawl orchestration logging (per-source yield stats) — PARKED: only actionable at scale
 - [ ] First full crawl: target 10,000+ unique servers
 
 **Success Criteria:** 10,000 unique servers in the database with >80% having at least one identifier (GitHub URL or package name).
@@ -53,7 +53,7 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 - [x] Source code fetcher (GitHub raw content) — packages/scanner/src/fetcher.ts
 - [x] Dependency auditor (OSV API integration) — packages/scanner/src/auditor.ts
 - [x] Full scan pipeline (7 stages with concurrency + stage isolation) — packages/scanner/src/pipeline.ts
-- [ ] **P0 BUG: Fix initialize_metadata pipeline** — H2 rule fires on zero servers (see CLAUDE.md Known Issues)
+- [x] **P0 BUG: Fix initialize_metadata pipeline** — H2 rule now receives live data via `client.getServerVersion()` + `client.getInstructions()`
 - [ ] Scan all 10,000 servers
 
 **Success Criteria:** 10,000 servers scanned, findings distribution matches expectations (most servers should have some findings).
@@ -133,3 +133,17 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 - LLM-powered analysis
 - Performance optimization
 - Mobile UI
+
+---
+
+### Parked Items (Deliberately Deferred — Resume When Conditions Change)
+
+These are real deliverables, not abandoned. Each has a clear trigger for when to pick up.
+
+| Item | Why Parked | Resume When |
+|------|-----------|-------------|
+| Crawler: Glama | No data volume need yet | Expanding crawler sources post-10k crawl |
+| Crawler: awesome-mcp-servers | No data volume need yet | Expanding crawler sources post-10k crawl |
+| Crawler: MCP Server Cards (.well-known/mcp) | New spec, low adoption so far | Standard gains traction in ecosystem |
+| Deduplication pipeline | Only matters at crawl scale | 10k+ servers in DB, seeing real duplicates |
+| Crawl orchestration logging (yield stats) | Nothing to observe at current scale | Running multi-source crawls regularly |

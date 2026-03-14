@@ -243,6 +243,9 @@ export const ToolEnumerationSchema = z.object({
   connection_success: z.boolean(),
   connection_error: z.string().nullable(),
   response_time_ms: z.number(),
+  // H2: Fields from the MCP initialize handshake (null when connection failed)
+  server_version: z.string().nullable().optional(),
+  server_instructions: z.string().nullable().optional(),
 });
 export type ToolEnumeration = z.infer<typeof ToolEnumerationSchema>;
 

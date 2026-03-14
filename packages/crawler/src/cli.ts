@@ -2,7 +2,7 @@ import pino from "pino";
 import pg from "pg";
 import { CrawlOrchestrator } from "./orchestrator.js";
 import { DatabaseQueries } from "@mcp-sentinel/database";
-import type { CrawlStats } from "./types.js";
+import type { CrawlStats, CrawlPersistStats } from "./types.js";
 
 const logger = pino({ name: "crawler:cli" });
 
@@ -23,6 +23,7 @@ async function main() {
     const stats = await orchestrator.crawlAll();
     printSummary(stats);
     return;
+
   }
 
   const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
@@ -30,42 +31,59 @@ async function main() {
 
   try {
     const stats = await orchestrator.crawlAndPersist(db);
-    printSummary(stats, stats.persisted, stats.persist_errors);
+    printPersistSummary(stats);
   } finally {
     await pool.end();
   }
 }
 
-function printSummary(
-  stats: CrawlStats,
-  persisted?: number,
-  persistErrors?: number
-) {
-  console.log("\n=== Crawl Summary ===");
+function printSummary(stats: CrawlStats) {
+  console.log("\n=== Crawl Summary (dry-run) ===");
   console.log(`Total discovered: ${stats.total_discovered}`);
   console.log(`New unique:       ${stats.new_unique}`);
+  console.log(`(dry-run — nothing persisted)`);
+  _printPerSource(stats);
+  _printDataQuality(stats);
+}
 
-  if (persisted !== undefined) {
-    console.log(`Upsert calls:     ${persisted} (includes cross-source enrichment)`);
-    if (persistErrors) {
-      console.log(`Persist errors:   ${persistErrors}`);
-    }
-  } else {
-    console.log(`(dry-run — nothing persisted)`);
+function printPersistSummary(stats: CrawlPersistStats) {
+  console.log("\n=== Crawl Summary ===");
+  console.log(`Total discovered:  ${stats.total_discovered}`);
+  console.log(`In-memory unique:  ${stats.new_unique}  (deduplicated within this run)`);
+  console.log(`New to DB:         ${stats.new_to_db}  (truly new server records created)`);
+  console.log(`Enriched existing: ${stats.enriched_existing}  (existing records updated with new source data)`);
+  console.log(`Persisted calls:   ${stats.persisted}`);
+  if (stats.persist_errors > 0) {
+    console.log(`Persist errors:    ${stats.persist_errors}  ← check logs`);
   }
+  _printPerSource(stats);
+  _printDataQuality(stats);
+}
 
+function _printPerSource(stats: CrawlStats) {
   console.log("\nPer Source:");
-  for (const source of stats.per_source) {
+  console.log(
+    `  ${"source".padEnd(22)} ${"found".padStart(6)} ${"unique".padStart(7)} ${"dups".padStart(6)} ${"errors".padStart(7)} ${"time".padStart(8)}`
+  );
+  console.log(`  ${"-".repeat(60)}`);
+  for (const s of stats.per_source) {
     console.log(
-      `  ${source.source.padEnd(15)} found=${source.found} unique=${source.unique} errors=${source.errors} time=${source.elapsed_ms}ms`
+      `  ${s.source.padEnd(22)} ${String(s.found).padStart(6)} ${String(s.unique).padStart(7)} ${String(s.duplicates).padStart(6)} ${String(s.errors).padStart(7)} ${String(s.elapsed_ms + "ms").padStart(8)}`
     );
   }
+}
 
+function _printDataQuality(stats: CrawlStats) {
+  const total = stats.total_discovered || 1; // avoid div-by-zero
   console.log("\nData Quality:");
-  console.log(`  With GitHub URL:  ${stats.data_quality.with_github_url}`);
-  console.log(`  With npm package: ${stats.data_quality.with_npm_package}`);
-  console.log(`  With description: ${stats.data_quality.with_description}`);
-  console.log(`  With category:    ${stats.data_quality.with_category}`);
+  console.log(`  With GitHub URL:  ${stats.data_quality.with_github_url} (${pct(stats.data_quality.with_github_url, total)}%)`);
+  console.log(`  With npm package: ${stats.data_quality.with_npm_package} (${pct(stats.data_quality.with_npm_package, total)}%)`);
+  console.log(`  With description: ${stats.data_quality.with_description} (${pct(stats.data_quality.with_description, total)}%)`);
+  console.log(`  With category:    ${stats.data_quality.with_category} (${pct(stats.data_quality.with_category, total)}%)`);
+}
+
+function pct(n: number, total: number): string {
+  return Math.round((n / total) * 100).toString();
 }
 
 main().catch((err) => {

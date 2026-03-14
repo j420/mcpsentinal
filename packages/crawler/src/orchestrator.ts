@@ -1,5 +1,5 @@
 import pino from "pino";
-import type { CrawlerSource, CrawlResult, CrawlStats } from "./types.js";
+import type { CrawlerSource, CrawlResult, CrawlStats, CrawlPersistStats } from "./types.js";
 import type { DiscoveredServer, DatabaseQueries } from "@mcp-sentinel/database";
 import { NpmCrawler } from "./sources/npm.js";
 import { GitHubCrawler } from "./sources/github.js";
@@ -49,26 +49,30 @@ export class CrawlOrchestrator {
   }
 
 
-  async crawlAndPersist(
-    db: DatabaseQueries
-  ): Promise<CrawlStats & { persisted: number; persist_errors: number }> {
+  async crawlAndPersist(db: DatabaseQueries): Promise<CrawlPersistStats> {
+    const runStart = new Date();
     const { results, uniqueServers, allServers } = await this._runCrawlers();
 
     let persisted = 0;
     let persist_errors = 0;
+    let new_to_db = 0;
+    let enriched_existing = 0;
 
     logger.info(
       { total: allServers.length, unique: uniqueServers.size },
-      "Persisting all discovered servers to database (DB handles enrichment via COALESCE)"
+      "Persisting discovered servers — canonical dedup: github_url → npm → pypi → slug"
     );
 
     for (const server of allServers) {
       try {
-        await db.upsertServer(server);
+        const { is_new } = await db.upsertServerDedup(server);
         persisted++;
+        if (is_new) new_to_db++;
+        else enriched_existing++;
+
         if (persisted % 100 === 0) {
           logger.info(
-            { persisted, total: allServers.length },
+            { persisted, total: allServers.length, new_to_db, enriched_existing },
             "Persist progress"
           );
         }
@@ -79,13 +83,39 @@ export class CrawlOrchestrator {
     }
 
     const stats = this._buildStats(results, uniqueServers);
+    const completedAt = new Date();
+    const elapsed_ms = completedAt.getTime() - runStart.getTime();
+
+    // Persist crawl run record for historical yield tracking (non-fatal if it fails)
+    try {
+      await db.insertCrawlRun({
+        started_at: runStart,
+        completed_at: completedAt,
+        total_discovered: stats.total_discovered,
+        new_to_db,
+        enriched_existing,
+        persist_errors,
+        per_source: stats.per_source,
+        data_quality: stats.data_quality,
+        elapsed_ms,
+      });
+    } catch (err) {
+      logger.warn({ err }, "Failed to persist crawl run stats — non-fatal");
+    }
 
     logger.info(
-      { persisted, persist_errors, unique: stats.new_unique },
+      {
+        persisted,
+        persist_errors,
+        new_to_db,
+        enriched_existing,
+        in_memory_unique: stats.new_unique,
+        elapsed_ms,
+      },
       "Crawl+persist run complete"
     );
 
-    return { ...stats, persisted, persist_errors };
+    return { ...stats, new_to_db, enriched_existing, persisted, persist_errors };
   }
 
   getResults(): CrawlerSource[] {
@@ -168,6 +198,7 @@ export class CrawlOrchestrator {
         source: r.source,
         found: r.servers_found,
         unique: r.new_unique,
+        duplicates: r.duplicates,
         errors: r.errors,
         elapsed_ms: r.elapsed_ms,
       })),
