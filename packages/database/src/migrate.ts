@@ -217,6 +217,47 @@ const MIGRATIONS = [
       CREATE INDEX IF NOT EXISTS idx_crawl_runs_started_at ON crawl_runs(started_at);
     `,
   },
+  {
+    id: "004_enhanced_product_columns",
+    sql: `
+      -- servers: denormalized connection + scan columns
+      -- last_scanned_at: replaces slow NOT EXISTS subquery in getUnscannedServers
+      -- endpoint_url:    cache discovered HTTP endpoint — avoid re-scanning raw_metadata
+      -- tool_count:      denormalized for UI sort/filter without JOIN
+      -- connection_status: surface health status in web UI (success/failed/timeout/no_endpoint)
+      -- server_version:  MCP initialize serverInfo.version — H2 rule data, persisted for history
+      -- server_instructions: MCP initialize instructions field — H2 rule data, persisted for history
+      ALTER TABLE servers
+        ADD COLUMN IF NOT EXISTS last_scanned_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS endpoint_url TEXT,
+        ADD COLUMN IF NOT EXISTS tool_count INTEGER NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS connection_status VARCHAR(20),
+        ADD COLUMN IF NOT EXISTS server_version TEXT,
+        ADD COLUMN IF NOT EXISTS server_instructions TEXT;
+
+      CREATE INDEX IF NOT EXISTS idx_servers_last_scanned_at
+        ON servers(last_scanned_at);
+      CREATE INDEX IF NOT EXISTS idx_servers_connection_status
+        ON servers(connection_status) WHERE connection_status IS NOT NULL;
+
+      -- scans: persist pipeline stage completion for operational observability
+      -- stages JSON shape: { source_fetched, connection_attempted, connection_succeeded, dependencies_audited }
+      ALTER TABLE scans
+        ADD COLUMN IF NOT EXISTS stages JSONB;
+
+      -- score_history: track which rules version produced each score
+      -- enables attribution: was the score change due to a rule update or server change?
+      ALTER TABLE score_history
+        ADD COLUMN IF NOT EXISTS rules_version VARCHAR(50);
+
+      -- dependencies: distinguish direct from transitive, track CVE severity
+      -- is_direct: D4 (excessive-deps) should count direct deps only — transitive are noise
+      -- cve_severity: D1 rule needs CVSS severity to weight critical CVEs vs. low ones
+      ALTER TABLE dependencies
+        ADD COLUMN IF NOT EXISTS is_direct BOOLEAN NOT NULL DEFAULT true,
+        ADD COLUMN IF NOT EXISTS cve_severity VARCHAR(20);
+    `,
+  },
 ];
 
 export async function migrate(connectionString: string): Promise<void> {
