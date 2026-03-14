@@ -134,6 +134,57 @@ Score = 100 minus weighted penalty deductions. Never returns below 0 or above 10
 - Do NOT optimize for performance before we have 10,000 servers. Correctness first.
 - Do NOT modify the scoring weights without updating @agent_docs/scoring-algorithm.md.
 
+## Production Deployment
+
+**There are no always-on workers.** The pipeline runs entirely on GitHub Actions runners.
+**Full topology doc:** @agent_docs/architecture.md → "Production Architecture" section.
+
+### Services
+
+| Service | Platform | Role | Auto-deploy |
+|---------|----------|------|-------------|
+| PostgreSQL | Railway (managed) | Primary database | N/A |
+| API (`packages/api`) | Railway | REST API + badge SVG | `main` push |
+| Web (`packages/web`) | Railway or Vercel | Next.js public registry | `main` push |
+| CLI (`packages/cli`) | npm registry | `npx mcp-sentinel` | manual publish |
+
+### GitHub Actions Workflows
+
+| Workflow | Schedule | What it does |
+|----------|----------|-------------|
+| `ci.yml` | Every PR + push to main | typecheck → test → build |
+| `crawl.yml` | Sundays 02:00 UTC + manual | 6 crawlers in parallel → DB |
+| `scan.yml` | Daily 04:00 UTC + after crawl + manual | scan → score pipeline |
+
+**Auto-chain:** `crawl.yml` completion triggers `scan.yml` via `workflow_run`.
+**Concurrency:** `scan.yml` queues a second trigger rather than cancelling a running scan.
+
+### Required GitHub Actions Secrets
+
+| Secret | Used by | Notes |
+|--------|---------|-------|
+| `DATABASE_URL` | crawl.yml, scan.yml | Railway PostgreSQL URL |
+| `SMITHERY_API_KEY` | crawl.yml | Smithery registry API key |
+| `GITHUB_TOKEN` | scan.yml | Auto-injected — no setup needed |
+
+### Scan Modes (scan.yml `workflow_dispatch`)
+
+| Mode | When to use |
+|------|-------------|
+| `incremental` | Default daily runs — only unscanned servers |
+| `rescan-failed` | After fixing a scanner bug |
+| `full` | After adding new detection rules — rescans everything |
+| `--server=<id>` | Debug a specific server |
+
+### Recovery Quick-Reference
+
+| Problem | Fix |
+|---------|-----|
+| Scan timeout | Re-run scan.yml with `incremental` — already-scanned servers skip |
+| Score stale | Run `pnpm score` locally with `DATABASE_URL` |
+| Crawl partial failure | Re-run crawl.yml with the specific failing source |
+| DB migration failed | Fix SQL, re-run workflow (crawl/scan won't run until migrate passes) |
+
 ## Known Issues (P0 — Fix Before Merging to Main)
 
 ### [RESOLVED] H2 Rule Is Completely Blind

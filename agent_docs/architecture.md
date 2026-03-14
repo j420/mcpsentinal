@@ -187,4 +187,164 @@ POST /api/v1/scan                     → ScanRequestResponse (authenticated)
 | No caching layer for API | Low | When API traffic > 100 req/min |
 | FTS on PostgreSQL instead of dedicated search | Low | When servers > 50K |
 | No rate limiting on public API | Medium | Before public launch |
-| No background job scheduler | Medium | When crawlers need to run on schedule |
+| No background job scheduler | Medium | Resolved: GitHub Actions is the scheduler |
+
+---
+
+## Production Architecture
+### P7 Infrastructure Engineer Output — v1.0
+
+### Design Principles
+
+1. **No always-on workers.** GitHub Actions runners spin up, run the pipeline, and exit. Zero idle cost. At current scale (<10k servers), this is the right trade-off. Migrate to a persistent queue (BullMQ/Redis) only when scan batches exceed 1 hour.
+2. **Railway for serving, GitHub Actions for processing.** Railway hosts the live API and website (persistent, low-latency). GitHub Actions runs the data pipeline (bursty, high-memory, tolerates cold starts).
+3. **PostgreSQL as the single source of truth.** No Redis cache, no S3 artifacts, no separate search index. Railway PostgreSQL is accessed by both the pipeline (writes) and the API (reads). At 50k+ servers, add a read replica.
+4. **Append-only scan results.** ADR-008: findings and scores are never updated, only inserted. This enables G6 (rug-pull detection) and trend analysis without any extra infrastructure.
+
+---
+
+### Production Topology
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         GITHUB ACTIONS (Data Pipeline)                      │
+│                                                                             │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │  crawl.yml  — Sundays 02:00 UTC + manual                             │  │
+│  │                                                                      │  │
+│  │   migrate ──→ [in parallel]                                          │  │
+│  │                ├── crawl-smithery      (timeout: 30m)                │  │
+│  │                ├── crawl-pulsemcp      (timeout: 30m)                │  │
+│  │                ├── crawl-npm           (timeout: 30m)                │  │
+│  │                ├── crawl-pypi          (timeout: 30m)                │  │
+│  │                ├── crawl-github        (timeout: 30m)                │  │
+│  │                └── crawl-official-reg  (timeout: 30m)                │  │
+│  │                         └──→ crawl-summary                           │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│           │ workflow_run: completed                                          │
+│           ▼                                                                 │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │  scan.yml  — Daily 04:00 UTC + after crawl + manual                  │  │
+│  │                                                                      │  │
+│  │   check-trigger ──→ migrate ──→ scan ──→ score ──→ summary           │  │
+│  │                                 │                                    │  │
+│  │                  modes:         ├── incremental  (default)           │  │
+│  │                                 ├── rescan-failed                    │  │
+│  │                                 └── full                             │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │  ci.yml  — Every PR + push to main                                   │  │
+│  │   typecheck ──→ test ──→ build                                       │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+└────────────────────────────────┬────────────────────────────────────────────┘
+                                 │ reads/writes
+                                 ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         RAILWAY (Always-On Services)                        │
+│                                                                             │
+│   ┌──────────────────┐    ┌──────────────────┐    ┌─────────────────────┐  │
+│   │  PostgreSQL DB    │    │  API Service      │    │  Web Service        │  │
+│   │  (managed)        │◄───│  (Express)        │    │  (Next.js)          │  │
+│   │                   │    │  packages/api     │    │  packages/web       │  │
+│   │  mcp_sentinel DB  │    │  auto-deploy:main │    │  auto-deploy:main   │  │
+│   │  port: 5432       │    │  port: 3001       │    │  port: 3000         │  │
+│   └──────────────────┘    └──────────────────┘    └─────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                                             │
+                                                             ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              PUBLIC INTERNET                                │
+│                                                                             │
+│   mcp-sentinel.com  (Next.js website — searchable registry)                │
+│   api.mcp-sentinel.com  (REST API — badge embeds, developer integrations)  │
+│   npmjs.com/package/mcp-sentinel  (CLI: npx mcp-sentinel check)            │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Pipeline Execution Schedule
+
+| Workflow | Schedule | Manual Dispatch | What It Does |
+|----------|----------|-----------------|-------------|
+| `crawl.yml` | Sundays 02:00 UTC | Yes — per-source | 6 crawlers in parallel → DB |
+| `scan.yml` | Daily 04:00 UTC | Yes — mode + batch_size + server_id | scan + score pipeline |
+| `ci.yml` | Every PR/push to main | No | typecheck + test + build |
+
+**Auto-chain:** `crawl.yml` completion triggers `scan.yml` via `workflow_run`. The daily `scan.yml` schedule is a safety net that catches servers discovered outside the weekly crawl (e.g. via API or manual DB inserts).
+
+**Concurrency guard:** `scan.yml` uses `concurrency: group: scan-pipeline, cancel-in-progress: false`. A second scan trigger queues rather than cancels the running scan. This prevents a daily cron from killing a weekly full rescan mid-flight.
+
+---
+
+### GitHub Actions Secrets
+
+| Secret | Required By | Description |
+|--------|-------------|-------------|
+| `DATABASE_URL` | crawl.yml, scan.yml | Railway PostgreSQL connection string. Format: `postgresql://user:pass@host:port/db` |
+| `SMITHERY_API_KEY` | crawl.yml (smithery job) | Smithery registry API key |
+| `GITHUB_TOKEN` | scan.yml (scan job) | Auto-injected by Actions. Used for GitHub raw content fetch (source code analysis) and GitHub Search API. Rate limit: 5,000 req/hr. |
+
+**Where to set:** GitHub repo → Settings → Secrets and variables → Actions → New repository secret.
+
+**`GITHUB_TOKEN` note:** The auto-injected token is scoped to the repo. The scanner uses it for fetching source code from third-party repos (GitHub raw content API). The 5,000 req/hr limit is sufficient for incremental scans but may constrain full rescans at 10k+ servers. If rate-limiting becomes an issue, add a `GITHUB_PAT` secret with a personal access token.
+
+---
+
+### Scan Modes
+
+| Mode | When to Use | Behavior |
+|------|-------------|----------|
+| `incremental` | Default, daily runs | Scans servers with `last_scan_at IS NULL`. Fast. |
+| `rescan-failed` | After fixing a bug in the scanner | Scans servers where last scan `status = 'error'` |
+| `full` | After adding new detection rules | Rescans all servers. Slow — use on weekends. |
+| `--server=<id>` | Debugging a specific server | Scans one server by DB ID. Ignores mode. |
+
+---
+
+### Failure Modes and Recovery
+
+| Failure | Impact | Recovery |
+|---------|--------|----------|
+| DB migration fails | crawl + scan blocked (hard dependency) | Fix migration SQL, re-run workflow |
+| Crawl partial failure (1-2 sources) | Fewer new servers discovered | Remaining sources still wrote rows; run single-source via `workflow_dispatch` |
+| Scan timeout (>5h) | Some servers not scanned | Re-run with `mode=incremental` — already-scanned servers are skipped |
+| Score job fails | Findings in DB but `latest_score` stale | Run `pnpm score` locally or re-trigger scan.yml |
+| Railway API down | Public registry unavailable | Railway provides auto-restart; check Railway dashboard |
+| GitHub rate limit hit | Source code fetch fails for some servers | Scanner records error per server; re-run next day |
+
+---
+
+### Railway Service Configuration
+
+```
+# packages/api — Railway service
+Start command:  node dist/index.js
+Build command:  pnpm --filter=@mcp-sentinel/api build
+Port:           3001
+Health check:   GET /health → 200 OK
+Auto-deploy:    main branch push
+Env vars:       DATABASE_URL (from Railway Postgres reference variable)
+                PORT=3001
+
+# packages/web — Railway service (or Vercel)
+Start command:  node .next/standalone/server.js
+Build command:  pnpm --filter=@mcp-sentinel/web build
+Port:           3000
+Auto-deploy:    main branch push
+Env vars:       NEXT_PUBLIC_API_URL=https://api.mcp-sentinel.com
+                DATABASE_URL (only if web does direct DB queries)
+```
+
+---
+
+### Adding a New Pipeline Stage
+
+1. Build it as a new package under `packages/`
+2. Add a build step in `scan.yml` after the `install` step
+3. Add a new job in `scan.yml` with `needs: [previous-stage]`
+4. Add the new job to the `summary` job's `needs` array
+5. Update this doc
+
+**Do NOT** add the new stage to `ci.yml` unless it needs to run on every PR. Pipeline stages are data-processing jobs, not build artifacts.

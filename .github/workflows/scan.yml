@@ -1,0 +1,203 @@
+name: Scan & Score MCP Servers
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Triggers
+# ─────────────────────────────────────────────────────────────────────────────
+on:
+  # Auto-chain: run 2h after crawl finishes (offset avoids DB write contention)
+  workflow_run:
+    workflows: ["Crawl MCP Registry"]
+    types: [completed]
+    branches: [main]
+
+  # Manual trigger with full control
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Scan mode"
+        required: false
+        default: "incremental"
+        type: choice
+        options:
+          - incremental   # Only servers not yet scanned (default, fast)
+          - rescan-failed # Retry servers that errored on last scan
+          - full          # Rescan all servers (slow — weekly use only)
+      batch_size:
+        description: "Servers per batch (default 100)"
+        required: false
+        default: "100"
+        type: string
+      server_id:
+        description: "Scan a single server by ID (leave blank for batch)"
+        required: false
+        type: string
+
+  # Daily safety net: catches new servers discovered outside the weekly full crawl
+  schedule:
+    - cron: "0 4 * * *"   # 04:00 UTC daily — 2h after crawl.yml at 02:00
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Concurrency: queue — never cancel a running scan, never run two in parallel.
+# cancel-in-progress: false means a second trigger waits rather than kills.
+# ─────────────────────────────────────────────────────────────────────────────
+concurrency:
+  group: scan-pipeline
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: "20"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Jobs
+# ─────────────────────────────────────────────────────────────────────────────
+jobs:
+
+  # ── 1. Validate trigger ────────────────────────────────────────────────────
+  # workflow_run fires on ANY conclusion (success, failure, cancelled).
+  # We skip only if the triggering crawl was cancelled (no data written).
+  # A partial crawl failure still produces rows worth scanning.
+  check-trigger:
+    name: Validate Trigger
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+    steps:
+      - name: Decide whether to proceed
+        id: check
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            CONCLUSION="${{ github.event.workflow_run.conclusion }}"
+            if [[ "$CONCLUSION" == "cancelled" || "$CONCLUSION" == "skipped" ]]; then
+              echo "Crawl was $CONCLUSION — no new data, skipping scan."
+              echo "should_run=false" >> $GITHUB_OUTPUT
+            else
+              echo "Crawl concluded: $CONCLUSION — proceeding with scan."
+              echo "should_run=true" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "Manual or scheduled trigger — proceeding."
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          fi
+
+  # ── 2. DB migrations ──────────────────────────────────────────────────────
+  # Always run migrations before any pipeline stage touches the DB.
+  migrate:
+    name: DB Migrations
+    runs-on: ubuntu-latest
+    needs: [check-trigger]
+    if: needs.check-trigger.outputs.should_run == 'true'
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter=@mcp-sentinel/database build
+      - name: Run migrations
+        run: pnpm db:migrate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+  # ── 3. Scan ───────────────────────────────────────────────────────────────
+  # The 7-stage pipeline: connect → fetch source → audit deps → analyze →
+  # (score is a separate job below for clean separation of concerns)
+  #
+  # Timeout: 5 hours. At ~10s per server with 100 concurrency, 10k servers
+  # takes ~1000s (~17min) in steady state. 5h covers worst-case cold starts.
+  scan:
+    name: Scan Servers
+    runs-on: ubuntu-latest
+    needs: [migrate]
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter=@mcp-sentinel/database build
+      - run: pnpm --filter=@mcp-sentinel/scanner build
+
+      - name: Scan (single server)
+        if: ${{ github.event.inputs.server_id != '' }}
+        run: pnpm scan --server=${{ github.event.inputs.server_id }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OSV_API_URL: https://api.osv.dev/v1
+
+      - name: Scan (batch mode)
+        if: ${{ github.event.inputs.server_id == '' }}
+        run: |
+          MODE="${{ github.event.inputs.mode || 'incremental' }}"
+          BATCH="${{ github.event.inputs.batch_size || '100' }}"
+          pnpm scan --mode=$MODE --batch-size=$BATCH
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OSV_API_URL: https://api.osv.dev/v1
+
+  # ── 4. Score ──────────────────────────────────────────────────────────────
+  # Recomputes composite scores for all servers touched in this scan run.
+  # Runs after scan so it sees the freshest findings.
+  score:
+    name: Recompute Scores
+    runs-on: ubuntu-latest
+    needs: [scan]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter=@mcp-sentinel/database build
+      - run: pnpm --filter=@mcp-sentinel/scorer build
+
+      - name: Recompute scores
+        run: pnpm score
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+  # ── 5. Pipeline summary ───────────────────────────────────────────────────
+  # Always runs — surfaces results in the Actions UI summary tab even on
+  # partial failure so operators can see which stage broke.
+  summary:
+    name: Pipeline Summary
+    runs-on: ubuntu-latest
+    needs: [migrate, scan, score]
+    if: always()
+    steps:
+      - name: Write job summary
+        run: |
+          echo "## Scan Pipeline Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Stage      | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "|------------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Migrations | ${{ needs.migrate.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Scan       | ${{ needs.scan.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Score      | ${{ needs.score.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger:** \`${{ github.event_name }}\`" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            echo "**Crawl conclusion:** \`${{ github.event.workflow_run.conclusion }}\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "**Mode:** \`${{ github.event.inputs.mode || 'incremental' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Batch size:** \`${{ github.event.inputs.batch_size || '100' }}\`" >> $GITHUB_STEP_SUMMARY
+          if [[ -n "${{ github.event.inputs.server_id }}" ]]; then
+            echo "**Server ID:** \`${{ github.event.inputs.server_id }}\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "- If scan failed: check \`DATABASE_URL\` secret and network access to MCP endpoints." >> $GITHUB_STEP_SUMMARY
+          echo "- If score failed: run \`pnpm score\` locally with the same \`DATABASE_URL\`." >> $GITHUB_STEP_SUMMARY
+          echo "- To rescan failed servers: re-run this workflow with mode = \`rescan-failed\`." >> $GITHUB_STEP_SUMMARY
