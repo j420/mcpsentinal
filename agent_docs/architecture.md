@@ -23,6 +23,22 @@
 - Decision: Detection rules stored as YAML in rules/ directory. Analyzer interprets them.
 - Rationale: Adding a rule should never require engine code changes. Rules are data.
 
+**ADR-006: No LLM in v1 — all analysis is deterministic**
+- Decision: No LLM API calls in v1. All detection is regex, schema-check, behavioral, or composite logic.
+- Rationale: Correctness over coverage. A rule that fires 100% of the time beats an LLM that fires 80% of the time on "suspicious intent." LLM classification added in v1.1 only where a deterministic rule demonstrably fails.
+- Trigger: A rule category shows >5% false-positive rate in Layer 5 red team audit.
+
+**ADR-007: Never invoke MCP server tools — legal/ethical boundary**
+- Decision: MCPConnector ONLY calls `initialize` and `tools/list`. `tools/call` is a Layer 5 gated capability requiring explicit server-author opt-in.
+- Rationale: Invoking tools has side effects. A scanner that executes code, reads files, or sends network requests on scanned servers without consent is legally and ethically indefensible. This is not a performance preference.
+- Enforcement: `.claude/hooks/pre-tool-use/block-mcp-invocation.sh` blocks attempts automatically.
+- Dynamic invocation: Layer 5 only, full audit log, read-only canary inputs only, explicit opt-in required.
+
+**ADR-008: Immutable scan results — history is a first-class feature**
+- Decision: `findings` and `scores` tables are append-only. No UPDATE statements. Every change generates a new record.
+- Rationale: Score trends and G6 (rug-pull detection) require reliable historical baselines. Mutable records make trend data meaningless.
+- Consequence: Never add UPDATE to findings or scores. If a finding is disputed, set `disputed: true` — never delete.
+
 ---
 
 ### Data Model

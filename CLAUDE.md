@@ -22,16 +22,30 @@ mcp-sentinel/
 │   ├── prompt-execution.md      ← Meta-prompt execution order and workflow
 │   ├── research-path.md         ← Continuous 8-track research intelligence system
 │   └── product-milestones.md    ← Current milestone, what to build, what NOT to build
+├── .claude/
+│   ├── settings.json            ← Claude Code permissions and hook configuration
+│   ├── hooks/                   ← Enforced guardrails (run automatically on edits)
+│   │   ├── post-edit/           ← validate-rule-yaml.sh, no-inline-sql.sh
+│   │   ├── pre-tool-use/        ← block-mcp-invocation.sh
+│   │   └── stop/                ← typecheck-reminder.sh
+│   └── skills/                  ← Reusable step-by-step workflows
+│       ├── add-detection-rule/  ← SKILL.md: 6-step rule addition checklist
+│       ├── add-crawler-source/  ← SKILL.md: crawler implementation guide
+│       └── release/             ← SKILL.md: pre-release quality checklist
 ├── packages/
-│   ├── crawler/                 ← Discovery: finds MCP servers across 18+ sources
-│   ├── connector/               ← Connection: MCP SDK wrapper for tool enumeration
-│   ├── analyzer/                ← Analysis: runs detection rules, produces findings
-│   ├── scorer/                  ← Scoring: computes composite scores from findings
-│   ├── database/                ← PostgreSQL schema, migrations, queries
-│   ├── api/                     ← Public REST API
-│   ├── web/                     ← Next.js registry website
-│   └── cli/                     ← npx mcp-sentinel CLI tool
-├── rules/                       ← Detection rule definitions (YAML)
+│   ├── crawler/                 ← Discovery: finds MCP servers across 7+ sources (each has CLAUDE.md)
+│   ├── connector/               ← Connection: MCP SDK wrapper — initialize + tools/list ONLY (has CLAUDE.md)
+│   ├── analyzer/                ← Analysis: runs 60 detection rules, produces findings (has CLAUDE.md)
+│   ├── scorer/                  ← Scoring: computes composite scores from findings (has CLAUDE.md)
+│   ├── database/                ← PostgreSQL schema, migrations, queries — ALL SQL lives here (has CLAUDE.md)
+│   ├── api/                     ← Public REST API (has CLAUDE.md)
+│   ├── web/                     ← Next.js registry website (has CLAUDE.md)
+│   └── cli/                     ← npx mcp-sentinel CLI tool (has CLAUDE.md)
+├── docs/
+│   └── runbooks/                ← Operational runbooks: add-new-rule, new-cve-response, full-crawl
+├── tools/
+│   └── scripts/                 ← validate-rules.sh and operational scripts
+├── rules/                       ← Detection rule definitions (YAML) — 60 rules across A–H
 ├── tests/                       ← Integration and E2E tests
 └── data/                        ← Seed data, test fixtures
 ```
@@ -117,8 +131,23 @@ Score = 100 minus weighted penalty deductions. Never returns below 0 or above 10
 - Do NOT build user authentication yet. The registry is public read-only for now.
 - Do NOT build a payment system. Monetization is post-seed.
 - Do NOT add LLM API calls. All analysis is deterministic in v1.
-- Do NOT optimize for performance before we have 5,000 servers. Correctness first.
+- Do NOT optimize for performance before we have 10,000 servers. Correctness first.
 - Do NOT modify the scoring weights without updating @agent_docs/scoring-algorithm.md.
+
+## Known Issues (P0 — Fix Before Merging to Main)
+
+### [P0] H2 Rule Is Completely Blind
+**File:** `packages/scanner/src/pipeline.ts` ~line 230
+**Problem:** `initialize_metadata: undefined` — hardcoded. Rule H2 (Initialize Response Injection) fires on zero servers because it receives no data.
+**Root cause:** `packages/connector/src/connector.ts` discards the `InitializeResult` returned by `client.connect()`. `serverInfo.version` and `instructions` are never captured.
+**Fix:** Update `MCPConnector.enumerate()` to return `InitializeResult` fields, then populate `initialize_metadata` in the pipeline.
+**See:** `packages/connector/CLAUDE.md`, `packages/scanner/CLAUDE.md`
+
+### [P0] Wrong Spec Versions in detection-rules.md
+**File:** `agent_docs/detection-rules.md`
+**Problem:** H2 backstory says "`instructions` field added September 2025" — WRONG. It existed in the original `2024-11-05` spec. Streamable HTTP and tool annotations are attributed to "2025-11-05" — WRONG. Real version: `2025-03-26`.
+**Impact:** Credibility damage if published with incorrect provenance.
+**Fix:** Update H2 description. Change all "2025-11-05" spec references to "2025-03-26".
 ## Current Milestone
 Read @agent_docs/product-milestones.md for the current sprint focus.
 **Active layer:** Check the milestones doc. Only work on the active layer unless explicitly told otherwise. Each layer depends on the one below it. Don't skip ahead.

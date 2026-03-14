@@ -27,11 +27,17 @@
 - [x] Crawler for PyPI
 - [x] Crawler for PulseMCP
 - [x] Crawler for Smithery
+- [x] Crawler for Official MCP Registry
+- [x] Crawler for modelcontextprotocol GitHub repo
+- [ ] Crawler for MCP Server Cards (.well-known/mcp) — new official spec discovery standard
+- [ ] Crawler for Glama (SourceName enum exists, no crawler)
+- [ ] Crawler for awesome-mcp-servers (SourceName enum exists, no crawler)
 - [ ] Deduplication pipeline (integrated with DB)
 - [ ] Crawl orchestration with logging
-- [ ] First full crawl: target 5,000+ unique servers
+- [ ] First full crawl: target 10,000+ unique servers
 
-**Success Criteria:** 5,000 unique servers in the database with >80% having at least one identifier (GitHub URL or package name).
+**Success Criteria:** 10,000 unique servers in the database with >80% having at least one identifier (GitHub URL or package name).
+_Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcement). Original 5,000 target is outdated._
 
 ---
 
@@ -40,16 +46,17 @@
 **Goal:** Run detection rules against every server and produce scored results.
 
 **Deliverables:**
-- [x] 30 detection rules across 6 categories (A/B/C/D/E/F)
-- [x] Analysis engine that interprets YAML rules
-- [x] Scoring algorithm (100 - penalties)
-- [x] MCP Connector for tool enumeration
-- [ ] Source code fetcher (GitHub raw content)
-- [ ] Dependency auditor (npm audit / pip-audit)
-- [ ] Full scan pipeline: crawl → connect → analyze → score
-- [ ] Scan all 5,000 servers
+- [x] 60 detection rules across 8 categories (A/B/C/D/E/F/G/H)
+- [x] Analysis engine that interprets YAML rules (4 handler types: regex, schema-check, behavioral, composite)
+- [x] Scoring algorithm (100 - penalties, lethal trifecta cap, sub-scores per category)
+- [x] MCP Connector for tool enumeration (initialize + tools/list only)
+- [x] Source code fetcher (GitHub raw content) — packages/scanner/src/fetcher.ts
+- [x] Dependency auditor (OSV API integration) — packages/scanner/src/auditor.ts
+- [x] Full scan pipeline (7 stages with concurrency + stage isolation) — packages/scanner/src/pipeline.ts
+- [ ] **P0 BUG: Fix initialize_metadata pipeline** — H2 rule fires on zero servers (see CLAUDE.md Known Issues)
+- [ ] Scan all 10,000 servers
 
-**Success Criteria:** 5,000 servers scanned, findings distribution matches expectations (most servers should have some findings).
+**Success Criteria:** 10,000 servers scanned, findings distribution matches expectations (most servers should have some findings).
 
 ---
 
