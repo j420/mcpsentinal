@@ -631,6 +631,25 @@ export class DatabaseQueries {
     ).rows as Server[];
   }
 
+  async getFailedServers(limit: number = 100) {
+    return (
+      await this.pool.query(
+        `SELECT s.* FROM servers s
+         WHERE EXISTS (
+           SELECT 1 FROM scans sc
+           WHERE sc.server_id = s.id
+             AND sc.status = 'failed'
+             AND sc.id = (
+               SELECT id FROM scans WHERE server_id = s.id ORDER BY started_at DESC LIMIT 1
+             )
+         )
+         ORDER BY s.github_stars DESC NULLS LAST
+         LIMIT $1`,
+        [limit]
+      )
+    ).rows as Server[];
+  }
+
   // ─── Scanner Support Queries ──────────────────────────────────────────────
 
   async getServerById(id: string): Promise<Server | null> {
