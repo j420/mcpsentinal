@@ -121,8 +121,7 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter=@mcp-sentinel/database build
-      - run: pnpm --filter=@mcp-sentinel/scanner build
+      - run: pnpm turbo build --filter=@mcp-sentinel/scanner
 
       - name: Scan (single server)
         if: ${{ github.event.inputs.server_id != '' }}
@@ -160,8 +159,7 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter=@mcp-sentinel/database build
-      - run: pnpm --filter=@mcp-sentinel/scorer build
+      - run: pnpm turbo build --filter=@mcp-sentinel/scorer
 
       - name: Recompute scores
         run: pnpm score
