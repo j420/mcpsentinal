@@ -6,6 +6,8 @@ export const metadata: Metadata = {
     "Live security intelligence across the entire MCP ecosystem — score distribution, OWASP coverage, category risk breakdown, and top findings.",
 };
 
+export const dynamic = "force-dynamic";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3100";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
