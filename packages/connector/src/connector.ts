@@ -51,6 +51,13 @@ export class MCPConnector {
 
       await Promise.race([connectPromise, timeoutPromise]);
 
+      // Capture initialize response fields for H2 rule analysis.
+      // These are populated by the SDK during client.connect() and are accessible
+      // immediately after the race resolves. They represent the three injection
+      // surfaces in the MCP handshake: server name (in server record), version, instructions.
+      const serverVersionInfo = client.getServerVersion();
+      const serverInstructions = client.getInstructions();
+
       // Enumerate tools — ONLY tools/list, never invoke
       const toolsResult = await client.listTools();
       const responseTime = Date.now() - startTime;
@@ -67,6 +74,8 @@ export class MCPConnector {
           endpoint,
           tools: tools.length,
           responseTime,
+          server_version: serverVersionInfo?.version ?? null,
+          has_instructions: !!serverInstructions,
         },
         "Tool enumeration complete"
       );
@@ -77,6 +86,8 @@ export class MCPConnector {
         connection_success: true,
         connection_error: null,
         response_time_ms: responseTime,
+        server_version: serverVersionInfo?.version ?? null,
+        server_instructions: serverInstructions ?? null,
       };
     } catch (err) {
       const responseTime = Date.now() - startTime;
@@ -93,6 +104,8 @@ export class MCPConnector {
         connection_success: false,
         connection_error: errorMsg,
         response_time_ms: responseTime,
+        server_version: null,
+        server_instructions: null,
       };
     } finally {
       try {

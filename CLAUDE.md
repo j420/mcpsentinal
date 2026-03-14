@@ -136,18 +136,15 @@ Score = 100 minus weighted penalty deductions. Never returns below 0 or above 10
 
 ## Known Issues (P0 — Fix Before Merging to Main)
 
-### [P0] H2 Rule Is Completely Blind
-**File:** `packages/scanner/src/pipeline.ts` ~line 230
-**Problem:** `initialize_metadata: undefined` — hardcoded. Rule H2 (Initialize Response Injection) fires on zero servers because it receives no data.
-**Root cause:** `packages/connector/src/connector.ts` discards the `InitializeResult` returned by `client.connect()`. `serverInfo.version` and `instructions` are never captured.
-**Fix:** Update `MCPConnector.enumerate()` to return `InitializeResult` fields, then populate `initialize_metadata` in the pipeline.
-**See:** `packages/connector/CLAUDE.md`, `packages/scanner/CLAUDE.md`
+### [RESOLVED] H2 Rule Is Completely Blind
+Fixed: `MCPConnector.enumerate()` now captures `serverInfo.version` and `instructions` via
+`client.getServerVersion()` and `client.getInstructions()` after the initialize handshake.
+`ToolEnumerationSchema` extended with `server_version` + `server_instructions`.
+Pipeline populates `initialize_metadata` from the enumeration result. H2 rule now has data.
 
-### [P0] Wrong Spec Versions in detection-rules.md
-**File:** `agent_docs/detection-rules.md`
-**Problem:** H2 backstory says "`instructions` field added September 2025" — WRONG. It existed in the original `2024-11-05` spec. Streamable HTTP and tool annotations are attributed to "2025-11-05" — WRONG. Real version: `2025-03-26`.
-**Impact:** Credibility damage if published with incorrect provenance.
-**Fix:** Update H2 description. Change all "2025-11-05" spec references to "2025-03-26".
+### [RESOLVED] Wrong Spec Versions in detection-rules.md
+Fixed: `agent_docs/detection-rules.md` updated — `instructions` field correctly attributed to
+`2024-11-05` spec. All `2025-11-05` references corrected to `2025-03-26`.
 ## Current Milestone
 Read @agent_docs/product-milestones.md for the current sprint focus.
 **Active layer:** Check the milestones doc. Only work on the active layer unless explicitly told otherwise. Each layer depends on the one below it. Don't skip ahead.

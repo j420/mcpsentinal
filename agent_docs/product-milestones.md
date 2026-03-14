@@ -53,7 +53,7 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 - [x] Source code fetcher (GitHub raw content) — packages/scanner/src/fetcher.ts
 - [x] Dependency auditor (OSV API integration) — packages/scanner/src/auditor.ts
 - [x] Full scan pipeline (7 stages with concurrency + stage isolation) — packages/scanner/src/pipeline.ts
-- [ ] **P0 BUG: Fix initialize_metadata pipeline** — H2 rule fires on zero servers (see CLAUDE.md Known Issues)
+- [x] **P0 BUG: Fix initialize_metadata pipeline** — H2 rule now receives live data via `client.getServerVersion()` + `client.getInstructions()`
 - [ ] Scan all 10,000 servers
 
 **Success Criteria:** 10,000 servers scanned, findings distribution matches expectations (most servers should have some findings).

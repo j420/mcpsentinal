@@ -37,33 +37,23 @@ const result: ToolEnumeration = await connector.enumerate(serverId, endpoint);
   connection_success: boolean
   connection_error: string | null
   response_time_ms: number
+  server_version: string | null        // from client.getServerVersion().version
+  server_instructions: string | null   // from client.getInstructions()
 }
 ```
 
-## Known Issue — P0 Bug (H2 Rule Blind)
+`server_version` and `server_instructions` are `null` on failed connections.
+`server_name` (serverInfo.name) is not captured here — it lives in the server DB record.
+The analyzer combines all three for H2 rule analysis via the `server_initialize_fields` context.
 
-**The `InitializeResult` from `client.connect()` is currently discarded.**
+## Initialize Response Fields (H2 Support)
 
-`client.connect(transport)` returns `InitializeResult` which contains:
-- `serverInfo.name` — server's declared name
-- `serverInfo.version` — server's declared version
-- `result.instructions` — the H2 injection surface (spec field since `2024-11-05`)
+After `client.connect(transport)` resolves, the SDK exposes the initialize handshake data:
+- `client.getServerVersion()` → `{ name, version }` (serverInfo in the MCP spec)
+- `client.getInstructions()` → `string | undefined` (the spec-sanctioned instructions field)
 
-These fields are needed by rule H2 (Initialize Response Injection) but are never captured.
-The pipeline sets `initialize_metadata: undefined` as a result.
-
-**Fix required:** Capture the `InitializeResult` and return it alongside `ToolEnumeration`.
-
-```typescript
-// Current (broken):
-await Promise.race([connectPromise, timeoutPromise]);
-
-// Should be:
-const initResult = await Promise.race([connectPromise, timeoutPromise]);
-// Then expose: initResult.serverInfo.name, initResult.serverInfo.version, initResult.instructions
-```
-
-See `packages/scanner/CLAUDE.md` for how the pipeline consumes this data.
+These are captured immediately after the connect race resolves and included in `ToolEnumeration`.
+The pipeline passes them to `AnalysisContext.initialize_metadata` for H2 rule analysis.
 
 ## Transport Logic
 - Endpoints ending in `/sse` or with `?sse=` → `SSEClientTransport`
