@@ -258,6 +258,40 @@ const OWASP_LABELS: Record<string, string> = {
   "MCP10-supply-chain": "MCP10 Supply Chain",
 };
 
+// ── JSON-LD ───────────────────────────────────────────────────────────────────
+
+function buildJsonLd(server: ServerDetail, siteUrl: string) {
+  const jsonLd: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: server.name,
+    applicationCategory: "SecurityApplication",
+    url: `${siteUrl}/server/${server.slug}`,
+    ...(server.description && { description: server.description }),
+    ...(server.github_url && { codeRepository: server.github_url }),
+    ...(server.npm_package && {
+      downloadUrl: `https://www.npmjs.com/package/${server.npm_package}`,
+    }),
+  };
+
+  if (server.latest_score !== null) {
+    jsonLd["aggregateRating"] = {
+      "@type": "AggregateRating",
+      ratingValue: server.latest_score,
+      bestRating: 100,
+      worstRating: 0,
+      ratingCount: 1,
+      reviewAspect: "Security",
+    };
+  }
+
+  if (server.author) {
+    jsonLd["author"] = { "@type": "Person", name: server.author };
+  }
+
+  return jsonLd;
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function ServerPage({
@@ -303,8 +337,14 @@ export default async function ServerPage({
 
   const badgeMd = `[![MCP Sentinel Score](${SITE_URL}/api/v1/servers/${server.slug}/badge.svg)](${SITE_URL}/server/${server.slug})`;
 
+  const jsonLd = buildJsonLd(server, SITE_URL);
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* ── Breadcrumb + Header ──────────────────────── */}
       <div className="server-header">
         <nav className="breadcrumb" aria-label="Breadcrumb">
