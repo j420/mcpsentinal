@@ -35,7 +35,7 @@ interface Server {
 async function getStats(): Promise<EcosystemStats | null> {
   try {
     const res = await fetch(`${API_URL}/api/v1/ecosystem/stats`, {
-      next: { revalidate: 300 },
+      signal: AbortSignal.timeout(4000),
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -54,7 +54,7 @@ async function getAtRiskServers(): Promise<Server[]> {
       max_score: "40",
     });
     const res = await fetch(`${API_URL}/api/v1/servers?${params}`, {
-      next: { revalidate: 300 },
+      signal: AbortSignal.timeout(4000),
     });
     if (!res.ok) return [];
     const data = await res.json();
@@ -73,7 +73,7 @@ async function getTopServers(): Promise<Server[]> {
       min_score: "80",
     });
     const res = await fetch(`${API_URL}/api/v1/servers?${params}`, {
-      next: { revalidate: 300 },
+      signal: AbortSignal.timeout(4000),
     });
     if (!res.ok) return [];
     const data = await res.json();

@@ -261,7 +261,14 @@ const MIGRATIONS = [
 ];
 
 export async function migrate(connectionString: string): Promise<void> {
-  const client = new pg.Client({ connectionString });
+  const isRemote =
+    connectionString &&
+    !connectionString.includes("localhost") &&
+    !connectionString.includes("127.0.0.1");
+  const client = new pg.Client({
+    connectionString,
+    ssl: isRemote ? { rejectUnauthorized: false } : false,
+  });
   await client.connect();
 
   try {
