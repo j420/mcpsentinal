@@ -19,20 +19,18 @@ ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 RUN pnpm --filter=@mcp-sentinel/web build
 
 # ─── Runner ───────────────────────────────────────────────────────────────────
-FROM node:20-alpine AS runner
-WORKDIR /app
+# Uses next start (not standalone) to avoid pnpm virtual-store tracing issues.
+FROM base AS runner
+WORKDIR /app/packages/web
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV HOSTNAME="0.0.0.0"
 
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 
-# outputFileTracingRoot=monorepo root → standalone places server.js at
-# packages/web/server.js (not the standalone root). Match COPY destinations.
-COPY --from=builder /app/packages/web/public ./packages/web/public
-COPY --from=builder --chown=nextjs:nodejs /app/packages/web/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/packages/web/.next/static ./packages/web/.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules /app/node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/packages/web /app/packages/web
 
 USER nextjs
 EXPOSE 3000
-CMD ["node", "packages/web/server.js"]
+# Pass $PORT so next start listens on the port Railway routes traffic to.
+CMD ["sh", "-c", "pnpm exec next start -p ${PORT:-3000}"]
