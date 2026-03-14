@@ -120,7 +120,11 @@ export class ScanPipeline {
       const mode = options.mode ?? (options.rescan ? "full" : "incremental");
       if (mode === "rescan-failed") {
         servers = await this.db.getFailedServers(limit);
-      } else if (mode === "full" || options.rescan) {
+      } else if (mode === "full") {
+        // Full mode rescans every server regardless of when it was last scanned.
+        // getServersNeedingRescan would miss servers scanned within staleDays.
+        servers = await this.db.getAllServers(limit);
+      } else if (options.rescan) {
         servers = await this.db.getServersNeedingRescan(staleDays, limit);
       } else {
         servers = await this.db.getUnscannedServers(limit);
