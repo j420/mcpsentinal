@@ -2,7 +2,7 @@ id: H1
 name: MCP OAuth 2.0 Insecure Implementation
 category: auth-analysis
 severity: critical
-owasp: MCP07-insecure-configuration
+owasp: MCP07-insecure-config
 mitre: AML.T0056
 
 # THREAT INTELLIGENCE NOTE (OAuth 2.0 Security Specialist — RFC 9700 / BCP 212):

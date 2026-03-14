@@ -318,6 +318,8 @@ export class DatabaseQueries {
       input_schema: Record<string, unknown> | null;
     }>
   ): Promise<void> {
+    if (tools.length === 0) return;
+
     for (const tool of tools) {
       const result = await this.pool.query(
         `INSERT INTO tools (server_id, name, description, input_schema)
@@ -363,12 +365,22 @@ export class DatabaseQueries {
   }
 
   async getToolsForServer(serverId: string) {
-    return (
+    const rows = (
       await this.pool.query(
         "SELECT * FROM tools WHERE server_id = $1 ORDER BY name",
         [serverId]
       )
     ).rows;
+
+    // Keep tool_count denormalized on servers
+    if (rows.length > 0) {
+      await this.pool.query(
+        "UPDATE servers SET tool_count = $1 WHERE id = $2",
+        [rows.length, serverId]
+      );
+    }
+
+    return rows;
   }
 
   // ─── Scan Operations ───────────────────────────────────────────────────────
@@ -388,16 +400,64 @@ export class DatabaseQueries {
   async completeScan(
     scanId: string,
     findingsCount: number,
-    error: string | null = null
+    error: string | null = null,
+    stages?: {
+      source_fetched: boolean;
+      connection_attempted: boolean;
+      connection_succeeded: boolean;
+      dependencies_audited: boolean;
+    }
   ): Promise<void> {
     await this.pool.query(
       `UPDATE scans SET
          status = $1,
          completed_at = NOW(),
          findings_count = $2,
-         error = $3
-       WHERE id = $4`,
-      [error ? "failed" : "completed", findingsCount, error, scanId]
+         error = $3,
+         stages = $4
+       WHERE id = $5`,
+      [error ? "failed" : "completed", findingsCount, error, stages ? JSON.stringify(stages) : null, scanId]
+    );
+
+    // Denormalize last_scanned_at onto the server row for fast incremental queries
+    await this.pool.query(
+      `UPDATE servers SET last_scanned_at = NOW() WHERE id = (SELECT server_id FROM scans WHERE id = $1)`,
+      [scanId]
+    );
+  }
+
+  /**
+   * Persist connection data discovered during Stage 3+4 of the scan pipeline.
+   * Called immediately after the MCPConnector enumerate() attempt completes.
+   * - endpoint_url: cached so future scans skip re-scanning raw_metadata sources
+   * - connection_status: surfaces health in web UI
+   * - server_version / server_instructions: H2 rule data — persisted for historical analysis
+   * - tool_count: denormalized after upsertTools() for fast UI sort/filter
+   */
+  async updateServerConnectionData(
+    serverId: string,
+    data: {
+      endpoint_url?: string | null;
+      connection_status: "success" | "failed" | "timeout" | "no_endpoint";
+      server_version?: string | null;
+      server_instructions?: string | null;
+    }
+  ): Promise<void> {
+    await this.pool.query(
+      `UPDATE servers SET
+         endpoint_url = COALESCE($2, endpoint_url),
+         connection_status = $3,
+         server_version = COALESCE($4, server_version),
+         server_instructions = COALESCE($5, server_instructions),
+         updated_at = NOW()
+       WHERE id = $1`,
+      [
+        serverId,
+        data.endpoint_url ?? null,
+        data.connection_status,
+        data.server_version ?? null,
+        data.server_instructions ?? null,
+      ]
     );
   }
 
@@ -452,6 +512,7 @@ export class DatabaseQueries {
     description_score: number;
     behavior_score: number;
     owasp_coverage: Record<string, boolean>;
+    rules_version?: string;
   }): Promise<void> {
     await this.pool.query(
       `INSERT INTO scores (server_id, scan_id, total_score, code_score, deps_score, config_score, description_score, behavior_score, owasp_coverage)
@@ -490,9 +551,9 @@ export class DatabaseQueries {
     );
 
     await this.pool.query(
-      `INSERT INTO score_history (server_id, score, findings_count)
-       VALUES ($1, $2, $3)`,
-      [score.server_id, score.total_score, parseInt(findingsCount.rows[0].cnt, 10)]
+      `INSERT INTO score_history (server_id, score, findings_count, rules_version)
+       VALUES ($1, $2, $3, $4)`,
+      [score.server_id, score.total_score, parseInt(findingsCount.rows[0].cnt, 10), score.rules_version ?? null]
     );
   }
 
@@ -613,17 +674,21 @@ export class DatabaseQueries {
       has_known_cve: boolean;
       cve_ids: string[];
       last_updated: Date | null;
+      is_direct?: boolean;
+      cve_severity?: string | null;
     }>
   ): Promise<void> {
     for (const dep of deps) {
       await this.pool.query(
-        `INSERT INTO dependencies (server_id, name, version, ecosystem, has_known_cve, cve_ids, last_updated)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `INSERT INTO dependencies (server_id, name, version, ecosystem, has_known_cve, cve_ids, last_updated, is_direct, cve_severity)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          ON CONFLICT (server_id, name, ecosystem) DO UPDATE SET
            version = COALESCE(EXCLUDED.version, dependencies.version),
            has_known_cve = EXCLUDED.has_known_cve,
            cve_ids = EXCLUDED.cve_ids,
-           last_updated = COALESCE(EXCLUDED.last_updated, dependencies.last_updated)`,
+           last_updated = COALESCE(EXCLUDED.last_updated, dependencies.last_updated),
+           is_direct = EXCLUDED.is_direct,
+           cve_severity = COALESCE(EXCLUDED.cve_severity, dependencies.cve_severity)`,
         [
           serverId,
           dep.name,
@@ -632,6 +697,8 @@ export class DatabaseQueries {
           dep.has_known_cve,
           dep.cve_ids,
           dep.last_updated,
+          dep.is_direct ?? true,
+          dep.cve_severity ?? null,
         ]
       );
     }

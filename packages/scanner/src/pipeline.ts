@@ -298,6 +298,14 @@ export class ScanPipeline {
             server_instructions: enumeration.server_instructions ?? null,
           };
 
+          // Persist connection data: endpoint cache, health status, H2 rule data
+          await this.db.updateServerConnectionData(server.id, {
+            endpoint_url: endpoint,
+            connection_status: "success",
+            server_version: enumeration.server_version ?? null,
+            server_instructions: enumeration.server_instructions ?? null,
+          });
+
           log.info(
             {
               tools: liveTools.length,
@@ -315,12 +323,22 @@ export class ScanPipeline {
             response_time_ms: enumeration.response_time_ms,
           };
 
+          const isTimeout = (enumeration.connection_error ?? "").toLowerCase().includes("timeout");
+          await this.db.updateServerConnectionData(server.id, {
+            endpoint_url: endpoint,
+            connection_status: isTimeout ? "timeout" : "failed",
+          });
+
           log.warn(
             { error: enumeration.connection_error },
             "Stage 3+4: Live connection failed — proceeding with static analysis"
           );
         }
       } else {
+        // No endpoint found — record status so UI shows "no endpoint" rather than unknown
+        await this.db.updateServerConnectionData(server.id, {
+          connection_status: "no_endpoint",
+        });
         log.info("Stage 3+4: No endpoint discovered — static analysis only");
       }
 
@@ -399,9 +417,10 @@ export class ScanPipeline {
         description_score: score.description_score,
         behavior_score: score.behavior_score,
         owasp_coverage: score.owasp_coverage,
+        rules_version: rulesVersion,
       });
 
-      await this.db.completeScan(scanId, findings.length, null);
+      await this.db.completeScan(scanId, findings.length, null, stages);
 
       const elapsed = Date.now() - serverStart;
       log.info(
@@ -427,7 +446,7 @@ export class ScanPipeline {
       // Mark the scan record as failed so it's visible in the DB
       if (scanId) {
         try {
-          await this.db.completeScan(scanId, 0, error.substring(0, 4000));
+          await this.db.completeScan(scanId, 0, error.substring(0, 4000), stages);
         } catch (persistErr) {
           log.error({ persistErr }, "Failed to mark scan as failed in DB");
         }

@@ -70,8 +70,7 @@ export const OwaspCategory = z.enum([
   "MCP04-data-exfiltration",
   "MCP05-privilege-escalation",
   "MCP06-excessive-permissions",
-  "MCP07-insecure-config",
-  "MCP07-insecure-configuration",
+  "MCP07-insecure-config",   // canonical value — used by 13 rules + H1 (H1 yaml fixed in same commit)
   "MCP08-dependency-vuln",
   "MCP09-logging-monitoring",
   "MCP10-supply-chain",
@@ -96,6 +95,13 @@ export const ServerSchema = z.object({
   npm_downloads: z.number().int().nonnegative().nullable(),
   last_commit: z.coerce.date().nullable(),
   latest_score: z.number().int().min(0).max(100).nullable(),
+  // Scan pipeline denormalized fields (migration 004)
+  last_scanned_at: z.coerce.date().nullable(),
+  endpoint_url: z.string().nullable(),
+  tool_count: z.number().int().nonnegative().default(0),
+  connection_status: z.enum(["success", "failed", "timeout", "no_endpoint"]).nullable(),
+  server_version: z.string().nullable(),
+  server_instructions: z.string().nullable(),
   created_at: z.coerce.date(),
   updated_at: z.coerce.date(),
 });
@@ -148,6 +154,13 @@ export const ScanSchema = z.object({
   rules_version: z.string().max(50),
   error: z.string().max(5000).nullable(),
   findings_count: z.number().int().nonnegative().default(0),
+  // Pipeline stage completion (migration 004) — null for scans run before this migration
+  stages: z.object({
+    source_fetched: z.boolean(),
+    connection_attempted: z.boolean(),
+    connection_succeeded: z.boolean(),
+    dependencies_audited: z.boolean(),
+  }).nullable(),
 });
 export type Scan = z.infer<typeof ScanSchema>;
 
@@ -187,6 +200,9 @@ export const DependencySchema = z.object({
   has_known_cve: z.boolean().default(false),
   cve_ids: z.array(z.string()),
   last_updated: z.coerce.date().nullable(),
+  // migration 004: direct vs. transitive; CVE severity from OSV
+  is_direct: z.boolean().default(true),
+  cve_severity: Severity.nullable(),
 });
 export type Dependency = z.infer<typeof DependencySchema>;
 
@@ -208,6 +224,7 @@ export const ScoreHistorySchema = z.object({
   server_id: z.string().uuid(),
   score: z.number().int().min(0).max(100),
   findings_count: z.number().int().nonnegative(),
+  rules_version: z.string().nullable(), // migration 004: attribute score change to rule update vs. server change
   recorded_at: z.coerce.date(),
 });
 export type ScoreHistory = z.infer<typeof ScoreHistorySchema>;
