@@ -6,7 +6,7 @@ export const metadata: Metadata = {
     "Search thousands of MCP servers. Compare security scores. Evaluate the safety of every Model Context Protocol integration before you deploy.",
 };
 
-const API_URL = process.env.API_URL || "http://localhost:3100";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3100";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

@@ -25,9 +25,13 @@ const db = new DatabaseQueries(pool);
 
 // GET /api/v1/servers — Search and list servers
 app.get("/api/v1/servers", async (req, res) => {
+  const parsed = ServerListQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid query parameters", issues: parsed.error.issues });
+    return;
+  }
   try {
-    const query = ServerListQuerySchema.parse(req.query);
-    const result = await db.searchServers(query);
+    const result = await db.searchServers(parsed.data);
     res.json({
       data: result.servers,
       pagination: {
@@ -38,12 +42,8 @@ app.get("/api/v1/servers", async (req, res) => {
       },
     });
   } catch (err) {
-    if (err instanceof Error && err.name === "ZodError") {
-      res.status(400).json({ error: "Invalid query parameters", details: err });
-    } else {
-      logger.error(err, "Server list error");
-      res.status(500).json({ error: "Internal server error" });
-    }
+    logger.error(err, "Server list error");
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -56,12 +56,13 @@ app.get("/api/v1/servers/:slug", async (req, res) => {
       return;
     }
 
-    const [tools, findings] = await Promise.all([
+    const [tools, findings, score_detail] = await Promise.all([
       db.getToolsForServer(server.id),
       db.getFindingsForServer(server.id),
+      db.getLatestScoreForServer(server.id),
     ]);
 
-    res.json({ data: { ...server, tools, findings } });
+    res.json({ data: { ...server, tools, findings, score_detail } });
   } catch (err) {
     logger.error(err, "Server detail error");
     res.status(500).json({ error: "Internal server error" });

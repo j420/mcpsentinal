@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-const API_URL = process.env.API_URL || "http://localhost:3100";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3100";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://mcp-sentinel.com";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
