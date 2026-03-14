@@ -21,11 +21,12 @@
 
 import { parseArgs } from "node:util";
 import path from "node:path";
+import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
 import pino from "pino";
+import { parse as parseYaml } from "yaml";
 import { DatabaseQueries } from "@mcp-sentinel/database";
-import { loadRules, getRulesVersion } from "@mcp-sentinel/analyzer";
 import { computeScore } from "./scorer.js";
 
 const logger = pino({ name: "scorer:cli" });
@@ -34,6 +35,38 @@ const logger = pino({ name: "scorer:cli" });
 // __dirname is packages/scorer/src/ → ../../../rules resolves to <root>/rules
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const DEFAULT_RULES_DIR = path.resolve(__dirname, "../../../rules");
+
+/** Read YAML rules and return a rule_id → category map. */
+function loadRuleCategories(rulesDir: string): Record<string, string> {
+  const categories: Record<string, string> = {};
+  const files = readdirSync(rulesDir).filter((f) => f.endsWith(".yaml") || f.endsWith(".yml"));
+  for (const file of files) {
+    try {
+      const raw = parseYaml(readFileSync(path.join(rulesDir, file), "utf-8")) as {
+        id?: string;
+        category?: string;
+        enabled?: boolean;
+      };
+      if (raw.id && raw.category && raw.enabled !== false) {
+        categories[raw.id] = raw.category;
+      }
+    } catch {
+      // skip malformed rule files
+    }
+  }
+  return categories;
+}
+
+/** Produce a short version string from the active rule set (matches analyzer's getRulesVersion). */
+function getRulesVersion(categories: Record<string, string>): string {
+  const ids = Object.keys(categories).sort().join(",");
+  let hash = 0;
+  for (let i = 0; i < ids.length; i++) {
+    hash = ((hash << 5) - hash + ids.charCodeAt(i)) | 0;
+  }
+  const count = Object.keys(categories).length;
+  return `1.0.0-${count}r-${Math.abs(hash).toString(36).substring(0, 6)}`;
+}
 
 async function main(): Promise<void> {
   const { values } = parseArgs({
@@ -55,10 +88,9 @@ async function main(): Promise<void> {
   const limit = parseInt(values.limit ?? "1000", 10);
 
   // Load rules once — needed to map rule_id → category for sub-scores
-  const rules = loadRules(rulesDir);
-  const rulesVersion = getRulesVersion(rules);
-  const ruleCategories = Object.fromEntries(rules.map((r) => [r.id, r.category]));
-  logger.info({ rules: rules.length, rulesVersion, limit }, "Scorer starting");
+  const ruleCategories = loadRuleCategories(rulesDir);
+  const rulesVersion = getRulesVersion(ruleCategories);
+  logger.info({ rules: Object.keys(ruleCategories).length, rulesVersion, limit }, "Scorer starting");
 
   const pool = new pg.Pool({ connectionString: databaseUrl });
   const db = new DatabaseQueries(pool);
