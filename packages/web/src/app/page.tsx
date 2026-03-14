@@ -201,14 +201,14 @@ export default async function HomePage({
           Security Intelligence Registry
         </div>
         <h1 className="hero-title">
-          Trust Every <span>MCP Server</span>
+          Trust Every MCP Server
           <br />
-          Before It Touches Your Agent
+          Before It Touches <em>Your Agent</em>
         </h1>
         <p className="hero-sub">
           {stats?.total_servers
             ? `${stats.total_servers.toLocaleString()} MCP servers scanned across ${Object.keys(stats.category_breakdown || {}).length} categories.`
-            : "Thousands of MCP servers."}{" "}
+            : "22,000+ MCP servers."}{" "}
           60 detection rules. Zero guesswork.
         </p>
       </section>
