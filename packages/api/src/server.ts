@@ -15,9 +15,13 @@ app.use((req, _res, next) => {
   next();
 });
 
-// Database connection
+// Database connection — SSL required for Railway public proxy URLs
+const dbUrl = process.env.DATABASE_URL ?? "";
 const pool = new pg.Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: dbUrl,
+  ssl: dbUrl && !dbUrl.includes("localhost") && !dbUrl.includes("127.0.0.1")
+    ? { rejectUnauthorized: false }
+    : false,
 });
 const db = new DatabaseQueries(pool);
 
@@ -159,7 +163,6 @@ app.get("/health", (_req, res) => {
 const PORT = parseInt(process.env.PORT || "3100", 10);
 
 async function start() {
-  const dbUrl = process.env.DATABASE_URL;
   if (dbUrl) {
     try {
       await migrate(dbUrl);
