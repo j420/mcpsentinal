@@ -404,22 +404,7 @@ export default async function DashboardPage() {
               {atRisk.map((server) => (
                 <div
                   key={server.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "var(--s2) var(--s3)",
-                    borderRadius: "var(--r-sm)",
-                    transition: "background var(--t-fast) var(--ease)",
-                  }}
-                  onMouseEnter={(e) =>
-                    ((e.currentTarget as HTMLElement).style.background =
-                      "var(--surface-2)")
-                  }
-                  onMouseLeave={(e) =>
-                    ((e.currentTarget as HTMLElement).style.background =
-                      "transparent")
-                  }
+                  className="server-row-hover"
                 >
                   <div>
                     <a
@@ -464,22 +449,7 @@ export default async function DashboardPage() {
               {topServers.map((server) => (
                 <div
                   key={server.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "var(--s2) var(--s3)",
-                    borderRadius: "var(--r-sm)",
-                    transition: "background var(--t-fast) var(--ease)",
-                  }}
-                  onMouseEnter={(e) =>
-                    ((e.currentTarget as HTMLElement).style.background =
-                      "var(--surface-2)")
-                  }
-                  onMouseLeave={(e) =>
-                    ((e.currentTarget as HTMLElement).style.background =
-                      "transparent")
-                  }
+                  className="server-row-hover"
                 >
                   <div>
                     <a
