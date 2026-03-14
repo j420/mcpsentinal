@@ -59,7 +59,7 @@ interface ServerDetail {
 async function getServer(slug: string): Promise<ServerDetail | null> {
   try {
     const res = await fetch(`${API_URL}/api/v1/servers/${encodeURIComponent(slug)}`, {
-      next: { revalidate: 300 },
+      signal: AbortSignal.timeout(4000),
     });
     if (!res.ok) return null;
     const data = await res.json();

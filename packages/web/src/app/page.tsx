@@ -62,7 +62,7 @@ async function getServers(params: {
     if (params.min_score) sp.set("min_score", params.min_score);
 
     const res = await fetch(`${API_URL}/api/v1/servers?${sp}`, {
-      next: { revalidate: 300 },
+      signal: AbortSignal.timeout(4000),
     });
     if (!res.ok) return { servers: [], pagination: { total: 0, page: 1, limit: 25, pages: 0 } };
     const data = await res.json();
@@ -78,7 +78,7 @@ async function getServers(params: {
 async function getStats(): Promise<EcosystemStats | null> {
   try {
     const res = await fetch(`${API_URL}/api/v1/ecosystem/stats`, {
-      next: { revalidate: 300 },
+      signal: AbortSignal.timeout(4000),
     });
     if (!res.ok) return null;
     const data = await res.json();
