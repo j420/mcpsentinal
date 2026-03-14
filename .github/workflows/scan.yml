@@ -122,6 +122,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter=@mcp-sentinel/database build
+      - run: pnpm --filter=@mcp-sentinel/analyzer build
+      - run: pnpm --filter=@mcp-sentinel/connector build
+      - run: pnpm --filter=@mcp-sentinel/scorer build
       - run: pnpm --filter=@mcp-sentinel/scanner build
 
       - name: Scan (single server)

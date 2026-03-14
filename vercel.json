@@ -1,0 +1,6 @@
+{
+  "buildCommand": "pnpm --filter=@mcp-sentinel/web build",
+  "outputDirectory": "packages/web/.next",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "framework": "nextjs"
+}
