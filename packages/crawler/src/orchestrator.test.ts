@@ -50,12 +50,40 @@ function makeFailingSource(name: string): CrawlerSource {
   };
 }
 
-function mockDb(upsertResult: string | Error = "uuid-1"): DatabaseQueries {
+/**
+ * Create a mock DatabaseQueries for crawlAndPersist tests.
+ *
+ * upsertServerDedup is the method the orchestrator now calls.
+ * It resolves { id, is_new } where is_new alternates true/false so tests can
+ * verify both new_to_db and enriched_existing counters.
+ *
+ * Pass `error` to simulate a DB failure on every call.
+ */
+function mockDb(error?: Error): DatabaseQueries {
+  let callCount = 0;
   return {
-    upsertServer: vi.fn().mockImplementation(() => {
-      if (upsertResult instanceof Error) return Promise.reject(upsertResult);
-      return Promise.resolve(upsertResult);
+    upsertServerDedup: vi.fn().mockImplementation(() => {
+      if (error) return Promise.reject(error);
+      callCount++;
+      // Alternate: first occurrence is new, subsequent occurrences are enrichments.
+      // This matches real-world behavior where the first crawl creates the record.
+      return Promise.resolve({ id: `uuid-${callCount}`, is_new: callCount === 1 });
     }),
+    insertCrawlRun: vi.fn().mockResolvedValue("run-uuid-1"),
+  } as unknown as DatabaseQueries;
+}
+
+/**
+ * Mock where every upsertServerDedup call returns is_new=true (all new servers).
+ */
+function mockDbAllNew(): DatabaseQueries {
+  let callCount = 0;
+  return {
+    upsertServerDedup: vi.fn().mockImplementation(() => {
+      callCount++;
+      return Promise.resolve({ id: `uuid-${callCount}`, is_new: true });
+    }),
+    insertCrawlRun: vi.fn().mockResolvedValue("run-uuid-1"),
   } as unknown as DatabaseQueries;
 }
 
@@ -165,8 +193,10 @@ describe("CrawlOrchestrator.crawlAll()", () => {
 
     expect(pulsemcp.found).toBe(2);
     expect(pulsemcp.unique).toBe(2);
+    expect(pulsemcp.duplicates).toBe(0);
     expect(smithery.found).toBe(1);
     expect(smithery.unique).toBe(0); // already seen
+    expect(smithery.duplicates).toBe(1);
   });
 
   it("computes data_quality counts correctly", async () => {
@@ -215,9 +245,9 @@ describe("CrawlOrchestrator.crawlAll()", () => {
 // ─── crawlAndPersist ──────────────────────────────────────────────────────────
 
 describe("CrawlOrchestrator.crawlAndPersist()", () => {
-  it("calls upsertServer for every discovered server (including cross-source duplicates)", async () => {
+  it("calls upsertServerDedup for every discovered server (including cross-source duplicates)", async () => {
     const shared = makeServer({ github_url: "https://github.com/user/repo" });
-    const db = mockDb();
+    const db = mockDbAllNew();
 
     const orch = new CrawlOrchestrator(undefined, [
       makeSource("pulsemcp", [shared, makeServer({ github_url: "https://github.com/user/repo2" })]),
@@ -226,15 +256,40 @@ describe("CrawlOrchestrator.crawlAndPersist()", () => {
 
     const stats = await orch.crawlAndPersist(db);
 
-    // 3 total server occurrences across sources → 3 upserts (DB COALESCE handles enrichment)
-    expect(db.upsertServer).toHaveBeenCalledTimes(3);
+    // 3 total server occurrences across sources → 3 upsert calls (DB enriches on subsequent hits)
+    expect(db.upsertServerDedup).toHaveBeenCalledTimes(3);
     expect(stats.persisted).toBe(3);
     expect(stats.persist_errors).toBe(0);
-    // stats still reflect logical uniqueness
+    // in-memory dedup still reflects logical uniqueness
     expect(stats.new_unique).toBe(2);
   });
 
-  it("counts persist_errors when upsertServer throws, continues remaining", async () => {
+  it("tracks new_to_db and enriched_existing from upsertServerDedup results", async () => {
+    const server = makeServer({ github_url: "https://github.com/user/repo" });
+    let callCount = 0;
+    const db = {
+      // First call: new to DB. Second and third: enriching existing.
+      upsertServerDedup: vi.fn().mockImplementation(() => {
+        callCount++;
+        return Promise.resolve({ id: `uuid-${callCount}`, is_new: callCount === 1 });
+      }),
+      insertCrawlRun: vi.fn().mockResolvedValue("run-uuid-1"),
+    } as unknown as DatabaseQueries;
+
+    const orch = new CrawlOrchestrator(undefined, [
+      makeSource("pulsemcp", [server]),
+      makeSource("smithery", [server]),
+      makeSource("npm",       [server]),
+    ]);
+
+    const stats = await orch.crawlAndPersist(db);
+
+    expect(stats.new_to_db).toBe(1);
+    expect(stats.enriched_existing).toBe(2);
+    expect(stats.persisted).toBe(3);
+  });
+
+  it("counts persist_errors when upsertServerDedup throws, continues remaining", async () => {
     const db = mockDb(new Error("DB connection refused"));
 
     const orch = new CrawlOrchestrator(undefined, [
@@ -248,10 +303,12 @@ describe("CrawlOrchestrator.crawlAndPersist()", () => {
 
     expect(stats.persist_errors).toBe(2);
     expect(stats.persisted).toBe(0);
+    expect(stats.new_to_db).toBe(0);
+    expect(stats.enriched_existing).toBe(0);
   });
 
-  it("returns extended stats with persisted and persist_errors fields", async () => {
-    const db = mockDb();
+  it("returns extended stats including new_to_db, enriched_existing, persisted, persist_errors", async () => {
+    const db = mockDbAllNew();
 
     const orch = new CrawlOrchestrator(undefined, [
       makeSource("pulsemcp", [makeServer()]),
@@ -261,6 +318,8 @@ describe("CrawlOrchestrator.crawlAndPersist()", () => {
 
     expect(stats).toHaveProperty("persisted");
     expect(stats).toHaveProperty("persist_errors");
+    expect(stats).toHaveProperty("new_to_db");
+    expect(stats).toHaveProperty("enriched_existing");
     expect(stats).toHaveProperty("total_discovered");
     expect(stats).toHaveProperty("new_unique");
     expect(stats).toHaveProperty("per_source");
@@ -268,7 +327,7 @@ describe("CrawlOrchestrator.crawlAndPersist()", () => {
   });
 
   it("persists zero servers when all sources fail", async () => {
-    const db = mockDb();
+    const db = mockDbAllNew();
 
     const orch = new CrawlOrchestrator(undefined, [
       makeFailingSource("pulsemcp"),
@@ -276,14 +335,16 @@ describe("CrawlOrchestrator.crawlAndPersist()", () => {
 
     const stats = await orch.crawlAndPersist(db);
 
-    expect(db.upsertServer).not.toHaveBeenCalled();
+    expect(db.upsertServerDedup).not.toHaveBeenCalled();
     expect(stats.persisted).toBe(0);
     expect(stats.persist_errors).toBe(0);
+    expect(stats.new_to_db).toBe(0);
+    expect(stats.enriched_existing).toBe(0);
   });
 
-  it("calls upsertServer for every source occurrence to allow cross-source enrichment", async () => {
+  it("calls upsertServerDedup for every source occurrence to allow cross-source enrichment", async () => {
     const server = makeServer({ github_url: "https://github.com/user/repo" });
-    const db = mockDb();
+    const db = mockDbAllNew();
 
     const orch = new CrawlOrchestrator(undefined, [
       makeSource("pulsemcp", [server]),
@@ -293,7 +354,59 @@ describe("CrawlOrchestrator.crawlAndPersist()", () => {
 
     await orch.crawlAndPersist(db);
 
-    // 3 source occurrences → 3 upserts; DB COALESCE ensures no data loss
-    expect(db.upsertServer).toHaveBeenCalledTimes(3);
+    // 3 source occurrences → 3 upsert calls; the dedup method handles enrichment internally
+    expect(db.upsertServerDedup).toHaveBeenCalledTimes(3);
+  });
+
+  it("persists crawl run record via insertCrawlRun", async () => {
+    const db = mockDbAllNew();
+
+    const orch = new CrawlOrchestrator(undefined, [
+      makeSource("pulsemcp", [makeServer()]),
+    ]);
+
+    await orch.crawlAndPersist(db);
+
+    expect(db.insertCrawlRun).toHaveBeenCalledTimes(1);
+    const runArg = (db.insertCrawlRun as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(runArg).toMatchObject({
+      total_discovered: 1,
+      persist_errors: 0,
+    });
+    expect(runArg.started_at).toBeInstanceOf(Date);
+    expect(runArg.completed_at).toBeInstanceOf(Date);
+  });
+
+  it("does not abort persist when insertCrawlRun throws", async () => {
+    const db = {
+      upsertServerDedup: vi.fn().mockResolvedValue({ id: "uuid-1", is_new: true }),
+      insertCrawlRun: vi.fn().mockRejectedValue(new Error("DB unavailable")),
+    } as unknown as DatabaseQueries;
+
+    const orch = new CrawlOrchestrator(undefined, [
+      makeSource("pulsemcp", [makeServer()]),
+    ]);
+
+    const stats = await orch.crawlAndPersist(db);
+
+    // Persist still completed even though insertCrawlRun failed
+    expect(stats.persisted).toBe(1);
+    expect(stats.new_to_db).toBe(1);
+  });
+
+  it("includes duplicates count in per_source stats", async () => {
+    const server = makeServer({ github_url: "https://github.com/user/repo" });
+    const db = mockDbAllNew();
+
+    const orch = new CrawlOrchestrator(undefined, [
+      makeSource("pulsemcp", [server, makeServer({ github_url: "https://github.com/user/repo2" })]),
+      makeSource("smithery", [server]), // duplicate of first pulsemcp server
+    ]);
+
+    const stats = await orch.crawlAndPersist(db);
+
+    const smithery = stats.per_source.find((s) => s.source === "smithery")!;
+    expect(smithery.duplicates).toBe(1);
+    expect(smithery.unique).toBe(0);
   });
 });
