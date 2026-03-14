@@ -34,17 +34,23 @@ Rules A–G were comprehensive for the MCP ecosystem at launch. By March 2026, t
 
 1. **OAuth 2.0 is now the official MCP auth standard** (H1): RFC 9700 / MCP Authorization spec added OAuth 2.0 as the standard authentication mechanism for remote MCP servers in mid-2025. This created a class of authentication vulnerabilities (redirect_uri injection, implicit flow, ROPC, token storage) with no coverage in rules A–G.
 
-2. **The `initialize` response added an `instructions` field** (H2): MCP spec revision (September 2025) added a spec-sanctioned `instructions` field to the initialize response — a field that AI clients are designed to follow. Combined with `serverInfo.name` and `serverInfo.version`, the initialize handshake is now a three-field injection surface processed before any tool description, before any safety context, and with higher implicit trust than tool descriptions.
+2. **The `initialize` response `instructions` field** (H2): The `instructions` field in `InitializeResult` has been present since the original `2024-11-05` MCP spec. It is a spec-sanctioned field that AI clients are designed to follow. Combined with `serverInfo.name` and `serverInfo.version`, the initialize handshake is a three-field injection surface processed before any tool description, before any safety context, and with higher implicit trust than tool descriptions. Client support for actually reading and acting on this field became widespread with the `2025-03-26` spec adoption — this is what makes H2 newly actionable in 2026.
 
 3. **Multi-agent orchestration went mainstream** (H3): LangGraph, AutoGen, CrewAI, and Anthropic's own Claude multi-agent patterns make MCP the integration layer between agents. This enables cross-agent prompt injection propagation — a compromised upstream agent can inject through shared MCP tools into downstream agents. Documented in real-world attacks (Embrace The Red Nov 2025, Invariant Labs Jan 2026, Trail of Bits Feb 2026).
 
 **Primary threat intelligence sources for H-rules:**
 - RFC 9700 (OAuth 2.0 for Browser-Based Apps / OAuth 2.1)
 - OAuth Security BCP (RFC 9700 §4), Portswigger OAuth attack research (2024-2025)
-- MCP Specification 2025-11-05: initialize response `instructions` field
+- MCP Specification `2024-11-05`: initialize response `instructions` field (original spec)
+- MCP Specification `2025-03-26`: Streamable HTTP transport + tool annotations added
 - Embrace The Red: "Prompt injection cascade in multi-agent AutoGen" (Nov 2025)
 - Invariant Labs: "Cross-agent pollution via shared MCP memory" (Jan 2026)
 - Trail of Bits: "Trust boundaries in agentic AI systems" (Feb 2026)
+
+**Spec version reference (verified):**
+- `2024-11-05` — original spec: SSE transport, `instructions` field, tool descriptions
+- `2025-03-26` — Streamable HTTP transport + tool annotations (readOnlyHint, destructiveHint, etc.)
+- `2025-11-25` — November 2025 refinements (NOT `2025-11-05` — that version tag does not exist)
 
 ### Severity Weights (for scoring)
 

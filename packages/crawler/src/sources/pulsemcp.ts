@@ -12,6 +12,7 @@ interface PulseMCPServer {
   url?: string;
   source_code_url?: string;
   package_registry?: string;
+  package_name?: string;
   github_stars?: number;
   integrations?: unknown[];
 }
@@ -64,9 +65,10 @@ export class PulseMCPCrawler implements CrawlerSource {
           const repoUrl = server.source_code_url || server.url;
           const githubUrl = repoUrl?.includes("github.com") ? repoUrl : null;
 
-          const npmPackage = server.package_registry?.includes("npmjs.com")
-            ? this.extractNpmPackage(server.package_registry)
-            : null;
+          const npmPackage =
+            server.package_registry === "npm" && server.package_name
+              ? server.package_name
+              : null;
 
           servers.push({
             name: server.name,
@@ -84,6 +86,8 @@ export class PulseMCPCrawler implements CrawlerSource {
             raw_metadata: {
               github_stars: server.github_stars,
               url: server.url,
+              package_registry: server.package_registry,
+              package_name: server.package_name,
             },
           });
         }
@@ -109,10 +113,4 @@ export class PulseMCPCrawler implements CrawlerSource {
     };
   }
 
-  private extractNpmPackage(url: string): string | null {
-    const match = url.match(
-      /npmjs\.com\/package\/(@?[^/]+(?:\/[^/]+)?)/
-    );
-    return match ? match[1] : null;
-  }
 }
