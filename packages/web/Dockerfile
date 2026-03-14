@@ -10,6 +10,12 @@ RUN pnpm install --frozen-lockfile --filter=@mcp-sentinel/web...
 
 COPY packages/web/ ./packages/web/
 ENV NEXT_TELEMETRY_DISABLED=1
+
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_SITE_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
+
 RUN pnpm --filter=@mcp-sentinel/web build
 
 # ─── Runner ───────────────────────────────────────────────────────────────────
