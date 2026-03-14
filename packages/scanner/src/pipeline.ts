@@ -324,6 +324,25 @@ export class ScanPipeline {
         log.info("Stage 3+4: No endpoint discovered — static analysis only");
       }
 
+      // ── Stage 4b: Fall back to stored tools when no live connection ────────
+      // Enables full rule coverage (B, F, G rules) on servers with pre-seeded
+      // or previously enumerated tools even when the live endpoint is offline.
+      let toolsForAnalysis = liveTools;
+      if (liveTools.length === 0) {
+        const storedTools = await this.db.getToolsForServer(server.id);
+        if (storedTools.length > 0) {
+          toolsForAnalysis = storedTools.map((t) => ({
+            name: t.name,
+            description: t.description ?? "",
+            input_schema: t.input_schema ?? {},
+          }));
+          log.info(
+            { stored_tools: storedTools.length },
+            "Stage 4b: Using stored tools for static analysis"
+          );
+        }
+      }
+
       // ── Stage 5: Assemble analysis context ────────────────────────────────
       const context: AnalysisContext = {
         server: {
@@ -332,7 +351,7 @@ export class ScanPipeline {
           description: server.description,
           github_url: server.github_url,
         },
-        tools: liveTools,
+        tools: toolsForAnalysis,
         source_code: sourceCode,
         dependencies: enrichedDeps.map((d) => ({
           name: d.name,
@@ -346,7 +365,7 @@ export class ScanPipeline {
       };
 
       // ── Stage 5: Run all detection rules ──────────────────────────────────
-      log.info({ rules: "all", tools: liveTools.length }, "Stage 5: Running analysis engine");
+      log.info({ rules: "all", tools: toolsForAnalysis.length }, "Stage 5: Running analysis engine");
       const findings = engine.analyze(context);
       log.info({ findings: findings.length }, "Stage 5: Analysis complete");
 
