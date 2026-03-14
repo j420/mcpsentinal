@@ -557,6 +557,26 @@ export class DatabaseQueries {
     );
   }
 
+  async getLatestScoreForServer(serverId: string): Promise<{
+    total_score: number;
+    code_score: number;
+    deps_score: number;
+    config_score: number;
+    description_score: number;
+    behavior_score: number;
+    owasp_coverage: Record<string, boolean>;
+  } | null> {
+    const result = await this.pool.query(
+      `SELECT total_score, code_score, deps_score, config_score, description_score, behavior_score, owasp_coverage
+       FROM scores
+       WHERE server_id = $1
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [serverId]
+    );
+    return result.rows[0] ?? null;
+  }
+
   async getScoreHistory(serverId: string) {
     return (
       await this.pool.query(
@@ -569,7 +589,7 @@ export class DatabaseQueries {
   // ─── Ecosystem Stats ──────────────────────────────────────────────────────
 
   async getEcosystemStats() {
-    const [total, scanned, avgScore, categories, severities] =
+    const [total, scanned, avgScore, categories, severities, distribution] =
       await Promise.all([
         this.pool.query("SELECT COUNT(*) as cnt FROM servers"),
         this.pool.query(
@@ -587,18 +607,37 @@ export class DatabaseQueries {
            WHERE s.status = 'completed'
            GROUP BY severity`
         ),
+        this.pool.query(
+          `SELECT
+             CASE
+               WHEN latest_score >= 80 THEN '80-100'
+               WHEN latest_score >= 60 THEN '60-79'
+               WHEN latest_score >= 40 THEN '40-59'
+               WHEN latest_score >= 20 THEN '20-39'
+               ELSE '0-19'
+             END AS range,
+             COUNT(*) AS count
+           FROM servers
+           WHERE latest_score IS NOT NULL
+           GROUP BY range
+           ORDER BY range DESC`
+        ),
       ]);
 
     return {
       total_servers: parseInt(total.rows[0].cnt, 10),
       total_scanned: parseInt(scanned.rows[0].cnt, 10),
-      average_score: Math.round(parseFloat(avgScore.rows[0].avg) || 0),
+      average_score: Math.round(parseFloat(avgScore.rows[0].avg) ?? 0),
       category_breakdown: Object.fromEntries(
         categories.rows.map((r) => [r.category, parseInt(r.cnt, 10)])
       ),
       severity_breakdown: Object.fromEntries(
         severities.rows.map((r) => [r.severity, parseInt(r.cnt, 10)])
       ),
+      score_distribution: distribution.rows.map((r) => ({
+        range: r.range as string,
+        count: parseInt(r.count, 10),
+      })),
     };
   }
 
