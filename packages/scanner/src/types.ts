@@ -8,12 +8,21 @@
 
 // ─── Scan Run Configuration ───────────────────────────────────────────────────
 
+export type ScanMode = "incremental" | "rescan-failed" | "full";
+
 export interface ScanOptions {
   /** Scan a specific server by UUID (bypasses queue selection) */
   serverId?: string;
-  /** Re-scan servers whose last completed scan is older than staleDays */
+  /**
+   * Scan mode:
+   *   incremental   — only servers never successfully scanned (default)
+   *   rescan-failed — only servers whose last scan errored
+   *   full          — all servers, including already-scanned (stale rescan)
+   */
+  mode?: ScanMode;
+  /** @deprecated Use mode="full" instead */
   rescan?: boolean;
-  /** Days before a completed scan is considered stale (used with rescan, default: 7) */
+  /** Days before a completed scan is considered stale (used with mode=full, default: 7) */
   staleDays?: number;
   /** Maximum number of concurrent server scans (default: 5) */
   concurrency?: number;

@@ -27,7 +27,7 @@ import pg from "pg";
 import pino from "pino";
 import { DatabaseQueries } from "@mcp-sentinel/database";
 import { ScanPipeline } from "./pipeline.js";
-import type { ScanRunStats } from "./types.js";
+import type { ScanMode, ScanRunStats } from "./types.js";
 
 const logger = pino({ name: "scanner:cli" });
 
@@ -35,7 +35,9 @@ async function main(): Promise<void> {
   const { values } = parseArgs({
     options: {
       server: { type: "string" },
-      rescan: { type: "boolean", default: false },
+      mode: { type: "string", default: "incremental" }, // incremental | rescan-failed | full
+      "batch-size": { type: "string" },                 // alias for --limit (used by scan.yml)
+      rescan: { type: "boolean", default: false },       // deprecated: use --mode=full
       "stale-days": { type: "string", default: "7" },
       concurrency: { type: "string", default: "5" },
       limit: { type: "string", default: "100" },
@@ -45,6 +47,17 @@ async function main(): Promise<void> {
     },
     strict: true,
   });
+
+  const VALID_MODES: ScanMode[] = ["incremental", "rescan-failed", "full"];
+  const rawMode = values.mode ?? "incremental";
+  if (!VALID_MODES.includes(rawMode as ScanMode)) {
+    logger.error({ mode: rawMode }, `Invalid --mode. Must be one of: ${VALID_MODES.join(", ")}`);
+    process.exit(1);
+  }
+  const mode = rawMode as ScanMode;
+
+  // --batch-size is the canonical name used by scan.yml; --limit is the legacy name
+  const effectiveLimit = values["batch-size"] ?? values.limit ?? "100";
 
   // ── Validate environment ───────────────────────────────────────────────────
   const databaseUrl = process.env.DATABASE_URL;
@@ -72,10 +85,10 @@ async function main(): Promise<void> {
 
     const stats = await pipeline.run({
       serverId: values.server,
-      rescan: values.rescan ?? false,
+      mode,
       staleDays: parseInt(values["stale-days"] ?? "7", 10),
       concurrency: parseInt(values.concurrency ?? "5", 10),
-      limit: parseInt(values.limit ?? "100", 10),
+      limit: parseInt(effectiveLimit, 10),
       dryRun: values["dry-run"] ?? false,
     });
 

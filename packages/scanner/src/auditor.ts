@@ -21,8 +21,9 @@ import type { RawDependency, EnrichedDependency } from "./types.js";
 
 const logger = pino({ name: "scanner:auditor" });
 
-const OSV_BATCH_API = "https://api.osv.dev/v1/querybatch";
-const OSV_QUERY_API = "https://api.osv.dev/v1/query";
+const OSV_BASE = process.env.OSV_API_URL ?? "https://api.osv.dev/v1";
+const OSV_BATCH_API = `${OSV_BASE}/querybatch`;
+const OSV_QUERY_API = `${OSV_BASE}/query`;
 const MAX_BATCH_SIZE = 20;
 const INTER_BATCH_DELAY_MS = 150;
 const REQUEST_TIMEOUT_MS = 12_000;

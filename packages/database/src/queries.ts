@@ -631,6 +631,60 @@ export class DatabaseQueries {
     ).rows as Server[];
   }
 
+  async getFailedServers(limit: number = 100) {
+    return (
+      await this.pool.query(
+        `SELECT s.* FROM servers s
+         WHERE EXISTS (
+           SELECT 1 FROM scans sc
+           WHERE sc.server_id = s.id
+             AND sc.status = 'failed'
+             AND sc.id = (
+               SELECT id FROM scans WHERE server_id = s.id ORDER BY started_at DESC LIMIT 1
+             )
+         )
+         ORDER BY s.github_stars DESC NULLS LAST
+         LIMIT $1`,
+        [limit]
+      )
+    ).rows as Server[];
+  }
+
+  async getAllServers(limit: number = 100) {
+    return (
+      await this.pool.query(
+        `SELECT * FROM servers ORDER BY github_stars DESC NULLS LAST LIMIT $1`,
+        [limit]
+      )
+    ).rows as Server[];
+  }
+
+  // ─── Scorer Support Queries ───────────────────────────────────────────────
+
+  /** Returns the latest completed (scan_id, server_id) pair per server, for scoring. */
+  async getServersWithCompletedScans(limit: number = 1000): Promise<Array<{ server_id: string; scan_id: string }>> {
+    return (
+      await this.pool.query(
+        `SELECT DISTINCT ON (sc.server_id) sc.server_id, sc.id AS scan_id
+         FROM scans sc
+         WHERE sc.status = 'completed'
+         ORDER BY sc.server_id, sc.completed_at DESC
+         LIMIT $1`,
+        [limit]
+      )
+    ).rows;
+  }
+
+  /** Returns all findings for a specific scan, for score recomputation. */
+  async getFindingsByScanId(scanId: string) {
+    return (
+      await this.pool.query(
+        `SELECT * FROM findings WHERE scan_id = $1`,
+        [scanId]
+      )
+    ).rows as import("./schemas.js").Finding[];
+  }
+
   // ─── Scanner Support Queries ──────────────────────────────────────────────
 
   async getServerById(id: string): Promise<Server | null> {
