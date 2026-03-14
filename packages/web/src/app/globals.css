@@ -4,26 +4,27 @@
    bg: #faf9f5  dark: #141413  accent: #d97757
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-
 /* ── Tokens ─────────────────────────────────────────────── */
 :root {
-  /* ── Anthropic official backgrounds ── */
-  --bg:           #faf9f5;
-  --surface:      #ffffff;
-  --surface-2:    #f5f2ec;
-  --surface-3:    #e8e3d8;
+  /* ── Anthropic brand backgrounds ── */
+  /* bg: warm parchment — more saturated than neutral cream      */
+  /* oklch(0.96 0.025 75) ≈ #F8F3EB — the distinctive Anthropic  */
+  /* ivory/aged-paper warmth, visibly different from pure white  */
+  --bg:           #F8F3EB;
+  --surface:      #FFFEF9;
+  --surface-2:    #F0EAE0;
+  --surface-3:    #E5DDD1;
 
   /* ── Borders ── */
-  --border:       rgba(20, 20, 19, 0.08);
-  --border-md:    rgba(20, 20, 19, 0.13);
-  --border-strong:rgba(20, 20, 19, 0.22);
+  --border:       rgba(30, 22, 14, 0.09);
+  --border-md:    rgba(30, 22, 14, 0.15);
+  --border-strong:rgba(30, 22, 14, 0.24);
 
-  /* ── Anthropic official text ── */
-  --text:         #141413;
-  --text-2:       #4d4944;
-  --text-3:       #928d86;
-  --text-inv:     #faf9f5;
+  /* ── Text — warm-toned darks matching Anthropic's typography ── */
+  --text:         #1C1814;   /* warm near-black — not neutral */
+  --text-2:       #4A4038;   /* warm medium brown */
+  --text-3:       #9A9089;   /* muted warm gray */
+  --text-inv:     #F8F3EB;
 
   /* ── Anthropic official accent: terracotta ── */
   --accent:       #d97757;
@@ -104,7 +105,7 @@ html {
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background-color: var(--bg);
   color: var(--text);
   line-height: 1.6;
@@ -121,7 +122,7 @@ a {
 a:hover { color: var(--accent-hover); }
 
 code, pre, kbd {
-  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
   font-size: 0.875em;
 }
 
@@ -131,16 +132,16 @@ code, pre, kbd {
   top: 0;
   z-index: 100;
   border-bottom: 1px solid var(--border);
-  background: rgba(250, 249, 245, 0.90);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(248, 243, 235, 0.88);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
 }
 
 .header-inner {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 var(--s6);
-  height: 62px;
+  height: 60px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -152,25 +153,20 @@ code, pre, kbd {
   align-items: center;
   gap: var(--s2);
   color: var(--text);
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Outfit Variable', 'Outfit', system-ui, sans-serif;
   font-weight: 700;
   font-size: 17px;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   flex-shrink: 0;
 }
-.site-logo:hover { color: var(--text); opacity: 0.80; }
+.site-logo:hover { color: var(--text); opacity: 0.75; }
 
-.logo-icon {
-  width: 30px;
-  height: 30px;
-  background: var(--accent);
-  border-radius: var(--r-sm);
+/* No box — just the bare SVG icon, like Anthropic's wordmark approach */
+.logo-mark {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 14px;
   flex-shrink: 0;
-  box-shadow: 0 1px 4px rgba(217,119,87,0.35);
+  line-height: 1;
 }
 
 .site-nav {
@@ -185,26 +181,16 @@ code, pre, kbd {
   font-weight: 500;
   padding: var(--s2) var(--s3);
   border-radius: var(--r-sm);
-  transition: color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+  transition: color var(--t-fast) var(--ease);
 }
-.nav-link:hover { color: var(--text); background: var(--surface-2); }
+.nav-link:hover { color: var(--text); }
 .nav-link.active { color: var(--text); }
 
-.nav-api {
-  color: var(--accent);
-  font-size: 13px;
-  font-weight: 600;
-  padding: 5px var(--s3);
-  border: 1px solid var(--accent-ring);
-  border-radius: var(--r-full);
-  background: var(--accent-sub);
-  transition: all var(--t-fast) var(--ease);
+/* API link — just terracotta text, no border box */
+.nav-link-api {
+  color: var(--accent) !important;
 }
-.nav-api:hover {
-  color: var(--accent-hover);
-  border-color: var(--accent);
-  background: rgba(217,119,87,0.15);
-}
+.nav-link-api:hover { color: var(--accent-hover) !important; }
 
 .site-main {
   max-width: 1200px;
@@ -284,23 +270,32 @@ code, pre, kbd {
   overflow: hidden;
 }
 
-/* Anthropic-style warm radial glow from top */
+/* Anthropic hero: dual warm glows — amber above, terracotta center */
 .hero::before {
   content: '';
   position: absolute;
-  top: -80px;
+  top: -120px;
   left: 50%;
   transform: translateX(-50%);
-  width: 900px;
-  height: 600px;
-  background: radial-gradient(
-    ellipse at 50% 20%,
-    rgba(217, 119, 87, 0.12) 0%,
-    rgba(217, 119, 87, 0.04) 40%,
-    transparent 70%
-  );
+  width: 1100px;
+  height: 700px;
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 0%,   rgba(217, 119, 87, 0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at 50% 30%,  rgba(230, 180, 120, 0.10) 0%, transparent 70%);
   pointer-events: none;
   z-index: 0;
+}
+
+/* Faint warm grain texture — signature Anthropic texture overlay */
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.6;
 }
 
 .hero > * { position: relative; z-index: 1; }
@@ -322,7 +317,7 @@ code, pre, kbd {
 }
 
 .hero-title {
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Outfit Variable', 'Outfit', system-ui, sans-serif;
   font-size: clamp(36px, 5.5vw, 60px);
   font-weight: 800;
   letter-spacing: -0.04em;
@@ -333,7 +328,7 @@ code, pre, kbd {
 
 /* Italic serif accent words — signature Anthropic move */
 .hero-title em {
-  font-family: 'Instrument Serif', Georgia, serif;
+  font-family: 'Instrument Serif', Georgia, 'Times New Roman', serif;
   font-style: italic;
   font-weight: 400;
   color: var(--accent);
@@ -374,7 +369,7 @@ code, pre, kbd {
 }
 
 .stat-value {
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Outfit Variable', 'Outfit', system-ui, sans-serif;
   font-size: 30px;
   font-weight: 700;
   letter-spacing: -0.04em;
@@ -596,7 +591,7 @@ code, pre, kbd {
 
 /* ── Section headings ───────────────────────────────────── */
 .section-title {
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Outfit Variable', 'Outfit', system-ui, sans-serif;
   font-size: 16px;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -747,7 +742,7 @@ code, pre, kbd {
   font-size: 13px;
   font-weight: 600;
   color: var(--text);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
   margin-bottom: var(--s1);
 }
 
@@ -796,7 +791,7 @@ code, pre, kbd {
 .finding-rule-id {
   font-size: 12px;
   font-weight: 700;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
   color: var(--text-2);
   background: var(--surface-2);
   border: 1px solid var(--border);
@@ -838,7 +833,7 @@ code, pre, kbd {
   background: var(--surface-2);
   border-radius: var(--r-md);
   padding: var(--s4);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
   font-size: 12px;
   color: var(--text-2);
   overflow-x: auto;
@@ -865,7 +860,7 @@ code, pre, kbd {
 }
 
 .mini-stat-val {
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Outfit Variable', 'Outfit', system-ui, sans-serif;
   font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.03em;
@@ -900,7 +895,7 @@ code, pre, kbd {
 .breadcrumb a:hover { color: var(--text-2); }
 
 .server-title {
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Outfit Variable', 'Outfit', system-ui, sans-serif;
   font-size: 30px;
   font-weight: 700;
   letter-spacing: -0.03em;
@@ -1020,7 +1015,7 @@ code, pre, kbd {
 }
 
 .about-h1 {
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Outfit Variable', 'Outfit', system-ui, sans-serif;
   font-size: clamp(28px, 4vw, 46px);
   font-weight: 800;
   letter-spacing: -0.04em;
@@ -1063,7 +1058,7 @@ code, pre, kbd {
 }
 
 .pipeline-name {
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Outfit Variable', 'Outfit', system-ui, sans-serif;
   font-size: 15px;
   font-weight: 700;
   margin-bottom: var(--s2);
@@ -1129,7 +1124,7 @@ code, pre, kbd {
 }
 
 .notfound-code {
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Outfit Variable', 'Outfit', system-ui, sans-serif;
   font-size: 80px;
   font-weight: 800;
   letter-spacing: -0.05em;
@@ -1163,6 +1158,17 @@ code, pre, kbd {
   opacity: 1;
 }
 
+/* ── Dashboard server row ───────────────────────────────── */
+.server-row-hover {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-sm);
+  transition: background var(--t-fast) var(--ease);
+}
+.server-row-hover:hover { background: var(--surface-2); }
+
 /* ── Utilities ──────────────────────────────────────────── */
 .divider {
   height: 1px;
@@ -1175,7 +1181,7 @@ code, pre, kbd {
 .text-muted { color: var(--text-3); }
 .text-2     { color: var(--text-2); }
 
-.mono { font-family: 'JetBrains Mono', monospace; }
+.mono { font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace; }
 
 /* ── Responsive ─────────────────────────────────────────── */
 @media (max-width: 900px) {

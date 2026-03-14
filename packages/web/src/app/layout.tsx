@@ -1,4 +1,11 @@
 import type { Metadata } from "next";
+/* Self-hosted fonts via @fontsource — no external requests, works offline */
+import "@fontsource-variable/inter";
+import "@fontsource-variable/outfit";
+import "@fontsource/instrument-serif/400.css";
+import "@fontsource/instrument-serif/400-italic.css";
+import "@fontsource/jetbrains-mono/400.css";
+import "@fontsource/jetbrains-mono/500.css";
 import "./globals.css";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://mcp-sentinel.com";
@@ -62,13 +69,11 @@ export const metadata: Metadata = {
   },
 };
 
-/* JSON-LD: WebSite schema with SearchAction — enables Google Sitelinks Search Box */
 const websiteJsonLd = {
   "@context": "https://schema.org",
   "@type": "WebSite",
   name: "MCP Sentinel",
-  description:
-    "Security intelligence registry for Model Context Protocol servers",
+  description: "Security intelligence registry for Model Context Protocol servers",
   url: SITE_URL,
   potentialAction: {
     "@type": "SearchAction",
@@ -80,7 +85,6 @@ const websiteJsonLd = {
   },
 };
 
-/* JSON-LD: Organization schema */
 const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
@@ -92,22 +96,10 @@ const organizationJsonLd = {
   sameAs: ["https://github.com/mcp-sentinel"],
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <head>
-        {/* Preconnect for Google Fonts */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        {/* JSON-LD structured data */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
@@ -118,29 +110,28 @@ export default function RootLayout({
         />
       </head>
       <body>
-        {/* ── Header ─────────────────────────────────────── */}
+        {/* ── Header ────────────────────────────────── */}
         <header className="site-header">
           <div className="header-inner">
-            {/* Wordmark */}
             <a href="/" className="site-logo">
-              <span className="logo-icon" aria-hidden="true">
+              <span className="logo-mark" aria-hidden="true">
                 <svg
-                  width="16"
-                  height="16"
+                  width="20"
+                  height="20"
                   viewBox="0 0 16 16"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
                 >
                   <path
                     d="M8 1L14 4V8C14 11.5 11.5 14.5 8 15.5C4.5 14.5 2 11.5 2 8V4L8 1Z"
-                    stroke="white"
+                    stroke="var(--accent)"
                     strokeWidth="1.5"
                     strokeLinejoin="round"
                     fill="none"
                   />
                   <path
                     d="M5.5 8L7 9.5L10.5 6"
-                    stroke="white"
+                    stroke="var(--accent)"
                     strokeWidth="1.5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -150,57 +141,35 @@ export default function RootLayout({
               MCP Sentinel
             </a>
 
-            {/* Nav */}
             <nav className="site-nav" aria-label="Main navigation">
               <a href="/" className="nav-link">Registry</a>
               <a href="/dashboard" className="nav-link">Dashboard</a>
               <a href="/about" className="nav-link">About</a>
-              <a
-                href="/api/v1"
-                className="nav-api"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+              <a href="/api/v1" className="nav-link nav-link-api" target="_blank" rel="noopener noreferrer">
                 API
               </a>
             </nav>
           </div>
         </header>
 
-        {/* ── Main ───────────────────────────────────────── */}
+        {/* ── Main ──────────────────────────────────── */}
         <main className="site-main">{children}</main>
 
-        {/* ── Footer ─────────────────────────────────────── */}
+        {/* ── Footer ────────────────────────────────── */}
         <footer className="site-footer">
           <div className="footer-inner">
             <span className="footer-copy">
-              © {new Date().getFullYear()} MCP Sentinel — All detection is
-              deterministic. No LLMs.
+              © {new Date().getFullYear()} MCP Sentinel — All detection is deterministic. No LLMs.
             </span>
             <nav className="footer-links" aria-label="Footer links">
-              <a
-                href="https://github.com/mcp-sentinel"
-                className="footer-link"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+              <a href="https://github.com/mcp-sentinel" className="footer-link" target="_blank" rel="noopener noreferrer">
                 GitHub
               </a>
               <a href="/about" className="footer-link">About</a>
-              <a
-                href="/api/v1"
-                className="footer-link"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+              <a href="/api/v1" className="footer-link" target="_blank" rel="noopener noreferrer">
                 API Docs
               </a>
-              <a
-                href="https://modelcontextprotocol.io"
-                className="footer-link"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+              <a href="https://modelcontextprotocol.io" className="footer-link" target="_blank" rel="noopener noreferrer">
                 MCP Spec
               </a>
             </nav>
