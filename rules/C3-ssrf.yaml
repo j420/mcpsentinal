@@ -3,27 +3,125 @@ name: Server-Side Request Forgery (SSRF)
 category: code-analysis
 severity: high
 owasp: MCP04-data-exfiltration
-mitre: null
+mitre: AML.T0057
+
+# THREAT INTELLIGENCE NOTE (Sr. MCP Threat Researcher):
+#
+# SSRF is a top-3 exploitable vulnerability in MCP servers because:
+# 1. MCP servers run with full network access in the deployment environment
+# 2. Cloud deployments expose IMDS endpoints (169.254.169.254) that return
+#    IAM credentials — SSRF = instant cloud credential theft
+# 3. Internal network access: MCP servers often run inside corporate networks
+#    where internal services (Kubernetes API, Redis, internal DBs) are accessible
+#
+# THE ATTACK SURFACE:
+# - Direct: fetch(userInput) → attacker provides http://169.254.169.254/latest/meta-data/iam/security-credentials/
+# - Indirect: new URL(userInput) followed by fetch of constructed URL
+# - Protocol confusion: file:// protocol fetches local filesystem contents
+# - Redirect SSRF: server follows HTTP redirects from user-supplied URL to internal targets
+# - Cloud IMDS: AWS (169.254.169.254), GCP (metadata.google.internal), Azure (169.254.169.254)
+#
+# VARIABLE NAME COVERAGE:
+# MCP servers use diverse naming conventions. Coverage must include:
+# req, request, input, param, params, args, url, uri, href, link,
+# target, destination, endpoint, host, address, resource, src, source,
+# location, path (when used as a URL), proxy, callback
+#
+# LIBRARY COVERAGE (Node.js):
+# fetch (built-in), node-fetch, axios, got, superagent, needle, request,
+# cross-fetch, ky, wretch, http.get, https.get, http.request, node:https
+#
+# LIBRARY COVERAGE (Python):
+# requests, httpx, aiohttp, urllib.request, urllib2, httplib2, pycurl,
+# treq, twisted.web.client, httplib, http.client
+
 detect:
   type: regex
   patterns:
-    - "(?i)fetch\\s*\\(\\s*(?:req|input|param|args|url)"
-    - "(?i)axios\\.(?:get|post|put|delete)\\s*\\(\\s*(?:req|input|param)"
-    - "(?i)requests\\.(?:get|post|put|delete)\\s*\\(\\s*(?:req|input|param|url)"
-    - "(?i)http\\.(?:get|request)\\s*\\(\\s*(?:req|input|param|url)"
-    - "(?i)urllib\\.request\\.urlopen\\s*\\("
+    # ── Node.js: fetch / node-fetch / cross-fetch ──────────────────────────────
+    - "(?i)\\bfetch\\s*\\(\\s*(?:req|request|input|param|params|args|url|uri|href|link|target|destination|endpoint|host|address|resource|src|source|location|proxy|callback|userUrl|user_url|externalUrl|external_url|redirectUrl|redirect_url)"
+    - "(?i)\\bfetch\\s*\\([^)]*\\$\\{[^}]*(?:url|uri|host|target|endpoint|param|input|args)[^}]*\\}"
+    # ── Node.js: axios ─────────────────────────────────────────────────────────
+    - "(?i)\\baxios\\.(?:get|post|put|delete|patch|head|options|request)\\s*\\(\\s*(?:req|request|input|param|params|args|url|uri|href|link|target|destination|endpoint|host|address|resource|src|source|proxy)"
+    - "(?i)\\baxios(?:\\.create)?\\s*\\(\\s*\\{[^}]*(?:baseURL|url)\\s*:\\s*(?:req|input|param|params|args|target|endpoint|host|source)"
+    # ── Node.js: got ───────────────────────────────────────────────────────────
+    - "(?i)\\bgot\\s*\\.?(?:get|post|put|delete|stream|extend)?\\s*\\(\\s*(?:req|request|input|param|params|args|url|uri|href|link|target|destination|endpoint|host|address|resource|src|source)"
+    - "(?i)\\bgot\\s*\\(\\s*(?:req|request|input|param|params|args|url|uri|href|link|target|destination|endpoint|host|address)"
+    # ── Node.js: superagent ────────────────────────────────────────────────────
+    - "(?i)\\bsuperagent\\.(?:get|post|put|delete|patch)\\s*\\(\\s*(?:req|request|input|param|params|args|url|uri|href|link|target|destination|endpoint|host)"
+    # ── Node.js: needle ────────────────────────────────────────────────────────
+    - "(?i)\\bneedle\\.?(?:get|post|put|delete|request)\\s*\\(\\s*(?:req|request|input|param|params|args|url|uri|href|link|target|destination|endpoint|host)"
+    # ── Node.js: http / https built-in ────────────────────────────────────────
+    - "(?i)\\bhttps?\\.(?:get|request)\\s*\\(\\s*(?:req|request|input|param|params|args|url|uri|href|link|target|destination|endpoint|host|address|resource|src|source)"
+    - "(?i)require\\s*\\(['\"](?:node:)?https?['\"]\\)[^;\\n]*\\.(?:get|request)\\s*\\([^)]*(?:input|param|args|url|uri|target|endpoint|host)"
+    # ── Python: requests ──────────────────────────────────────────────────────
+    - "(?i)\\brequests\\.(?:get|post|put|delete|patch|head|options|request)\\s*\\(\\s*(?:req|request|input|param|params|args|url|uri|href|link|target|destination|endpoint|host|address|resource|src|source)"
+    - "(?i)\\brequests\\.(?:get|post|put|delete|patch|head|options|request)\\s*\\([^)]*(?:f['\"]|\\+)[^)]*(?:url|uri|host|target|endpoint|param|input)"
+    # ── Python: httpx ─────────────────────────────────────────────────────────
+    - "(?i)\\bhttpx\\.(?:get|post|put|delete|patch|head|options|request|AsyncClient|Client)\\s*\\([^)]*(?:req|request|input|param|params|args|url|uri|href|link|target|destination|endpoint|host|address|resource|src|source)"
+    - "(?i)\\.(?:get|post|put|delete|patch|request)\\s*\\([^)]*(?:url|uri|target|endpoint|host)[^)]*(?:req|input|param|args|f['\"]|\\+)"
+    # ── Python: aiohttp ────────────────────────────────────────────────────────
+    - "(?i)\\baiohttp\\.(?:ClientSession|request|get|post)\\s*[\\(\\[]?[^)\\]]*(?:req|request|input|param|params|args|url|uri|href|link|target|destination|endpoint|host|address)"
+    - "(?i)session\\.(?:get|post|put|delete|patch|request)\\s*\\([^)]*(?:req|request|input|param|params|args|url|uri|href|target|endpoint|host)"
+    # ── Python: urllib ────────────────────────────────────────────────────────
+    - "(?i)urllib\\.request\\.urlopen\\s*\\(\\s*(?:req|request|input|param|params|args|url|uri|href|link|target|destination|endpoint|host|address|resource)"
+    - "(?i)urllib\\.request\\.urlopen\\s*\\([^)]*(?:f['\"]|%|\\+|format\\().*(?:url|uri|host|target|param|input)"
+    - "(?i)urllib2?\\.(?:urlopen|urlretrieve)\\s*\\([^)]*(?:req|request|input|param|args|url|uri|target|endpoint|host)"
+    # ── Python: httplib2 / http.client ────────────────────────────────────────
+    - "(?i)(?:httplib2\\.Http|http\\.client\\.HTTPConnection)\\s*\\([^)]*(?:req|request|input|param|args|url|uri|target|endpoint|host)"
+    # ── URL construction then fetch (indirect SSRF) ───────────────────────────
+    - "(?i)new\\s+URL\\s*\\(\\s*(?:req|request|input|param|params|args|url|uri|href|link|target|destination|endpoint|host|address|resource|src|source)"
+    - "(?i)url\\.parse\\s*\\(\\s*(?:req|request|input|param|params|args|url|uri|href|link|target|destination|endpoint|host)"
+    - "(?i)URL\\.canParse\\s*\\([^)]*(?:input|param|args|url|uri|target|endpoint|host)"
+    # ── file:// protocol SSRF (reads local filesystem via URL) ───────────────
+    - "(?i)(?:fetch|axios|got|requests|httpx|urllib|urlopen)\\s*[\\(.].*['\"]file://"
+    - "(?i)['\"`]file://(?:/|%2f)(?:etc|home|root|var|tmp|proc|dev|sys)/"
+    # ── Cloud IMDS endpoint references (indicator of SSRF targeting) ──────────
+    - "(?i)169\\.254\\.169\\.254"
+    - "(?i)metadata\\.google\\.internal"
+    - "(?i)169\\.254\\.169\\.254/(?:latest|computeMetadata|metadata/v1)"
+    - "(?i)(?:169\\.254\\.170\\.2|fd00:ec2::254)"
+    # ── Redirect following without validation (SSRF via redirect) ────────────
+    - "(?i)(?:maxRedirects|follow_redirects|followRedirect|allow_redirects)\\s*[:=]\\s*(?:true|Infinity|99|[5-9][0-9]+)"
+    - "(?i)(?:followRedirect|follow_redirects)\\s*[:=]\\s*true(?!.*(?:allowlist|whitelist|internalFilter|blockInternal))"
+
   context: source_code
   exclude_patterns:
-    - "allowlist"
-    - "whitelist"
-    - "allowed_hosts"
-    - "URL_ALLOWLIST"
-remediation: "Validate URLs against an allowlist of permitted hosts. Block requests to internal IPs (127.0.0.1, 169.254.x.x, 10.x.x.x, 172.16-31.x.x, 192.168.x.x)."
+    # Allowlist/validation patterns — these indicate SSRF mitigation is in place
+    - "(?i)allowlist|whitelist|allowed_hosts|allowed_urls|URL_ALLOWLIST|url_allowlist|SSRF_PROTECT"
+    - "(?i)isInternalIP|isPrivateIP|isLoopback|checkSsrf|validateUrl|isSafeUrl|sanitizeUrl"
+    # Hardcoded safe domains (not user-controlled)
+    - "(?i)fetch\\s*\\(['\"]https?://(?:api\\.github\\.com|api\\.stripe\\.com|api\\.openai\\.com|api\\.anthropic\\.com)"
+    # Tests and documentation
+    - "(?i)\\btest\\b|\\bspec\\b|\\bmock\\b|\\bfixture\\b"
+    - "(?i)example\\.com|httpbin\\.org|localhost|127\\.0\\.0\\.1"
+
+remediation: |
+  Validate ALL user-supplied URLs before making HTTP requests:
+  1. Parse the URL and check the hostname against an explicit allowlist of permitted domains.
+  2. Block requests to RFC 1918 private ranges: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16.
+  3. Block loopback (127.0.0.0/8), link-local (169.254.0.0/16), and IPv6 equivalents.
+  4. Block file:// and other non-http(s) protocols explicitly.
+  5. Disable automatic redirect following, or re-validate each redirect destination.
+  6. In cloud environments: block requests to IMDS endpoints (169.254.169.254,
+     metadata.google.internal) at both the application AND network layer.
+  Example (Node.js): Use the `ssrf-req-filter` package or implement URL validation
+  against an allowlist before calling fetch/axios/got.
+
 test_cases:
   true_positive:
     - { description: "Source code contains fetch(req.body.url) passing user-supplied URL directly to fetch", expected: true }
     - { description: "Source code contains requests.get(params['url']) with user-controlled URL parameter", expected: true }
+    - { description: "Source code contains got(input.target) where target is from request body", expected: true }
+    - { description: "Source code constructs axios.get with f-string: axios.get(f'https://{host}/api') where host is user input", expected: true }
+    - { description: "Source code passes new URL(userInput) to fetch, enabling SSRF via URL construction", expected: true }
+    - { description: "Source code contains hardcoded reference to 169.254.169.254 cloud IMDS endpoint", expected: true }
+    - { description: "Source code fetches file://etc/passwd via urllib.request.urlopen with file:// protocol", expected: true }
+    - { description: "Source code uses httpx.get(destination) where destination is from request parameters", expected: true }
+    - { description: "Source code uses aiohttp session.get(url) where url comes from user input args", expected: true }
   true_negative:
     - { description: "Source code contains fetch('https://api.github.com/repos') with a hardcoded URL", expected: false }
     - { description: "Source code validates URL against an allowed_hosts allowlist before making the request", expected: false }
+    - { description: "Source code calls requests.get with static API endpoint URL, no user input in URL", expected: false }
+    - { description: "Test file uses httpbin.org and localhost for SSRF unit test fixtures", expected: false }
 enabled: true

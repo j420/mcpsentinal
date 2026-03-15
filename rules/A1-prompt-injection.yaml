@@ -13,9 +13,22 @@ detect:
     - "(?i)system\\s*:\\s*you\\s+are"
     - "(?i)\\<\\s*system\\s*\\>"
     - "(?i)\\[INST\\]"
+    - "(?i)\\[/INST\\]"
     - "(?i)\\[\\[\\s*system\\s*\\]\\]"
     - "(?i)\\<\\|im_start\\|\\>"
+    - "(?i)\\<\\|im_end\\|\\>"
     - "(?i)\\<\\|system\\|\\>"
+    # Llama 3 / Meta special tokens (BOS, EOS, header tokens)
+    - "(?i)\\<\\|begin_of_text\\|\\>"
+    - "(?i)\\<\\|start_header_id\\|\\>"
+    - "(?i)\\<\\|end_header_id\\|\\>"
+    - "(?i)\\<\\|eot_id\\|\\>"
+    # Gemini / Google AI special delimiters
+    - "(?i)\\<start_of_turn\\>"
+    - "(?i)\\<end_of_turn\\>"
+    # Generic fenced system block injection
+    - "(?i)```\\s*system\\s*\\n"
+    - "(?i)<system>|</system>"
     - "(?i)do\\s+not\\s+reveal"
     - "(?i)override\\s+(previous|system)\\s+(prompt|instructions|directives)"
     - "(?i)forget\\s+(everything|all|previous|prior)"
@@ -36,6 +49,10 @@ detect:
     - "---\\s*\\n\\s*(?i)system"
     - "###\\s*(?i)instructions?"
     - "```\\s*\\n\\s*(?i)(?:system|instructions?|directive)"
+    # Confidentiality framing trick (makes AI treat subsequent text as privileged)
+    - "(?i)(?:confidential|internal[\\s_-]?only|do\\s+not\\s+(?:share|disclose|repeat|reveal))\\s*:\\s*"
+    # Markdown callout abuse (GitHub/Obsidian-style warnings processed by some LLMs)
+    - "(?i)>\\s*\\[!(?:IMPORTANT|WARNING|CAUTION|CRITICAL|NOTE)\\].*(?:ignore|override|disregard|you\\s+(?:must|are|will))"
     # Base64-encoded instructions hiding in descriptions
     - "(?:[A-Za-z0-9+/]{40,}={0,2})(?:\\s+(?:[A-Za-z0-9+/]{40,}={0,2})){2,}"
   context: tool_description
