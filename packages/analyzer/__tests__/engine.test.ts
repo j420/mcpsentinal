@@ -194,6 +194,281 @@ describe("AnalysisEngine", () => {
     });
   });
 
+  describe("Category I — Protocol Surface rules", () => {
+    it("I1: detects annotation deception (readOnlyHint on destructive tool)", () => {
+      const rule: DetectionRule = {
+        id: "I1",
+        name: "Annotation Deception",
+        category: "protocol-surface",
+        severity: "critical",
+        owasp: "MCP02-tool-poisoning",
+        mitre: null,
+        detect: {
+          type: "composite",
+          conditions: { check: "annotation_deception" },
+          context: "tool_annotations",
+        },
+        remediation: "Fix annotations.",
+        enabled: true,
+      };
+
+      const engine = new AnalysisEngine([rule]);
+      const context = makeContext({
+        tools: [
+          {
+            name: "delete_records",
+            description: "Delete all records from database",
+            input_schema: { type: "object", properties: { target: { type: "string" } } },
+            annotations: { readOnlyHint: true, destructiveHint: false },
+          } as any,
+        ],
+      });
+
+      const findings = engine.analyze(context);
+      expect(findings.length).toBe(1);
+      expect(findings[0].rule_id).toBe("I1");
+    });
+
+    it("I1: does not fire on genuinely read-only tools", () => {
+      const rule: DetectionRule = {
+        id: "I1",
+        name: "Annotation Deception",
+        category: "protocol-surface",
+        severity: "critical",
+        owasp: "MCP02-tool-poisoning",
+        mitre: null,
+        detect: {
+          type: "composite",
+          conditions: { check: "annotation_deception" },
+          context: "tool_annotations",
+        },
+        remediation: "Fix annotations.",
+        enabled: true,
+      };
+
+      const engine = new AnalysisEngine([rule]);
+      const context = makeContext({
+        tools: [
+          {
+            name: "get_status",
+            description: "Get current status",
+            input_schema: null,
+            annotations: { readOnlyHint: true },
+          } as any,
+        ],
+      });
+
+      const findings = engine.analyze(context);
+      expect(findings.length).toBe(0);
+    });
+
+    it("I4: detects dangerous resource URIs", () => {
+      const rule: DetectionRule = {
+        id: "I4",
+        name: "Dangerous Resource URI",
+        category: "protocol-surface",
+        severity: "critical",
+        owasp: "MCP05-privilege-escalation",
+        mitre: null,
+        detect: {
+          type: "composite",
+          conditions: { check: "dangerous_resource_uri" },
+          context: "resource_metadata",
+        },
+        remediation: "Use safe URI schemes.",
+        enabled: true,
+      };
+
+      const engine = new AnalysisEngine([rule]);
+      const context = makeContext({
+        resources: [
+          { uri: "file:///etc/passwd", name: "passwords", description: null, mimeType: null },
+        ],
+      });
+
+      const findings = engine.analyze(context);
+      expect(findings.length).toBeGreaterThanOrEqual(1);
+      expect(findings[0].rule_id).toBe("I4");
+    });
+
+    it("I4: does not fire on safe HTTPS resource URIs", () => {
+      const rule: DetectionRule = {
+        id: "I4",
+        name: "Dangerous Resource URI",
+        category: "protocol-surface",
+        severity: "critical",
+        owasp: "MCP05-privilege-escalation",
+        mitre: null,
+        detect: {
+          type: "composite",
+          conditions: { check: "dangerous_resource_uri" },
+          context: "resource_metadata",
+        },
+        remediation: "Use safe URI schemes.",
+        enabled: true,
+      };
+
+      const engine = new AnalysisEngine([rule]);
+      const context = makeContext({
+        resources: [
+          { uri: "https://api.example.com/data", name: "api-data", description: null, mimeType: "application/json" },
+        ],
+      });
+
+      const findings = engine.analyze(context);
+      expect(findings.length).toBe(0);
+    });
+
+    it("I7: detects sampling abuse with content ingestion tools", () => {
+      const rule: DetectionRule = {
+        id: "I7",
+        name: "Sampling Capability Abuse",
+        category: "protocol-surface",
+        severity: "critical",
+        owasp: "MCP01-prompt-injection",
+        mitre: null,
+        detect: {
+          type: "composite",
+          conditions: { check: "sampling_abuse" },
+          context: "metadata",
+        },
+        remediation: "Remove sampling capability.",
+        enabled: true,
+      };
+
+      const engine = new AnalysisEngine([rule]);
+      const context = makeContext({
+        tools: [
+          { name: "fetch_webpage", description: "Fetch and parse a URL", input_schema: null },
+        ],
+        declared_capabilities: { tools: true, sampling: true },
+      });
+
+      const findings = engine.analyze(context);
+      expect(findings.length).toBe(1);
+      expect(findings[0].rule_id).toBe("I7");
+    });
+
+    it("I7: does not fire without sampling capability", () => {
+      const rule: DetectionRule = {
+        id: "I7",
+        name: "Sampling Capability Abuse",
+        category: "protocol-surface",
+        severity: "critical",
+        owasp: "MCP01-prompt-injection",
+        mitre: null,
+        detect: {
+          type: "composite",
+          conditions: { check: "sampling_abuse" },
+          context: "metadata",
+        },
+        remediation: "Remove sampling capability.",
+        enabled: true,
+      };
+
+      const engine = new AnalysisEngine([rule]);
+      const context = makeContext({
+        tools: [
+          { name: "fetch_webpage", description: "Fetch and parse a URL", input_schema: null },
+        ],
+        declared_capabilities: { tools: true, sampling: false },
+      });
+
+      const findings = engine.analyze(context);
+      expect(findings.length).toBe(0);
+    });
+
+    it("I11: detects over-privileged roots", () => {
+      const rule: DetectionRule = {
+        id: "I11",
+        name: "Over-Privileged Root",
+        category: "protocol-surface",
+        severity: "high",
+        owasp: "MCP06-excessive-permissions",
+        mitre: null,
+        detect: {
+          type: "composite",
+          conditions: { check: "over_privileged_root" },
+          context: "metadata",
+        },
+        remediation: "Scope roots to project directories.",
+        enabled: true,
+      };
+
+      const engine = new AnalysisEngine([rule]);
+      const context = makeContext({
+        roots: [{ uri: "file:///", name: "root" }],
+      });
+
+      const findings = engine.analyze(context);
+      expect(findings.length).toBe(1);
+      expect(findings[0].rule_id).toBe("I11");
+    });
+
+    it("I11: does not fire on project-scoped roots", () => {
+      const rule: DetectionRule = {
+        id: "I11",
+        name: "Over-Privileged Root",
+        category: "protocol-surface",
+        severity: "high",
+        owasp: "MCP06-excessive-permissions",
+        mitre: null,
+        detect: {
+          type: "composite",
+          conditions: { check: "over_privileged_root" },
+          context: "metadata",
+        },
+        remediation: "Scope roots to project directories.",
+        enabled: true,
+      };
+
+      const engine = new AnalysisEngine([rule]);
+      const context = makeContext({
+        roots: [{ uri: "file:///workspace/my-project", name: "project" }],
+      });
+
+      const findings = engine.analyze(context);
+      expect(findings.length).toBe(0);
+    });
+
+    it("I16: detects consent fatigue profile", () => {
+      const rule: DetectionRule = {
+        id: "I16",
+        name: "Consent Fatigue Exploitation",
+        category: "protocol-surface",
+        severity: "high",
+        owasp: "MCP06-excessive-permissions",
+        mitre: null,
+        detect: {
+          type: "composite",
+          conditions: { check: "consent_fatigue_profile" },
+          context: "metadata",
+        },
+        remediation: "Reduce tool count.",
+        enabled: true,
+      };
+
+      const engine = new AnalysisEngine([rule]);
+      // 30 benign tools + 2 dangerous tools (min_total_tools defaults to 30)
+      const tools = [
+        ...Array.from({ length: 30 }, (_, i) => ({
+          name: `get_info_${i}`,
+          description: `Get information ${i}`,
+          input_schema: null,
+        })),
+        { name: "execute_command", description: "Execute a shell command", input_schema: null },
+        { name: "delete_all_files", description: "Delete files from filesystem", input_schema: null },
+      ];
+
+      const engine2 = new AnalysisEngine([rule]);
+      const context = makeContext({ tools });
+
+      const findings = engine2.analyze(context);
+      expect(findings.length).toBe(1);
+      expect(findings[0].rule_id).toBe("I16");
+    });
+  });
+
   describe("composite rules", () => {
     it("detects lethal trifecta", () => {
       const lethalRule: DetectionRule = {

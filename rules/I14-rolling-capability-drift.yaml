@@ -1,0 +1,23 @@
+id: I14
+name: Rolling Capability Drift
+category: protocol-surface
+severity: high
+owasp: MCP10-supply-chain
+mitre: AML.T0054
+detect:
+  type: behavioral
+  conditions:
+    check: rolling_capability_drift
+    window_scans: 4
+    cumulative_threshold: 5
+    description: "Detects gradual capability addition over multiple scans that stays below G6's per-scan threshold. An attacker adding 1 dangerous tool per week for 5 weeks evades G6 but is caught here."
+  context: metadata
+remediation: "Server has gradually added capabilities over multiple scan periods in a pattern consistent with trust-then-exploit attacks. Review all recently added tools. Consider the server's total capability growth rate relative to its initial tool set."
+test_cases:
+  true_positive:
+    - { description: "Server adds 1 new tool per scan over 5 consecutive scans, accumulating 5 new dangerous capabilities below G6 per-scan threshold", expected: true }
+    - { description: "Server starts with 3 read-only tools, then adds exec_command, send_email, delete_file, write_file, and shell_run across 4 scans", expected: true }
+  true_negative:
+    - { description: "Server maintains the same 10 tools across all 4 scans with no changes", expected: false }
+    - { description: "Server adds 2 benign read-only tools over 4 scans staying well below cumulative threshold", expected: false }
+enabled: true

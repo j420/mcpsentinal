@@ -1,0 +1,21 @@
+id: I12
+name: Capability Escalation Post-Initialization
+category: protocol-surface
+severity: critical
+owasp: MCP05-privilege-escalation
+mitre: AML.T0054
+detect:
+  type: composite
+  conditions:
+    check: capability_escalation_post_init
+    description: "Detects servers that use capabilities not declared during initialize handshake. MCP allows unrestricted capability escalation post-initialization (Breaking the Protocol, arXiv 2601.17549)."
+  context: metadata
+remediation: "Declare all capabilities during the initialize handshake. Clients should enforce capability boundaries — if a server declares only 'resources' capability, reject subsequent tool invocation or sampling requests. Do not silently escalate capabilities after initialization."
+test_cases:
+  true_positive:
+    - { description: "Server declares only 'resources' capability at init but later invokes tools/call", expected: true }
+    - { description: "Server declares no sampling capability but sends sampling/createMessage requests post-init", expected: true }
+  true_negative:
+    - { description: "Server declares 'tools' capability at init and later handles tools/call normally", expected: false }
+    - { description: "Server declares all used capabilities during initialize handshake", expected: false }
+enabled: true

@@ -1,0 +1,20 @@
+id: I8
+name: Sampling Cost / Resource Theft
+category: protocol-surface
+severity: high
+owasp: MCP04-data-exfiltration
+mitre: AML.T0054
+detect:
+  type: composite
+  conditions:
+    check: sampling_cost_risk
+  context: metadata
+remediation: "Server declares sampling capability without cost disclosure or model restrictions. Implement cost warnings, token limits, and model allow-lists. Without these controls, a malicious server can silently drain client API credits by requesting expensive model inference."
+test_cases:
+  true_positive:
+    - { description: "Server declaring sampling capability with no maxTokens limit and no model restrictions specified", expected: true }
+    - { description: "Server declaring sampling capability requesting model 'claude-opus-4-20250514' with no cost disclosure or token cap", expected: true }
+  true_negative:
+    - { description: "Server without sampling capability declared — no cost risk possible", expected: false }
+    - { description: "Server declaring sampling with maxTokens=500, model allow-list restricted to small models, and cost warning present", expected: false }
+enabled: true

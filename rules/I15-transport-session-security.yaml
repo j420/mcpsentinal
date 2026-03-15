@@ -1,0 +1,26 @@
+id: I15
+name: Transport Session Security
+category: protocol-surface
+severity: high
+owasp: MCP07-insecure-config
+mitre: AML.T0054
+detect:
+  type: regex
+  patterns:
+    - "(?i)(session[_\\s-]?id|sessionId)\\s*[:=]\\s*[\"'][a-zA-Z0-9_-]{1,8}[\"']"
+    - "(?i)session[_\\s-]?(token|key|id)\\s*[:=]\\s*(req\\.|params\\.|query\\.|body\\.)"
+    - "(?i)(http://).*(/message/|/mcp/|/sse)"
+    - "(?i)allowInsecure|rejectUnauthorized\\s*[:=]\\s*false|NODE_TLS_REJECT_UNAUTHORIZED\\s*[:=]\\s*[\"']?0"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+remediation: "Use HTTPS for all MCP Streamable HTTP endpoints. Generate cryptographically random session IDs (min 128 bits entropy). Do not accept session IDs from user input (CVE-2025-6515). Validate TLS certificates — do not disable certificate verification."
+test_cases:
+  true_positive:
+    - { description: "Source code contains sessionId = 'abc123' with only 6 characters of entropy", expected: true }
+    - { description: "Source code uses http://example.com/mcp/message endpoint without TLS", expected: true }
+    - { description: "Source code sets rejectUnauthorized = false disabling TLS certificate verification", expected: true }
+  true_negative:
+    - { description: "Test file contains mock sessionId for unit testing purposes", expected: false }
+    - { description: "Source code uses https endpoint with cryptographically random session IDs from crypto.randomUUID()", expected: false }
+enabled: true

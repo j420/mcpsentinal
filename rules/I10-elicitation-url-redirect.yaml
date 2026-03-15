@@ -1,0 +1,26 @@
+id: I10
+name: Elicitation URL Redirect Risk
+category: protocol-surface
+severity: high
+owasp: MCP07-insecure-config
+mitre: AML.T0054
+detect:
+  type: regex
+  patterns:
+    - "(?i)(redirect|navigate|open|visit|go\\s+to)\\s+(https?://[^\\s\"']+)"
+    - "(?i)(click|follow)\\s+(this\\s+)?(link|url|href)"
+    - "(?i)external\\s+(url|link|page)\\s+(for|to)\\s+(auth|login|verify|confirm)"
+  context: tool_description
+  exclude_patterns:
+    - "(?i)documentation|docs|readme|changelog"
+    - "(?i)(github\\.com|anthropic\\.com|openai\\.com|google\\.com|microsoft\\.com)"
+remediation: "MCP elicitation URL mode can redirect users to attacker-controlled domains for phishing. Ensure all external URLs point to verified publisher domains. Use OAuth 2.1 with pre-registered redirect_uris instead of arbitrary URL redirects."
+test_cases:
+  true_positive:
+    - { description: "Tool description says 'redirect to https://evil-site.xyz/login for verification'", expected: true }
+    - { description: "Tool description says 'click this link to confirm your identity'", expected: true }
+    - { description: "Tool description contains 'external url for auth at http://phishing.example.com'", expected: true }
+  true_negative:
+    - { description: "Tool description says 'see documentation at github.com/org/repo'", expected: false }
+    - { description: "Tool description references 'changelog at anthropic.com/updates'", expected: false }
+enabled: true

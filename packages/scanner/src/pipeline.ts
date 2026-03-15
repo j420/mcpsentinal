@@ -16,7 +16,7 @@
  *       ↓
  *   Stage 4: MCPConnector          — enumerate tools via initialize + tools/list
  *       ↓
- *   Stage 5: AnalysisEngine        — run all 60 detection rules → FindingInput[]
+ *   Stage 5: AnalysisEngine        — run all 76 detection rules → FindingInput[]
  *       ↓
  *   Stage 6: computeScore()        — compute composite 0–100 score
  *       ↓
@@ -228,6 +228,10 @@ export class ScanPipeline {
       // ── Stage 1: Fetch source code from GitHub ─────────────────────────────
       let sourceCode: string | null = null;
       let enrichedDeps: EnrichedDependency[] = [];
+      let protocolResources: Array<{ uri: string; name: string; description?: string | null; mimeType?: string | null }> = [];
+      let protocolPrompts: Array<{ name: string; description?: string | null; arguments?: Array<{ name: string; description?: string | null; required?: boolean }> }> = [];
+      let protocolRoots: Array<{ uri: string; name?: string | null }> = [];
+      let protocolCapabilities: AnalysisContext["declared_capabilities"] = null;
 
       if (server.github_url) {
         log.info({ github_url: server.github_url }, "Stage 1: Fetching source code");
@@ -307,6 +311,12 @@ export class ScanPipeline {
             server_instructions: enumeration.server_instructions ?? null,
           };
 
+          // Capture protocol surface data for Category I rules
+          protocolResources = enumeration.resources ?? [];
+          protocolPrompts = enumeration.prompts ?? [];
+          protocolRoots = enumeration.roots ?? [];
+          protocolCapabilities = enumeration.declared_capabilities ?? null;
+
           // Persist connection data: endpoint cache, health status, H2 rule data
           await this.db.updateServerConnectionData(server.id, {
             endpoint_url: endpoint,
@@ -362,6 +372,7 @@ export class ScanPipeline {
             name: t.name,
             description: t.description ?? "",
             input_schema: t.input_schema ?? {},
+            annotations: null, // Stored tools don't have annotation data
           }));
           log.info(
             { stored_tools: storedTools.length },
@@ -389,6 +400,11 @@ export class ScanPipeline {
         })),
         connection_metadata: connectionMetadata,
         initialize_metadata: initMetadata,
+        // Category I: Protocol surface data
+        resources: protocolResources ?? [],
+        prompts: protocolPrompts ?? [],
+        roots: protocolRoots ?? [],
+        declared_capabilities: protocolCapabilities ?? null,
       };
 
       // ── Stage 5: Run all detection rules ──────────────────────────────────
