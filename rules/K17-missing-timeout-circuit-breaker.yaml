@@ -1,0 +1,44 @@
+id: K17
+name: Missing Timeout or Circuit Breaker
+category: compliance-governance
+severity: medium
+owasp: MCP07-insecure-config
+mitre: AML.T0054
+
+# FRAMEWORK MAPPING (P11 Compliance Mapper):
+# - OWASP ASI08: Cascading Failures — timeouts prevent cascade propagation
+# - EU AI Act Art. 15: Robustness — fail-safe plans, technical redundancy
+# - CoSAI MCP-T10: Resource Management Absence — resource exhaustion
+# - MAESTRO L4: Deployment & Infrastructure — resilience patterns
+# - ISO 42001 A.8.1: Transparency — predictable system behavior
+#
+# THE GAP: Network requests, database queries, and tool calls without
+# timeout configuration. A hanging upstream service causes the MCP server
+# to hang indefinitely, consuming resources and blocking other requests.
+# In multi-agent architectures, one hung agent can cascade into all agents.
+
+detect:
+  type: regex
+  patterns:
+    # HTTP requests without timeout
+    - "(?i)(?:fetch|axios|got|request|urllib|httpx|http\\.get|http\\.post)\\s*\\((?!.*(?:timeout|signal|AbortSignal|deadline|cancel))"
+    - "(?i)(?:fetch|axios\\.(?:get|post|put|delete))\\s*\\([^)]*\\)(?!.*(?:timeout|signal))"
+    # Database queries without timeout
+    - "(?i)(?:query|execute|find|select|aggregate)\\s*\\((?!.*(?:timeout|maxTimeMS|statement_timeout|deadline|cancel))"
+    # subprocess/exec without timeout
+    - "(?i)(?:exec|execSync|spawn|subprocess\\.run|os\\.system)\\s*\\((?!.*(?:timeout|kill|maxBuffer|signal))"
+    # MCP tool calls without timeout
+    - "(?i)(?:callTool|invoke|tools\\/call|execute_tool)\\s*\\((?!.*(?:timeout|signal|deadline|cancel|abort))"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture"
+    - "(?i)timeout|AbortSignal|deadline|circuit[_\\s-]?breaker|retry|backoff"
+remediation: "Add timeouts to ALL external calls: HTTP requests (30s), database queries (10s), subprocess execution (60s), and MCP tool calls (30s). Implement circuit breakers that open after N consecutive failures (e.g., opossum, cockatiel). Use AbortSignal for cancellable operations. Required by EU AI Act Art. 15 and OWASP ASI08."
+test_cases:
+  true_positive:
+    - { description: "Source code calls fetch() to external API without any timeout or AbortSignal", expected: true }
+    - { description: "Source code runs database query without maxTimeMS or statement_timeout", expected: true }
+  true_negative:
+    - { description: "Source code calls fetch with AbortSignal.timeout(5000) for request cancellation", expected: false }
+    - { description: "Test file makes HTTP request to mock server without timeout for testing", expected: false }
+enabled: true

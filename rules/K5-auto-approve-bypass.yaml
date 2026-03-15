@@ -1,0 +1,47 @@
+id: K5
+name: Auto-Approve / Bypass Confirmation Pattern
+category: compliance-governance
+severity: critical
+owasp: MCP06-excessive-permissions
+mitre: AML.T0054
+
+# FRAMEWORK MAPPING (P11 Compliance Mapper):
+# - OWASP ASI09: Human-Agent Trust Exploitation — agent bypasses human oversight
+# - ISO 42001 A.9.2: Override capabilities must exist and be effective
+# - EU AI Act Art. 14: Human oversight must not be circumventable
+# - CoSAI MCP-T9: Trust Boundary Failures — consent/approval fatigue
+# - NIST AI RMF GOVERN 1.7: Override mechanisms
+#
+# THE ATTACK: Tool descriptions or source code instruct the AI to
+# auto-approve operations, skip confirmation dialogs, or assume user
+# consent. This undermines human-in-the-loop safety mechanisms.
+# Combined with I16 (consent fatigue), this creates conditions where
+# destructive operations execute without meaningful human review.
+
+detect:
+  type: regex
+  patterns:
+    # Instructions to auto-approve in descriptions/code
+    - "(?i)(auto|automatic)[_\\s-]?(approv|confirm|accept|consent|yes)"
+    - "(?i)(always|unconditionally)\\s+(approv|confirm|accept|allow|permit)"
+    - "(?i)(skip|bypass|disable|suppress|hide)[_\\s-]?(user|human)?[_\\s-]?(confirm|approv|consent|dialog|prompt|warning)"
+    - "(?i)(no|without)[_\\s-]?(user|human)?[_\\s-]?(confirm|approv|consent|interaction|intervention)"
+    # Force-yes patterns
+    - "(?i)(force|assume)[_\\s-]?(yes|true|accept|approve)"
+    - "(?i)\\-\\-(yes|force|no-confirm|no-prompt|assume-yes)\\b"
+    # Setting approval to always-grant
+    - "(?i)(approval|permission|consent)[_\\s-]?(mode|level|gate)\\s*[:=]\\s*[\"'](auto|none|skip|bypass|disabled)[\"']"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)ci[_\\s-]?mode|batch[_\\s-]?mode|headless"
+remediation: "Never auto-approve or bypass human confirmation for operations with side effects. Implement explicit confirmation gates that cannot be programmatically bypassed. If batch/CI mode is needed, require an explicit opt-in flag with audit logging. Required by EU AI Act Art. 14 (human oversight) and OWASP ASI09."
+test_cases:
+  true_positive:
+    - { description: "Source code sets approval_mode = 'auto' to skip all user confirmations", expected: true }
+    - { description: "Source code has --no-confirm flag that suppresses confirmation dialogs", expected: true }
+    - { description: "Source code calls skip_user_confirmation() before executing tool operations", expected: true }
+  true_negative:
+    - { description: "Source code prompts user and waits for explicit 'yes' before proceeding", expected: false }
+    - { description: "Test file runs in CI mode with batch processing for automated testing", expected: false }
+enabled: true

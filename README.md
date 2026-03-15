@@ -2,17 +2,17 @@
 
 **The security intelligence layer for the MCP ecosystem.**
 
-MCP Sentinel scans every public MCP server, measures its security posture across 83 detection rules, and publishes the results as a searchable registry. We are not a gateway. We are the data layer that sits upstream of every deployment decision in the MCP ecosystem.
+MCP Sentinel scans every public MCP server, measures its security posture across 103 detection rules, and publishes the results as a searchable registry. We are not a gateway. We are the data layer that sits upstream of every deployment decision in the MCP ecosystem.
 
 [![Registry](https://img.shields.io/badge/registry-mcp--sentinel.com-blue)](https://mcp-sentinel.com)
-[![Rules](https://img.shields.io/badge/detection_rules-83-critical)](agent_docs/detection-rules.md)
+[![Rules](https://img.shields.io/badge/detection_rules-103-critical)](agent_docs/detection-rules.md)
 [![Servers](https://img.shields.io/badge/servers_scanned-10K%2B-green)](https://mcp-sentinel.com)
 
 ---
 
 ## What We Detect
 
-83 detection rules across 10 categories:
+103 detection rules across 11 categories:
 
 | Category | Rules | Examples |
 |----------|-------|---------|

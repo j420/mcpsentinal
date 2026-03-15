@@ -3,7 +3,7 @@
 
 ---
 
-## Current State: 83 Rules Across 10 Categories (A-J)
+## Current State: 103 Rules Across 11 Categories (A-K)
 
 | Category | Count | Coverage Area | Quality |
 |----------|-------|--------------|---------|
@@ -50,7 +50,8 @@
 |---------|------|------|---------|----------|
 | K1 | Absent Structured Logging | regex | source_code | high |
 | K2 | Audit Trail Destruction | regex | source_code | critical |
-| K3 | Insufficient Audit Context | regex | source_code | medium |
+| K3 | Audit Log Tampering | regex | source_code | critical |
+| K20 | Insufficient Audit Context in Logging | regex | source_code | medium |
 
 ---
 
@@ -101,7 +102,7 @@
 |---------|------|------|---------|----------|
 | K9 | Dangerous Post-Install Hooks | regex | source_code | critical |
 | K10 | Package Registry Substitution | regex | source_code | high |
-| K11 | Lockfile Integrity Mismatch | composite | metadata | high |
+| K11 | Missing Server Integrity Verification | regex | source_code | high |
 
 ---
 
@@ -116,8 +117,8 @@
 **Proposed rules:**
 | Rule ID | Name | Type | Context | Severity |
 |---------|------|------|---------|----------|
-| K12 | Unsanitized Tool Output | regex | source_code | high |
-| K13 | Executable Content in Tool Response | regex | source_code | critical |
+| K12 | Executable Content in Tool Response | regex | source_code | critical |
+| K13 | Unsanitized Tool Output | regex | source_code | high |
 
 ---
 
@@ -133,7 +134,7 @@
 | Rule ID | Name | Type | Context | Severity |
 |---------|------|------|---------|----------|
 | K14 | Agent Credential Propagation | regex | source_code | critical |
-| K15 | Missing Agent Identity Verification | composite | metadata + source_code | high |
+| K15 | Multi-Agent Collusion Preconditions | regex | source_code | high |
 
 ---
 
@@ -155,22 +156,32 @@
 
 ## Framework Compliance Coverage Matrix (After K-Category)
 
-| Framework Requirement | Before (83 rules) | After (+17 K rules) |
-|-----------------------|-------------------|---------------------|
-| **NIST AI RMF GOVERN** | Weak | Moderate (K1-K3 audit, K4-K5 oversight) |
+| Framework Requirement | Before (83 rules) | After (+20 K rules = 103) |
+|-----------------------|-------------------|---------------------------|
+| **NIST AI RMF GOVERN** | Weak | Moderate (K1-K3/K20 audit, K4-K5 oversight) |
 | **NIST AI RMF MEASURE** | Strong | Strong |
+| **NIST Cyber AI Profile** | Partial | Strong (K18 cross-boundary data flow) |
 | **OWASP ASI01-ASI07** | Strong | Excellent |
-| **OWASP ASI08 Cascading Failures** | Weak | Moderate (K16-K17) |
+| **OWASP ASI08 Cascading Failures** | Weak | Strong (K16-K17) |
 | **OWASP ASI09 Human Trust** | Weak | Moderate (K4-K5) |
 | **OWASP ASI10 Rogue Agents** | Moderate | Moderate |
 | **MITRE ATLAS Agent Techniques** | ~70% | ~85% |
 | **EU AI Act Art. 9 Risk Management** | Moderate | Strong |
-| **EU AI Act Art. 15 Robustness** | Moderate | Strong (K16-K17) |
-| **ISO 42001 A.8 Transparency** | Weak | Moderate (K1-K3) |
+| **EU AI Act Art. 12 Record-keeping** | Weak | Strong (K2-K3, K20) |
+| **EU AI Act Art. 15 Robustness** | Moderate | Strong (K16-K17, K19) |
+| **ISO 27001 A.5.14 Information Transfer** | Missing | Strong (K18) |
+| **ISO 27001 A.5.17 Authentication** | Partial | Strong (K8) |
+| **ISO 27001 A.8.15 Logging** | Weak | Excellent (K1-K3, K20) |
+| **ISO 27001 A.8.22 Network Segregation** | Missing | Moderate (K19) |
+| **ISO 42001 A.8 Transparency** | Weak | Moderate (K1-K3, K20) |
 | **ISO 42001 A.9.2 Override** | Missing | Moderate (K4-K5) |
 | **CoSAI MCP-T1 Authentication** | Moderate | Strong (K6-K8) |
-| **CoSAI MCP-T12 Logging** | Missing | Strong (K1-K3) |
-| **MAESTRO L5 Observability** | Weak | Strong (K1-K3) |
+| **CoSAI MCP-T5 Data Protection** | Partial | Strong (K18) |
+| **CoSAI MCP-T8 Sandbox/Isolation** | Missing | Moderate (K19) |
+| **CoSAI MCP-T9 Multi-Agent** | Partial | Strong (K15) |
+| **CoSAI MCP-T12 Logging** | Missing | Strong (K1-K3, K20) |
+| **MAESTRO L5 Observability** | Weak | Strong (K1-K3, K20) |
+| **MAESTRO L7 Multi-Agent** | Partial | Strong (K14-K15) |
 | **CSA AICM IAM Domain** | Partial | Strong (K6-K8) |
 
 ---
@@ -190,24 +201,30 @@
 8. **K6** Overly Broad OAuth Scopes
 9. **K8** Cross-Boundary Credential Sharing
 10. **K10** Package Registry Substitution
-11. **K12** Unsanitized Tool Output
+11. **K13** Unsanitized Tool Output
 12. **K16** Unbounded Recursion / Missing Depth Limits
+13. **K18** Cross-Trust-Boundary Data Flow
+14. **K19** Missing Runtime Sandbox Enforcement
 
 ### Tier 3 — Complete Coverage
-13. **K3** Insufficient Audit Context
-14. **K7** Long-Lived Tokens Without Rotation
-15. **K11** Lockfile Integrity Mismatch
-16. **K15** Missing Agent Identity Verification
-17. **K17** Missing Timeout or Circuit Breaker
+15. **K3** Audit Log Tampering
+16. **K7** Long-Lived Tokens Without Rotation
+17. **K11** Missing Server Integrity Verification
+18. **K15** Multi-Agent Collusion Preconditions
+19. **K17** Missing Timeout or Circuit Breaker
+20. **K20** Insufficient Audit Context in Logging
+
+**All 20 K-rules implemented — all tiers complete.**
 
 ---
 
 ## What This Makes Us
 
-After K-category implementation, MCP Sentinel will have:
-- **100 detection rules** across 11 categories (A-K)
-- Coverage of **8 security frameworks** with documented mappings
-- **7 threat categories** from the user's specification fully addressed
-- Compliance evidence for **NIST AI RMF**, **OWASP Agentic Top 10**, **MITRE ATLAS**, **EU AI Act**, **ISO 42001**, **CoSAI**, **MAESTRO**, and **CSA AICM**
+With K-category fully implemented, MCP Sentinel has:
+- **103 detection rules** across 11 categories (A-K)
+- Coverage of **8 security frameworks** with documented per-rule mappings
+- **7 threat categories** from the specification fully addressed
+- Compliance evidence for **NIST AI RMF**, **NIST Cyber AI Profile**, **OWASP Agentic Top 10**, **MITRE ATLAS**, **EU AI Act**, **ISO 42001**, **ISO 27001**, **CoSAI MCP Security**, **MAESTRO**, and **CSA AICM**
+- K-category added 3 new framework coverage areas previously at zero: ISO 27001 A.5.14, CoSAI MCP-T8, ISO 27001 A.8.22
 
 No other MCP security tool provides framework-mapped compliance scanning.

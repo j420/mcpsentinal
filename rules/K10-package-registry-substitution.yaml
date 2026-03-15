@@ -1,0 +1,47 @@
+id: K10
+name: Package Registry Substitution
+category: compliance-governance
+severity: high
+owasp: MCP10-supply-chain
+mitre: AML.T0054
+
+# FRAMEWORK MAPPING (P11 Compliance Mapper):
+# - OWASP ASI04: Agentic Supply Chain Vulnerabilities
+# - MITRE ATLAS AML.T0017: Supply chain compromise
+# - CoSAI MCP-T6: Missing Integrity/Verification
+# - ISO 27001 A.5.21: Managing information security in the ICT supply chain
+# - CSA AICM: Supply Chain Transparency domain
+#
+# THE ATTACK: .npmrc, pip.conf, or pyproject.toml configured to pull
+# packages from a non-official registry. The attacker sets up a mirror
+# that serves modified packages with backdoors. The developer/CI system
+# unknowingly installs backdoored dependencies.
+
+detect:
+  type: regex
+  patterns:
+    # .npmrc with custom registry
+    - "(?i)registry\\s*=\\s*https?://(?!registry\\.npmjs\\.org|npm\\.pkg\\.github\\.com)[^\\s]+"
+    # pip with custom index
+    - "(?i)(--index-url|--extra-index-url|index[_-]url)\\s*=?\\s*https?://(?!pypi\\.org|files\\.pythonhosted\\.org)[^\\s]+"
+    # yarn with custom registry
+    - "(?i)npmRegistryServer\\s*:\\s*[\"']https?://(?!registry\\.yarnpkg\\.com|registry\\.npmjs\\.org)[^\"']+"
+    # Go module proxy substitution
+    - "(?i)GOPROXY\\s*=\\s*(?!https://proxy\\.golang\\.org)[^\\s,]+"
+    # Maven/Gradle with custom repository that isn't Maven Central
+    - "(?i)(?:repository|repo).*url\\s*[:=]\\s*[\"']https?://(?!repo1?\\.maven\\.org|central\\.sonatype|plugins\\.gradle\\.org)[^\"']+"
+    # Generic: find-links or trusted-host pointing to custom domain
+    - "(?i)(find[_-]links|trusted[_-]host)\\s*=?\\s*https?://(?!pypi\\.org|files\\.pythonhosted\\.org)[^\\s]+"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture"
+    - "(?i)verdaccio|localhost|127\\.0\\.0\\.1|internal|private|artifactory|nexus|jfrog"
+remediation: "Use only official package registries (registry.npmjs.org, pypi.org, proxy.golang.org) or verified enterprise mirrors (Artifactory, Nexus). Pin registry URLs in CI configuration and verify package checksums. Required by ISO 27001 A.5.21 and OWASP ASI04."
+test_cases:
+  true_positive:
+    - { description: ".npmrc sets registry to https://evil-mirror.com/npm/ instead of npmjs.org", expected: true }
+    - { description: "pip.conf sets index-url to https://attacker-pypi.com/simple/", expected: true }
+  true_negative:
+    - { description: ".npmrc uses registry.npmjs.org as the package registry", expected: false }
+    - { description: "Test configuration uses localhost Verdaccio for integration testing", expected: false }
+enabled: true

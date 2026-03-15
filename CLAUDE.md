@@ -35,7 +35,7 @@ mcp-sentinel/
 ├── packages/
 │   ├── crawler/                 ← Discovery: finds MCP servers across 7+ sources (each has CLAUDE.md)
 │   ├── connector/               ← Connection: MCP SDK wrapper — initialize + tools/list ONLY (has CLAUDE.md)
-│   ├── analyzer/                ← Analysis: runs 83 detection rules, produces findings (has CLAUDE.md)
+│   ├── analyzer/                ← Analysis: runs 103 detection rules, produces findings (has CLAUDE.md)
 │   ├── scorer/                  ← Scoring: computes composite scores from findings (has CLAUDE.md)
 │   ├── database/                ← PostgreSQL schema, migrations, queries — ALL SQL lives here (has CLAUDE.md)
 │   ├── api/                     ← Public REST API (has CLAUDE.md)
@@ -45,7 +45,7 @@ mcp-sentinel/
 │   └── runbooks/                ← Operational runbooks: add-new-rule, new-cve-response, full-crawl
 ├── tools/
 │   └── scripts/                 ← validate-rules.sh and operational scripts
-├── rules/                       ← Detection rule definitions (YAML) — 83 rules across A–J
+├── rules/                       ← Detection rule definitions (YAML) — 103 rules across A–K
 ├── tests/                       ← Integration and E2E tests
 └── data/                        ← Seed data, test fixtures
 ```

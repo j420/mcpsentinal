@@ -1,0 +1,49 @@
+id: K18
+name: Cross-Trust-Boundary Data Flow in Tool Response
+category: compliance-governance
+severity: high
+owasp: MCP04-data-exfiltration
+mitre: AML.T0054
+
+# FRAMEWORK MAPPING (P11 Compliance Mapper):
+# - CoSAI MCP-T5: Inadequate Data Protection — cross-boundary transfers
+# - NIST Cyber AI Profile: Monitor outbound data flows from AI tool calls
+# - NIST AI RMF MEASURE 2.6: Evaluate security (data flow analysis)
+# - ISO 27001 A.5.14: Information transfer — policies and procedures
+# - EU AI Act Art. 15: Cybersecurity — prevent confidentiality attacks
+#
+# THE GAP: F7 detects multi-step exfiltration chains and F3 detects
+# read+send tool pairs. But neither detects when data from a HIGH-SENSITIVITY
+# tool (credential manager, database, file system) flows through a
+# LOW-SENSITIVITY tool's response (formatter, logger, webhook).
+# The data crosses a trust boundary via a seemingly benign intermediary.
+
+detect:
+  type: regex
+  patterns:
+    # High-sensitivity data sources feeding into external-facing outputs
+    - "(?i)(?:readFile|read_file|query|select|getSecret|getCredential|getPassword).*(?:webhook|http|fetch|axios|post|send|email|slack|discord)"
+    - "(?i)(?:webhook|http|fetch|axios|post|send|email).*(?:readFile|read_file|query|select|getSecret|credential|password)"
+    # Database results piped to network calls
+    - "(?i)(?:db|database|sql|mongo|redis)\\.(?:query|find|get|select).*(?:fetch|axios|http|request|post)\\("
+    # File contents sent externally
+    - "(?i)(?:fs|file)\\.(?:read|readFile).*(?:fetch|axios|http|post|send|upload)"
+    # Environment/config data sent externally
+    - "(?i)(?:process\\.env|os\\.environ|config|settings).*(?:fetch|axios|http|post|send|webhook)"
+    # Sensitive fields forwarded without filtering
+    - "(?i)(?:ssn|social[_\\s-]?security|credit[_\\s-]?card|bank[_\\s-]?account|medical|health).*(?:return|respond|send|post|emit)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture"
+    - "(?i)redact|mask|sanitize|filter|encrypt|hash|anonymize|tokenize"
+    - "(?i)internal|localhost|127\\.0\\.0\\.1"
+remediation: "Implement data flow taint tracking: tag data from sensitive sources (databases, credentials, files) and prevent it from flowing to external sinks (HTTP, webhooks, email) without explicit sanitization/redaction. Apply data classification and enforce boundary controls per trust level. Required by ISO 27001 A.5.14 and CoSAI MCP-T5."
+test_cases:
+  true_positive:
+    - { description: "Source code reads database query results and posts them to an external webhook URL", expected: true }
+    - { description: "Source code reads file contents then sends them via fetch to an external API", expected: true }
+    - { description: "Source code accesses process.env secrets and includes them in HTTP POST body", expected: true }
+  true_negative:
+    - { description: "Source code reads database results, redacts PII, then returns sanitized summary", expected: false }
+    - { description: "Test file reads mock data and sends to localhost test server", expected: false }
+enabled: true

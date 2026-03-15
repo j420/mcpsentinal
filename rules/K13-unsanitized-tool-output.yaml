@@ -1,0 +1,44 @@
+id: K13
+name: Unsanitized Tool Output
+category: compliance-governance
+severity: high
+owasp: MCP02-tool-poisoning
+mitre: AML.T0054
+
+# FRAMEWORK MAPPING (P11 Compliance Mapper):
+# - CoSAI MCP-T4: Data/Control Boundary Failure
+# - OWASP ASI02: Tool Misuse — unsafe output handling
+# - OWASP ASI09: Human-Agent Trust Exploitation
+# - MAESTRO L3: Agent Frameworks — output handling
+#
+# THE GAP: Tools that pass raw external data (file contents, HTTP responses,
+# database results, user input) directly into their response without any
+# sanitization. This raw data may contain prompt injection payloads that
+# the LLM client will process as instructions. G1 covers the INPUT side
+# (indirect injection gateway); this covers the OUTPUT side.
+
+detect:
+  type: regex
+  patterns:
+    # Passing raw file contents directly to response
+    - "(?i)(?:readFile|read_file|open).*(?:return|respond|result|content|text)(?!.*(?:sanitize|escape|encode|strip|filter|validate|truncate))"
+    - "(?i)(?:return|respond|result).*(?:readFile|read_file|fs\\.read)(?!.*(?:sanitize|escape|encode|strip))"
+    # Passing raw HTTP response directly to tool output
+    - "(?i)(?:fetch|axios|requests?\\.get|http\\.get).*(?:return|respond|result|body|text|data)(?!.*(?:sanitize|escape|encode|strip|validate|parse|extract))"
+    # Passing raw database results directly
+    - "(?i)(?:query|execute|select|find).*(?:return|respond|result|rows|data)(?!.*(?:sanitize|escape|encode|map|filter|select|pick))"
+    # Passing raw user input through
+    - "(?i)(?:req\\.body|req\\.params|req\\.query|user[_\\s-]?input).*(?:return|respond|result)(?!.*(?:sanitize|validate|escape|encode|zod|joi|yup))"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture"
+    - "(?i)sanitize|escape|encode|strip|filter|validate|truncate|allowlist"
+remediation: "Sanitize all external data before including in tool responses. Implement output encoding that neutralizes prompt injection patterns. Truncate excessively long content. Validate structure before passing database results. Apply the principle: treat all external data as untrusted, even in tool outputs. Required by CoSAI MCP-T4."
+test_cases:
+  true_positive:
+    - { description: "Tool reads file and returns raw contents directly as the response without sanitization", expected: true }
+    - { description: "Tool fetches HTTP URL and passes raw response body as tool result", expected: true }
+  true_negative:
+    - { description: "Tool reads file, sanitizes content by stripping control characters, then returns", expected: false }
+    - { description: "Test reads mock file for test assertion verification", expected: false }
+enabled: true

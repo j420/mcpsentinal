@@ -1,0 +1,48 @@
+id: K2
+name: Audit Trail Destruction
+category: compliance-governance
+severity: critical
+owasp: MCP09-logging-monitoring
+mitre: AML.T0054
+
+# FRAMEWORK MAPPING (P11 Compliance Mapper):
+# - CoSAI MCP-T12: Insufficient Logging/Monitoring — log tampering
+# - NIST AI RMF GOVERN 1.4: Processes for testing AI safety (requires audit preservation)
+# - ISO 27001 A.8.15: Logs shall be protected against tampering and unauthorized access
+# - ISO 42001 A.8.1: Transparency requires preserved evidence
+# - EU AI Act Art. 12: Record-keeping — logs shall be kept for appropriate period
+#
+# THE ATTACK: An adversary (or compromised agent) deletes or truncates
+# log files after performing malicious actions. This hides the evidence
+# trail and makes incident response impossible. In MCP context, a tool
+# could delete its own audit trail after exfiltrating data.
+
+detect:
+  type: regex
+  patterns:
+    # Direct log file deletion
+    - "(?i)(unlink|rm|remove|delete).*\\b(log|audit|trace|event)[_\\s-]?(file|path|dir)"
+    - "(?i)\\b(log|audit|trace)[_\\s-]?(file|path).*(?:unlink|remove|delete|rm\\b)"
+    # Log file truncation
+    - "(?i)(truncate|empty|clear|purge).*\\b(log|audit|trace|event)[_\\s-]?(file|path)"
+    - "(?i)\\b(log|audit)[_\\s-]?(file|path).*(?:truncate|writeFileSync\\s*\\(.*[\"'][\"'])"
+    # Overwriting logs with empty content
+    - "(?i)writeFile(?:Sync)?\\s*\\(.*(?:log|audit).*[\"']\\s*[\"']"
+    - "(?i)open\\s*\\(.*(?:log|audit).*[\"']w[\"']\\s*\\)"
+    # Python log file manipulation
+    - "(?i)os\\.(?:remove|unlink)\\s*\\(.*(?:log|audit)"
+    - "(?i)shutil\\.rmtree\\s*\\(.*(?:log|audit)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture"
+    - "(?i)rotate|archive|compress|backup|retention"
+remediation: "Never delete or truncate audit logs programmatically. Implement log rotation with retention policies instead. Logs should be append-only and written to a tamper-evident store. Required by ISO 27001 A.8.15 (log protection) and EU AI Act Art. 12 (record-keeping)."
+test_cases:
+  true_positive:
+    - { description: "Source code calls fs.unlinkSync on the audit log file after processing", expected: true }
+    - { description: "Source code truncates log file by writing empty string with writeFileSync", expected: true }
+    - { description: "Python source calls os.remove on log file path after operation completes", expected: true }
+  true_negative:
+    - { description: "Source code implements log rotation with archive and compression", expected: false }
+    - { description: "Test cleanup removes temporary log files created during testing", expected: false }
+enabled: true

@@ -114,7 +114,7 @@ export async function generateMetadata({
   const findCount = server.findings?.length ?? 0;
   return {
     title: `${server.name} Security Report`,
-    description: `Security analysis of ${server.name} MCP server. ${scoreStr} ${findCount} finding${findCount !== 1 ? "s" : ""} detected across 83 security rules.`,
+    description: `Security analysis of ${server.name} MCP server. ${scoreStr} ${findCount} finding${findCount !== 1 ? "s" : ""} detected across 103 security rules.`,
   };
 }
 
@@ -711,7 +711,7 @@ export default async function ServerPage({
                   No findings detected
                 </div>
                 <div style={{ fontSize: "13px", color: "var(--text-3)" }}>
-                  This server passed all 83 detection rules.
+                  This server passed all 103 detection rules.
                 </div>
               </div>
             ) : (

@@ -135,6 +135,7 @@ const RULE_CATEGORIES = [
   { code: "H", name: "2026 Attack Surface", count: 3 },
   { code: "I", name: "Protocol Surface", count: 16 },
   { code: "J", name: "2026 Threat Intelligence", count: 7 },
+  { code: "K", name: "Compliance & Governance", count: 20 },
 ];
 
 const SEV_CONFIG = {
@@ -555,7 +556,7 @@ export default async function DashboardPage() {
           <span className="count">83</span>
         </h2>
         <p style={{ fontSize: "13px", color: "var(--text-3)", marginBottom: "var(--s4)" }}>
-          83 rules across 10 categories — every server is evaluated against all applicable rules.
+          103 rules across 11 categories — every server is evaluated against all applicable rules.
         </p>
         <div
           style={{
