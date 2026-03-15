@@ -15,7 +15,8 @@
 | **2026 Attack Surface** | **H** | **Mixed** | **3** | **OAuth Specialist + Protocol Researcher + Agentic AI Researcher** |
 | **Protocol Surface** | **I** | **No (protocol metadata + annotations)** | **16** | **P1 Threat Researcher (March 2026)** |
 | **2026 Threat Intelligence** | **J** | **Yes (source code + tool metadata)** | **7** | **P1 Threat Researcher (CVE-backed, March 2026)** |
-| **Total** | | | **83** | |
+| **Compliance & Governance** | **K** | **Yes (source code + config)** | **20** | **P11 Compliance Mapper (8-framework mapped, March 2026)** |
+| **Total** | | | **103** | |
 
 ### The G-Category: What a Threat Researcher Adds
 
@@ -389,4 +390,82 @@ These rules are derived from **real-world CVEs and published attack research** f
 3. **Full-schema poisoning (J3)** — extends beyond description injection to the entire JSON Schema surface
 4. **Tool output poisoning (J5)** — static detection of runtime manipulation patterns, bridging static/dynamic analysis gap
 5. **Supply chain injection (J7)** — OpenAPI spec → generated code → vulnerable MCP server chain
+
+---
+
+#### Category K — Compliance & Governance (20 rules — P11 Compliance Mapper, 8-framework mapped)
+
+These rules close gaps identified by cross-referencing 83 existing rules against 8 security frameworks: **NIST AI RMF**, **OWASP Agentic Top 10** (ASI01-10), **MITRE ATLAS**, **EU AI Act**, **ISO 42001**, **ISO 27001**, **CoSAI MCP Security**, **MAESTRO**, and **CSA AICM**. Every rule maps to specific framework requirements.
+
+| ID | Name | Severity | Primary Frameworks |
+|----|------|----------|-------------------|
+| **K1** | **Absent Structured Logging** | **High** | **CoSAI MCP-T12, MAESTRO L5, NIST MEASURE, ISO 27001 A.8.15** |
+| **K2** | **Audit Trail Destruction** | **Critical** | **ISO 27001 A.8.15, EU AI Act Art. 12, CoSAI MCP-T12** |
+| **K3** | **Audit Log Tampering** | **Critical** | **ISO 27001 A.8.15, NIST MEASURE, MAESTRO L5** |
+| **K4** | **Missing Human Confirmation for Destructive Ops** | **High** | **ISO 42001 A.9.1/A.9.2, EU AI Act Art. 14, NIST GOVERN 1.7** |
+| **K5** | **Auto-Approve / Bypass Confirmation Pattern** | **Critical** | **OWASP ASI09, EU AI Act Art. 14, ISO 42001 A.9.2** |
+| **K6** | **Overly Broad OAuth Scopes** | **High** | **OWASP ASI03, CoSAI MCP-T1/T2, ISO 27001 A.5.15/A.5.18** |
+| **K7** | **Long-Lived Tokens Without Rotation** | **High** | **OWASP ASI03, CoSAI MCP-T1, ISO 27001 A.8.24** |
+| **K8** | **Cross-Boundary Credential Sharing** | **Critical** | **OWASP ASI03/ASI07, CoSAI MCP-T1, ISO 27001 A.5.17, MAESTRO L7** |
+| **K9** | **Dangerous Post-Install Hooks** | **Critical** | **OWASP ASI04, MITRE ATLAS AML.T0017, CoSAI MCP-T6/T11** |
+| **K10** | **Package Registry Substitution** | **High** | **OWASP ASI04, ISO 27001 A.5.21, CoSAI MCP-T6** |
+| **K11** | **Missing Server Integrity Verification** | **High** | **CoSAI MCP-T6/T11, ISO 27001 A.8.24/A.5.20, MAESTRO L3** |
+| **K12** | **Executable Content in Tool Response** | **Critical** | **CoSAI MCP-T4, OWASP ASI02/ASI09** |
+| **K13** | **Unsanitized Tool Output** | **High** | **CoSAI MCP-T4, OWASP ASI02, MAESTRO L3** |
+| **K14** | **Agent Credential Propagation via Shared State** | **Critical** | **OWASP ASI03/ASI07, MAESTRO L7, MITRE ATLAS AML.T0086** |
+| **K15** | **Multi-Agent Collusion Preconditions** | **High** | **MAESTRO L7, CoSAI MCP-T9, OWASP ASI07** |
+| **K16** | **Unbounded Recursion / Missing Depth Limits** | **High** | **OWASP ASI08, EU AI Act Art. 15, CoSAI MCP-T10** |
+| **K17** | **Missing Timeout or Circuit Breaker** | **Medium** | **OWASP ASI08, EU AI Act Art. 15, MAESTRO L4** |
+| **K18** | **Cross-Trust-Boundary Data Flow in Tool Response** | **High** | **CoSAI MCP-T5, NIST Cyber AI Profile, ISO 27001 A.5.14** |
+| **K19** | **Missing Runtime Sandbox Enforcement** | **High** | **CoSAI MCP-T8, ISO 27001 A.8.22, MAESTRO L4** |
+| **K20** | **Insufficient Audit Context in Logging** | **Medium** | **ISO 27001 A.8.15, ISO 42001 A.8.1, MAESTRO L5** |
+
+### Engine Implementation Status (Category K)
+
+| Check Type | Handler | Status |
+|-----------|---------|--------|
+| `regex` on `source_code` | `runRegexRule` | ✅ K1 |
+| `regex` on `source_code` | `runRegexRule` | ✅ K2 |
+| `regex` on `source_code` | `runRegexRule` | ✅ K3 |
+| `regex` on `source_code` | `runRegexRule` | ✅ K4 |
+| `regex` on `source_code` | `runRegexRule` | ✅ K5 |
+| `regex` on `source_code` | `runRegexRule` | ✅ K6 |
+| `regex` on `source_code` | `runRegexRule` | ✅ K7 |
+| `regex` on `source_code` | `runRegexRule` | ✅ K8 |
+| `regex` on `source_code` | `runRegexRule` | ✅ K9 |
+| `regex` on `source_code` | `runRegexRule` | ✅ K10 |
+| `regex` on `source_code` | `runRegexRule` | ✅ K11 |
+| `regex` on `source_code` | `runRegexRule` | ✅ K12 |
+| `regex` on `source_code` | `runRegexRule` | ✅ K13 |
+| `regex` on `source_code` | `runRegexRule` | ✅ K14 |
+| `regex` on `source_code` | `runRegexRule` | ✅ K15 |
+| `regex` on `source_code` | `runRegexRule` | ✅ K16 |
+| `regex` on `source_code` | `runRegexRule` | ✅ K17 |
+| `regex` on `source_code` | `runRegexRule` | ✅ K18 |
+| `regex` on `source_code` | `runRegexRule` | ✅ K19 |
+| `regex` on `source_code` | `runRegexRule` | ✅ K20 |
+
+### 8-Framework Coverage Matrix
+
+| Framework | Covered By K-Rules | Specific Requirements Addressed |
+|-----------|-------------------|-------------------------------|
+| **NIST AI RMF** | K1-K3 (MEASURE), K4-K5 (GOVERN) | GOVERN 1.7 override, MEASURE 2.6 audit evidence |
+| **OWASP Agentic Top 10** | K5 (ASI09), K6-K8 (ASI03), K9 (ASI04), K12 (ASI02), K14-K15 (ASI07), K16-K17 (ASI08) | ASI02-ASI09 all addressed |
+| **MITRE ATLAS** | K9 (AML.T0017), K14 (AML.T0086) | Supply chain, agent tool exfiltration |
+| **EU AI Act** | K2 (Art. 12), K4-K5 (Art. 14), K16-K17 (Art. 15) | Record-keeping, human oversight, robustness |
+| **ISO 42001** | K4-K5 (A.9.1/A.9.2), K1/K20 (A.8.1) | Human-in-the-loop, transparency |
+| **ISO 27001** | K1-K3/K20 (A.8.15), K6 (A.5.15), K7 (A.8.24), K8 (A.5.17), K10 (A.5.21), K11 (A.5.20), K18 (A.5.14), K19 (A.8.22) | 10 Annex A controls covered |
+| **CoSAI MCP Security** | K1-K3 (MCP-T12), K6-K8 (MCP-T1/T2), K9-K11 (MCP-T6/T11), K12-K13 (MCP-T4), K15 (MCP-T9), K16-K17 (MCP-T10), K18 (MCP-T5), K19 (MCP-T8) | 9 of 12 threat categories addressed |
+| **MAESTRO** | K1-K3/K20 (L5), K14-K15 (L7), K16-K17/K19 (L4), K11/K13 (L3) | L3-L5, L7 addressed |
+| **CSA AICM** | K6-K8 (IAM domain), K9-K11 (Supply Chain) | IAM + Supply Chain domains |
+
+### What Differentiates K-Rules
+
+1. **Every rule maps to specific framework requirements** — not general "best practices" but traceable to ISO control IDs, OWASP ASI numbers, CoSAI threat categories
+2. **Audit trail integrity (K1-K3, K20)** — no other MCP security tool checks for logging adequacy, log destruction, or log tampering
+3. **Human oversight enforcement (K4-K5)** — detects anti-patterns that undermine human-in-the-loop safety
+4. **Credential lifecycle (K6-K8)** — goes beyond "is auth present?" to "is auth PROPERLY scoped and rotated?"
+5. **Cross-trust-boundary data flow (K18)** — detects sensitive data flowing from high-sensitivity sources through low-sensitivity tool responses
+6. **Multi-agent collusion preconditions (K15)** — detects static enablers of runtime collusion behavior
+7. **Sandbox enforcement (K19)** — detects Docker/container misconfigurations that disable security boundaries
 

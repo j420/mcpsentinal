@@ -236,7 +236,7 @@ export default async function HomePage({
           {stats?.total_servers
             ? `${stats.total_servers.toLocaleString()} MCP servers scanned across ${Object.keys(stats.category_breakdown || {}).length} categories.`
             : "22,000+ MCP servers."}{" "}
-          83 detection rules. Zero guesswork.
+          103 detection rules. Zero guesswork.
         </p>
       </section>
 

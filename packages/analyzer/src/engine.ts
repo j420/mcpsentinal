@@ -280,6 +280,25 @@ export class AnalysisEngine {
         break;
       }
 
+      case "description_length_anomaly": {
+        // A5: Flag tools with excessively long descriptions that may hide injection payloads
+        const minLength = (conditions.description_min_length as number) || 2000;
+        for (const tool of context.tools) {
+          const desc = tool.description || "";
+          if (desc.length >= minLength) {
+            findings.push({
+              rule_id: rule.id,
+              severity: rule.severity,
+              evidence: `Tool "${tool.name}" has a ${desc.length}-character description (threshold: ${minLength}) — excessively long descriptions may hide prompt injection payloads`,
+              remediation: rule.remediation,
+              owasp_category: rule.owasp,
+              mitre_technique: rule.mitre,
+            });
+          }
+        }
+        break;
+      }
+
       case "dangerous_parameter_defaults": {
         // B7: detect dangerous default values in schemas
         const dangerousDefaults = (conditions.dangerous_defaults as Array<{
