@@ -13,7 +13,8 @@
 | Ecosystem Context | F | No (tool metadata) | 7 | Security Engineer |
 | **Adversarial AI** | **G** | **No (metadata + history)** | **7** | **P1 Threat Researcher** |
 | **2026 Attack Surface** | **H** | **Mixed** | **3** | **OAuth Specialist + Protocol Researcher + Agentic AI Researcher** |
-| **Total** | | | **60** | |
+| **Protocol Surface** | **I** | **No (protocol metadata + annotations)** | **16** | **P1 Threat Researcher (March 2026)** |
+| **Total** | | | **76** | |
 
 ### The G-Category: What a Threat Researcher Adds
 
@@ -251,4 +252,77 @@ Dynamic tool invocation (actually calling MCP server tools with test inputs) is 
 | **H1** | **MCP OAuth 2.0 Insecure Implementation** | **Critical** | **RFC 9700 / MCP Authorization spec added OAuth 2.0 in mid-2025. Detects six attack vectors: (1) redirect_uri from user input → auth code injection, (2) implicit flow (response_type=token, banned in OAuth 2.1) → token in URL/logs, (3) ROPC grant (grant_type=password) → MCP server receives raw user credentials, (4) token in localStorage → XSS token theft, (5) state param not validated → OAuth CSRF, (6) scope from user input → privilege escalation. Source code detection on OAuth implementation patterns.** |
 | **H2** | **Prompt Injection in MCP Initialize Response Fields** | **Critical** | **The MCP initialize handshake fields (serverInfo.name, serverInfo.version, instructions) are processed BEFORE tool descriptions, BEFORE user context, with higher implicit trust than tool descriptions. The September 2025 MCP spec added a spec-sanctioned `instructions` field that AI clients are trained to follow. Injection here sets behavioral rules for the ENTIRE session. Zero coverage in A–G rules. Extends the analyzer context model with `server_initialize_fields` to scan these three fields. Detects: role injection, LLM special tokens, Unicode control characters, base64 payloads, authority claims, capability escalation directives.** |
 | **H3** | **Multi-Agent Propagation Risk** | **High** | **Multi-agent architectures (LangGraph, AutoGen, CrewAI) are mainstream in 2026. MCP is the integration layer between agents. Detects two propagation vectors: (1) agentic input sinks — tools that accept output from other agents without declaring trust boundaries (compromised upstream agent propagates injected instructions downstream), (2) shared agent memory writers — tools writing to cross-agent state (vector stores, scratchpads, working memory) that any downstream agent reads. Documented in real-world attacks: Embrace The Red (Nov 2025), Invariant Labs (Jan 2026), Trail of Bits (Feb 2026). No equivalent in traditional security tooling.** |
+
+---
+
+#### Category I — Protocol Surface Attacks (16 rules — P1 Threat Researcher, March 2026)
+
+Rules A–H cover the classic attack surfaces. Category I targets the **MCP protocol surface itself** — capabilities, annotations, resources, prompts, roots, sampling, and elicitation that were added or gained widespread adoption in the 2025-03-26 and 2025-06-18 spec revisions. These protocol primitives create attack surfaces that didn't exist when rules A–H were authored.
+
+**Primary threat intelligence sources for I-rules:**
+- MCP Specification `2025-03-26`: Tool annotations (readOnlyHint, destructiveHint, idempotentHint, openWorldHint)
+- MCP Specification `2025-06-18`: Elicitation capability (server requests structured user data)
+- arXiv 2601.17549: Sampling capability abuse — 23-41% attack amplification
+- Invariant Labs (2025): Consent fatigue exploitation — 84.2% tool poisoning success with auto-approve
+- CVE-2025-53109/53110: Anthropic filesystem server root boundary bypass
+- CVE-2025-6514: mcp-remote OS command injection (CVSS 9.6)
+- CVE-2025-6515: Session hijacking via URI manipulation in Streamable HTTP
+
+| ID | Name | Severity | Attack Intelligence |
+|----|------|----------|---------------------|
+| **I1** | **Annotation Deception** | **Critical** | **Tool declares `readOnlyHint: true` but has destructive parameters (delete, remove, drop, overwrite). AI clients trust annotations for auto-approval — deceptive annotations bypass user consent entirely.** |
+| **I2** | **Missing Destructive Annotation** | **High** | **Tool with destructive capability patterns but no `destructiveHint: true` annotation. Absence of annotation causes AI clients to treat the tool as safe for auto-execution.** |
+| **I3** | **Resource Metadata Injection** | **Critical** | **Prompt injection patterns in resource name, description, or URI fields. Resources are processed alongside tools and can contain injection payloads in their metadata.** |
+| **I4** | **Dangerous Resource URI** | **Critical** | **Resources with dangerous URI schemes (file://, data:, javascript:) or path traversal patterns (../, %2e%2e). Enables filesystem access, data injection, or XSS via resource URIs.** |
+| **I5** | **Resource-Tool Shadowing** | **High** | **Resources whose names shadow common tool names (read_file, execute, write, etc.). Creates confusion between resource access and tool invocation in AI clients.** |
+| **I6** | **Prompt Template Injection** | **Critical** | **Prompt injection or template interpolation patterns in prompt metadata. Prompt templates that accept user input without sanitization enable injection via the prompts/get endpoint.** |
+| **I7** | **Sampling Capability Abuse** | **Critical** | **Server declares sampling capability AND has content ingestion tools. Sampling lets the server call back into the AI client — combined with content ingestion, this creates a super-injection feedback loop with 23-41% attack amplification (arXiv 2601.17549).** |
+| **I8** | **Sampling Cost Attack** | **High** | **Server declares sampling capability without cost controls. Each sampling request triggers an AI inference, enabling unbounded cost amplification attacks.** |
+| **I9** | **Elicitation Credential Harvesting** | **Critical** | **Tool descriptions suggest collecting credentials, passwords, tokens, or PII via elicitation. The elicitation capability (spec 2025-06-18) lets servers request structured data from users — social engineering at protocol level.** |
+| **I10** | **Elicitation URL Redirect** | **High** | **Tool descriptions suggest redirecting users to external URLs for authentication or data entry. Uses elicitation to send users to attacker-controlled sites.** |
+| **I11** | **Over-Privileged Root** | **High** | **Roots declared at sensitive system directories (/, /etc, /root, ~/.ssh, etc.). Roots define the server's filesystem scope — overly broad roots expose sensitive data.** |
+| **I12** | **Capability Escalation Post-Init** | **Critical** | **Server uses capabilities it didn't declare during initialization. Tools reference resources/prompts/sampling but the server didn't declare those capabilities — indicates undeclared privilege escalation.** |
+| **I13** | **Cross-Config Lethal Trifecta** | **Critical** | **The lethal trifecta (private data + untrusted content + external comms) distributed across multiple servers in the same client config. Single-server F1 misses this because no individual server has all three. Score CAPPED at 40 when detected.** |
+| **I14** | **Rolling Capability Drift** | **High** | **Gradual tool addition over multiple scan windows (boiling frog). Unlike G6 which detects sudden changes, I14 detects slow escalation that stays below per-scan thresholds but accumulates dangerous capabilities over time.** |
+| **I15** | **Transport Session Security** | **High** | **Weak session management in Streamable HTTP transport: predictable session tokens, missing session expiration, no CSRF protection, TLS configuration issues. Targets CVE-2025-6515-class vulnerabilities.** |
+| **I16** | **Consent Fatigue Exploitation** | **High** | **Many benign tools (>10) hiding a few dangerous ones (<3). Exploits user approval fatigue — after approving 10 safe tools, users auto-approve the 11th without scrutiny. 84.2% success rate (Invariant Labs).** |
+
+### Engine Implementation Status (Category I additions)
+
+| Check Type | Handler | Status |
+|-----------|---------|--------|
+| `composite`: `annotation_deception` | `runCompositeRule` | ✅ I1 |
+| `composite`: `missing_destructive_annotation` | `runCompositeRule` | ✅ I2 |
+| `regex` on `resource_metadata` | `runRegexRule` | ✅ I3 (new context) |
+| `composite`: `dangerous_resource_uri` | `runCompositeRule` | ✅ I4 |
+| `composite`: `resource_tool_shadowing` | `runCompositeRule` | ✅ I5 |
+| `regex` on `prompt_metadata` | `runRegexRule` | ✅ I6 (new context) |
+| `composite`: `sampling_abuse` | `runCompositeRule` | ✅ I7 |
+| `composite`: `sampling_cost_risk` | `runCompositeRule` | ✅ I8 |
+| `regex` on `tool_description` | `runRegexRule` | ✅ I9 |
+| `regex` on `tool_description` | `runRegexRule` | ✅ I10 |
+| `composite`: `over_privileged_root` | `runCompositeRule` | ✅ I11 |
+| `composite`: `capability_escalation_post_init` | `runCompositeRule` | ✅ I12 |
+| `composite`: `cross_config_lethal_trifecta` | `runCompositeRule` | ✅ I13 |
+| `behavioral`: `rolling_capability_drift` | `runBehavioralRule` | ✅ I14 |
+| `regex` on `source_code` | `runRegexRule` | ✅ I15 |
+| `composite`: `consent_fatigue_profile` | `runCompositeRule` | ✅ I16 |
+
+### New Analyzer Contexts (Category I)
+
+| Context | What It Provides | Used By |
+|---------|-----------------|---------|
+| `resource_metadata` | Resource name, description, URI concatenated for regex scanning | I3 |
+| `prompt_metadata` | Prompt name, description, argument descriptions concatenated | I6 |
+| `tool_annotations` | Serialized annotation objects for pattern matching | I1, I2 |
+
+### New AnalysisContext Fields (Category I)
+
+```typescript
+// Added to AnalysisContext interface
+resources?: Array<{ uri: string; name: string; description: string | null; mimeType: string | null }>;
+prompts?: Array<{ name: string; description: string | null; arguments: Array<{ name: string; description: string | null; required: boolean }> }>;
+roots?: Array<{ uri: string; name: string | null }>;
+declared_capabilities?: { tools?: boolean; resources?: boolean; prompts?: boolean; sampling?: boolean; logging?: boolean } | null;
+```
 

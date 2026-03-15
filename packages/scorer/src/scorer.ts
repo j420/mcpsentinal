@@ -33,6 +33,9 @@ const CATEGORY_MAP: Record<string, keyof Pick<ScoreResult, "code_score" | "deps_
   "description-analysis": "description_score",
   "schema-analysis": "config_score",
   "ecosystem-context": "config_score",
+  "adversarial-ai": "config_score",
+  "auth-analysis": "config_score",
+  "protocol-surface": "config_score",
 };
 
 const OWASP_CATEGORIES = [
@@ -98,8 +101,8 @@ export function computeScore(
       owaspHits.add(finding.owasp_category);
     }
 
-    // Check lethal trifecta
-    if (finding.rule_id === "F1") {
+    // Check lethal trifecta (F1 per-server, I13 cross-config)
+    if (finding.rule_id === "F1" || finding.rule_id === "I13") {
       hasLethalTrifecta = true;
     }
   }

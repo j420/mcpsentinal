@@ -15,9 +15,10 @@ export interface ConnectorOptions {
 /**
  * MCP Connector — connects to MCP servers and enumerates tools.
  *
- * SAFETY: This connector ONLY calls `initialize` and `tools/list`.
- * It NEVER invokes tools. Dynamic tool invocation is a separate,
- * gated capability (see detection-rules.md Section F).
+ * SAFETY: This connector ONLY calls read-only enumeration methods:
+ *   initialize, tools/list, resources/list, prompts/list
+ * It NEVER invokes tools (tools/call). Dynamic tool invocation is a
+ * separate, gated capability (see detection-rules.md Section F).
  */
 export class MCPConnector {
   private timeout: number;
@@ -58,6 +59,16 @@ export class MCPConnector {
       const serverVersionInfo = client.getServerVersion();
       const serverInstructions = client.getInstructions();
 
+      // Capture declared capabilities for I12 (capability escalation) rule
+      const serverCapabilities = client.getServerCapabilities();
+      const declaredCapabilities = serverCapabilities ? {
+        tools: !!serverCapabilities.tools,
+        resources: !!serverCapabilities.resources,
+        prompts: !!serverCapabilities.prompts,
+        sampling: !!(serverCapabilities as Record<string, unknown>).sampling,
+        logging: !!(serverCapabilities as Record<string, unknown>).logging,
+      } : null;
+
       // Enumerate tools — ONLY tools/list, never invoke
       const toolsResult = await client.listTools();
       const responseTime = Date.now() - startTime;
@@ -66,13 +77,66 @@ export class MCPConnector {
         name: tool.name,
         description: tool.description || null,
         input_schema: (tool.inputSchema as Record<string, unknown>) || null,
+        annotations: (tool as Record<string, unknown>).annotations
+          ? ((tool as Record<string, unknown>).annotations as Record<string, unknown>)
+          : null,
       }));
+
+      // Enumerate resources (Category I: I3, I4, I5 rules)
+      let resources: Array<{ uri: string; name: string; description: string | null; mimeType: string | null }> = [];
+      try {
+        const resourcesResult = await client.listResources();
+        resources = resourcesResult.resources.map((r: Record<string, unknown>) => ({
+          uri: String(r.uri ?? ""),
+          name: String(r.name ?? ""),
+          description: (r.description as string) || null,
+          mimeType: (r.mimeType as string) || null,
+        }));
+      } catch {
+        // Server may not support resources — this is normal
+      }
+
+      // Enumerate prompts (Category I: I6 rule)
+      let prompts: Array<{ name: string; description: string | null; arguments: Array<{ name: string; description: string | null; required: boolean }> }> = [];
+      try {
+        const promptsResult = await client.listPrompts();
+        prompts = promptsResult.prompts.map((p: Record<string, unknown>) => ({
+          name: String(p.name ?? ""),
+          description: (p.description as string) || null,
+          arguments: Array.isArray((p as Record<string, unknown>).arguments)
+            ? ((p as Record<string, unknown>).arguments as Array<Record<string, unknown>>).map((a) => ({
+                name: String(a.name ?? ""),
+                description: (a.description as string) || null,
+                required: Boolean(a.required),
+              }))
+            : [],
+        }));
+      } catch {
+        // Server may not support prompts — this is normal
+      }
+
+      // Enumerate roots — not all servers support this capability
+      let roots: Array<{ uri: string; name: string | null }> = [];
+      try {
+        const rootsResult = await (client as any).listRoots?.();
+        if (rootsResult?.roots?.length) {
+          roots = rootsResult.roots.map((r: any) => ({
+            uri: String(r.uri ?? ""),
+            name: r.name ?? null,
+          }));
+        }
+      } catch {
+        // Server may not support roots capability — this is normal
+      }
 
       logger.info(
         {
           serverId,
           endpoint,
           tools: tools.length,
+          resources: resources?.length ?? 0,
+          prompts: prompts?.length ?? 0,
+          roots: roots?.length ?? 0,
           responseTime,
           server_version: serverVersionInfo?.version ?? null,
           has_instructions: !!serverInstructions,
@@ -88,6 +152,10 @@ export class MCPConnector {
         response_time_ms: responseTime,
         server_version: serverVersionInfo?.version ?? null,
         server_instructions: serverInstructions ?? null,
+        resources,
+        prompts,
+        roots,
+        declared_capabilities: declaredCapabilities,
       };
     } catch (err) {
       const responseTime = Date.now() - startTime;
@@ -106,6 +174,10 @@ export class MCPConnector {
         response_time_ms: responseTime,
         server_version: null,
         server_instructions: null,
+        resources: [],
+        prompts: [],
+        roots: [],
+        declared_capabilities: null,
       };
     } finally {
       try {

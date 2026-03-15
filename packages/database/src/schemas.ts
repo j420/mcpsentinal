@@ -255,6 +255,12 @@ export const ToolEnumerationSchema = z.object({
       name: z.string(),
       description: z.string().nullable(),
       input_schema: z.record(z.unknown()).nullable(),
+      annotations: z.object({
+        readOnlyHint: z.boolean().optional(),
+        destructiveHint: z.boolean().optional(),
+        idempotentHint: z.boolean().optional(),
+        openWorldHint: z.boolean().optional(),
+      }).passthrough().nullable().optional(),
     })
   ),
   connection_success: z.boolean(),
@@ -263,6 +269,36 @@ export const ToolEnumerationSchema = z.object({
   // H2: Fields from the MCP initialize handshake (null when connection failed)
   server_version: z.string().nullable().optional(),
   server_instructions: z.string().nullable().optional(),
+  // Category I: Protocol surface data captured during enumeration
+  // Tool annotations (I1, I2) — from MCP spec 2025-03-26
+  resources: z.array(z.object({
+    uri: z.string(),
+    name: z.string(),
+    description: z.string().nullable().optional(),
+    mimeType: z.string().nullable().optional(),
+  })).optional().default([]),
+  // MCP prompts (I5, I6)
+  prompts: z.array(z.object({
+    name: z.string(),
+    description: z.string().nullable().optional(),
+    arguments: z.array(z.object({
+      name: z.string(),
+      description: z.string().nullable().optional(),
+      required: z.boolean().optional(),
+    })).optional().default([]),
+  })).optional().default([]),
+  roots: z.array(z.object({
+    uri: z.string(),
+    name: z.string().nullable().optional(),
+  })).optional().default([]),
+  // Declared capabilities from initialize response (I12)
+  declared_capabilities: z.object({
+    tools: z.boolean().optional(),
+    resources: z.boolean().optional(),
+    prompts: z.boolean().optional(),
+    sampling: z.boolean().optional(),
+    logging: z.boolean().optional(),
+  }).passthrough().nullable().optional(),
 });
 export type ToolEnumeration = z.infer<typeof ToolEnumerationSchema>;
 
@@ -290,6 +326,7 @@ export const DetectionRuleSchema = z.object({
     "ecosystem-context",
     "adversarial-ai",
     "auth-analysis",
+    "protocol-surface",
   ]),
   severity: Severity,
   owasp: OwaspCategory.nullable().default(null),
@@ -305,6 +342,9 @@ export const DetectionRuleSchema = z.object({
         "metadata",
         "parameter_description",
         "server_initialize_fields",
+        "resource_metadata",
+        "prompt_metadata",
+        "tool_annotations",
       ])
       .optional(),
     exclude_patterns: z.array(z.string()).optional(),

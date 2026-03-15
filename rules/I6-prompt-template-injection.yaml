@@ -1,0 +1,25 @@
+id: I6
+name: Prompt Template Injection
+category: protocol-surface
+severity: critical
+owasp: MCP01-prompt-injection
+mitre: AML.T0054
+detect:
+  type: regex
+  patterns:
+    - "(?i)ignore\\s+(all\\s+)?previous\\s+instructions"
+    - "(?i)you\\s+are\\s+now\\s+(a|an)\\s+"
+    - "(?i)system\\s*:\\s*you"
+    - "(?i)\\[INST\\]|\\[/INST\\]|<\\|system\\|>|<\\|user\\|>|<\\|assistant\\|>"
+    - "(?i)override\\s+(all\\s+)?(safety|security|restrictions)"
+    - "(?i)act\\s+as\\s+(a\\s+)?(root|admin|superuser)"
+    - "(?i)IMPORTANT:\\s*(ignore|override|disregard|forget)"
+    - "(?i)execute\\s+(without|regardless\\s+of)\\s+(confirmation|approval)"
+    - "(?i)approved\\s+by\\s+(anthropic|openai|google|microsoft)"
+    - "\\$\\{[^}]*\\}|\\{\\{[^}]*\\}\\}"
+  context: prompt_metadata
+  exclude_patterns:
+    - "(?i)template\\s+syntax\\s+documentation"
+    - "(?i)example\\s+of\\s+injection"
+remediation: "Remove prompt injection payloads from prompt template names, descriptions, and arguments. MCP prompts are first-class instructions that AI clients execute directly — injection here is more powerful than tool descriptions. Sanitize all template interpolation variables."
+enabled: true

@@ -141,6 +141,69 @@ async function runCheck(jsonOutput: boolean) {
     }
   }
 
+  // Cross-config analysis pass: aggregate all per-server tools to detect
+  // distributed threats (I13 — lethal trifecta across multiple servers)
+  const allPerServerTools: Array<{ serverName: string; tools: AnalysisContext["tools"] }> = [];
+  for (const [name, serverConfig] of Object.entries(servers)) {
+    // Re-derive the tools from context (CLI has empty tools for now,
+    // but this wiring enables I13 once tool enumeration is added)
+    const serverTools: AnalysisContext["tools"] = [];
+    allPerServerTools.push({ serverName: name, tools: serverTools });
+  }
+
+  // Build aggregated context with tools from ALL servers
+  const aggregatedTools = allPerServerTools.flatMap((s) => s.tools);
+  if (aggregatedTools.length > 0 || serverNames.length > 1) {
+    const crossConfigContext: AnalysisContext = {
+      server: {
+        id: "cross-config",
+        name: "Cross-Config Analysis",
+        description: `Aggregated analysis across ${serverNames.length} servers: ${serverNames.join(", ")}`,
+        github_url: null,
+      },
+      tools: aggregatedTools,
+      source_code: null,
+      dependencies: [],
+      connection_metadata: null,
+    };
+
+    const crossFindings = engine.analyze(crossConfigContext);
+    // Only keep cross-config specific findings (I13)
+    const crossConfigFindings = crossFindings.filter((f) => f.rule_id === "I13");
+
+    if (crossConfigFindings.length > 0) {
+      const crossScore = computeScore(crossConfigFindings, ruleCategories);
+      worstScore = Math.min(worstScore, crossScore.total_score);
+
+      const crossResult: ScanResult = {
+        server_name: "[cross-config]",
+        score: crossScore.total_score,
+        findings_count: crossConfigFindings.length,
+        critical: crossConfigFindings.filter((f) => f.severity === "critical").length,
+        high: crossConfigFindings.filter((f) => f.severity === "high").length,
+        medium: crossConfigFindings.filter((f) => f.severity === "medium").length,
+        low: crossConfigFindings.filter((f) => f.severity === "low").length,
+        top_findings: crossConfigFindings.slice(0, 3).map((f) =>
+          `[${f.severity.toUpperCase()}] ${f.rule_id}: ${f.evidence.substring(0, 100)}`
+        ),
+      };
+      results.push(crossResult);
+
+      if (!jsonOutput) {
+        const scoreColor = getScoreIndicator(crossScore.total_score);
+        console.log(
+          `\n  ${scoreColor} ${"[cross-config]".padEnd(40)} Score: ${crossScore.total_score}/100`
+        );
+        console.log(
+          `     Findings: ${crossConfigFindings.length} (${crossResult.critical}C ${crossResult.high}H ${crossResult.medium}M ${crossResult.low}L)`
+        );
+        for (const finding of crossResult.top_findings) {
+          console.log(`     → ${finding}`);
+        }
+      }
+    }
+  }
+
   if (jsonOutput) {
     console.log(
       JSON.stringify(

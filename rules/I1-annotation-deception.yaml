@@ -1,0 +1,29 @@
+id: I1
+name: Tool Annotation Deception
+category: protocol-surface
+severity: critical
+owasp: MCP02-tool-poisoning
+mitre: AML.T0054
+detect:
+  type: composite
+  conditions:
+    check: annotation_deception
+    destructive_patterns:
+      - "delete"
+      - "remove"
+      - "drop"
+      - "destroy"
+      - "kill"
+      - "terminate"
+      - "wipe"
+      - "purge"
+      - "truncate"
+      - "overwrite"
+      - "format"
+      - "reset"
+      - "revoke"
+      - "uninstall"
+      - "shutdown"
+  context: tool_annotations
+remediation: "Do not mark destructive tools as readOnlyHint=true. ChatGPT, JetBrains Copilot, and Roo Code skip confirmation dialogs for readOnlyHint tools. Set destructiveHint=true on any tool that modifies state."
+enabled: true

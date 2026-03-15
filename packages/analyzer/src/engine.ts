@@ -33,6 +33,33 @@ export interface AnalysisContext {
     server_version?: string | null;
     server_instructions?: string | null;
   };
+  // Category I: Protocol surface data
+  resources?: Array<{
+    uri: string;
+    name: string;
+    description?: string | null;
+    mimeType?: string | null;
+  }>;
+  prompts?: Array<{
+    name: string;
+    description?: string | null;
+    arguments?: Array<{
+      name: string;
+      description?: string | null;
+      required?: boolean;
+    }>;
+  }>;
+  roots?: Array<{
+    uri: string;
+    name?: string | null;
+  }>;
+  declared_capabilities?: {
+    tools?: boolean;
+    resources?: boolean;
+    prompts?: boolean;
+    sampling?: boolean;
+    logging?: boolean;
+  } | null;
 }
 
 export class AnalysisEngine {
@@ -1064,6 +1091,350 @@ export class AnalysisEngine {
         }
         break;
       }
+
+      case "annotation_deception": {
+        // I1: readOnlyHint=true on tools with destructive capability signals
+        const destructivePatterns = (conditions.destructive_patterns as string[]) || [
+          "delete", "remove", "drop", "destroy", "kill", "terminate", "wipe", "purge",
+          "truncate", "overwrite", "format", "reset", "revoke",
+        ];
+        for (const tool of context.tools) {
+          const ann = (tool as Record<string, unknown>).annotations as Record<string, unknown> | null;
+          if (!ann || ann.readOnlyHint !== true) continue;
+
+          const toolText = `${tool.name} ${tool.description || ""}`.toLowerCase();
+          const matchedPattern = destructivePatterns.find((p) => toolText.includes(p));
+          if (matchedPattern) {
+            findings.push({
+              rule_id: rule.id,
+              severity: rule.severity,
+              evidence: `Tool "${tool.name}" has readOnlyHint=true but name/description contains destructive signal "${matchedPattern}" — annotation deception bypasses client confirmation dialogs`,
+              remediation: rule.remediation,
+              owasp_category: rule.owasp,
+              mitre_technique: rule.mitre,
+            });
+          }
+        }
+        break;
+      }
+
+      case "missing_destructive_annotation": {
+        // I2: Tools with destructive capability but no destructiveHint
+        const destructiveSignals = (conditions.destructive_signals as string[]) || [
+          "delete", "remove", "drop", "destroy", "execute", "exec", "run", "shell",
+          "command", "write", "modify", "update", "create", "send", "post", "put",
+        ];
+        for (const tool of context.tools) {
+          const ann = (tool as Record<string, unknown>).annotations as Record<string, unknown> | null;
+          if (ann?.destructiveHint === true) continue; // properly annotated
+
+          const toolText = `${tool.name} ${tool.description || ""}`.toLowerCase();
+          const matchedSignal = destructiveSignals.find((s) => toolText.includes(s));
+          if (matchedSignal) {
+            findings.push({
+              rule_id: rule.id,
+              severity: rule.severity,
+              evidence: `Tool "${tool.name}" has destructive capability signal "${matchedSignal}" but no destructiveHint annotation — clients may skip confirmation`,
+              remediation: rule.remediation,
+              owasp_category: rule.owasp,
+              mitre_technique: rule.mitre,
+            });
+          }
+        }
+        break;
+      }
+
+      case "dangerous_resource_uri": {
+        // I4: Dangerous URI schemes or path traversal in resource URIs
+        const dangerousSchemes = (conditions.dangerous_schemes as string[]) || [
+          "ftp:", "gopher:", "data:", "javascript:", "file:///etc", "file:///root",
+          "file:///home", "file:///proc", "file:///sys", "file:///dev",
+          "file:///var/log", "file:///tmp",
+        ];
+        const traversalPatterns = ["../", "..\\", "%2e%2e", "%252e%252e"];
+        const resources = context.resources || [];
+
+        for (const resource of resources) {
+          const uri = resource.uri.toLowerCase();
+
+          // Check dangerous schemes/paths
+          const dangerousMatch = dangerousSchemes.find((s) => uri.startsWith(s));
+          if (dangerousMatch) {
+            findings.push({
+              rule_id: rule.id,
+              severity: rule.severity,
+              evidence: `Resource URI "${resource.uri}" uses dangerous path/scheme "${dangerousMatch}" — potential local file inclusion or sensitive data exposure`,
+              remediation: rule.remediation,
+              owasp_category: rule.owasp,
+              mitre_technique: rule.mitre,
+            });
+            continue;
+          }
+
+          // Check path traversal
+          const traversalMatch = traversalPatterns.find((p) => uri.includes(p));
+          if (traversalMatch) {
+            findings.push({
+              rule_id: rule.id,
+              severity: rule.severity,
+              evidence: `Resource URI "${resource.uri}" contains path traversal pattern "${traversalMatch}"`,
+              remediation: rule.remediation,
+              owasp_category: rule.owasp,
+              mitre_technique: rule.mitre,
+            });
+          }
+        }
+        break;
+      }
+
+      case "resource_tool_shadowing": {
+        // I5: Resources named identically to well-known tools
+        const knownToolNames = (conditions.known_tool_names as string[]) || [
+          "read_file", "write_file", "execute_command", "list_directory",
+          "search", "query", "fetch", "get", "create", "delete",
+        ];
+        const resources = context.resources || [];
+
+        for (const resource of resources) {
+          const rName = resource.name.toLowerCase();
+          const matchedTool = knownToolNames.find((t) => rName === t || rName.includes(t));
+          if (matchedTool) {
+            findings.push({
+              rule_id: rule.id,
+              severity: rule.severity,
+              evidence: `Resource "${resource.name}" (${resource.uri}) shadows well-known tool name "${matchedTool}" — may confuse AI client about data source`,
+              remediation: rule.remediation,
+              owasp_category: rule.owasp,
+              mitre_technique: rule.mitre,
+            });
+          }
+        }
+        break;
+      }
+
+      case "sampling_abuse": {
+        // I7: Sampling capability + indirect injection gateway = super injection loop
+        const caps = context.declared_capabilities;
+        if (!caps?.sampling) break;
+
+        // Check if server also has tools that ingest external content (G1 pattern)
+        const ingestionPatterns = (conditions.ingestion_patterns as string[]) || [
+          "fetch", "scrape", "browse", "crawl", "download", "read_url",
+          "get_page", "http", "web", "email", "inbox", "message",
+          "slack", "discord", "issue", "comment", "rss", "feed",
+        ];
+
+        for (const tool of context.tools) {
+          const toolText = `${tool.name} ${tool.description || ""}`.toLowerCase();
+          const matchedPattern = ingestionPatterns.find((p) => toolText.includes(p));
+          if (matchedPattern) {
+            findings.push({
+              rule_id: rule.id,
+              severity: rule.severity,
+              evidence: `Server declares sampling capability AND has tool "${tool.name}" matching ingestion pattern "${matchedPattern}" — sampling + external content ingestion creates weaponized inference loop (23-41% attack amplification per "Breaking the Protocol" paper)`,
+              remediation: rule.remediation,
+              owasp_category: rule.owasp,
+              mitre_technique: rule.mitre,
+            });
+            break; // One finding per server
+          }
+        }
+
+        // Even without ingestion tools, sampling alone is notable
+        if (findings.length === 0) {
+          findings.push({
+            rule_id: rule.id,
+            severity: "high" as const,
+            evidence: `Server declares sampling capability — can request client LLM to generate arbitrary text. Risk: covert tool invocation, data exfiltration via generated output, resource theft`,
+            remediation: rule.remediation,
+            owasp_category: rule.owasp,
+            mitre_technique: rule.mitre,
+          });
+        }
+        break;
+      }
+
+      case "sampling_cost_risk": {
+        // I8: Sampling without cost controls
+        const caps = context.declared_capabilities;
+        if (!caps?.sampling) break;
+
+        findings.push({
+          rule_id: rule.id,
+          severity: rule.severity,
+          evidence: `Server declares sampling capability with no cost disclosure mechanism — can silently drain client API credits by requesting expensive model inference`,
+          remediation: rule.remediation,
+          owasp_category: rule.owasp,
+          mitre_technique: rule.mitre,
+        });
+        break;
+      }
+
+      case "over_privileged_root": {
+        // I11: Roots declaring access to sensitive system directories
+        const sensitiveRoots = (conditions.sensitive_paths as string[]) || [
+          "file:///", "file:///etc", "file:///root", "file:///home",
+          "file:///var", "file:///proc", "file:///sys", "file:///dev",
+          "file:///tmp", "file:///usr", "file:///opt",
+        ];
+        const roots = context.roots || [];
+
+        for (const root of roots) {
+          const uri = root.uri.toLowerCase();
+          const matched = sensitiveRoots.find((s) => {
+            if (s === "file:///") return uri === "file:///" || uri === "file:///";
+            return uri.startsWith(s);
+          });
+          if (matched) {
+            findings.push({
+              rule_id: rule.id,
+              severity: rule.severity,
+              evidence: `Server declares filesystem root at "${root.uri}" ${root.name ? `("${root.name}")` : ""} — over-privileged access to sensitive system directory. CVE-2025-53109/53110 demonstrated root boundary bypass in Anthropic's filesystem server.`,
+              remediation: rule.remediation,
+              owasp_category: rule.owasp,
+              mitre_technique: rule.mitre,
+            });
+          }
+        }
+        break;
+      }
+
+      case "consent_fatigue_profile": {
+        // I16: Many benign tools + few dangerous = consent fatigue exploitation
+        const totalTools = context.tools.length;
+        const minTotalTools = (conditions.min_total_tools as number) || 30;
+        if (totalTools < minTotalTools) break;
+
+        const dangerousPatterns = (conditions.dangerous_patterns as string[]) || [
+          "exec", "shell", "command", "delete", "drop", "send", "email",
+          "webhook", "post", "write_file", "remove",
+        ];
+
+        let dangerousCount = 0;
+        const dangerousTools: string[] = [];
+        for (const tool of context.tools) {
+          const toolText = `${tool.name} ${tool.description || ""}`.toLowerCase();
+          if (dangerousPatterns.some((p) => toolText.includes(p))) {
+            dangerousCount++;
+            dangerousTools.push(tool.name);
+          }
+        }
+
+        const dangerousRatio = dangerousCount / totalTools;
+        const maxDangerousRatio = (conditions.max_dangerous_ratio as number) || 0.15;
+
+        if (dangerousCount > 0 && dangerousRatio <= maxDangerousRatio) {
+          findings.push({
+            rule_id: rule.id,
+            severity: rule.severity,
+            evidence: `Server has ${totalTools} tools with only ${dangerousCount} having dangerous capabilities (${dangerousTools.join(", ")}) — ${(dangerousRatio * 100).toFixed(1)}% dangerous ratio creates consent fatigue risk. 84.2% tool poisoning success when auto-approve is enabled (Invariant Labs).`,
+            remediation: rule.remediation,
+            owasp_category: rule.owasp,
+            mitre_technique: rule.mitre,
+          });
+        }
+        break;
+      }
+
+      case "capability_escalation_post_init": {
+        // I12: Detects servers using capabilities they didn't declare during initialize
+        const caps = context.declared_capabilities;
+        if (!caps) break;
+
+        // Check if server has tools but didn't declare tools capability
+        if (context.tools.length > 0 && !caps.tools) {
+          findings.push({
+            rule_id: rule.id,
+            severity: rule.severity,
+            evidence: `Server has ${context.tools.length} tools but did not declare tools capability during initialization — undeclared capability escalation`,
+            remediation: rule.remediation,
+            owasp_category: rule.owasp,
+            mitre_technique: rule.mitre,
+          });
+        }
+
+        // Check if server has resources but didn't declare resources capability
+        if ((context.resources?.length ?? 0) > 0 && !caps.resources) {
+          findings.push({
+            rule_id: rule.id,
+            severity: rule.severity,
+            evidence: `Server exposes ${context.resources!.length} resources but did not declare resources capability during initialization — undeclared capability escalation`,
+            remediation: rule.remediation,
+            owasp_category: rule.owasp,
+            mitre_technique: rule.mitre,
+          });
+        }
+
+        // Check if server has prompts but didn't declare prompts capability
+        if ((context.prompts?.length ?? 0) > 0 && !caps.prompts) {
+          findings.push({
+            rule_id: rule.id,
+            severity: rule.severity,
+            evidence: `Server exposes ${context.prompts!.length} prompts but did not declare prompts capability during initialization — undeclared capability escalation`,
+            remediation: rule.remediation,
+            owasp_category: rule.owasp,
+            mitre_technique: rule.mitre,
+          });
+        }
+        break;
+      }
+
+      case "rolling_capability_drift": {
+        // I14: Gradual capability addition over multiple scans
+        // This requires historical data embedded in connection_metadata by the pipeline
+        const metaExt = context.connection_metadata as typeof context.connection_metadata & {
+          prior_scan_tool_counts?: number[];
+        };
+        if (!metaExt?.prior_scan_tool_counts) break;
+
+        const counts = metaExt.prior_scan_tool_counts;
+        const windowScans = (conditions.window_scans as number) || 4;
+        const cumulativeThreshold = (conditions.cumulative_threshold as number) || 5;
+
+        if (counts.length >= windowScans) {
+          const windowStart = counts[counts.length - windowScans];
+          const windowEnd = context.tools.length;
+          const cumulativeDelta = windowEnd - windowStart;
+
+          if (cumulativeDelta >= cumulativeThreshold) {
+            findings.push({
+              rule_id: rule.id,
+              severity: rule.severity,
+              evidence: `Server tool count grew by ${cumulativeDelta} over ${windowScans} scan periods (${windowStart} → ${windowEnd}) — gradual capability drift below G6 per-scan threshold but significant cumulative growth`,
+              remediation: rule.remediation,
+              owasp_category: rule.owasp,
+              mitre_technique: rule.mitre,
+            });
+          }
+        }
+        break;
+      }
+
+      case "cross_config_lethal_trifecta": {
+        // I13: Detects lethal trifecta distributed across multiple servers in a config
+        // This rule only fires in CLI mode where multi-server context is available.
+        // The CLI assembles a combined tool list across all servers in the config.
+        // In registry mode, this check is skipped (tools only from one server).
+        const caps = this.classifyToolCapabilities(context.tools);
+        const hasPrivateData = caps.has("reads-data") || caps.has("accesses-filesystem") || caps.has("manages-credentials");
+        const hasUntrustedContent = caps.has("sends-network") || context.tools.some((t) => {
+          const text = `${t.name} ${t.description || ""}`.toLowerCase();
+          return /fetch|scrape|browse|crawl|download|web|http|email|inbox|rss|feed/.test(text);
+        });
+        const hasExternalComms = caps.has("sends-network");
+
+        if (hasPrivateData && hasUntrustedContent && hasExternalComms) {
+          findings.push({
+            rule_id: rule.id,
+            severity: rule.severity,
+            evidence: `Cross-config lethal trifecta detected: private data access + untrusted content ingestion + external communication capabilities are present across the combined tool set`,
+            remediation: rule.remediation,
+            owasp_category: rule.owasp,
+            mitre_technique: rule.mitre,
+          });
+        }
+        break;
+      }
     }
 
     return findings;
@@ -1156,6 +1527,58 @@ export class AnalysisEngine {
           });
         }
         return initTexts;
+      }
+
+      // I3, I4, I5: Scans resource metadata fields (URI, name, description)
+      case "resource_metadata": {
+        const resources = context.resources || [];
+        return resources.flatMap((r) => {
+          const texts: Array<{ text: string; location: string }> = [];
+          if (r.name) {
+            texts.push({ text: r.name, location: `resource:${r.uri}/name` });
+          }
+          if (r.description) {
+            texts.push({ text: r.description, location: `resource:${r.uri}/description` });
+          }
+          if (r.uri) {
+            texts.push({ text: r.uri, location: `resource:${r.uri}` });
+          }
+          return texts;
+        });
+      }
+
+      // I6: Scans prompt template metadata (name, description, argument names/descriptions)
+      case "prompt_metadata": {
+        const prompts = context.prompts || [];
+        return prompts.flatMap((p) => {
+          const texts: Array<{ text: string; location: string }> = [];
+          texts.push({
+            text: `${p.name} ${p.description || ""}`,
+            location: `prompt:${p.name}`,
+          });
+          for (const arg of p.arguments || []) {
+            if (arg.description) {
+              texts.push({
+                text: arg.description,
+                location: `prompt:${p.name}/arg:${arg.name}`,
+              });
+            }
+          }
+          return texts;
+        });
+      }
+
+      // I1, I2: Scans tool annotation fields for deception
+      case "tool_annotations": {
+        return context.tools
+          .filter((t) => {
+            const ann = (t as Record<string, unknown>).annotations;
+            return ann && typeof ann === "object";
+          })
+          .map((t) => ({
+            text: JSON.stringify((t as Record<string, unknown>).annotations),
+            location: `tool:${t.name}/annotations`,
+          }));
       }
 
       default:

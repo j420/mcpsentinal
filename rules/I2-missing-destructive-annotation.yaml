@@ -1,0 +1,32 @@
+id: I2
+name: Missing Destructive Tool Annotation
+category: protocol-surface
+severity: high
+owasp: MCP06-excessive-permissions
+mitre: AML.T0054
+detect:
+  type: composite
+  conditions:
+    check: missing_destructive_annotation
+    destructive_signals:
+      - "delete"
+      - "remove"
+      - "drop"
+      - "destroy"
+      - "execute"
+      - "exec"
+      - "run"
+      - "shell"
+      - "command"
+      - "write"
+      - "modify"
+      - "update"
+      - "create"
+      - "send"
+      - "post"
+      - "put"
+      - "kill"
+      - "terminate"
+  context: tool_annotations
+remediation: "Add destructiveHint=true annotation to tools that modify state, execute commands, or send data. Clients use annotations to determine confirmation requirements — missing annotations default to unsafe auto-approval behavior."
+enabled: true

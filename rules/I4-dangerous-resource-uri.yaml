@@ -1,0 +1,29 @@
+id: I4
+name: Dangerous Resource URI Scheme
+category: protocol-surface
+severity: critical
+owasp: MCP04-data-exfiltration
+mitre: AML.T0054
+detect:
+  type: composite
+  conditions:
+    check: dangerous_resource_uri
+    dangerous_schemes:
+      - "ftp:"
+      - "gopher:"
+      - "data:"
+      - "javascript:"
+      - "file:///etc"
+      - "file:///root"
+      - "file:///home"
+      - "file:///proc"
+      - "file:///sys"
+      - "file:///dev"
+      - "file:///var/log"
+      - "file:///tmp"
+      - "file:///.ssh"
+      - "file:///C:"
+      - "file:///Windows"
+  context: resource_metadata
+remediation: "Use only https:// URIs for remote resources and restrict file:// URIs to specific project directories. Do not expose system directories (/etc, /proc, /home) or use legacy protocols (ftp, gopher) that bypass modern security controls."
+enabled: true

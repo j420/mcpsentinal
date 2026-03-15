@@ -86,6 +86,41 @@ describe("computeScore", () => {
     expect(result.owasp_coverage["MCP01-prompt-injection"]).toBe(true); // no finding = clean
   });
 
+  it("caps at 40 for cross-config lethal trifecta (I13)", () => {
+    const findings: FindingInput[] = [
+      {
+        rule_id: "I13",
+        severity: "critical",
+        evidence: "cross-config lethal trifecta",
+        remediation: "separate configs",
+        owasp_category: "MCP04-data-exfiltration",
+        mitre_technique: null,
+      },
+    ];
+
+    const categoriesWithI13 = { ...ruleCategories, I13: "protocol-surface" };
+    const result = computeScore(findings, categoriesWithI13);
+    expect(result.total_score).toBe(40);
+  });
+
+  it("maps protocol-surface rules to config_score", () => {
+    const findings: FindingInput[] = [
+      {
+        rule_id: "I1",
+        severity: "high",
+        evidence: "annotation deception",
+        remediation: "fix",
+        owasp_category: null,
+        mitre_technique: null,
+      },
+    ];
+
+    const categoriesWithI = { ...ruleCategories, I1: "protocol-surface" };
+    const result = computeScore(findings, categoriesWithI);
+    expect(result.config_score).toBe(85); // 100 - 15
+    expect(result.code_score).toBe(100); // untouched
+  });
+
   it("computes category sub-scores independently", () => {
     const findings: FindingInput[] = [
       { rule_id: "C1", severity: "critical", evidence: "e", remediation: "r", owasp_category: null, mitre_technique: null },

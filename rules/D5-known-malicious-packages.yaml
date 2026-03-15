@@ -47,6 +47,13 @@ detect:
       - "fastmcp-sdk"
       - "@mcp/sdk"
       - "mcp-server-sdk"
+      # MCP packages with known critical CVEs (verified March 2026)
+      # CVE-2025-6514: mcp-remote OS command injection (CVSS 9.6) — all versions before 0.1.10
+      - "mcp-remote"
+      # CVE-2025-53109/53110: @anthropics/mcp-server-filesystem root boundary bypass
+      - "@anthropics/mcp-server-filesystem"
+      # CVE-2025-6515: mcp-use session hijacking via URI manipulation in Streamable HTTP
+      - "mcp-use"
       # PyPI — confirmed malicious
       - "acqusition"
       - "apidev-coop"
