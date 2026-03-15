@@ -16,7 +16,7 @@
  *       ↓
  *   Stage 4: MCPConnector          — enumerate tools via initialize + tools/list
  *       ↓
- *   Stage 5: AnalysisEngine        — run all 76 detection rules → FindingInput[]
+ *   Stage 5: AnalysisEngine        — run all 83 detection rules → FindingInput[]
  *       ↓
  *   Stage 6: computeScore()        — compute composite 0–100 score
  *       ↓

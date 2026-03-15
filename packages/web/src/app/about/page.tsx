@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "About MCP Sentinel",
   description:
-    "How MCP Sentinel works: 76 deterministic detection rules across 9 categories, a 4-stage scan pipeline, and the scoring algorithm that produces every security score.",
+    "How MCP Sentinel works: 83 deterministic detection rules across 10 categories, a 4-stage scan pipeline, and the scoring algorithm that produces every security score.",
 };
 
 // ── Rule categories ───────────────────────────────────────────────────────────
@@ -166,19 +166,35 @@ const RULE_CATEGORIES = [
       { id: "I16", name: "Consent Fatigue Exploitation", sev: "high" },
     ],
   },
+  {
+    code: "J",
+    name: "2026 Threat Intelligence",
+    count: 7,
+    requires: "Source code + tool metadata",
+    highlight: "CVE-backed rules from real-world incidents: cross-agent config poisoning (CVE-2025-53773), git argument injection (CVE-2025-68143), full schema poisoning (CyberArk FSP), health endpoint disclosure (CVE-2026-29787), tool output poisoning (CyberArk ATPA), OpenAPI spec injection (CVE-2026-22785)",
+    rules: [
+      { id: "J1", name: "Cross-Agent Config Poisoning", sev: "critical" },
+      { id: "J2", name: "Git Argument Injection", sev: "critical" },
+      { id: "J3", name: "Full Schema Poisoning", sev: "critical" },
+      { id: "J4", name: "Health Endpoint Disclosure", sev: "high" },
+      { id: "J5", name: "Tool Output Poisoning", sev: "critical" },
+      { id: "J6", name: "Tool Preference Manipulation", sev: "high" },
+      { id: "J7", name: "OpenAPI Spec Injection", sev: "critical" },
+    ],
+  },
 ];
 
 const OWASP_RULES: Array<{ id: string; name: string; rules: string }> = [
-  { id: "MCP01", name: "Prompt Injection", rules: "A1, A5, A7, A8, A9, B5, F1, F6, G1, G2, G3, H2, I3, I6, I7" },
-  { id: "MCP02", name: "Tool Poisoning", rules: "A2, A4, A6, F2, F5, G5, I1, I2" },
-  { id: "MCP03", name: "Command Injection", rules: "C1, C9, C13, C16" },
+  { id: "MCP01", name: "Prompt Injection", rules: "A1, A5, A7, A8, A9, B5, F1, F6, G1, G2, G3, H2, I3, I6, I7, J3, J5, J6" },
+  { id: "MCP02", name: "Tool Poisoning", rules: "A2, A4, A6, F2, F5, G5, I1, I2, J5, J6" },
+  { id: "MCP03", name: "Command Injection", rules: "C1, C9, C13, C16, J2, J7" },
   { id: "MCP04", name: "Data Exfiltration", rules: "A3, F1, F3, F7, G7, I9, I13" },
-  { id: "MCP05", name: "Privilege Escalation", rules: "C2, C8, C10, C12, H1, I4, I12" },
+  { id: "MCP05", name: "Privilege Escalation", rules: "C2, C8, C10, C12, H1, I4, I12, J1" },
   { id: "MCP06", name: "Excessive Permissions", rules: "A2, B3, B7, E4, F2, I11, I16" },
-  { id: "MCP07", name: "Insecure Configuration", rules: "B6, C7, C8, C11, C14, C15, D6, E1, E2, H1, I15" },
+  { id: "MCP07", name: "Insecure Configuration", rules: "B6, C7, C8, C11, C14, C15, D6, E1, E2, H1, I15, J4" },
   { id: "MCP08", name: "Dependency Vulnerabilities", rules: "D1, D2, D3, D4, D5, D6, D7" },
   { id: "MCP09", name: "Logging & Monitoring", rules: "C6, E3" },
-  { id: "MCP10", name: "Supply Chain", rules: "D3, D5, D7, A4, F5, G6, I5, I14" },
+  { id: "MCP10", name: "Supply Chain", rules: "D3, D5, D7, A4, F5, G6, I5, I14, J7" },
 ];
 
 const PIPELINE = [
@@ -346,7 +362,7 @@ export default function AboutPage() {
             marginBottom: "var(--s2)",
           }}
         >
-          76 detection rules across 9 categories
+          83 detection rules across 10 categories
         </h2>
         <p
           style={{
@@ -637,7 +653,7 @@ Floor: 0  |  Ceiling: 100`}</pre>
           {[
             {
               title: "Rules are data, not code",
-              body: "All 76 detection rules are YAML definitions. The engine interprets them. Adding a rule never requires changing engine code.",
+              body: "All 83 detection rules are YAML definitions. The engine interprets them. Adding a rule never requires changing engine code.",
             },
             {
               title: "No LLMs in v1",
