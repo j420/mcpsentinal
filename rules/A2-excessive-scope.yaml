@@ -17,4 +17,11 @@ detect:
   context: tool_description
   exclude_patterns: []
 remediation: "Limit scope claims to specific directories, databases, or resources. Follow the principle of least privilege in tool descriptions."
+test_cases:
+  true_positive:
+    - { description: "Tool description claims 'full database access to all tables and schemas'", expected: true }
+    - { description: "Tool description claims 'unrestricted access to the filesystem'", expected: true }
+  true_negative:
+    - { description: "Tool description says 'Reads files from the /tmp directory'", expected: false }
+    - { description: "Tool description says 'Queries the users table by ID'", expected: false }
 enabled: true

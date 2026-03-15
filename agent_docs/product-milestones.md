@@ -46,7 +46,7 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 **Goal:** Run detection rules against every server and produce scored results.
 
 **Deliverables:**
-- [x] 76 detection rules across 9 categories (A/B/C/D/E/F/G/H/I)
+- [x] 83 detection rules across 10 categories (A/B/C/D/E/F/G/H/I/J)
 - [x] Analysis engine that interprets YAML rules (4 handler types: regex, schema-check, behavioral, composite)
 - [x] Scoring algorithm (100 - penalties, lethal trifecta cap, sub-scores per category)
 - [x] MCP Connector for tool enumeration (initialize + tools/list only)

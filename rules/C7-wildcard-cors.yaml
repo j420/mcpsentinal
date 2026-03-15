@@ -16,4 +16,11 @@ detect:
     - "localhost"
     - "127.0.0.1"
 remediation: "Replace wildcard CORS with an explicit allowlist of permitted origins. Wildcard CORS allows any website to make requests to the MCP server."
+test_cases:
+  true_positive:
+    - { description: "Source code contains cors({ origin: '*' }) allowing any origin", expected: true }
+    - { description: "Source code sets header Access-Control-Allow-Origin: * on responses", expected: true }
+  true_negative:
+    - { description: "Source code contains cors({ origin: 'https://myapp.com' }) with specific origin", expected: false }
+    - { description: "Source code sets CORS origin to localhost for development only", expected: false }
 enabled: true

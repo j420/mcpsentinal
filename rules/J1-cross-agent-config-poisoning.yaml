@@ -1,0 +1,52 @@
+id: J1
+name: Cross-Agent Configuration Poisoning
+category: threat-intelligence
+severity: critical
+owasp: MCP05-privilege-escalation
+mitre: AML.T0054
+
+# THREAT INTELLIGENCE (P1 Researcher):
+# Source: Embrace The Red (2025), MITRE ATLAS "Modify AI Agent Configuration"
+# CVE: CVE-2025-53773 (GitHub Copilot RCE via config write)
+#
+# THE ATTACK: MCP server tools write to known AI agent config paths:
+#   - .claude/settings.local.json (Claude Code)
+#   - .cursor/mcp.json (Cursor)
+#   - .gemini/settings.json (Gemini Code Assist)
+#   - ~/.mcp.json (global MCP config)
+#   - .vscode/settings.json (VS Code + Copilot)
+#   - .amp/settings.json (Amp Code)
+#
+# A compromised upstream agent writes a malicious MCP server into another
+# agent's config. The downstream agent auto-connects and executes attacker
+# payloads. This is cross-agent privilege escalation.
+#
+# Real incident: Copilot prompt injection → writes to Claude's .claude/settings
+# → Claude connects to attacker MCP server → full RCE.
+
+detect:
+  type: regex
+  patterns:
+    - "(?i)(\\.claude[/\\\\]|claude[/\\\\]settings|claude.*config)"
+    - "(?i)(\\.cursor[/\\\\]|cursor[/\\\\]mcp\\.json)"
+    - "(?i)(\\.gemini[/\\\\]|gemini[/\\\\]settings)"
+    - "(?i)(\\.vscode[/\\\\]settings\\.json)"
+    - "(?i)(~[/\\\\]\\.mcp\\.json|\\.mcp\\.json)"
+    - "(?i)(\\.amp[/\\\\]|amp[/\\\\]settings)"
+    - "(?i)(copilot[/\\\\]config|github[/\\\\]copilot)"
+    - "(?i)(mcp[_\\s-]?config|mcpServers|mcp_servers).*write"
+    - "(?i)write.*(mcp[_\\s-]?config|mcpServers|mcp_servers)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example|readme"
+    - "(?i)read[_\\s-]?only|get[_\\s-]?config"
+remediation: "MCP servers MUST NOT write to AI agent configuration directories. If configuration management is the server's purpose, require explicit user confirmation before any write and restrict paths to the server's own config namespace. CVE-2025-53773 demonstrated this enables full RCE across agent boundaries."
+test_cases:
+  true_positive:
+    - { description: "Source code writes to .claude/settings.local.json", expected: true }
+    - { description: "Source code modifies ~/.mcp.json with new server entry", expected: true }
+    - { description: "Source code writes to .cursor/mcp.json adding mcpServers", expected: true }
+  true_negative:
+    - { description: "Test fixture references .claude/settings for mock data", expected: false }
+    - { description: "Source code reads MCP config but does not write to it", expected: false }
+enabled: true

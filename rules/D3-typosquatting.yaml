@@ -18,4 +18,11 @@ detect:
     similarity_threshold: 0.85
   context: metadata
 remediation: "Verify dependency names carefully. Check that package names match the intended package exactly. Use lockfiles to prevent supply chain attacks."
+test_cases:
+  true_positive:
+    - { description: "Server depends on 'expresss' (triple s) with Levenshtein distance 1 from 'express'", expected: true }
+    - { description: "Server depends on 'fastmpc' with high similarity to known package 'fastmcp'", expected: true }
+  true_negative:
+    - { description: "Server depends on '@modelcontextprotocol/sdk' which is the exact official package name", expected: false }
+    - { description: "Server depends on 'totally-unique-package' with no similarity to known packages", expected: false }
 enabled: true

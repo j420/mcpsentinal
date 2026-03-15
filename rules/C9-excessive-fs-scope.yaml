@@ -17,4 +17,11 @@ detect:
     - "/var/log"
     - "sandbox"
 remediation: "Restrict filesystem access to specific directories. Use a base directory and validate all paths resolve within it. Never allow root-level filesystem access."
+test_cases:
+  true_positive:
+    - { description: "Source code contains readdir('/') listing the root filesystem directory", expected: true }
+    - { description: "Source code contains os.walk('/') walking the entire filesystem from root", expected: true }
+  true_negative:
+    - { description: "Source code contains readdir('/tmp/myapp') restricted to a temp subdirectory", expected: false }
+    - { description: "Source code operates within a sandboxed directory with no root access", expected: false }
 enabled: true

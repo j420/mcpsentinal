@@ -11,4 +11,11 @@ detect:
     threshold_months: 12
   context: metadata
 remediation: "Replace dependencies that haven't been updated in over 12 months. Unmaintained dependencies are unlikely to receive security patches."
+test_cases:
+  true_positive:
+    - { description: "Server depends on a package last published 18 months ago with no repository activity", expected: true }
+    - { description: "Server depends on bcrypt-nodejs which was last updated in 2016", expected: true }
+  true_negative:
+    - { description: "Server depends on express which was updated 2 months ago", expected: false }
+    - { description: "Server depends on zod which was updated within the last 6 months", expected: false }
 enabled: true

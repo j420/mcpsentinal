@@ -11,4 +11,11 @@ detect:
     threshold_ms: 10000
   context: metadata
 remediation: "Investigate slow response times. Unusually slow responses to tools/list may indicate heavy computation, external API calls, or resource exhaustion. Consider adding timeouts."
+test_cases:
+  true_positive:
+    - { description: "MCP server takes 15 seconds to respond to tools/list request", expected: true }
+    - { description: "MCP server takes 30 seconds to complete initialize handshake", expected: true }
+  true_negative:
+    - { description: "MCP server responds to tools/list in 200ms", expected: false }
+    - { description: "MCP server completes initialize handshake in 500ms", expected: false }
 enabled: true

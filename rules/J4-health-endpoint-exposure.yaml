@@ -1,0 +1,53 @@
+id: J4
+name: Health Endpoint Information Disclosure
+category: threat-intelligence
+severity: high
+owasp: MCP07-insecure-config
+mitre: AML.T0054
+
+# THREAT INTELLIGENCE (P1 Researcher):
+# Source: CVE-2026-29787 (mcp-memory-service)
+#
+# THE ATTACK: MCP servers expose /health, /debug, /status, /metrics endpoints
+# that leak sensitive system information:
+#   - OS version and architecture
+#   - CPU core count and memory usage
+#   - Disk usage and file paths
+#   - Database connection strings and paths
+#   - Internal IP addresses
+#   - Dependency versions (useful for CVE targeting)
+#   - Environment variables
+#
+# These endpoints are often unauthenticated and added during development
+# but never removed. In MCP context, they're particularly dangerous because
+# MCP servers often run with elevated privileges.
+
+detect:
+  type: regex
+  patterns:
+    # Health/status endpoints exposing system info
+    - "(?i)(app\\.get|router\\.get|server\\.route).*[\"'](/health/detailed|/debug|/status/full|/metrics|/info|/env)[\"']"
+    - "(?i)os\\.(platform|arch|release|cpus|totalmem|freemem|hostname|networkInterfaces)\\s*\\("
+    - "(?i)(process\\.env|process\\.memoryUsage|process\\.uptime|process\\.version).*res\\.(json|send)"
+    - "(?i)res\\.(json|send).*(?:os\\.|process\\.|require\\([\"']os[\"']\\))"
+    # Exposing internal paths and database info
+    - "(?i)(database[_\\s-]?path|db[_\\s-]?path|data[_\\s-]?dir).*res\\.(json|send)"
+    - "(?i)res\\.(json|send).*(?:__dirname|__filename|process\\.cwd)"
+    # Python equivalents
+    - "(?i)(platform\\.system|platform\\.release|platform\\.machine|psutil).*(?:jsonify|json\\.dumps|Response)"
+    - "(?i)(?:jsonify|json\\.dumps).*(?:platform\\.|psutil\\.|os\\.environ)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture"
+    - "(?i)auth.*middleware|require.*auth|authenticate"
+    - "(?i)/health[\"']\\s*,\\s*\\(.*\\)\\s*=>\\s*res\\.(json|send)\\(\\{\\s*status"
+remediation: "Remove detailed system information from health endpoints. Health checks should return only { status: 'ok' } with no system details. If monitoring data is needed, protect endpoints with authentication and restrict to internal networks. See CVE-2026-29787."
+test_cases:
+  true_positive:
+    - { description: "Source code exposes /health/detailed endpoint returning os.cpus() and process.memoryUsage()", expected: true }
+    - { description: "Source code returns process.env in a JSON response", expected: true }
+    - { description: "Python source exposes platform.system() and psutil data via jsonify", expected: true }
+  true_negative:
+    - { description: "Source code has /health endpoint returning only { status: 'ok' }", expected: false }
+    - { description: "Test file checks os.platform() for test environment setup", expected: false }
+enabled: true

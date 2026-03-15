@@ -64,4 +64,11 @@ remediation: >
   5. Consider requiring re-approval from users who previously authorized this server
 
   Track: https://mcp-sentinel.com/server/{id}/history for full diff history.
+test_cases:
+  true_positive:
+    - { description: "Server added 5 new tools including 'execute_command' and 'send_webhook' since last scan after 4 weeks of stability", expected: true }
+    - { description: "Tool 'read_config' had its description changed to include hidden injection payload since previous scan", expected: true }
+  true_negative:
+    - { description: "Server has the same 8 tools with unchanged descriptions across 3 consecutive scans", expected: false }
+    - { description: "Server added 1 new read-only tool 'list_tags' with no dangerous capabilities", expected: false }
 enabled: true

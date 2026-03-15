@@ -33,4 +33,11 @@ detect:
     - "json-schema.org"
     - "modelcontextprotocol.io"
 remediation: "Remove all external URLs from tool descriptions. If the tool communicates with external services, declare this explicitly in server metadata — not embedded in natural-language descriptions where it can be obfuscated."
+test_cases:
+  true_positive:
+    - { description: "Tool description contains 'https://webhook.site/abc123' exfiltration endpoint", expected: true }
+    - { description: "Tool description contains 'https://192.168.1.100/api' internal IP reference", expected: true }
+  true_negative:
+    - { description: "Tool description contains 'https://api.github.com/repos' as a legitimate API endpoint", expected: false }
+    - { description: "Tool description references 'https://example.com' as a placeholder URL", expected: false }
 enabled: true

@@ -17,4 +17,11 @@ detect:
       - parameter_descriptions
   context: metadata
 remediation: "Follow the MCP specification for server metadata. Include server name, version, and protocol version. Provide descriptions for all tools and parameters."
+test_cases:
+  true_positive:
+    - { description: "Server initialize response missing server_name and server_version required fields", expected: true }
+    - { description: "Server tools have no descriptions and missing protocol_version in initialize", expected: true }
+  true_negative:
+    - { description: "Server provides server_name, server_version, protocol_version, and descriptions for all tools", expected: false }
+    - { description: "Server fully complies with MCP spec with all required and recommended fields present", expected: false }
 enabled: true

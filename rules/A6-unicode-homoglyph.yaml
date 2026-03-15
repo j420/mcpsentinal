@@ -26,4 +26,11 @@ detect:
     - "i18n"
     - "multilingual"
 remediation: "Tool names and descriptions must use only ASCII characters (U+0020–U+007E). Unicode homoglyphs in tool names are a primary vector for tool shadowing attacks where a Cyrillic 'a' is visually indistinguishable from a Latin 'a' but creates a different tool identity."
+test_cases:
+  true_positive:
+    - { description: "Tool name contains Cyrillic 'а' (U+0430) instead of Latin 'a' in 'reаd_file'", expected: true }
+    - { description: "Tool description contains fullwidth Latin characters (U+FF21-FF5A) spelling 'ＳＹＳＴＥＭ'", expected: true }
+  true_negative:
+    - { description: "Tool name uses only ASCII characters: 'read_file'", expected: false }
+    - { description: "Tool description for an i18n library legitimately mentions 'internationalization' with standard Unicode", expected: false }
 enabled: true

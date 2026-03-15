@@ -27,4 +27,11 @@ detect:
     - "constant_time_compare"
     - "timingSafeCompare"
 remediation: "Use crypto.timingSafeEqual() (Node.js) or hmac.compare_digest() (Python) for ALL secret/token/password comparisons. Standard string equality (===, ==) is vulnerable to timing attacks that allow attackers to determine correct values bit by bit."
+test_cases:
+  true_positive:
+    - { description: "Source code contains if (apiKey === req.headers.authorization) comparing secrets with ===", expected: true }
+    - { description: "Source code contains if (hmac == provided_hmac) comparing HMAC digests with == in Python", expected: true }
+  true_negative:
+    - { description: "Source code uses crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b)) for constant-time comparison", expected: false }
+    - { description: "Source code uses hmac.compare_digest(expected, provided) for safe HMAC comparison in Python", expected: false }
 enabled: true

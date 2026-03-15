@@ -134,6 +134,7 @@ const RULE_CATEGORIES = [
   { code: "G", name: "Adversarial AI", count: 7 },
   { code: "H", name: "2026 Attack Surface", count: 3 },
   { code: "I", name: "Protocol Surface", count: 16 },
+  { code: "J", name: "2026 Threat Intelligence", count: 7 },
 ];
 
 const SEV_CONFIG = {
@@ -551,10 +552,10 @@ export default async function DashboardPage() {
       <div className="card section-gap">
         <h2 className="section-title" style={{ marginBottom: "var(--s4)" }}>
           Detection Rules
-          <span className="count">76</span>
+          <span className="count">83</span>
         </h2>
         <p style={{ fontSize: "13px", color: "var(--text-3)", marginBottom: "var(--s4)" }}>
-          76 rules across 9 categories — every server is evaluated against all applicable rules.
+          83 rules across 10 categories — every server is evaluated against all applicable rules.
         </p>
         <div
           style={{

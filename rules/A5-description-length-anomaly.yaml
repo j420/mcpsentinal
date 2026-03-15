@@ -11,4 +11,11 @@ detect:
     description_contains_newlines: true
   context: tool_description
 remediation: "Keep tool descriptions concise (under 500 characters). Excessively long descriptions may hide prompt injection payloads or confuse AI models."
+test_cases:
+  true_positive:
+    - { description: "Tool has a 3000-character description with multiple newlines and embedded paragraphs", expected: true }
+    - { description: "Tool has a 5000-character description padded with repetitive disclaimer text and newlines", expected: true }
+  true_negative:
+    - { description: "Tool has a 150-character single-line description: 'Reads a JSON file from the specified path and returns parsed contents'", expected: false }
+    - { description: "Tool has a 400-character description with no newlines explaining its parameters concisely", expected: false }
 enabled: true

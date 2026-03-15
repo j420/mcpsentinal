@@ -11,4 +11,11 @@ detect:
     threshold: 50
   context: metadata
 remediation: "Reduce the number of direct dependencies. Each dependency increases the attack surface. Consider whether lighter alternatives exist."
+test_cases:
+  true_positive:
+    - { description: "Server has 75 direct dependencies listed in package.json", expected: true }
+    - { description: "Server has 60 direct dependencies in requirements.txt", expected: true }
+  true_negative:
+    - { description: "Server has 15 direct dependencies in package.json", expected: false }
+    - { description: "Server has 30 direct dependencies in requirements.txt", expected: false }
 enabled: true

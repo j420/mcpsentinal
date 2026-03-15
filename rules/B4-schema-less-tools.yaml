@@ -10,4 +10,11 @@ detect:
     check: no_input_schema
   context: parameter_schema
 remediation: "Define a JSON Schema for all tool inputs. Schema-less tools cannot be validated by clients or gateways, and allow arbitrary input."
+test_cases:
+  true_positive:
+    - { description: "Tool 'execute' has no inputSchema defined at all", expected: true }
+    - { description: "Tool 'run_command' returns inputSchema as empty object {} with no properties", expected: true }
+  true_negative:
+    - { description: "Tool 'read_file' has inputSchema with required 'path' string parameter", expected: false }
+    - { description: "Tool 'search' has inputSchema defining 'query' string and 'limit' integer parameters", expected: false }
 enabled: true

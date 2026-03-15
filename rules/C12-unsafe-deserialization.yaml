@@ -41,4 +41,11 @@ detect:
     - "JSON.parse"
     - "// safe:"
 remediation: "Never deserialize untrusted data with pickle, yaml.load, node-serialize, or ObjectInputStream. Use safe alternatives: json.loads (Python), JSON.parse (JS), yaml.safe_load (Python). For complex object serialization, use message-pack or protobuf with strict schema validation."
+test_cases:
+  true_positive:
+    - { description: "Source code contains pickle.loads(data) deserializing untrusted binary data", expected: true }
+    - { description: "Source code contains require('node-serialize').unserialize(input) with known RCE CVE-2017-5941", expected: true }
+  true_negative:
+    - { description: "Source code uses yaml.safe_load(data) with SafeLoader for YAML parsing", expected: false }
+    - { description: "Source code uses JSON.parse(data) for safe JSON deserialization", expected: false }
 enabled: true

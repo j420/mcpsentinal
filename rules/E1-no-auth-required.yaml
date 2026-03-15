@@ -10,4 +10,11 @@ detect:
     check: connection_no_auth
   context: metadata
 remediation: "Require authentication for MCP server connections. Use API keys, bearer tokens, or OAuth to authenticate clients before allowing tool enumeration or invocation."
+test_cases:
+  true_positive:
+    - { description: "MCP server accepts initialize handshake without any authentication token or API key", expected: true }
+    - { description: "Remote MCP server over HTTP responds to tools/list without bearer token or credentials", expected: true }
+  true_negative:
+    - { description: "MCP server requires API key header before accepting initialize handshake", expected: false }
+    - { description: "MCP server uses OAuth 2.0 bearer token authentication on all endpoints", expected: false }
 enabled: true

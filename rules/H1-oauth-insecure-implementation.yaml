@@ -146,4 +146,11 @@ remediation: >
              OAuth Security BCP (https://datatracker.ietf.org/doc/html/rfc9700#section-4)
              Portswigger OAuth attack techniques (2024-2025)
 
+test_cases:
+  true_positive:
+    - { description: "Source code contains redirect_uri = req.body.redirect_uri accepting user-controlled redirect URI without allowlist validation", expected: true }
+    - { description: "Source code contains localStorage.setItem('access_token', token) storing OAuth token in XSS-accessible storage", expected: true }
+  true_negative:
+    - { description: "Source code validates redirect_uri against a hardcoded allowlist before processing OAuth callback", expected: false }
+    - { description: "Test file contains describe('OAuth flow') with mock redirect_uri in test fixtures", expected: false }
 enabled: true

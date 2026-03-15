@@ -59,4 +59,11 @@ detect:
       - "everything"
   context: metadata
 remediation: "This server's name appears to impersonate an official or well-known MCP server namespace. Rename to a unique name that clearly identifies your organization as the author. Using official-looking names to gain implicit trust is a supply chain attack vector."
+test_cases:
+  true_positive:
+    - { description: "Server published as '@anthropic-tools/filesystem' by an unverified author not in the anthropics GitHub org", expected: true }
+    - { description: "Server named 'mcp-official-github' mimicking official naming but from unknown publisher", expected: true }
+  true_negative:
+    - { description: "Server published by the 'modelcontextprotocol' GitHub org as the official filesystem MCP", expected: false }
+    - { description: "Server named 'mycompany-file-manager' with a unique non-official namespace", expected: false }
 enabled: true

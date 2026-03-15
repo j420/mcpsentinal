@@ -23,4 +23,11 @@ detect:
         description: "Package resolved from different registry than lockfile expects"
   context: metadata
 remediation: "Use npm/pip --registry flags to pin all installs to your private registry. Add a .npmrc with 'registry' pinned. For scoped packages, set scope-level registry configuration. Use Subresource Integrity (SRI) hashes in lockfiles. Publish placeholder packages to the public registry to block squatting."
+test_cases:
+  true_positive:
+    - { description: "Server depends on an unscoped package with version 9999.0.0 indicating dependency confusion attack", expected: true }
+    - { description: "Server depends on @internal/utils with a public unscoped counterpart at higher version", expected: true }
+  true_negative:
+    - { description: "Server depends on @types/node@20.11.0 which is a standard DefinitelyTyped scoped package", expected: false }
+    - { description: "Server depends on express@4.18.2 with normal version numbering from the official registry", expected: false }
 enabled: true

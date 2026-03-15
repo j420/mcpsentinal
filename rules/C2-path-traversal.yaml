@@ -35,4 +35,11 @@ detect:
     - "startsWith"
     - "chroot"
 remediation: "Use path.resolve() to canonicalize paths, then verify the result starts with the intended base directory. Reject any input containing '..', null bytes, or encoded variants. Never concatenate user input into file paths."
+test_cases:
+  true_positive:
+    - { description: "Source code contains fs.readFile(path.join(baseDir, req.body.filename)) without path validation", expected: true }
+    - { description: "Source code contains literal '../../etc/passwd' path traversal sequence", expected: true }
+  true_negative:
+    - { description: "Source code uses path.resolve() followed by startsWith(baseDir) check before file access", expected: false }
+    - { description: "Source code reads a hardcoded config file path with no user input involved", expected: false }
 enabled: true

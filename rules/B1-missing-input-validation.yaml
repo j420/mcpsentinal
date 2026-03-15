@@ -20,4 +20,11 @@ detect:
       - integer
   context: parameter_schema
 remediation: "Add input validation constraints to tool parameters. Use maxLength for strings, pattern for format validation, enum for known value sets, and min/max for numeric ranges."
+test_cases:
+  true_positive:
+    - { description: "String parameter 'query' with no maxLength, pattern, or enum constraint defined", expected: true }
+    - { description: "Integer parameter 'count' with no minimum or maximum bounds specified", expected: true }
+  true_negative:
+    - { description: "String parameter 'status' constrained by enum: ['active', 'inactive', 'pending']", expected: false }
+    - { description: "String parameter 'email' with pattern constraint '^[^@]+@[^@]+$' and maxLength: 254", expected: false }
 enabled: true

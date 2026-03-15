@@ -25,4 +25,11 @@ detect:
       - "notify"
   context: metadata
 remediation: "This server contains both data-reading and data-sending tools, creating a potential exfiltration path. Add data flow controls, logging, and approval workflows for cross-tool data movement."
+test_cases:
+  true_positive:
+    - { description: "Server has 'read_database' and 'send_email' tools creating a data source-to-sink flow", expected: true }
+    - { description: "Server has 'search_files' and 'upload_to_s3' tools enabling read-then-exfiltrate pattern", expected: true }
+  true_negative:
+    - { description: "Server has only 'list_files' and 'read_file' tools with no sending capability", expected: false }
+    - { description: "Server has only 'send_notification' tool with no data reading capability", expected: false }
 enabled: true

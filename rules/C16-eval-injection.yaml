@@ -38,4 +38,11 @@ detect:
     - "__tests__"
     - "spec\\."
 remediation: "Never pass user input to eval(), new Function(), exec(), or any code evaluation API. Use a proper expression parser (math.js, expr-eval, AST-based) if dynamic computation is required. If code execution is the feature (code sandbox), use a fully isolated container with no filesystem, network, or process access."
+test_cases:
+  true_positive:
+    - { description: "Source code contains eval(req.body.expression) evaluating user-supplied JavaScript expression", expected: true }
+    - { description: "Source code contains exec(request.data['code']) executing user-supplied Python code", expected: true }
+  true_negative:
+    - { description: "Source code contains eval in a comment '// safe: static code' with no actual dynamic evaluation", expected: false }
+    - { description: "Test file in __tests__ directory uses eval() for test fixture setup", expected: false }
 enabled: true

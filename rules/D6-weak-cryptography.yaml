@@ -50,4 +50,11 @@ detect:
         reason: "pycrypto/Crypto is unmaintained. Migrate to pycryptodome."
   context: metadata
 remediation: "Replace weak cryptographic dependencies with modern, maintained alternatives. Use AES-256-GCM for symmetric encryption, RSA-4096 or Ed25519 for asymmetric, SHA-256/SHA-3 for hashing, and Argon2/bcrypt/PBKDF2 with high iteration counts for password hashing."
+test_cases:
+  true_positive:
+    - { description: "Server depends on 'md5' package for hashing passwords", expected: true }
+    - { description: "Server depends on 'pycrypto' which is unmaintained and has multiple CVEs", expected: true }
+  true_negative:
+    - { description: "Server depends on 'bcrypt' for password hashing with modern algorithm", expected: false }
+    - { description: "Server depends on 'node-forge@1.3.1' which is above the vulnerable version range", expected: false }
 enabled: true

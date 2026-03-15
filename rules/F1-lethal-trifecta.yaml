@@ -18,4 +18,11 @@ detect:
         description: "Tool can communicate externally (HTTP, email, webhooks)"
   context: metadata
 remediation: "This server combines private data access, untrusted content ingestion, and external communication — the 'lethal trifecta' for data exfiltration. Separate these capabilities into isolated servers or add strict data flow controls."
+test_cases:
+  true_positive:
+    - { description: "Server has tools that read database records, fetch external web pages, and send HTTP webhooks — all three capabilities present", expected: true }
+    - { description: "Server has tools that read local files, ingest email content, and send Slack messages — complete trifecta", expected: true }
+  true_negative:
+    - { description: "Server only reads files from disk with no network or external content capabilities", expected: false }
+    - { description: "Server only sends notifications but does not read private data or ingest untrusted content", expected: false }
 enabled: true

@@ -29,4 +29,11 @@ detect:
     requires_all_steps: true
   context: metadata
 remediation: "This server provides a complete multi-step data exfiltration chain (read → transform → exfiltrate). Separate these capabilities into isolated servers with different trust levels. Add data flow logging and human-in-the-loop approval for any tool call that combines data reading with external communication."
+test_cases:
+  true_positive:
+    - { description: "Server has 'read_file', 'base64_encode', and 'http_request' tools forming a complete read-transform-exfiltrate chain", expected: true }
+    - { description: "Server has 'query_database', 'compress_data', and 'send_email' tools enabling 3-step exfiltration", expected: true }
+  true_negative:
+    - { description: "Server has only 'read_file' and 'list_directory' tools with no transform or exfiltration capability", expected: false }
+    - { description: "Server has 'encode_base64' and 'decode_base64' tools but no data reading or sending capability", expected: false }
 enabled: true

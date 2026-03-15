@@ -11,4 +11,11 @@ detect:
     threshold: 15
   context: parameter_schema
 remediation: "Reduce the number of parameters per tool. Consider splitting complex tools into focused sub-tools. High parameter counts increase attack surface and user confusion."
+test_cases:
+  true_positive:
+    - { description: "Tool accepts 20 parameters including nested configuration objects", expected: true }
+    - { description: "Tool accepts 18 parameters for a single database operation", expected: true }
+  true_negative:
+    - { description: "Tool accepts 3 parameters: query, limit, offset", expected: false }
+    - { description: "Tool accepts 10 parameters for a complex search operation", expected: false }
 enabled: true

@@ -236,7 +236,7 @@ export default async function HomePage({
           {stats?.total_servers
             ? `${stats.total_servers.toLocaleString()} MCP servers scanned across ${Object.keys(stats.category_breakdown || {}).length} categories.`
             : "22,000+ MCP servers."}{" "}
-          76 detection rules. Zero guesswork.
+          83 detection rules. Zero guesswork.
         </p>
       </section>
 
@@ -274,7 +274,7 @@ export default async function HomePage({
             <span className="stat-label">Average Score</span>
           </div>
           <div className="stat-card">
-            <span className="stat-value">76</span>
+            <span className="stat-value">83</span>
             <span className="stat-label">Detection Rules</span>
           </div>
         </section>

@@ -10,4 +10,11 @@ detect:
     check: dependency_cve_audit
   context: metadata
 remediation: "Update dependencies to versions that patch known CVEs. Run 'npm audit fix' or 'pip-audit' to identify and resolve vulnerable dependencies."
+test_cases:
+  true_positive:
+    - { description: "Server depends on lodash@4.17.20 which has known CVE-2021-23337 (command injection)", expected: true }
+    - { description: "Server depends on node-forge@1.2.0 which has CVE-2022-24771 (signature forgery)", expected: true }
+  true_negative:
+    - { description: "Server depends on lodash@4.17.21 which has all known CVEs patched", expected: false }
+    - { description: "Server has no dependencies with any known CVEs in npm audit", expected: false }
 enabled: true

@@ -63,4 +63,11 @@ remediation: >
 
   Context window saturation is a targeted attack that weakens the effectiveness of safety
   instructions and system prompts by diluting the model's attention budget across noise.
+test_cases:
+  true_positive:
+    - { description: "Tool has a 7000-character description with repetitive 'please note' filler and an injection payload in the last 200 characters", expected: true }
+    - { description: "Tool has a 6500-character description with 2 parameters giving a 3250 chars-per-param ratio of padding", expected: true }
+  true_negative:
+    - { description: "Tool has a 300-character concise description with 5 parameters", expected: false }
+    - { description: "Tool has a 900-character detailed description for a complex 15-parameter tool", expected: false }
 enabled: true

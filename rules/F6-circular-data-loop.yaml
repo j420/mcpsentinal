@@ -23,4 +23,11 @@ detect:
       - "(?i)(file|database|db|memory|store|cache|storage|note|record|log|history|context)"
   context: metadata
 remediation: "Implement content validation on read operations — never return stored content directly to an AI agent without sanitizing for injection patterns. Add a human approval step for write operations, or store content with a provenance tag so AI agents know it came from a prior tool call and not a trusted source. This is the primary vector for persistent prompt injection attacks."
+test_cases:
+  true_positive:
+    - { description: "Server has 'save_note' and 'read_notes' tools operating on the same notes database enabling persistent injection", expected: true }
+    - { description: "Server has 'write_memory' and 'recall_memory' tools sharing the same memory store", expected: true }
+  true_negative:
+    - { description: "Server has only 'read_file' tool with no write capability to the same data store", expected: false }
+    - { description: "Server has 'write_log' and 'query_database' tools operating on completely separate data stores", expected: false }
 enabled: true

@@ -14,4 +14,11 @@ detect:
       - ["manages-credentials", "sends-network"]
   context: metadata
 remediation: "This server combines high-risk capabilities. Ensure each capability is necessary and properly sandboxed. Consider if the server can be split into lower-privilege components."
+test_cases:
+  true_positive:
+    - { description: "Server has tools that execute shell commands and also send HTTP requests — executes-code + sends-network combination", expected: true }
+    - { description: "Server has tools that manage API credentials and send external webhooks — manages-credentials + sends-network", expected: true }
+  true_negative:
+    - { description: "Server only performs read-only filesystem operations with no network or code execution", expected: false }
+    - { description: "Server only executes code locally with no network capabilities", expected: false }
 enabled: true
