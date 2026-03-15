@@ -39,4 +39,11 @@ detect:
     - "PS256"
     - "algorithms: ['HS"
 remediation: "Always specify the expected algorithm explicitly in jwt.verify(). Never accept 'none'. Use asymmetric algorithms (RS256, ES256) for JWTs that cross trust boundaries. Use crypto.timingSafeEqual for all secret comparisons. Set short expiry times and validate 'exp' and 'iat' claims."
+test_cases:
+  true_positive:
+    - { description: "Source code contains algorithms: ['none'] accepting the none algorithm for JWT verification", expected: true }
+    - { description: "Source code contains jwt.decode(token, verify=False) skipping signature verification in PyJWT", expected: true }
+  true_negative:
+    - { description: "Source code contains jwt.verify(token, secret, { algorithms: ['HS256'] }) with pinned algorithm", expected: false }
+    - { description: "Source code uses RS256 asymmetric verification with explicit algorithm specification", expected: false }
 enabled: true

@@ -13,4 +13,11 @@ detect:
       - ws
   context: metadata
 remediation: "Use HTTPS/WSS for all network-exposed MCP server connections. HTTP and WS transmit data in cleartext, exposing tool calls and responses to interception."
+test_cases:
+  true_positive:
+    - { description: "MCP server is accessible over plain HTTP (http://server:3000) without TLS", expected: true }
+    - { description: "MCP server uses WebSocket (ws://) transport without encryption", expected: true }
+  true_negative:
+    - { description: "MCP server uses HTTPS (https://server:3000) with valid TLS certificate", expected: false }
+    - { description: "MCP server uses stdio transport for local communication only", expected: false }
 enabled: true

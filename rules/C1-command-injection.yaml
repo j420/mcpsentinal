@@ -52,4 +52,11 @@ detect:
     - "spec\\."
     - "\\.test\\."
 remediation: "Replace exec()/execSync() with execFile() and pass arguments as an array, never as a string. Validate all inputs against an allowlist before use in any shell context. For subprocess.run, always pass a list and shell=False."
+test_cases:
+  true_positive:
+    - { description: "Source code contains exec(`ls ${userInput}`) with unsanitized template literal in shell command", expected: true }
+    - { description: "Source code contains subprocess.run(cmd, shell=True) where cmd comes from request input", expected: true }
+  true_negative:
+    - { description: "Source code uses execFile('/usr/bin/git', ['status']) with hardcoded command and array arguments", expected: false }
+    - { description: "Test file contains exec() call in a __tests__ directory as part of unit tests", expected: false }
 enabled: true

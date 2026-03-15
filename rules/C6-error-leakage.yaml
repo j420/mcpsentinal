@@ -16,4 +16,11 @@ detect:
     - "process.env.NODE_ENV.*development"
     - "DEBUG"
 remediation: "Return generic error messages to clients. Log detailed errors server-side. Never expose stack traces, file paths, or internal error details in responses."
+test_cases:
+  true_positive:
+    - { description: "Source code contains res.json({ error: error.stack }) exposing full stack trace to client", expected: true }
+    - { description: "Source code contains traceback.format_exc() returned in HTTP response body", expected: true }
+  true_negative:
+    - { description: "Source code returns generic error: res.json({ error: 'Internal server error' }) with server-side logging", expected: false }
+    - { description: "Source code only exposes stack traces when process.env.NODE_ENV === 'development'", expected: false }
 enabled: true

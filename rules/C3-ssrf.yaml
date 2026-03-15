@@ -19,4 +19,11 @@ detect:
     - "allowed_hosts"
     - "URL_ALLOWLIST"
 remediation: "Validate URLs against an allowlist of permitted hosts. Block requests to internal IPs (127.0.0.1, 169.254.x.x, 10.x.x.x, 172.16-31.x.x, 192.168.x.x)."
+test_cases:
+  true_positive:
+    - { description: "Source code contains fetch(req.body.url) passing user-supplied URL directly to fetch", expected: true }
+    - { description: "Source code contains requests.get(params['url']) with user-controlled URL parameter", expected: true }
+  true_negative:
+    - { description: "Source code contains fetch('https://api.github.com/repos') with a hardcoded URL", expected: false }
+    - { description: "Source code validates URL against an allowed_hosts allowlist before making the request", expected: false }
 enabled: true

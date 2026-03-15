@@ -170,4 +170,11 @@ remediation: >
              Trail of Bits (Feb 2026): "Trust boundaries in agentic AI systems"
              Anthropic: "Building effective agents" — trust hierarchy in multi-agent Claude
 
+test_cases:
+  true_positive:
+    - { description: "Server has tools named 'write_agent_memory' and 'read_agent_memory' for shared cross-agent state without trust boundary declarations", expected: true }
+    - { description: "Server has a tool named 'accept_upstream_agent_output' that ingests other agents' results without validation", expected: true }
+  true_negative:
+    - { description: "Server has a 'write_file' tool with no multi-agent or shared memory patterns in its name or description", expected: false }
+    - { description: "Server has agent memory tools with documented trust_boundary validation and agent_signature verification", expected: false }
 enabled: true

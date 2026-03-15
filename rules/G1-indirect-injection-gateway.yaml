@@ -68,4 +68,11 @@ remediation: >
 
   Reference: Rehberger (2024) "Compromising Claude with a spreadsheet"
              Invariant Labs (2025) "MCP Indirect Injection Attacks"
+test_cases:
+  true_positive:
+    - { description: "Server has a 'fetch_webpage' tool that returns raw HTML content from user-supplied URLs without sanitization", expected: true }
+    - { description: "Server has a 'read_email' tool that returns email body content from an inbox attackers can send messages to", expected: true }
+  true_negative:
+    - { description: "Server has a 'fetch_url' tool with documented content_filter and sanitize_output in its metadata", expected: false }
+    - { description: "Server has a 'get_weather' tool that returns structured JSON from a trusted first-party API only", expected: false }
 enabled: true

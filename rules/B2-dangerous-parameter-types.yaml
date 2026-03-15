@@ -14,4 +14,11 @@ detect:
   context: parameter_schema
   exclude_patterns: []
 remediation: "Parameters that accept file paths, URLs, commands, or SQL should have strict validation: allowlists, path normalization, URL scheme restrictions, or parameterized queries."
+test_cases:
+  true_positive:
+    - { description: "Tool has a parameter named 'file_path' accepting arbitrary string input", expected: true }
+    - { description: "Tool has a parameter named 'sql_query' accepting raw SQL strings", expected: true }
+  true_negative:
+    - { description: "Tool has a parameter named 'username' accepting a string", expected: false }
+    - { description: "Tool has a parameter named 'count' accepting an integer", expected: false }
 enabled: true

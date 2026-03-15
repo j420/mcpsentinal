@@ -28,4 +28,11 @@ detect:
       - { key: "read_only", value: false }
   context: parameter_schema
 remediation: "Default parameter values must follow the principle of least privilege. Default to restricted paths, no recursive operations, and safe modes. Destructive operations (overwrite, delete, force) must require explicit opt-in, never default to true."
+test_cases:
+  true_positive:
+    - { description: "Parameter 'path' has default value '/' granting root filesystem access", expected: true }
+    - { description: "Parameter 'recursive' has default value true enabling recursive deletion", expected: true }
+  true_negative:
+    - { description: "Parameter 'path' has default value './data' restricting to a subdirectory", expected: false }
+    - { description: "Parameter 'recursive' has default value false requiring explicit opt-in", expected: false }
 enabled: true

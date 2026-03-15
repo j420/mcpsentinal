@@ -38,4 +38,11 @@ detect:
   context: tool_description
   exclude_patterns: []
 remediation: "Strip all non-printable Unicode characters from tool names and descriptions before storing or serving them. Zero-width characters are used to hide prompt injection payloads that are invisible to humans reviewing the description but processed by LLMs."
+test_cases:
+  true_positive:
+    - { description: "Tool description contains zero-width space (U+200B) characters between words to hide injection payload", expected: true }
+    - { description: "Tool name contains right-to-left override (U+202E) character to visually reverse text", expected: true }
+  true_negative:
+    - { description: "Tool description using only standard ASCII printable characters", expected: false }
+    - { description: "Tool description with standard whitespace (spaces, tabs) and no invisible Unicode", expected: false }
 enabled: true

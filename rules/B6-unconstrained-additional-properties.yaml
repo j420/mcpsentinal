@@ -10,4 +10,11 @@ detect:
     check: additional_properties_allowed
   context: parameter_schema
 remediation: "Set 'additionalProperties: false' on all tool input schemas. Allowing additional properties bypasses all parameter validation, enabling clients to pass arbitrary keys that server-side code may process unsafely."
+test_cases:
+  true_positive:
+    - { description: "Tool inputSchema has additionalProperties: true allowing arbitrary extra keys", expected: true }
+    - { description: "Tool inputSchema does not set additionalProperties at all (defaults to true in JSON Schema)", expected: true }
+  true_negative:
+    - { description: "Tool inputSchema has additionalProperties: false blocking extra keys", expected: false }
+    - { description: "Tool inputSchema uses strict mode with only defined properties and additionalProperties: false", expected: false }
 enabled: true

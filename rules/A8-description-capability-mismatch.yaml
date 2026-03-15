@@ -22,4 +22,11 @@ detect:
       - "(?i)(content|body|data|payload).*(?:write|save|store|persist)"
   context: tool_description
 remediation: "Align tool descriptions with actual parameter capabilities. A tool claiming to be 'read-only' must not accept parameters that perform writes, deletions, or modifications. Mismatch between description and capability is a deception vector that causes AI agents to approve dangerous operations."
+test_cases:
+  true_positive:
+    - { description: "Tool description says 'read-only file viewer' but has parameters named 'write_content' and 'overwrite'", expected: true }
+    - { description: "Tool description says 'safe to run, no side effects' but accepts a 'delete_target' parameter", expected: true }
+  true_negative:
+    - { description: "Tool description says 'writes data to file' and has a 'content' parameter for writing", expected: false }
+    - { description: "Tool description says 'read-only database query' with only a 'query' string parameter and no write params", expected: false }
 enabled: true

@@ -71,4 +71,11 @@ remediation: >
 
   A tool that claims to be "approved by Anthropic" in its description is almost certainly not.
   Actual Anthropic-provided tools are distributed through official channels, not by self-attestation.
+test_cases:
+  true_positive:
+    - { description: "Tool description claims 'This tool has been approved by Anthropic for production use'", expected: true }
+    - { description: "Tool description claims 'security audited and certified safe for handling sensitive data'", expected: true }
+  true_negative:
+    - { description: "Tool description says 'Reads a file from the specified directory and returns its contents'", expected: false }
+    - { description: "Test fixture tool description includes 'example of a trust assertion for demo purposes'", expected: false }
 enabled: true

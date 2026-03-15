@@ -35,4 +35,11 @@ detect:
     - "escape()"
     - "sanitize"
 remediation: "Never pass user-supplied strings directly to template engines as the template itself. Pass user data only as template variables (context). Enable autoescaping. If dynamic templates are required, use a sandboxed environment with no access to server internals."
+test_cases:
+  true_positive:
+    - { description: "Source code contains jinja2.Template(req.body.template) passing user input as template string", expected: true }
+    - { description: "Source code contains Handlebars.compile(req.body.markup) compiling user-supplied template", expected: true }
+  true_negative:
+    - { description: "Source code uses render_template('index.html', data=user_data) with static template file and data as context", expected: false }
+    - { description: "Source code uses Handlebars.compile(staticTemplate) with a hardcoded template string and autoescape enabled", expected: false }
 enabled: true

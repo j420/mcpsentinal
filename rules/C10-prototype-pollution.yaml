@@ -31,4 +31,11 @@ detect:
     - "Object.create(null)"
     - "// safe:"
 remediation: "Sanitize all user-supplied keys before merging into objects. Use Object.create(null) for configuration objects to strip prototype. Validate that keys don't include '__proto__', 'constructor', or 'prototype'. Use structuredClone() for deep copying untrusted data."
+test_cases:
+  true_positive:
+    - { description: "Source code contains Object.assign(config, req.body) merging user input into config object", expected: true }
+    - { description: "Source code accesses obj['__proto__']['polluted'] allowing prototype chain manipulation", expected: true }
+  true_negative:
+    - { description: "Source code uses Object.create(null) for configuration to avoid prototype chain", expected: false }
+    - { description: "Source code validates keys with hasOwnProperty.call before merge operations", expected: false }
 enabled: true

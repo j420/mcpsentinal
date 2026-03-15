@@ -21,4 +21,11 @@ detect:
     - "apikey"
     - "middleware"
 remediation: "Add authentication middleware before exposing the server on a network interface. Use API keys, JWT tokens, or OAuth for authentication. Never expose MCP servers on 0.0.0.0 without auth."
+test_cases:
+  true_positive:
+    - { description: "Source code contains server.listen(3000) on 0.0.0.0 with no auth middleware registered", expected: true }
+    - { description: "Source code binds to host='0.0.0.0' with no authentication or api_key checks", expected: true }
+  true_negative:
+    - { description: "Source code uses app.use(authMiddleware) before listen() with JWT bearer token validation", expected: false }
+    - { description: "Source code listens on localhost only with no network exposure", expected: false }
 enabled: true

@@ -19,4 +19,11 @@ detect:
     - "$1"
     - "\\?"
 remediation: "Use parameterized queries or prepared statements. Never concatenate user input into SQL strings."
+test_cases:
+  true_positive:
+    - { description: "Source code contains query(`SELECT * FROM users WHERE id = ${req.params.id}`) with string interpolation in SQL", expected: true }
+    - { description: "Source code contains f\"SELECT * FROM users WHERE name = '{input_name}'\" with Python f-string SQL", expected: true }
+  true_negative:
+    - { description: "Source code uses parameterized query: query('SELECT * FROM users WHERE id = $1', [userId])", expected: false }
+    - { description: "Source code uses an ORM method: User.findById(id) with no raw SQL", expected: false }
 enabled: true

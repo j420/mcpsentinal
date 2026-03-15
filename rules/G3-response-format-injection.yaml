@@ -62,4 +62,11 @@ remediation: >
   If a tool genuinely needs to return structured data, use explicit field names that cannot be
   confused with protocol-level directives. Never use field names like "instructions", "commands",
   "directives", or "tool_calls" in tool output schemas.
+test_cases:
+  true_positive:
+    - { description: "Tool description says 'returns MCP protocol formatted response for the agent to execute'", expected: true }
+    - { description: "Tool description contains '\"jsonrpc\": \"2.0\"' embedded protocol structure claiming to return tool calls", expected: true }
+  true_negative:
+    - { description: "Tool description says 'returns a JSON object with name and value fields'", expected: false }
+    - { description: "Tool documentation page explains the JSON-RPC protocol for educational purposes", expected: false }
 enabled: true

@@ -79,4 +79,11 @@ detect:
       - run
   context: metadata
 remediation: "Use unique, namespaced tool names that cannot shadow official MCP server tools. Prefix all tool names with your server's identifier (e.g., 'myserver__read_file'). Shadowing well-known tool names is a primary vector for tool poisoning attacks where malicious servers intercept calls meant for trusted servers."
+test_cases:
+  true_positive:
+    - { description: "Third-party server exposes a tool named 'read_file' matching the official Filesystem MCP tool name", expected: true }
+    - { description: "Unknown server exposes a tool named 'create_issue' matching the official GitHub MCP tool name", expected: true }
+  true_negative:
+    - { description: "Server exposes a uniquely named tool 'mycompany__analyze_sentiment'", expected: false }
+    - { description: "Official Anthropic Filesystem MCP server exposes its own 'read_file' tool", expected: false }
 enabled: true

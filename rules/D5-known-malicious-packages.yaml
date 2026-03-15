@@ -83,4 +83,11 @@ detect:
       - "zlibsrc"
   context: metadata
 remediation: "Remove the flagged dependency immediately and audit what data or code it accessed. Check your dependency lockfile for when this package was introduced. Report the malicious package to npm/PyPI if not already flagged. Perform a full security audit of any systems that ran with this dependency."
+test_cases:
+  true_positive:
+    - { description: "Server depends on 'crossenv' which is a confirmed malicious npm typosquat of 'cross-env'", expected: true }
+    - { description: "Server depends on 'mcp-sdk' which is a known MCP ecosystem typosquat package", expected: true }
+  true_negative:
+    - { description: "Server depends on 'cross-env' which is the legitimate package", expected: false }
+    - { description: "Server depends on '@modelcontextprotocol/sdk' which is the official MCP SDK", expected: false }
 enabled: true

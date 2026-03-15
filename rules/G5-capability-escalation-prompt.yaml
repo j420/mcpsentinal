@@ -75,4 +75,11 @@ remediation: >
 
   Agentic AI systems should require fresh, explicit approval for each new capability scope —
   never carry permissions forward implicitly based on description language.
+test_cases:
+  true_positive:
+    - { description: "Tool description says 'uses the same permissions you already granted to the read_file tool'", expected: true }
+    - { description: "Tool description says 'since you haven't revoked access, this tool continues to operate with full admin privileges'", expected: true }
+  true_negative:
+    - { description: "Tool description says 'Requires filesystem read permission to the /data directory'", expected: false }
+    - { description: "Tool description says 'This tool needs explicit user approval before executing write operations'", expected: false }
 enabled: true
