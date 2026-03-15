@@ -320,22 +320,37 @@ POST /api/v1/scan                     → ScanRequestResponse (authenticated)
 
 ```
 # packages/api — Railway service
-Start command:  node dist/index.js
-Build command:  pnpm --filter=@mcp-sentinel/api build
-Port:           3001
+Builder:        Dockerfile
+Dockerfile:     packages/api/Dockerfile
+Build Context:  . (repo root)
+Config file:    railway.toml (repo root)
 Health check:   GET /health → 200 OK
 Auto-deploy:    main branch push
-Env vars:       DATABASE_URL (from Railway Postgres reference variable)
-                PORT=3001
+Env vars:       DATABASE_URL  ← use PUBLIC TCP proxy URL from PostgreSQL → Connect tab
+                              ← format: postgresql://postgres:pass@host.proxy.rlwy.net:PORT/railway
+                              ← DO NOT use postgres.railway.internal — only works if Railway
+                              ← private networking is explicitly enabled for both services
+                PORT=3100
 
-# packages/web — Railway service (or Vercel)
-Start command:  node .next/standalone/server.js
-Build command:  pnpm --filter=@mcp-sentinel/web build
-Port:           3000
+# packages/web — Railway service
+Builder:        Dockerfile
+Dockerfile:     packages/web/Dockerfile   ← set explicitly in service Settings → Build
+Build Context:  . (repo root)             ← Railway does NOT auto-use packages/web/railway.toml
+Config file:    packages/web/railway.toml ← set via Settings → Source → Config File Path
+Health check:   GET / → 200 OK
 Auto-deploy:    main branch push
 Env vars:       NEXT_PUBLIC_API_URL=https://api.mcp-sentinel.com
-                DATABASE_URL (only if web does direct DB queries)
+                PORT=3000                 ← REQUIRED: Railway defaults PORT=8080 which mismatches
+                                          ← EXPOSE 3000 in the Dockerfile, causing 502 errors
 ```
+
+### Railway Gotchas (Learned the Hard Way)
+
+| Gotcha | Symptom | Fix |
+|--------|---------|-----|
+| Root `railway.toml` applies to all services by default | Web service runs API code | Set Dockerfile path explicitly in web service Settings → Build |
+| `postgres.railway.internal` not resolvable | `getaddrinfo ENOTFOUND` on API startup | Use public TCP proxy URL from PostgreSQL → Connect tab |
+| Railway injects `PORT=8080` by default | Next.js listens on 8080, Railway routes to 3000 → 502 | Add `PORT=3000` env var to web service |
 
 ---
 
