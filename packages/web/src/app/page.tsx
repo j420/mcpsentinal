@@ -184,8 +184,35 @@ export default async function HomePage({
           ? "var(--poor)"
           : "var(--critical)";
 
+  const apiDown = !stats && servers.length === 0;
+
   return (
     <>
+      {/* ── API warning ──────────────────────────────── */}
+      {apiDown && (
+        <div
+          role="alert"
+          style={{
+            background: "var(--surface-2)",
+            border: "1px solid var(--poor)",
+            borderRadius: "8px",
+            padding: "12px 16px",
+            margin: "var(--s4) 0",
+            display: "flex",
+            alignItems: "center",
+            gap: "var(--s2)",
+            fontSize: "13px",
+            color: "var(--text-2)",
+          }}
+        >
+          <span style={{ color: "var(--poor)", fontWeight: 700, fontSize: "16px", lineHeight: 1 }}>!</span>
+          <span>
+            Unable to reach the API. Showing cached data where available.
+            If this persists, check <code style={{ fontSize: "12px" }}>NEXT_PUBLIC_API_URL</code>.
+          </span>
+        </div>
+      )}
+
       {/* ── Hero ──────────────────────────────────────── */}
       <section className="hero">
         <div className="hero-eyebrow">
@@ -247,7 +274,7 @@ export default async function HomePage({
             <span className="stat-label">Average Score</span>
           </div>
           <div className="stat-card">
-            <span className="stat-value">60</span>
+            <span className="stat-value">76</span>
             <span className="stat-label">Detection Rules</span>
           </div>
         </section>

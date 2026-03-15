@@ -810,6 +810,11 @@ code, pre, kbd {
   color: var(--text-2);
   line-height: 1.55;
   margin-bottom: var(--s2);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
 }
 
 .finding-remediation {

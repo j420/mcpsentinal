@@ -33,6 +33,14 @@ interface ScoreDetail {
   owasp_coverage: Record<string, boolean>;
 }
 
+interface ScoreHistoryEntry {
+  id: string;
+  score: number;
+  findings_count: number;
+  rules_version: string | null;
+  recorded_at: string;
+}
+
 interface ServerDetail {
   id: string;
   name: string;
@@ -49,6 +57,11 @@ interface ServerDetail {
   npm_downloads: number | null;
   latest_score: number | null;
   last_commit: string | null;
+  last_scanned_at: string | null;
+  endpoint_url: string | null;
+  connection_status: string | null;
+  server_version: string | null;
+  tool_count: number;
   tools: Tool[];
   findings: Finding[];
   score_detail?: ScoreDetail;
@@ -66,6 +79,19 @@ async function getServer(slug: string): Promise<ServerDetail | null> {
     return data.data ?? null;
   } catch {
     return null;
+  }
+}
+
+async function getScoreHistory(slug: string): Promise<ScoreHistoryEntry[]> {
+  try {
+    const res = await fetch(`${API_URL}/api/v1/servers/${encodeURIComponent(slug)}/history`, {
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.data ?? [];
+  } catch {
+    return [];
   }
 }
 
@@ -88,7 +114,7 @@ export async function generateMetadata({
   const findCount = server.findings?.length ?? 0;
   return {
     title: `${server.name} Security Report`,
-    description: `Security analysis of ${server.name} MCP server. ${scoreStr} ${findCount} finding${findCount !== 1 ? "s" : ""} detected across 60 security rules.`,
+    description: `Security analysis of ${server.name} MCP server. ${scoreStr} ${findCount} finding${findCount !== 1 ? "s" : ""} detected across 76 security rules.`,
   };
 }
 
@@ -239,6 +265,133 @@ function fmtDate(iso: string | null): string {
   return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 }
 
+function ConnectionStatusBadge({ status }: { status: string | null }) {
+  if (!status) return null;
+  const colors: Record<string, string> = {
+    success: "var(--good)",
+    failed: "var(--critical)",
+    timeout: "var(--poor)",
+    no_endpoint: "var(--text-3)",
+  };
+  const labels: Record<string, string> = {
+    success: "Connected",
+    failed: "Connection Failed",
+    timeout: "Timed Out",
+    no_endpoint: "No Endpoint",
+  };
+  return (
+    <span
+      style={{
+        fontSize: "11px",
+        fontWeight: 600,
+        color: colors[status] || "var(--text-3)",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "4px",
+      }}
+    >
+      <span
+        style={{
+          width: 6,
+          height: 6,
+          borderRadius: "50%",
+          background: colors[status] || "var(--text-3)",
+          display: "inline-block",
+        }}
+      />
+      {labels[status] || status}
+    </span>
+  );
+}
+
+/** CSS-only score history sparkline — shows trend over last 10 scans */
+function ScoreHistoryTimeline({ history }: { history: ScoreHistoryEntry[] }) {
+  if (history.length < 2) return null;
+
+  // Show last 10 entries, oldest first
+  const entries = history.slice(0, 10).reverse();
+  const maxScore = 100;
+
+  return (
+    <div className="card">
+      <h3
+        style={{
+          fontSize: "12px",
+          fontWeight: 700,
+          textTransform: "uppercase",
+          letterSpacing: "0.06em",
+          color: "var(--text-3)",
+          marginBottom: "var(--s3)",
+        }}
+      >
+        Score History
+      </h3>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-end",
+          gap: "3px",
+          height: "60px",
+        }}
+      >
+        {entries.map((entry, i) => {
+          const height = Math.max(4, (entry.score / maxScore) * 60);
+          const color =
+            entry.score >= 80
+              ? "var(--good)"
+              : entry.score >= 60
+                ? "var(--moderate)"
+                : entry.score >= 40
+                  ? "var(--poor)"
+                  : "var(--critical)";
+          const date = new Date(entry.recorded_at).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          });
+          return (
+            <div
+              key={entry.id}
+              title={`${date}: ${entry.score}/100 (${entry.findings_count} findings)`}
+              style={{
+                flex: 1,
+                height: `${height}px`,
+                background: color,
+                borderRadius: "2px 2px 0 0",
+                opacity: i === entries.length - 1 ? 1 : 0.6,
+                transition: "opacity 0.2s",
+                cursor: "default",
+                minWidth: "6px",
+              }}
+            />
+          );
+        })}
+      </div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          fontSize: "10px",
+          color: "var(--text-3)",
+          marginTop: "4px",
+        }}
+      >
+        <span>
+          {new Date(entries[0].recorded_at).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          })}
+        </span>
+        <span>
+          {new Date(entries[entries.length - 1].recorded_at).toLocaleDateString(
+            "en-US",
+            { month: "short", day: "numeric" }
+          )}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 const SEV_ORDER: Finding["severity"][] = [
   "critical",
   "high",
@@ -302,7 +455,10 @@ export default async function ServerPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const server = await getServer(slug);
+  const [server, scoreHistory] = await Promise.all([
+    getServer(slug),
+    getScoreHistory(slug),
+  ]);
 
   if (!server) {
     return (
@@ -392,6 +548,7 @@ export default async function ServerPage({
               Last commit {fmtDate(server.last_commit)}
             </span>
           )}
+          <ConnectionStatusBadge status={server.connection_status} />
         </div>
 
         <div className="server-links">
@@ -464,8 +621,32 @@ export default async function ServerPage({
         {/* ── Main column ──────────────────────────────── */}
         <div className="detail-main">
 
+          {/* Not yet scanned banner */}
+          {score === null && totalFindings === 0 && (!server.tools || server.tools.length === 0) && (
+            <div
+              className="card"
+              style={{
+                textAlign: "center",
+                padding: "var(--s10)",
+                marginBottom: "var(--s5)",
+                color: "var(--text-3)",
+              }}
+            >
+              <div style={{ fontSize: "28px", marginBottom: "var(--s2)" }}>
+                ◎
+              </div>
+              <div style={{ fontWeight: 600, color: "var(--text-2)", marginBottom: "var(--s1)" }}>
+                Not yet scanned
+              </div>
+              <p style={{ fontSize: "13px", maxWidth: "400px", margin: "0 auto" }}>
+                This server has been discovered but hasn&apos;t been analyzed yet.
+                It will be scanned in the next pipeline run.
+              </p>
+            </div>
+          )}
+
           {/* Tools */}
-          {server.tools && server.tools.length > 0 && (
+          {server.tools && server.tools.length > 0 ? (
             <section className="section-gap">
               <h2 className="section-title">
                 Tools{" "}
@@ -489,7 +670,15 @@ export default async function ServerPage({
                 ))}
               </div>
             </section>
-          )}
+          ) : score !== null ? (
+            <section className="section-gap">
+              <h2 className="section-title">Tools</h2>
+              <p style={{ fontSize: "13px", color: "var(--text-3)" }}>
+                No tools enumerated — the server may not expose tools via <code>tools/list</code>,
+                or the connection could not be established.
+              </p>
+            </section>
+          ) : null}
 
           {/* Findings */}
           <section className="section-gap">
@@ -682,6 +871,54 @@ export default async function ServerPage({
                 </div>
               </div>
             )}
+
+          {/* Score history timeline */}
+          <ScoreHistoryTimeline history={scoreHistory} />
+
+          {/* Scan metadata */}
+          {(server.last_scanned_at || server.server_version || server.endpoint_url) && (
+            <div className="card">
+              <h3
+                style={{
+                  fontSize: "12px",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                  color: "var(--text-3)",
+                  marginBottom: "var(--s3)",
+                }}
+              >
+                Scan Info
+              </h3>
+              <dl
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "auto 1fr",
+                  gap: "var(--s1) var(--s3)",
+                  fontSize: "12px",
+                }}
+              >
+                {server.last_scanned_at && (
+                  <>
+                    <dt style={{ color: "var(--text-3)" }}>Last scan</dt>
+                    <dd style={{ color: "var(--text-2)" }}>{fmtDate(server.last_scanned_at)}</dd>
+                  </>
+                )}
+                {server.server_version && (
+                  <>
+                    <dt style={{ color: "var(--text-3)" }}>Server ver.</dt>
+                    <dd style={{ color: "var(--text-2)", fontFamily: "var(--font-mono, monospace)" }}>{server.server_version}</dd>
+                  </>
+                )}
+                {server.endpoint_url && (
+                  <>
+                    <dt style={{ color: "var(--text-3)" }}>Endpoint</dt>
+                    <dd style={{ color: "var(--text-2)", fontFamily: "var(--font-mono, monospace)", fontSize: "11px", wordBreak: "break-all" }}>{server.endpoint_url}</dd>
+                  </>
+                )}
+              </dl>
+            </div>
+          )}
 
           {/* Metadata card */}
           <div className="card">

@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "About MCP Sentinel",
   description:
-    "How MCP Sentinel works: 60 deterministic detection rules across 8 categories, a 4-stage scan pipeline, and the scoring algorithm that produces every security score.",
+    "How MCP Sentinel works: 76 deterministic detection rules across 9 categories, a 4-stage scan pipeline, and the scoring algorithm that produces every security score.",
 };
 
 // ── Rule categories ───────────────────────────────────────────────────────────
@@ -141,19 +141,44 @@ const RULE_CATEGORIES = [
       { id: "H3", name: "Multi-Agent Propagation Risk", sev: "high" },
     ],
   },
+  {
+    code: "I",
+    name: "Protocol Surface",
+    count: 16,
+    requires: "Protocol metadata + annotations",
+    highlight: "MCP protocol primitive attacks: annotation deception (readOnlyHint lies), sampling abuse (23-41% attack amplification), cross-config lethal trifecta, consent fatigue exploitation (84.2% success rate), credential harvesting via elicitation",
+    rules: [
+      { id: "I1", name: "Annotation Deception", sev: "critical" },
+      { id: "I2", name: "Missing Destructive Annotation", sev: "high" },
+      { id: "I3", name: "Resource Metadata Injection", sev: "critical" },
+      { id: "I4", name: "Dangerous Resource URI", sev: "critical" },
+      { id: "I5", name: "Resource-Tool Shadowing", sev: "high" },
+      { id: "I6", name: "Prompt Template Injection", sev: "critical" },
+      { id: "I7", name: "Sampling Capability Abuse", sev: "critical" },
+      { id: "I8", name: "Sampling Cost Attack", sev: "high" },
+      { id: "I9", name: "Elicitation Credential Harvesting", sev: "critical" },
+      { id: "I10", name: "Elicitation URL Redirect", sev: "high" },
+      { id: "I11", name: "Over-Privileged Root", sev: "high" },
+      { id: "I12", name: "Capability Escalation Post-Init", sev: "critical" },
+      { id: "I13", name: "Cross-Config Lethal Trifecta", sev: "critical" },
+      { id: "I14", name: "Rolling Capability Drift", sev: "high" },
+      { id: "I15", name: "Transport Session Security", sev: "high" },
+      { id: "I16", name: "Consent Fatigue Exploitation", sev: "high" },
+    ],
+  },
 ];
 
 const OWASP_RULES: Array<{ id: string; name: string; rules: string }> = [
-  { id: "MCP01", name: "Prompt Injection", rules: "A1, A5, A7, A8, A9, B5, F1, F6, G1, G2, G3, H2" },
-  { id: "MCP02", name: "Tool Poisoning", rules: "A2, A4, A6, F2, F5, G5" },
+  { id: "MCP01", name: "Prompt Injection", rules: "A1, A5, A7, A8, A9, B5, F1, F6, G1, G2, G3, H2, I3, I6, I7" },
+  { id: "MCP02", name: "Tool Poisoning", rules: "A2, A4, A6, F2, F5, G5, I1, I2" },
   { id: "MCP03", name: "Command Injection", rules: "C1, C9, C13, C16" },
-  { id: "MCP04", name: "Data Exfiltration", rules: "A3, F1, F3, F7, G7" },
-  { id: "MCP05", name: "Privilege Escalation", rules: "C2, C8, C10, C12, H1" },
-  { id: "MCP06", name: "Excessive Permissions", rules: "A2, B3, B7, E4, F2" },
-  { id: "MCP07", name: "Insecure Configuration", rules: "B6, C7, C8, C11, C14, C15, D6, E1, E2, H1" },
+  { id: "MCP04", name: "Data Exfiltration", rules: "A3, F1, F3, F7, G7, I9, I13" },
+  { id: "MCP05", name: "Privilege Escalation", rules: "C2, C8, C10, C12, H1, I4, I12" },
+  { id: "MCP06", name: "Excessive Permissions", rules: "A2, B3, B7, E4, F2, I11, I16" },
+  { id: "MCP07", name: "Insecure Configuration", rules: "B6, C7, C8, C11, C14, C15, D6, E1, E2, H1, I15" },
   { id: "MCP08", name: "Dependency Vulnerabilities", rules: "D1, D2, D3, D4, D5, D6, D7" },
   { id: "MCP09", name: "Logging & Monitoring", rules: "C6, E3" },
-  { id: "MCP10", name: "Supply Chain", rules: "D3, D5, D7, A4, F5, G6" },
+  { id: "MCP10", name: "Supply Chain", rules: "D3, D5, D7, A4, F5, G6, I5, I14" },
 ];
 
 const PIPELINE = [
