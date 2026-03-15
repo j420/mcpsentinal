@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "About MCP Sentinel",
   description:
-    "How MCP Sentinel works: 83 deterministic detection rules across 11 categories, a 4-stage scan pipeline, and the scoring algorithm that produces every security score.",
+    "How MCP Sentinel works: 103 deterministic detection rules across 11 categories, a 4-stage scan pipeline, and the scoring algorithm that produces every security score.",
 };
 
 // ── Rule categories ───────────────────────────────────────────────────────────
