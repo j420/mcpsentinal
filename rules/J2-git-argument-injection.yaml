@@ -1,0 +1,55 @@
+id: J2
+name: Git Argument Injection
+category: threat-intelligence
+severity: critical
+owasp: MCP03-command-injection
+mitre: AML.T0054
+
+# THREAT INTELLIGENCE (P1 Researcher):
+# Source: CVE-2025-68143, CVE-2025-68144, CVE-2025-68145
+# Affected: Anthropic's own mcp-server-git
+#
+# THE ATTACK CHAIN:
+#   1. CVE-2025-68143: Path validation bypass in git operations
+#   2. CVE-2025-68144: Unrestricted git_init can turn .ssh into a git repo
+#   3. CVE-2025-68145: Argument injection in git_diff via -- prefix
+#
+#   Combined with Filesystem MCP: git_init on .ssh → write malicious .git/config
+#   → git operations execute arbitrary code via core.sshCommand or core.hookPath
+#
+# Also covers: --upload-pack, --exec, --receive-pack injection in git commands
+# that accept user-controlled arguments without -- termination.
+#
+# This is NOT generic command injection (C1). It's specific to git-wrapping
+# MCP servers that pass user input as git arguments without sanitization.
+
+detect:
+  type: regex
+  patterns:
+    # Git argument injection via -- prefix
+    - "(?i)git\\s+(diff|log|show|checkout|pull|push|fetch|clone).*\\$\\{?\\w"
+    - "(?i)--upload-pack|--receive-pack|--exec"
+    - "(?i)core\\.sshCommand|core\\.hookPath|core\\.gitProxy"
+    # git_init on sensitive directories
+    - "(?i)git\\s+init.*(\\.ssh|\\.gnupg|\\.aws|\\.config|\\.kube)"
+    - "(?i)git_init.*(\\.ssh|\\.gnupg|\\.aws|\\.config)"
+    # Malicious .git/config patterns
+    - "(?i)\\.git[/\\\\]config.*write|\\.git[/\\\\]config.*\\$"
+    - "(?i)write.*\\.git[/\\\\]config"
+    # Unsanitized git argument construction
+    - "(?i)spawn.*git.*\\[.*\\$\\{|exec.*git.*\\$\\{"
+    - "(?i)subprocess.*git.*format|os\\.system.*git.*\\%"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture"
+    - "(?i)sanitize|validate|allowlist|safelist"
+remediation: "Always terminate git argument lists with '--' before user-supplied paths. Never allow git_init on directories outside the configured workspace. Validate all git arguments against an allowlist. Block core.* config overrides in user-controlled inputs. See CVE-2025-68143/68144/68145 for the full attack chain."
+test_cases:
+  true_positive:
+    - { description: "Source code runs git diff with unsanitized user argument via template literal", expected: true }
+    - { description: "Source code allows git_init on .ssh directory path", expected: true }
+    - { description: "Source code writes to .git/config with user-controlled values", expected: true }
+  true_negative:
+    - { description: "Source code runs git diff with hardcoded safe arguments and -- terminator", expected: false }
+    - { description: "Test fixture contains git command examples for documentation", expected: false }
+enabled: true

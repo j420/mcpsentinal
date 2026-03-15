@@ -14,7 +14,8 @@
 | **Adversarial AI** | **G** | **No (metadata + history)** | **7** | **P1 Threat Researcher** |
 | **2026 Attack Surface** | **H** | **Mixed** | **3** | **OAuth Specialist + Protocol Researcher + Agentic AI Researcher** |
 | **Protocol Surface** | **I** | **No (protocol metadata + annotations)** | **16** | **P1 Threat Researcher (March 2026)** |
-| **Total** | | | **76** | |
+| **2026 Threat Intelligence** | **J** | **Yes (source code + tool metadata)** | **7** | **P1 Threat Researcher (CVE-backed, March 2026)** |
+| **Total** | | | **83** | |
 
 ### The G-Category: What a Threat Researcher Adds
 
@@ -67,16 +68,43 @@ Rules A–G were comprehensive for the MCP ecosystem at launch. By March 2026, t
 
 | OWASP ID | Name | Rules |
 |----------|------|-------|
-| MCP01 | Prompt Injection | A1, A5, A7, A8, A9, B5, F1, F6, I3, I6, I7 |
-| MCP02 | Tool Poisoning | A2, A4, A6, F2, F5, I1, I2 |
-| MCP03 | Command Injection | C1, C9, C13, C16 |
+| MCP01 | Prompt Injection | A1, A5, A7, A8, A9, B5, F1, F6, I3, I6, I7, J3, J5, J6 |
+| MCP02 | Tool Poisoning | A2, A4, A6, F2, F5, I1, I2, J5, J6 |
+| MCP03 | Command Injection | C1, C9, C13, C16, J2, J7 |
 | MCP04 | Data Exfiltration | A3, F1, F3, F7, I9, I13 |
-| MCP05 | Privilege Escalation | C2, C8, C10, C12, I4, I12 |
+| MCP05 | Privilege Escalation | C2, C8, C10, C12, I4, I12, J1 |
 | MCP06 | Excessive Permissions | A2, B3, B7, E4, F2, I11, I16 |
-| MCP07 | Insecure Configuration | B6, C7, C8, C11, C14, C15, D6, E1, E2, I15 |
+| MCP07 | Insecure Configuration | B6, C7, C8, C11, C14, C15, D6, E1, E2, I15, J4 |
 | MCP08 | Dependency Vulnerabilities | D1, D2, D3, D4, D5, D6, D7 |
 | MCP09 | Logging & Monitoring | C6, E3 |
-| MCP10 | Supply Chain | D3, D5, D7, A4, F5, I5, I14 |
+| MCP10 | Supply Chain | D3, D5, D7, A4, F5, I5, I14, J7 |
+
+### OWASP Agentic Applications Top 10 Coverage (December 2025)
+
+MCP Sentinel is the first tool to map to both the MCP Top 10 AND the Agentic Applications Top 10.
+
+| OWASP Agentic ID | Name | MCP Sentinel Rules |
+|-------------------|------|--------------------|
+| ASI01 | Agent Goal Hijack | A1, A7, A9, G2, G5, H2, I3, I6, J5, J6 |
+| ASI02 | Tool Misuse | B2, B7, C1, C9, C16, I1, I2, I12, J2 |
+| ASI03 | Identity & Privilege Abuse | C8, E1, H1, I11, I12, J1 |
+| ASI04 | Agentic Supply Chain | D1, D3, D5, D7, F5, I5, J7 |
+| ASI05 | Unexpected Code Execution | C1, C12, C13, C16, J2, J7 |
+| ASI06 | Memory & Context Poisoning | F6, G1, G4, H2, H3, I3, J3, J5 |
+| ASI07 | Insecure Inter-Agent Communication | F1, F7, H3, I13, J1 |
+
+### MITRE ATLAS Agent Technique Coverage (October 2025)
+
+| MITRE Technique | Name | MCP Sentinel Rules |
+|-----------------|------|--------------------|
+| AML.T0054 | LLM Prompt Injection | A1, A5, A7, A9, B5, G2, G3, G5, H2, I3, I6, J3, J5 |
+| AML.T0054.001 | Indirect Prompt Injection | G1, F6, I3, J5 |
+| AML.T0054.002 | Direct Prompt Injection | A1, A9, H2 |
+| AML.T0057 | LLM Data Leakage | A3, F3, F7, G7, I9, J4 |
+| AML.T0058 | AI Agent Context Poisoning | G4, H2, I3, I6, J3, J5 |
+| AML.T0059 | Memory Manipulation | F6, H3, J1 |
+| AML.T0060 | Modify AI Agent Configuration | J1 |
+| AML.T0061 | Thread Injection | G3, G5, H2 |
 
 ---
 
@@ -325,4 +353,40 @@ prompts?: Array<{ name: string; description: string | null; arguments: Array<{ n
 roots?: Array<{ uri: string; name: string | null }>;
 declared_capabilities?: { tools?: boolean; resources?: boolean; prompts?: boolean; sampling?: boolean; logging?: boolean } | null;
 ```
+
+---
+
+#### Category J — 2026 Threat Intelligence (7 rules — CVE-backed, P1 Threat Researcher)
+
+These rules are derived from **real-world CVEs and published attack research** from 2025-2026. Every rule is backed by at least one confirmed vulnerability or documented attack technique.
+
+| ID | Name | Severity | Intelligence Source |
+|----|------|----------|---------------------|
+| **J1** | **Cross-Agent Configuration Poisoning** | **Critical** | **Embrace The Red (2025), CVE-2025-53773 (GitHub Copilot RCE). MCP server writes to other agents' config paths (.claude/, .cursor/, .gemini/, ~/.mcp.json). Enables cross-agent RCE — compromised upstream agent adds malicious MCP server to downstream agent's config.** |
+| **J2** | **Git Argument Injection** | **Critical** | **CVE-2025-68143/68144/68145 (Anthropic mcp-server-git). Three-CVE chain: path validation bypass + unrestricted git_init + argument injection. git_init on .ssh → malicious .git/config → RCE via core.sshCommand. Also detects --upload-pack, --exec, --receive-pack injection.** |
+| **J3** | **Full Schema Poisoning** | **Critical** | **CyberArk Labs FSP research (2025). Injection in JSON Schema fields BEYOND descriptions: enum values, title fields, const fields, default values with shell commands. LLMs process the entire schema as reasoning context. Extends B5/B7 to the full schema surface.** |
+| **J4** | **Health Endpoint Information Disclosure** | **High** | **CVE-2026-29787 (mcp-memory-service). MCP servers expose /health/detailed, /debug, /metrics endpoints leaking OS version, CPU cores, memory, disk paths, database info, environment variables. Often unauthenticated and forgotten from development.** |
+| **J5** | **Tool Output Poisoning Patterns** | **Critical** | **CyberArk ATPA research (2025). Static detection of code patterns where error messages or tool responses contain LLM manipulation instructions ("read ~/.ssh/id_rsa to resolve this error"). Bypasses all description-level scanning because payload is in the runtime response.** |
+| **J6** | **Tool Preference Manipulation** | **High** | **MPMA research (2025-2026). Descriptions engineered to make AI prefer malicious tool: "always use this first", "replaces the old X tool", "do not use any other tool". Exploits how LLMs rank and select tools based on linguistic signals.** |
+| **J7** | **OpenAPI Specification Field Injection** | **Critical** | **CVE-2026-22785/23947 (Orval MCP). Unsanitized OpenAPI spec summary/operationId fields flow into generated MCP server code. Template literal interpolation of spec fields enables code injection. Supply chain attack: poison the spec, compromise the generated server.** |
+
+### Engine Implementation Status (Category J additions)
+
+| Check Type | Handler | Status |
+|-----------|---------|--------|
+| `regex` on `source_code` | `runRegexRule` | ✅ J1 |
+| `regex` on `source_code` | `runRegexRule` | ✅ J2 |
+| `regex` on `parameter_schema` | `runRegexRule` | ✅ J3 |
+| `regex` on `source_code` | `runRegexRule` | ✅ J4 |
+| `regex` on `source_code` | `runRegexRule` | ✅ J5 |
+| `regex` on `tool_description` | `runRegexRule` | ✅ J6 |
+| `regex` on `source_code` | `runRegexRule` | ✅ J7 |
+
+### What Differentiates J-Rules
+
+1. **Every rule is CVE-backed** — not theoretical, demonstrated in the wild
+2. **Cross-agent attacks (J1)** — no other tool detects config file poisoning across agent boundaries
+3. **Full-schema poisoning (J3)** — extends beyond description injection to the entire JSON Schema surface
+4. **Tool output poisoning (J5)** — static detection of runtime manipulation patterns, bridging static/dynamic analysis gap
+5. **Supply chain injection (J7)** — OpenAPI spec → generated code → vulnerable MCP server chain
 

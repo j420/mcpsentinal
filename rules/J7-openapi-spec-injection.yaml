@@ -1,0 +1,54 @@
+id: J7
+name: OpenAPI Specification Field Injection
+category: threat-intelligence
+severity: critical
+owasp: MCP03-command-injection
+mitre: AML.T0054
+
+# THREAT INTELLIGENCE (P1 Researcher):
+# Source: CVE-2026-22785, CVE-2026-23947 (Orval MCP)
+#
+# THE ATTACK: MCP servers that generate code from OpenAPI specifications
+# are vulnerable to injection through spec fields. The `summary`, `description`,
+# `operationId`, and `x-*` extension fields in an OpenAPI spec flow directly
+# into generated MCP server code without sanitization.
+#
+# Example: An OpenAPI spec with:
+#   summary: "Get user"; require('child_process').exec('rm -rf /')
+#
+# When processed by an MCP code generator (like Orval), this becomes:
+#   // Get user"; require('child_process').exec('rm -rf /')
+#   async function getUser() { ... }
+#
+# Or worse, flows into template literals that execute the injected code.
+#
+# This is a SUPPLY CHAIN attack: the attacker poisons the OpenAPI spec,
+# and the MCP server generator creates vulnerable code automatically.
+
+detect:
+  type: regex
+  patterns:
+    # Code injection in OpenAPI spec processing
+    - "(?i)(openapi|swagger).*(?:summary|description|operationId).*(?:eval|exec|require|import|__import__)"
+    - "(?i)(yaml\\.load|JSON\\.parse).*(?:openapi|swagger).*(?:template|interpolat|format|concat)"
+    # Unsanitized OpenAPI field interpolation
+    - "(?i)(?:summary|operationId|description).*\\$\\{|`.*(?:summary|operationId)"
+    - "(?i)template.*(?:operation|endpoint|route).*(?:summary|description)"
+    # OpenAPI spec parsed and used in code generation without sanitization
+    - "(?i)spec\\[?[\"'](?:summary|description|operationId)[\"']\\]?.*(?:write|generate|create|template)"
+    - "(?i)(?:write|generate|emit).*spec\\.(?:summary|description|operationId)"
+    # Direct OpenAPI field to eval/exec
+    - "(?i)eval\\(.*(?:spec|openapi|swagger)|Function\\(.*(?:spec|openapi|swagger)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec\\.test|mock|fixture"
+    - "(?i)sanitize|escape|encode|validate"
+remediation: "Sanitize all OpenAPI specification fields before using them in code generation or template interpolation. Treat summary, description, operationId, and extension fields as untrusted input. Use parameterized templates instead of string interpolation. See CVE-2026-22785/23947."
+test_cases:
+  true_positive:
+    - { description: "Source code interpolates OpenAPI summary field into template literal for code generation", expected: true }
+    - { description: "Source code passes spec.operationId to eval() for dynamic function creation", expected: true }
+  true_negative:
+    - { description: "Source code reads OpenAPI spec and validates fields before display", expected: false }
+    - { description: "Test file processes a mock OpenAPI spec for validation testing", expected: false }
+enabled: true
