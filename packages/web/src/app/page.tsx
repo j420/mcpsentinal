@@ -274,7 +274,7 @@ export default async function HomePage({
             <span className="stat-label">Average Score</span>
           </div>
           <div className="stat-card">
-            <span className="stat-value">83</span>
+            <span className="stat-value">103</span>
             <span className="stat-label">Detection Rules</span>
           </div>
         </section>

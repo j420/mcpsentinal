@@ -553,7 +553,7 @@ export default async function DashboardPage() {
       <div className="card section-gap">
         <h2 className="section-title" style={{ marginBottom: "var(--s4)" }}>
           Detection Rules
-          <span className="count">83</span>
+          <span className="count">103</span>
         </h2>
         <p style={{ fontSize: "13px", color: "var(--text-3)", marginBottom: "var(--s4)" }}>
           103 rules across 11 categories — every server is evaluated against all applicable rules.

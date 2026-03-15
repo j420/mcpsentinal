@@ -36,6 +36,8 @@ const CATEGORY_MAP: Record<string, keyof Pick<ScoreResult, "code_score" | "deps_
   "adversarial-ai": "config_score",
   "auth-analysis": "config_score",
   "protocol-surface": "config_score",
+  "threat-intelligence": "config_score",    // J1–J7 (CVE-backed)
+  "compliance-governance": "config_score",  // K1–K20 (framework-mapped)
 };
 
 const OWASP_CATEGORIES = [
