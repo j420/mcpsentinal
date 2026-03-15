@@ -124,6 +124,18 @@ const OWASP_LIST = [
   { id: "MCP10", name: "Supply Chain" },
 ];
 
+const RULE_CATEGORIES = [
+  { code: "A", name: "Description Analysis", count: 9 },
+  { code: "B", name: "Schema Analysis", count: 7 },
+  { code: "C", name: "Code Analysis", count: 16 },
+  { code: "D", name: "Dependency Analysis", count: 7 },
+  { code: "E", name: "Behavioral Analysis", count: 4 },
+  { code: "F", name: "Ecosystem Context", count: 7 },
+  { code: "G", name: "Adversarial AI", count: 7 },
+  { code: "H", name: "2026 Attack Surface", count: 3 },
+  { code: "I", name: "Protocol Surface", count: 16 },
+];
+
 const SEV_CONFIG = {
   critical: { label: "Critical", color: "var(--sev-critical)" },
   high: { label: "High", color: "var(--sev-high)" },
@@ -170,8 +182,34 @@ export default async function DashboardPage() {
     ? Math.max(...Object.values(stats?.severity_breakdown || {}), 1)
     : 1;
 
+  const apiDown = !stats && atRisk.length === 0 && topServers.length === 0;
+
   return (
     <>
+      {/* ── API warning ──────────────────────────────── */}
+      {apiDown && (
+        <div
+          role="alert"
+          style={{
+            background: "var(--surface-2)",
+            border: "1px solid var(--poor)",
+            borderRadius: "8px",
+            padding: "12px 16px",
+            margin: "var(--s4) 0",
+            display: "flex",
+            alignItems: "center",
+            gap: "var(--s2)",
+            fontSize: "13px",
+            color: "var(--text-2)",
+          }}
+        >
+          <span style={{ color: "var(--poor)", fontWeight: 700, fontSize: "16px", lineHeight: 1 }}>!</span>
+          <span>
+            Unable to reach the API. Dashboard data is unavailable.
+          </span>
+        </div>
+      )}
+
       {/* ── Page header ─────────────────────────────── */}
       <section style={{ paddingTop: "var(--s10)", marginBottom: "var(--s8)" }}>
         <div className="hero-eyebrow" style={{ display: "inline-flex" }}>
@@ -482,8 +520,80 @@ export default async function DashboardPage() {
         </div>
       </div>
 
+      {/* ── Scan coverage bar ─────────────────────── */}
+      {stats && (
+        <div className="card section-gap">
+          <h2 className="section-title">Scan Coverage</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--s3)", marginTop: "var(--s2)" }}>
+            <div className="dist-bar-bg" style={{ flex: 1, height: "8px" }}>
+              <div
+                className="dist-bar-fill"
+                style={{
+                  width: `${scanCoverage}%`,
+                  background: scanCoverage >= 80 ? "var(--good)" : scanCoverage >= 50 ? "var(--moderate)" : "var(--poor)",
+                  borderRadius: "4px",
+                }}
+              />
+            </div>
+            <span style={{ fontSize: "13px", color: "var(--text-2)", flexShrink: 0 }}>
+              {stats.total_scanned.toLocaleString()} / {stats.total_servers.toLocaleString()} scanned ({scanCoverage}%)
+            </span>
+          </div>
+          {stats.total_servers - stats.total_scanned > 0 && (
+            <p style={{ fontSize: "12px", color: "var(--text-3)", marginTop: "var(--s2)" }}>
+              {(stats.total_servers - stats.total_scanned).toLocaleString()} servers awaiting scan
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* ── Detection rule categories ─────────────────── */}
+      <div className="card section-gap">
+        <h2 className="section-title" style={{ marginBottom: "var(--s4)" }}>
+          Detection Rules
+          <span className="count">76</span>
+        </h2>
+        <p style={{ fontSize: "13px", color: "var(--text-3)", marginBottom: "var(--s4)" }}>
+          76 rules across 9 categories — every server is evaluated against all applicable rules.
+        </p>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+            gap: "var(--s2)",
+          }}
+        >
+          {RULE_CATEGORIES.map((cat) => (
+            <div
+              key={cat.code}
+              className="card-sm"
+              style={{ display: "flex", alignItems: "center", gap: "var(--s3)" }}
+            >
+              <span
+                style={{
+                  fontSize: "12px",
+                  fontWeight: 700,
+                  color: "var(--accent)",
+                  fontFamily: "var(--font-mono, monospace)",
+                  flexShrink: 0,
+                  width: "18px",
+                }}
+              >
+                {cat.code}
+              </span>
+              <span style={{ fontSize: "12px", color: "var(--text-2)", flex: 1 }}>
+                {cat.name}
+              </span>
+              <span style={{ fontSize: "12px", color: "var(--text-3)", fontWeight: 600 }}>
+                {cat.count}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* ── OWASP MCP Top 10 overview ───────────────── */}
-      <div className="card">
+      <div className="card section-gap">
         <h2 className="section-title" style={{ marginBottom: "var(--s4)" }}>
           OWASP MCP Top 10 Coverage
         </h2>
