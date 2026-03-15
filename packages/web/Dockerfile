@@ -33,4 +33,5 @@ COPY --from=builder --chown=nextjs:nodejs /app/packages/web /app/packages/web
 USER nextjs
 EXPOSE 3000
 # Pass $PORT so next start listens on the port Railway routes traffic to.
-CMD ["sh", "-c", "pnpm exec next start -p ${PORT:-3000}"]
+# Invoke next directly (no pnpm) — runner stage has no workspace root package.json.
+CMD ["sh", "-c", "/app/node_modules/.bin/next start -p ${PORT:-3000}"]
