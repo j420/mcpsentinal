@@ -1,0 +1,49 @@
+id: K15
+name: Multi-Agent Collusion Preconditions
+category: compliance-governance
+severity: high
+owasp: MCP05-privilege-escalation
+mitre: AML.T0054
+
+# FRAMEWORK MAPPING (P11 Compliance Mapper):
+# - MAESTRO L7: Agent Ecosystem — sybil identities, goal-misalignment cascades
+# - CoSAI MCP-T9: Trust Boundary Failures — agent collusion
+# - OWASP ASI07: Insecure Inter-Agent Communication — coordinated attacks
+# - MITRE ATLAS: AI Agent Tool Invocation — lateral exploitation
+# - NIST AI RMF MAP 2.1: Identify AI system limitations (multi-agent blind spots)
+#
+# WHAT WE CAN DETECT STATICALLY:
+# Runtime collusion detection requires behavioral baselining (out of scope for v1).
+# But we CAN detect the PRECONDITIONS that enable collusion:
+#   1. Tools that accept unconstrained agent identity (no identity verification)
+#   2. Shared write surfaces without access control
+#   3. Tools that can trigger other agents' tools (transitive invocation)
+#   4. Missing rate limits on cross-agent operations
+#   5. No audit of inter-agent communication
+
+detect:
+  type: regex
+  patterns:
+    # Unconstrained agent identity — no verification
+    - "(?i)(agent[_\\s-]?(?:id|name|identity|source))\\s*[:=]\\s*(?:req|request|params|input|args)(?!.*(?:verify|validate|authenticate|whitelist|allowlist))"
+    # Transitive tool invocation (calling another agent's tools)
+    - "(?i)(invoke|call|execute|trigger)[_\\s-]?(?:agent|tool|server).*(?:agent|tool|server)[_\\s-]?(?:id|name)\\s*[:=]\\s*(?:input|params|request)"
+    # Shared write surfaces without ACL
+    - "(?i)(shared[_\\s-]?(?:queue|topic|channel|bus|event)).*(?:publish|emit|send|dispatch)(?!.*(?:acl|auth|permission|verify|validate))"
+    # Missing rate limits on agent-to-agent operations
+    - "(?i)(agent|delegate|orchestrat).*(?:invoke|call|execute|spawn)(?!.*(?:rate[_\\s-]?limit|throttle|quota|max[_\\s-]?concurrent|semaphore))"
+    # No audit of inter-agent communication
+    - "(?i)(agent|delegate).*(?:send|receive|message|communicate)(?!.*(?:log|audit|trace|record|monitor))"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture"
+    - "(?i)verify|validate|authenticate|authorize|acl|rbac"
+remediation: "Implement collusion-resistant multi-agent architecture: (1) Verify agent identity cryptographically before accepting commands, (2) Apply ACLs to shared write surfaces, (3) Rate-limit cross-agent invocations, (4) Audit all inter-agent communication with timestamps and agent IDs, (5) Baseline normal interaction patterns for anomaly detection. Required by MAESTRO L7 and CoSAI MCP-T9."
+test_cases:
+  true_positive:
+    - { description: "Source code accepts agent_id from request parameters without validation for tool invocation", expected: true }
+    - { description: "Source code publishes to shared event bus without ACL checks or rate limiting", expected: true }
+  true_negative:
+    - { description: "Source code validates agent identity via cryptographic signature before accepting commands", expected: false }
+    - { description: "Test file simulates inter-agent communication with mock agents", expected: false }
+enabled: true

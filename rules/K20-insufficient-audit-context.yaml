@@ -1,0 +1,47 @@
+id: K20
+name: Insufficient Audit Context in Logging
+category: compliance-governance
+severity: medium
+owasp: MCP09-logging-monitoring
+mitre: AML.T0054
+
+# FRAMEWORK MAPPING (P11 Compliance Mapper):
+# - ISO 27001 A.8.15: Event logs — who, what, when, where, outcome
+# - ISO 42001 A.8.1: Transparency — observable, explainable behavior
+# - NIST AI RMF MEASURE 2.6: Security evaluation requires complete evidence
+# - CoSAI MCP-T12: Insufficient Logging — incomplete audit context
+# - MAESTRO L5: Observability — telemetry completeness
+#
+# THE GAP: K1 detects absent logging. This detects PRESENT BUT INADEQUATE
+# logging — log statements that exist but lack critical fields needed
+# for incident response: no timestamp, no correlation ID, no agent/user
+# identity, no tool name, or no operation parameters.
+# ISO 27001 A.8.15 requires: who, what, when, where, and outcome.
+
+detect:
+  type: regex
+  patterns:
+    # console.log/warn/error for production request handling (not structured)
+    - "(?i)console\\.(log|warn|error)\\s*\\(\\s*[\"'`](?:request|handling|processing|executing|tool|invoke)"
+    - "(?i)console\\.(log|warn|error)\\s*\\(\\s*(?:req|request|ctx|context)\\b"
+    # Logger calls with only a message string (no structured fields)
+    - "(?i)logger\\.(info|warn|error|debug)\\s*\\(\\s*[\"'`][^\"'`]+[\"'`]\\s*\\)\\s*;?\\s*$"
+    # Python print for request handling
+    - "(?i)print\\s*\\(.*(?:request|handle|process|tool|invoke|execute)"
+    # Logger without correlation/request ID
+    - "(?i)logger\\.(info|warn|error)\\s*\\(.*(?:tool|request|handle|invoke)(?!.*(?:requestId|correlationId|traceId|spanId|agent[_\\s-]?id|user[_\\s-]?id))"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture"
+    - "(?i)requestId|correlationId|traceId|spanId|agent[_\\s-]?id|user[_\\s-]?id"
+    - "(?i)pino|winston|bunyan|structlog"
+remediation: "Use structured logging that includes all five ISO 27001 A.8.15 fields: (1) WHO — agent/user identity, (2) WHAT — tool name and operation, (3) WHEN — ISO 8601 timestamp, (4) WHERE — server ID and correlation ID, (5) OUTCOME — success/failure and result summary. Replace console.log with structured loggers (pino, winston). Add correlation IDs for request tracing across multi-agent chains."
+test_cases:
+  true_positive:
+    - { description: "Source code uses console.log('handling request') for production request processing", expected: true }
+    - { description: "Source code calls logger.info('tool invoked') with only a message string and no structured fields", expected: true }
+    - { description: "Python source uses print() to log tool execution in production handler", expected: true }
+  true_negative:
+    - { description: "Source code uses pino logger with requestId, toolName, agentId, and duration fields", expected: false }
+    - { description: "Test file uses console.log for debugging assertions during development", expected: false }
+enabled: true

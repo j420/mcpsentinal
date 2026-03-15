@@ -1,0 +1,46 @@
+id: K4
+name: Missing Human Confirmation for Destructive Operations
+category: compliance-governance
+severity: high
+owasp: MCP06-excessive-permissions
+mitre: AML.T0054
+
+# FRAMEWORK MAPPING (P11 Compliance Mapper):
+# - ISO 42001 A.9.1: Acceptable use — human-in-the-loop for high-risk operations
+# - ISO 42001 A.9.2: Override capabilities — ability to intervene
+# - NIST AI RMF GOVERN 1.7: Decommission/override mechanisms
+# - EU AI Act Art. 14: Human oversight — effective oversight during use
+# - CoSAI MCP-T2: Missing Access Control — insecure human-in-the-loop
+# - OWASP ASI09: Human-Agent Trust Exploitation
+#
+# THE GAP: Destructive operations (delete, drop, truncate, overwrite, send)
+# executed without any confirmation prompt, approval gate, or human-in-the-loop
+# mechanism. The MCP 2025-03-26 spec added destructiveHint annotations
+# specifically for this purpose — tools marked destructive should require
+# confirmation before execution.
+
+detect:
+  type: regex
+  patterns:
+    # Destructive operations without confirmation patterns
+    - "(?i)(delete|remove|drop|truncate|destroy|purge|wipe|erase).*(?:execute|run|perform|call)(?!.*(?:confirm|approve|prompt|ask|verify|consent))"
+    - "(?i)(?:execute|run|perform|call).*(?:delete|remove|drop|truncate|destroy)(?!.*(?:confirm|approve|prompt|ask|verify))"
+    # Auto-execute patterns that bypass approval
+    - "(?i)(auto[_\\s-]?execute|auto[_\\s-]?approve|skip[_\\s-]?confirm|no[_\\s-]?prompt)"
+    - "(?i)(bypass|skip|disable)[_\\s-]?(confirmation|approval|consent|verification)"
+    # Force flags on destructive operations
+    - "(?i)(force|no[_\\s-]?confirm|yes[_\\s-]?all|assume[_\\s-]?yes).*(?:delete|remove|drop|overwrite)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture"
+    - "(?i)confirm|approve|prompt|consent|human.?in.?the.?loop|approval.?gate"
+    - "(?i)dry[_\\s-]?run|preview|simulate"
+remediation: "All destructive operations (delete, drop, overwrite, send) MUST include a human confirmation step. Use the MCP destructiveHint annotation to signal that client-side confirmation is required. Implement an approval gate pattern: preview changes → request confirmation → execute. Required by ISO 42001 A.9.1, EU AI Act Art. 14, and NIST AI RMF GOVERN 1.7."
+test_cases:
+  true_positive:
+    - { description: "Source code auto-executes delete operation with auto_approve=True and no confirmation", expected: true }
+    - { description: "Source code has skip_confirmation flag that bypasses approval for destructive operations", expected: true }
+  true_negative:
+    - { description: "Source code prompts for human confirmation before executing delete operation", expected: false }
+    - { description: "Test file simulates destructive operation with dry_run=true", expected: false }
+enabled: true

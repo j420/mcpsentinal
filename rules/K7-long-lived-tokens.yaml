@@ -1,0 +1,44 @@
+id: K7
+name: Long-Lived Tokens Without Rotation
+category: compliance-governance
+severity: high
+owasp: MCP06-excessive-permissions
+mitre: AML.T0054
+
+# FRAMEWORK MAPPING (P11 Compliance Mapper):
+# - OWASP ASI03: Identity & Privilege Abuse — cached credentials
+# - CoSAI MCP-T1: Improper Authentication — token theft, replay attacks
+# - ISO 27001 A.8.24: Cryptographic controls — key/token lifecycle management
+# - CSA AICM: Identity & Access Management — credential management
+# - NIST Cyber AI Profile: Credential lifecycle management for AI systems
+#
+# THE GAP: MCP servers that store tokens with no expiry, rotation, or
+# refresh mechanism. A stolen long-lived token gives persistent access.
+# OWASP ASI03 specifically calls out "cached credentials" as a vector.
+
+detect:
+  type: regex
+  patterns:
+    # Tokens with no expiry
+    - "(?i)(token|jwt|api[_\\s-]?key|access[_\\s-]?token).*(?:no[_\\s-]?expir|never[_\\s-]?expire|expire.*null|expire.*-1)"
+    - "(?i)(expiresIn|expires_in|ttl|max[_\\s-]?age)\\s*[:=]\\s*(?:null|undefined|Infinity|0|false)"
+    # Very long token lifetimes (>30 days in seconds)
+    - "(?i)(expiresIn|expires_in|ttl)\\s*[:=]\\s*[\"']?(?:[3-9]\\d{6,}|\\d{8,})[\"']?"
+    - "(?i)(expiresIn|expires_in|ttl)\\s*[:=]\\s*[\"']?(?:365|730|3650)[_\\s]?d"
+    # Missing refresh token implementation
+    - "(?i)(access[_\\s-]?token|bearer).*(?:store|save|cache|persist)(?!.*(?:refresh|rotate|expir|ttl|renew))"
+    # Hardcoded tokens used directly (no rotation possible)
+    - "(?i)(API_KEY|TOKEN|SECRET)\\s*[:=]\\s*[\"'][A-Za-z0-9_\\-]{20,}[\"'](?!.*(?:rotate|refresh|renew|vault|ssm|secret.?manager))"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture"
+    - "(?i)refresh|rotate|renew|vault|aws.?ssm|secret.?manager|key.?rotation"
+remediation: "Use short-lived tokens (1 hour max) with refresh token rotation. Implement token expiry validation on every request. Store tokens in secure credential managers (AWS SSM, HashiCorp Vault) instead of hardcoding. Required by ISO 27001 A.8.24 (cryptographic controls) and OWASP ASI03."
+test_cases:
+  true_positive:
+    - { description: "Source code stores access_token with expiresIn = null (never expires)", expected: true }
+    - { description: "Source code persists bearer token to file cache with no refresh or rotation logic", expected: true }
+  true_negative:
+    - { description: "Source code stores token with 1-hour TTL and implements refresh token rotation", expected: false }
+    - { description: "Test file uses mock API key fixture for unit testing", expected: false }
+enabled: true

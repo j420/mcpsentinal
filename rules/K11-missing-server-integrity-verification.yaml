@@ -1,0 +1,45 @@
+id: K11
+name: Missing Server Integrity Verification
+category: compliance-governance
+severity: high
+owasp: MCP10-supply-chain
+mitre: AML.T0054
+
+# FRAMEWORK MAPPING (P11 Compliance Mapper):
+# - CoSAI MCP-T6: Missing Integrity/Verification — cryptographic server verification
+# - CoSAI MCP-T11: Supply Chain/Lifecycle Failures — unsigned servers
+# - OWASP ASI04: Supply chain — require signed manifests, pin dependencies
+# - ISO 27001 A.8.24: Cryptographic controls — integrity verification
+# - ISO 27001 A.5.20: Supplier agreements — service verification
+# - MAESTRO L3: Agent Frameworks — tool marketplace manipulation
+# - CSA AICM: Supply Chain Transparency — provenance
+#
+# THE GAP: No MCP server currently provides cryptographic verification
+# of its tool definitions or source code. Anyone can publish an MCP
+# server claiming to be "official-filesystem-server" without proof.
+# This rule detects when an MCP server LOADS or CONNECTS to other
+# MCP servers without verifying their identity or integrity.
+
+detect:
+  type: regex
+  patterns:
+    # Loading MCP servers without verification
+    - "(?i)(connect|load|register|add)[_\\s-]?(mcp|server|tool)(?!.*(?:verify|validate|checksum|hash|sign|cert|fingerprint|pin))"
+    - "(?i)(?:mcp|server|tool)[_\\s-]?(?:url|endpoint|address)\\s*[:=].*(?:http|ws)(?!.*(?:verify|pin|cert|tls))"
+    # Dynamic server loading from untrusted sources
+    - "(?i)(?:fetch|download|pull|install)[_\\s-]?(?:mcp|server|plugin).*(?:url|registry|marketplace)"
+    # Missing checksum verification on downloaded code
+    - "(?i)(?:download|fetch|pull).*(?:server|plugin|tool)(?!.*(?:sha256|sha512|checksum|digest|integrity|hash|verify))"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture"
+    - "(?i)verify|validate|checksum|hash|sign|integrity|fingerprint|sha256|sha512"
+remediation: "Implement cryptographic verification for MCP server connections: (1) Pin server TLS certificates or public keys, (2) Verify server tool definition checksums against a known-good manifest, (3) Use package manager integrity checks (npm integrity, pip --require-hashes). The MCP spec recommends but doesn't yet mandate server signing — implement it proactively. Required by ISO 27001 A.8.24 and CoSAI MCP-T6."
+test_cases:
+  true_positive:
+    - { description: "Source code connects to MCP server URL from config without any certificate pinning or verification", expected: true }
+    - { description: "Source code downloads MCP plugin from marketplace URL without checksum verification", expected: true }
+  true_negative:
+    - { description: "Source code verifies MCP server SHA-256 checksum before connecting", expected: false }
+    - { description: "Test fixture loads mock MCP server for unit testing", expected: false }
+enabled: true

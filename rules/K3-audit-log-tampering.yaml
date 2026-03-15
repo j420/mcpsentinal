@@ -1,0 +1,47 @@
+id: K3
+name: Audit Log Tampering
+category: compliance-governance
+severity: critical
+owasp: MCP09-logging-monitoring
+mitre: AML.T0054
+
+# FRAMEWORK MAPPING (P11 Compliance Mapper):
+# - ISO 27001 A.8.15: Logs shall be protected against tampering
+# - NIST AI RMF MEASURE: Security evaluation requires reliable evidence
+# - CoSAI MCP-T12: Adversary who tampers with logs hides compromised agents
+# - MAESTRO L5: Telemetry manipulation
+#
+# THE ATTACK (distinct from K2 deletion): Rather than destroying logs,
+# the attacker MODIFIES existing log entries or INJECTS false entries
+# to create an alibi. A compromised MCP tool writes benign-looking
+# log entries over the real malicious activity trace. This is harder
+# to detect than deletion because the log file still exists and appears complete.
+
+detect:
+  type: regex
+  patterns:
+    # Reading log file, modifying, rewriting (tampering pattern)
+    - "(?i)readFile(?:Sync)?\\s*\\(.*(?:log|audit).*(?:replace|split|filter|map).*writeFile"
+    - "(?i)(?:log|audit)[_\\s-]?(?:file|path).*(?:sed|awk|perl).*-i"
+    # Seeking to specific position in log file to overwrite
+    - "(?i)(?:log|audit).*(?:seek|fseek|lseek|position).*(?:write|put)"
+    # Injecting false timestamps or forged entries
+    - "(?i)(?:fake|forge|spoof|fabricate)[_\\s-]?(?:log|timestamp|entry|record)"
+    - "(?i)(?:log|audit).*(?:backdate|antedate|forge.*time)"
+    # Modifying log entries in-place
+    - "(?i)(?:log|audit).*\\bsed\\b.*-i|\\bsed\\b.*-i.*(?:log|audit)"
+    # Python in-place log modification
+    - "(?i)open\\s*\\(.*(?:log|audit).*[\"']r\\+[\"']"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture"
+    - "(?i)redact|sanitize|mask|pii|gdpr"
+remediation: "Logs must be append-only. Never read-modify-write log files. Use structured logging to an immutable store (append-only file, write-once storage, or centralized log service). If PII redaction is needed, redact at write time, not retroactively. Required by ISO 27001 A.8.15."
+test_cases:
+  true_positive:
+    - { description: "Source code reads audit log file, filters out entries matching a pattern, then rewrites the file", expected: true }
+    - { description: "Source code opens log file in r+ mode to overwrite specific entries", expected: true }
+  true_negative:
+    - { description: "Source code redacts PII from log messages at write time before appending to log", expected: false }
+    - { description: "Test file reads log output to verify correct entries were written", expected: false }
+enabled: true

