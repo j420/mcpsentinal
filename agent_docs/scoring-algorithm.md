@@ -15,7 +15,7 @@
 Each category starts at 100 and is reduced independently:
 - **Code Score**: Findings from C1-C16 (code-analysis rules)
 - **Dependencies Score**: Findings from D1-D7 (dependency-analysis rules)
-- **Config Score**: Findings from B1-B7, F1-F7, G1-G7, H1-H3, I1-I16 (schema + ecosystem + adversarial-ai + 2026 attack surface + protocol-surface rules)
+- **Config Score**: Findings from B1-B7, F1-F7, G1-G7, H1-H3, I1-I16, J1-J7, K1-K20 (schema + ecosystem + adversarial-ai + 2026 attack surface + protocol-surface + threat-intelligence + compliance-governance rules)
 - **Description Score**: Findings from A1-A9 (description-analysis rules)
 - **Behavior Score**: Findings from E1-E4 (behavioral-analysis rules)
 
@@ -32,6 +32,8 @@ The scorer maps rule categories to sub-scores via `CATEGORY_MAP`:
 | `adversarial-ai` | `config_score` |
 | `auth-analysis` | `config_score` |
 | `protocol-surface` | `config_score` |
+| `threat-intelligence` | `config_score` |
+| `compliance-governance` | `config_score` |
 
 ### Special Rules
 1. **Lethal Trifecta (F1)**: If detected, total score is CAPPED at 40 regardless of other findings.
