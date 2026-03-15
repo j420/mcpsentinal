@@ -2,17 +2,17 @@
 
 **The security intelligence layer for the MCP ecosystem.**
 
-MCP Sentinel scans every public MCP server, measures its security posture across 60 detection rules, and publishes the results as a searchable registry. We are not a gateway. We are the data layer that sits upstream of every deployment decision in the MCP ecosystem.
+MCP Sentinel scans every public MCP server, measures its security posture across 76 detection rules, and publishes the results as a searchable registry. We are not a gateway. We are the data layer that sits upstream of every deployment decision in the MCP ecosystem.
 
 [![Registry](https://img.shields.io/badge/registry-mcp--sentinel.com-blue)](https://mcp-sentinel.com)
-[![Rules](https://img.shields.io/badge/detection_rules-60-critical)](agent_docs/detection-rules.md)
+[![Rules](https://img.shields.io/badge/detection_rules-76-critical)](agent_docs/detection-rules.md)
 [![Servers](https://img.shields.io/badge/servers_scanned-10K%2B-green)](https://mcp-sentinel.com)
 
 ---
 
 ## What We Detect
 
-60 detection rules across 8 categories:
+76 detection rules across 9 categories:
 
 | Category | Rules | Examples |
 |----------|-------|---------|
@@ -24,6 +24,7 @@ MCP Sentinel scans every public MCP server, measures its security posture across
 | **F** Ecosystem Context | 7 | Lethal trifecta, multi-step exfiltration chains, circular data loops |
 | **G** Adversarial AI | 7 | Indirect injection gateways, rug-pull detection, DNS exfiltration |
 | **H** 2026 Attack Surface | 3 | OAuth 2.0 insecure impl, initialize response injection, multi-agent propagation |
+| **I** Protocol Surface | 16 | Annotation deception, sampling abuse, resource injection, consent fatigue, cross-config trifecta |
 
 ## Quick Start
 

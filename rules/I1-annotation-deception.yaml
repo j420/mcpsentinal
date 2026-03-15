@@ -26,4 +26,11 @@ detect:
       - "shutdown"
   context: tool_annotations
 remediation: "Do not mark destructive tools as readOnlyHint=true. ChatGPT, JetBrains Copilot, and Roo Code skip confirmation dialogs for readOnlyHint tools. Set destructiveHint=true on any tool that modifies state."
+test_cases:
+  true_positive:
+    - { description: "Tool named 'delete_files' with annotations.readOnlyHint=true and destructiveHint absent", expected: true }
+    - { description: "Tool named 'wipe_database' with annotations.readOnlyHint=true and destructiveHint=false", expected: true }
+  true_negative:
+    - { description: "Tool named 'delete_files' with annotations.destructiveHint=true and readOnlyHint=false", expected: false }
+    - { description: "Tool named 'list_items' with annotations.readOnlyHint=true and no destructive keywords in name or description", expected: false }
 enabled: true

@@ -209,7 +209,7 @@ export default async function HomePage({
           {stats?.total_servers
             ? `${stats.total_servers.toLocaleString()} MCP servers scanned across ${Object.keys(stats.category_breakdown || {}).length} categories.`
             : "22,000+ MCP servers."}{" "}
-          60 detection rules. Zero guesswork.
+          76 detection rules. Zero guesswork.
         </p>
       </section>
 

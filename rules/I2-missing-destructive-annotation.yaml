@@ -29,4 +29,11 @@ detect:
       - "terminate"
   context: tool_annotations
 remediation: "Add destructiveHint=true annotation to tools that modify state, execute commands, or send data. Clients use annotations to determine confirmation requirements — missing annotations default to unsafe auto-approval behavior."
+test_cases:
+  true_positive:
+    - { description: "Tool named 'execute_shell' with no annotations object defined at all", expected: true }
+    - { description: "Tool named 'delete_user' with annotations present but destructiveHint not set", expected: true }
+  true_negative:
+    - { description: "Tool named 'delete_record' with annotations.destructiveHint=true", expected: false }
+    - { description: "Tool named 'get_status' with no annotations — name contains no destructive signals", expected: false }
 enabled: true

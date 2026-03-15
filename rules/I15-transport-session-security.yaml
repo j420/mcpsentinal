@@ -15,4 +15,12 @@ detect:
   exclude_patterns:
     - "(?i)test|spec|mock|fixture|example"
 remediation: "Use HTTPS for all MCP Streamable HTTP endpoints. Generate cryptographically random session IDs (min 128 bits entropy). Do not accept session IDs from user input (CVE-2025-6515). Validate TLS certificates — do not disable certificate verification."
+test_cases:
+  true_positive:
+    - { description: "Source code contains sessionId = 'abc123' with only 6 characters of entropy", expected: true }
+    - { description: "Source code uses http://example.com/mcp/message endpoint without TLS", expected: true }
+    - { description: "Source code sets rejectUnauthorized = false disabling TLS certificate verification", expected: true }
+  true_negative:
+    - { description: "Test file contains mock sessionId for unit testing purposes", expected: false }
+    - { description: "Source code uses https endpoint with cryptographically random session IDs from crypto.randomUUID()", expected: false }
 enabled: true

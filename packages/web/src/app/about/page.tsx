@@ -321,7 +321,7 @@ export default function AboutPage() {
             marginBottom: "var(--s2)",
           }}
         >
-          60 detection rules across 8 categories
+          76 detection rules across 9 categories
         </h2>
         <p
           style={{
@@ -612,7 +612,7 @@ Floor: 0  |  Ceiling: 100`}</pre>
           {[
             {
               title: "Rules are data, not code",
-              body: "All 60 detection rules are YAML definitions. The engine interprets them. Adding a rule never requires changing engine code.",
+              body: "All 76 detection rules are YAML definitions. The engine interprets them. Adding a rule never requires changing engine code.",
             },
             {
               title: "No LLMs in v1",

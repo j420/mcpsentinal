@@ -522,7 +522,7 @@ export default async function ServerPage({
                   No findings detected
                 </div>
                 <div style={{ fontSize: "13px", color: "var(--text-3)" }}>
-                  This server passed all 60 detection rules.
+                  This server passed all 76 detection rules.
                 </div>
               </div>
             ) : (

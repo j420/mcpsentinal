@@ -25,4 +25,12 @@ detect:
       - "file:///C:/Users"
   context: metadata
 remediation: "Declare filesystem roots at the minimum required scope — project directories, not system roots. CVE-2025-53109 and CVE-2025-53110 demonstrated root boundary bypass in Anthropic's own filesystem server. Over-privileged roots enable path traversal, symlink exploitation, and sensitive data exposure."
+test_cases:
+  true_positive:
+    - { description: "Server declares filesystem root as 'file:///' granting full system access", expected: true }
+    - { description: "Server declares root as 'file:///C:/Windows' exposing Windows system directory", expected: true }
+    - { description: "Server declares root as 'file:///etc' exposing system configuration files", expected: true }
+  true_negative:
+    - { description: "Server declares root as 'file:///home/user/projects/myapp' scoped to project directory", expected: false }
+    - { description: "Server declares root as 'file:///home/user/Documents/work' scoped to a specific folder", expected: false }
 enabled: true

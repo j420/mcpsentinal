@@ -10,7 +10,7 @@ Stage 1: SourceFetcher          → download source code from GitHub
 Stage 2: DependencyAuditor      → enrich deps via OSV API (CVE data)
 Stage 3: discoverEndpoint()     → find live HTTP endpoint from source metadata
 Stage 4: MCPConnector           → enumerate tools via initialize + tools/list only
-Stage 5: AnalysisEngine         → run all 60 detection rules → FindingInput[]
+Stage 5: AnalysisEngine         → run all 76 detection rules → FindingInput[]
 Stage 6: computeScore()         → composite 0–100 score
 Stage 7: Persist                → insertFindings + insertScore + completeScan
 ```

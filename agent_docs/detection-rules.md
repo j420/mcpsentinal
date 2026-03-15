@@ -67,16 +67,16 @@ Rules A–G were comprehensive for the MCP ecosystem at launch. By March 2026, t
 
 | OWASP ID | Name | Rules |
 |----------|------|-------|
-| MCP01 | Prompt Injection | A1, A5, A7, A8, A9, B5, F1, F6 |
-| MCP02 | Tool Poisoning | A2, A4, A6, F2, F5 |
+| MCP01 | Prompt Injection | A1, A5, A7, A8, A9, B5, F1, F6, I3, I6, I7 |
+| MCP02 | Tool Poisoning | A2, A4, A6, F2, F5, I1, I2 |
 | MCP03 | Command Injection | C1, C9, C13, C16 |
-| MCP04 | Data Exfiltration | A3, F1, F3, F7 |
-| MCP05 | Privilege Escalation | C2, C8, C10, C12 |
-| MCP06 | Excessive Permissions | A2, B3, B7, E4, F2 |
-| MCP07 | Insecure Configuration | B6, C7, C8, C11, C14, C15, D6, E1, E2 |
+| MCP04 | Data Exfiltration | A3, F1, F3, F7, I9, I13 |
+| MCP05 | Privilege Escalation | C2, C8, C10, C12, I4, I12 |
+| MCP06 | Excessive Permissions | A2, B3, B7, E4, F2, I11, I16 |
+| MCP07 | Insecure Configuration | B6, C7, C8, C11, C14, C15, D6, E1, E2, I15 |
 | MCP08 | Dependency Vulnerabilities | D1, D2, D3, D4, D5, D6, D7 |
 | MCP09 | Logging & Monitoring | C6, E3 |
-| MCP10 | Supply Chain | D3, D5, D7, A4, F5 |
+| MCP10 | Supply Chain | D3, D5, D7, A4, F5, I5, I14 |
 
 ---
 
