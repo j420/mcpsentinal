@@ -1,65 +1,65 @@
 /* ============================================================
    MCP Sentinel — Design System
-   Light security intelligence palette (Anthropic.com style)
-   bg: #faf9f5  surface: #FFFFFF  accent: #6a9bcc (Anthropic blue)
+   Premium security intelligence portal
+   bg: #F8F9FA  surface: #FFFFFF  accent: #4F46E5 (deep indigo)
    ============================================================ */
 
 /* ── Tokens ─────────────────────────────────────────────── */
 :root {
-  /* ── Light backgrounds ── */
-  --bg:           #faf9f5;
+  /* ── Backgrounds — clean neutral ── */
+  --bg:           #F8F9FA;
   --surface:      #FFFFFF;
-  --surface-2:    #f0ede8;
-  --surface-3:    #e8e6dc;
+  --surface-2:    #F3F4F6;
+  --surface-3:    #E5E7EB;
 
-  /* ── Borders ── */
-  --border:        rgba(0, 0, 0, 0.08);
-  --border-md:     rgba(0, 0, 0, 0.13);
-  --border-strong: rgba(0, 0, 0, 0.22);
+  /* ── Borders — solid, crisp ── */
+  --border:        #E5E7EB;
+  --border-md:     #D1D5DB;
+  --border-strong: #9CA3AF;
 
-  /* ── Text — warm-toned ── */
-  --text:         #141413;
-  --text-2:       #4a4a47;
-  --text-3:       #b0aea5;
+  /* ── Text ── */
+  --text:         #111827;
+  --text-2:       #374151;
+  --text-3:       #9CA3AF;
   --text-inv:     #FFFFFF;
 
-  /* ── Accent: Anthropic blue ── */
-  --accent:       #6a9bcc;
-  --accent-hover: #4d7fa8;
-  --accent-light: #8ab4d4;
-  --accent-sub:   rgba(106, 155, 204, 0.10);
-  --accent-ring:  rgba(106, 155, 204, 0.22);
+  /* ── Accent: deep indigo — authoritative ── */
+  --accent:       #4F46E5;
+  --accent-hover: #4338CA;
+  --accent-light: #818CF8;
+  --accent-sub:   rgba(79, 70, 229, 0.06);
+  --accent-ring:  rgba(79, 70, 229, 0.20);
 
-  /* ── Score semantic colors (calibrated for light bg) ── */
-  --good:         #1A7A4A;
-  --good-sub:     rgba(26, 122, 74, 0.09);
-  --moderate:     #7A6010;
-  --moderate-sub: rgba(122, 96, 16, 0.09);
-  --poor:         #B54A10;
-  --poor-sub:     rgba(181, 74, 16, 0.09);
-  --critical:     #A82020;
-  --critical-sub: rgba(168, 32, 32, 0.09);
+  /* ── Score semantic colors ── */
+  --good:         #166534;
+  --good-sub:     rgba(22, 101, 52, 0.07);
+  --moderate:     #92400E;
+  --moderate-sub: rgba(146, 64, 14, 0.07);
+  --poor:         #C2410C;
+  --poor-sub:     rgba(194, 65, 12, 0.07);
+  --critical:     #991B1B;
+  --critical-sub: rgba(153, 27, 27, 0.07);
 
   /* ── Severity palette ── */
-  --sev-critical: #A82020;
-  --sev-high:     #B54A10;
-  --sev-medium:   #7A6010;
-  --sev-low:      #1A7A4A;
-  --sev-info:     #2B6CB0;
+  --sev-critical: #991B1B;
+  --sev-high:     #C2410C;
+  --sev-medium:   #92400E;
+  --sev-low:      #166534;
+  --sev-info:     #1E40AF;
 
   /* ── Capability tag colors ── */
-  --cap-exec:      rgba(168, 32, 32, 0.07);
-  --cap-exec-text: #A82020;
-  --cap-write:     rgba(181, 74, 16, 0.07);
-  --cap-write-text:#B54A10;
-  --cap-net:       rgba(43, 108, 176, 0.07);
-  --cap-net-text:  #2B6CB0;
-  --cap-read:      rgba(26, 122, 74, 0.07);
-  --cap-read-text: #1A7A4A;
-  --cap-cred:      rgba(122, 96, 16, 0.07);
-  --cap-cred-text: #7A6010;
-  --cap-fs:        rgba(109, 60, 200, 0.07);
-  --cap-fs-text:   #6D3CC8;
+  --cap-exec:      rgba(153, 27, 27, 0.07);
+  --cap-exec-text: #991B1B;
+  --cap-write:     rgba(194, 65, 12, 0.07);
+  --cap-write-text:#C2410C;
+  --cap-net:       rgba(30, 64, 175, 0.07);
+  --cap-net-text:  #1E40AF;
+  --cap-read:      rgba(22, 101, 52, 0.07);
+  --cap-read-text: #166534;
+  --cap-cred:      rgba(146, 64, 14, 0.07);
+  --cap-cred-text: #92400E;
+  --cap-fs:        rgba(107, 33, 168, 0.07);
+  --cap-fs-text:   #6B21A8;
 
   /* ── Spacing — 4px base grid ── */
   --s1: 4px;
@@ -73,22 +73,22 @@
   --s12: 48px;
   --s16: 64px;
 
-  /* ── Radii ── */
-  --r-sm: 6px;
-  --r-md: 10px;
-  --r-lg: 14px;
-  --r-xl: 20px;
+  /* ── Radii — refined, professional ── */
+  --r-sm: 4px;
+  --r-md: 6px;
+  --r-lg: 8px;
+  --r-xl: 12px;
   --r-full: 9999px;
 
   /* ── Transitions ── */
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
-  --t-fast: 120ms;
-  --t-base: 200ms;
+  --t-fast: 100ms;
+  --t-base: 160ms;
 
-  /* ── Shadows (light, warm) ── */
-  --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md:   0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.05);
-  --shadow-lg:   0 12px 40px rgba(0,0,0,0.10), 0 4px 12px rgba(0,0,0,0.06);
+  /* ── Shadows — refined, minimal ── */
+  --shadow-card: 0 1px 2px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.03);
+  --shadow-md:   0 4px 12px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg:   0 8px 30px rgba(0,0,0,0.09), 0 3px 8px rgba(0,0,0,0.05);
 }
 
 /* ── Reset ──────────────────────────────────────────────── */
@@ -102,7 +102,7 @@ html {
 }
 
 body {
-  font-family: 'Styrene A', 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background-color: var(--bg);
   color: var(--text);
   line-height: 1.6;
@@ -129,7 +129,7 @@ code, pre, kbd {
   top: 0;
   z-index: 100;
   border-bottom: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(248, 249, 250, 0.96);
   backdrop-filter: blur(24px) saturate(1.6);
   -webkit-backdrop-filter: blur(24px) saturate(1.6);
 }
@@ -150,7 +150,7 @@ code, pre, kbd {
   align-items: center;
   gap: var(--s2);
   color: var(--text);
-  font-family: 'Outfit Variable', 'Outfit', system-ui, sans-serif;
+  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
   font-weight: 700;
   font-size: 17px;
   letter-spacing: -0.03em;
@@ -177,9 +177,9 @@ code, pre, kbd {
 
 .nav-link {
   color: var(--text-2);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
-  padding: var(--s2) var(--s3);
+  padding: 6px var(--s3);
   border-radius: var(--r-sm);
   transition: color var(--t-fast) var(--ease);
 }
@@ -201,7 +201,7 @@ code, pre, kbd {
   border-top: 1px solid var(--border);
   padding: var(--s8) var(--s6);
   margin-top: var(--s16);
-  background: var(--surface-2);
+  background: var(--surface);
 }
 
 .footer-inner {
@@ -278,8 +278,8 @@ code, pre, kbd {
   width: 100%;
   height: 100%;
   background:
-    radial-gradient(ellipse 70% 60% at 50% 0%, rgba(106, 155, 204, 0.06) 0%, transparent 70%),
-    radial-gradient(ellipse 40% 35% at 50% 100%, rgba(240, 237, 232, 0.60) 0%, transparent 80%);
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(79, 70, 229, 0.04) 0%, transparent 70%),
+    transparent;
   pointer-events: none;
   z-index: 0;
 }
@@ -354,7 +354,7 @@ code, pre, kbd {
 }
 
 .stat-value {
-  font-family: 'Outfit Variable', 'Outfit', system-ui, sans-serif;
+  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
   font-size: 30px;
   font-weight: 700;
   letter-spacing: -0.04em;
@@ -383,7 +383,7 @@ code, pre, kbd {
 }
 
 .featured-heading {
-  font-family: 'Outfit Variable', 'Outfit', system-ui, sans-serif;
+  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
   font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -429,7 +429,7 @@ code, pre, kbd {
 }
 
 .featured-card-name {
-  font-family: 'Outfit Variable', 'Outfit', system-ui, sans-serif;
+  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
   font-size: 15px;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -580,7 +580,7 @@ code, pre, kbd {
   transition: background var(--t-fast) var(--ease);
 }
 .data-table tbody tr:last-child { border-bottom: none; }
-.data-table tbody tr:hover { background: #F5F3EF; }
+.data-table tbody tr:hover { background: var(--surface-2); }
 
 .data-table td {
   padding: var(--s3) var(--s4);
@@ -637,11 +637,11 @@ code, pre, kbd {
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-.sev-critical { background: rgba(168, 32, 32, 0.08);  color: #A82020; }
-.sev-high     { background: rgba(181, 74, 16, 0.08);  color: #B54A10; }
-.sev-medium   { background: rgba(122, 96, 16, 0.08);  color: #7A6010; }
-.sev-low      { background: rgba( 26,122, 74, 0.08);  color: #1A7A4A; }
-.sev-info     { background: rgba( 43,108,176, 0.08);  color: #2B6CB0; }
+.sev-critical { background: rgba(153, 27, 27, 0.08);  color: #991B1B; }
+.sev-high     { background: rgba(194, 65, 12, 0.08);  color: #C2410C; }
+.sev-medium   { background: rgba(146, 64, 14, 0.08);  color: #92400E; }
+.sev-low      { background: rgba( 22,101, 52, 0.08);  color: #166534; }
+.sev-info     { background: rgba( 30, 64,175, 0.08);  color: #1E40AF; }
 
 /* ── Category chip ──────────────────────────────────────── */
 .category-chip {
@@ -668,16 +668,16 @@ code, pre, kbd {
   white-space: nowrap;
   border: 1px solid transparent;
 }
-.cap-executes-code      { background: var(--cap-exec);  color: var(--cap-exec-text); border-color: rgba(168,32,32,0.15); }
-.cap-writes-data        { background: var(--cap-write); color: var(--cap-write-text); border-color: rgba(181,74,16,0.15); }
-.cap-sends-network      { background: var(--cap-net);   color: var(--cap-net-text); border-color: rgba(43,108,176,0.15); }
-.cap-reads-data         { background: var(--cap-read);  color: var(--cap-read-text); border-color: rgba(26,122,74,0.15); }
-.cap-manages-credentials{ background: var(--cap-cred);  color: var(--cap-cred-text); border-color: rgba(122,96,16,0.15); }
-.cap-accesses-filesystem{ background: var(--cap-fs);    color: var(--cap-fs-text); border-color: rgba(109,60,200,0.15); }
+.cap-executes-code      { background: var(--cap-exec);  color: var(--cap-exec-text); border-color: rgba(153,27,27,0.15); }
+.cap-writes-data        { background: var(--cap-write); color: var(--cap-write-text); border-color: rgba(194,65,12,0.15); }
+.cap-sends-network      { background: var(--cap-net);   color: var(--cap-net-text); border-color: rgba(30,64,175,0.15); }
+.cap-reads-data         { background: var(--cap-read);  color: var(--cap-read-text); border-color: rgba(22,101,52,0.15); }
+.cap-manages-credentials{ background: var(--cap-cred);  color: var(--cap-cred-text); border-color: rgba(146,64,14,0.15); }
+.cap-accesses-filesystem{ background: var(--cap-fs);    color: var(--cap-fs-text); border-color: rgba(107,33,168,0.15); }
 
 /* ── Section headings ───────────────────────────────────── */
 .section-title {
-  font-family: 'Outfit Variable', 'Outfit', system-ui, sans-serif;
+  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
   font-size: 16px;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -941,11 +941,11 @@ code, pre, kbd {
   border-left-width: 3px;
   box-shadow: var(--shadow-card);
 }
-.finding-critical { border-left-color: #A82020; background: rgba(168,32,32,0.03); }
-.finding-high     { border-left-color: #B54A10; background: rgba(181,74,16,0.02); }
-.finding-medium   { border-left-color: #7A6010; }
-.finding-low      { border-left-color: #1A7A4A; }
-.finding-informational { border-left-color: #2B6CB0; }
+.finding-critical { border-left-color: #991B1B; background: rgba(153,27,27,0.025); }
+.finding-high     { border-left-color: #C2410C; background: rgba(194,65,12,0.02); }
+.finding-medium   { border-left-color: #92400E; }
+.finding-low      { border-left-color: #166534; }
+.finding-informational { border-left-color: #1E40AF; }
 
 .finding-header {
   display: flex;
@@ -1032,7 +1032,7 @@ code, pre, kbd {
 }
 
 .mini-stat-val {
-  font-family: 'Outfit Variable', 'Outfit', system-ui, sans-serif;
+  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
   font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.03em;
@@ -1067,7 +1067,7 @@ code, pre, kbd {
 .breadcrumb a:hover { color: var(--text-2); }
 
 .server-title {
-  font-family: 'Outfit Variable', 'Outfit', system-ui, sans-serif;
+  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
   font-size: 30px;
   font-weight: 700;
   letter-spacing: -0.03em;
@@ -1139,7 +1139,7 @@ code, pre, kbd {
   box-shadow: var(--shadow-card);
 }
 .page-btn:hover { color: var(--text); border-color: var(--border-strong); background: var(--surface-2); }
-.page-btn.active { background: #1A1A1A; color: #FFFFFF; border-color: #1A1A1A; font-weight: 700; box-shadow: 0 2px 8px rgba(0,0,0,0.18); }
+.page-btn.active { background: var(--accent); color: #FFFFFF; border-color: var(--accent); font-weight: 600; box-shadow: 0 2px 8px rgba(79,70,229,0.25); }
 .page-btn:disabled,
 .page-btn[aria-disabled="true"] { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
 
@@ -1187,7 +1187,7 @@ code, pre, kbd {
 }
 
 .about-h1 {
-  font-family: 'Outfit Variable', 'Outfit', system-ui, sans-serif;
+  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
   font-size: clamp(28px, 4vw, 46px);
   font-weight: 800;
   letter-spacing: -0.04em;
@@ -1230,7 +1230,7 @@ code, pre, kbd {
 }
 
 .pipeline-name {
-  font-family: 'Outfit Variable', 'Outfit', system-ui, sans-serif;
+  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
   font-size: 15px;
   font-weight: 700;
   margin-bottom: var(--s2);
@@ -1296,7 +1296,7 @@ code, pre, kbd {
 }
 
 .notfound-code {
-  font-family: 'Outfit Variable', 'Outfit', system-ui, sans-serif;
+  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
   font-size: 80px;
   font-weight: 800;
   letter-spacing: -0.05em;
@@ -1314,7 +1314,7 @@ code, pre, kbd {
   align-items: center;
   gap: var(--s2);
   padding: 11px var(--s5);
-  background: #1A1A1A;
+  background: var(--accent);
   color: #FFFFFF;
   border-radius: var(--r-md);
   font-size: 14px;
@@ -1324,7 +1324,7 @@ code, pre, kbd {
   box-shadow: 0 1px 4px rgba(0,0,0,0.15);
 }
 .btn-primary:hover {
-  background: #333333;
+  background: var(--accent-hover);
   color: #FFFFFF;
   box-shadow: 0 4px 12px rgba(0,0,0,0.20);
   transform: translateY(-1px);
@@ -1391,7 +1391,7 @@ code, pre, kbd {
 }
 
 .cat-name {
-  font-family: 'Outfit Variable', 'Outfit', system-ui, sans-serif;
+  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
   font-size: 15px;
   font-weight: 700;
   color: var(--text);
@@ -1461,7 +1461,7 @@ code, pre, kbd {
 }
 
 .cat-detail-title {
-  font-family: 'Outfit Variable', 'Outfit', system-ui, sans-serif;
+  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
   font-size: clamp(24px, 4vw, 36px);
   font-weight: 800;
   letter-spacing: -0.04em;
@@ -1511,8 +1511,8 @@ code, pre, kbd {
 }
 .test-type-row:last-child { border-bottom: none; }
 .test-type-row:hover { background: var(--surface-2); }
-.test-type-row.tt-fail { background: rgba(168, 32, 32, 0.025); }
-.test-type-row.tt-fail:hover { background: rgba(168, 32, 32, 0.05); }
+.test-type-row.tt-fail { background: rgba(153, 27, 27, 0.025); }
+.test-type-row.tt-fail:hover { background: rgba(153, 27, 27, 0.05); }
 
 .tt-icon {
   font-size: 13px;
@@ -1581,8 +1581,8 @@ code, pre, kbd {
   letter-spacing: 0.03em;
 }
 .test-type-row.tt-fail .tt-fw-tag {
-  background: rgba(168,32,32,0.06);
-  border-color: rgba(168,32,32,0.15);
+  background: rgba(153,27,27,0.06);
+  border-color: rgba(153,27,27,0.15);
   color: currentColor;
   opacity: 0.8;
 }
