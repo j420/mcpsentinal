@@ -115,30 +115,46 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="header-inner">
             <a href="/" className="site-logo">
               <span className="logo-mark" aria-hidden="true">
+                {/* AI Shield: neural network nodes + radar rings inside a security shield */}
                 <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 16 16"
+                  width="30"
+                  height="30"
+                  viewBox="0 0 30 30"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
                 >
+                  {/* Shield body */}
                   <path
-                    d="M8 1L14 4V8C14 11.5 11.5 14.5 8 15.5C4.5 14.5 2 11.5 2 8V4L8 1Z"
+                    d="M15 2.5L25.5 6.5V13.5C25.5 20 21 25.5 15 27.5C9 25.5 4.5 20 4.5 13.5V6.5L15 2.5Z"
+                    fill="var(--accent-sub)"
                     stroke="var(--accent)"
-                    strokeWidth="1.5"
-                    strokeLinejoin="round"
-                    fill="none"
-                  />
-                  <path
-                    d="M5.5 8L7 9.5L10.5 6"
-                    stroke="var(--accent)"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
+                    strokeWidth="1.4"
                     strokeLinejoin="round"
                   />
+                  {/* Outer radar ring */}
+                  <circle cx="15" cy="14" r="6.5" stroke="var(--accent)" strokeWidth="0.6" opacity="0.28" strokeDasharray="2 2" />
+                  {/* Inner radar ring */}
+                  <circle cx="15" cy="14" r="3.8" stroke="var(--accent)" strokeWidth="0.5" opacity="0.18" strokeDasharray="1.5 1.8" />
+                  {/* Neural network nodes — upper pair */}
+                  <circle cx="10.5" cy="10.5" r="1.35" fill="var(--accent)" opacity="0.65" />
+                  <circle cx="19.5" cy="10.5" r="1.35" fill="var(--accent)" opacity="0.65" />
+                  {/* Neural network nodes — lower pair */}
+                  <circle cx="10" cy="18.5" r="1.1" fill="var(--accent)" opacity="0.42" />
+                  <circle cx="20" cy="18.5" r="1.1" fill="var(--accent)" opacity="0.42" />
+                  {/* Connection lines from nodes to center */}
+                  <line x1="10.5" y1="10.5" x2="15" y2="14" stroke="var(--accent)" strokeWidth="0.75" opacity="0.40" />
+                  <line x1="19.5" y1="10.5" x2="15" y2="14" stroke="var(--accent)" strokeWidth="0.75" opacity="0.40" />
+                  <line x1="10"   y1="18.5" x2="15" y2="14" stroke="var(--accent)" strokeWidth="0.65" opacity="0.28" />
+                  <line x1="20"   y1="18.5" x2="15" y2="14" stroke="var(--accent)" strokeWidth="0.65" opacity="0.28" />
+                  {/* Center pulse — glow ring + solid core */}
+                  <circle cx="15" cy="14" r="2.6" fill="var(--accent)" opacity="0.18" />
+                  <circle cx="15" cy="14" r="1.7" fill="var(--accent)" />
                 </svg>
               </span>
-              MCP Sentinel
+              <span className="logo-text">
+                <span className="logo-mcp">MCP</span>
+                <span className="logo-sentinel"> Sentinel</span>
+              </span>
             </a>
 
             <nav className="site-nav" aria-label="Main navigation">
