@@ -1,27 +1,28 @@
 /* ============================================================
    MCP Sentinel — Design System
    Premium security intelligence portal
-   bg: #F8F9FA  surface: #FFFFFF  accent: #4F46E5 (deep indigo)
+   bg: #EEECE2  surface: #F5F3EC  accent: #4F46E5 (deep indigo)
+   type: Poppins (headings) · Lora (body) · Inter (UI chrome)
    ============================================================ */
 
 /* ── Tokens ─────────────────────────────────────────────── */
 :root {
-  /* ── Backgrounds — clean neutral ── */
-  --bg:           #F8F9FA;
-  --surface:      #FFFFFF;
-  --surface-2:    #F3F4F6;
-  --surface-3:    #E5E7EB;
+  /* ── Backgrounds — warm cream ── */
+  --bg:           #EEECE2;
+  --surface:      #F5F3EC;
+  --surface-2:    #EAE6DC;
+  --surface-3:    #DDD9CF;
 
-  /* ── Borders — solid, crisp ── */
-  --border:        #E5E7EB;
-  --border-md:     #D1D5DB;
-  --border-strong: #9CA3AF;
+  /* ── Borders — warm, tonal ── */
+  --border:        #D4CFC5;
+  --border-md:     #C4BDB2;
+  --border-strong: #9E9484;
 
-  /* ── Text ── */
-  --text:         #111827;
-  --text-2:       #374151;
-  --text-3:       #9CA3AF;
-  --text-inv:     #FFFFFF;
+  /* ── Text — dark warm brown ── */
+  --text:         #3D3929;
+  --text-2:       #5C5444;
+  --text-3:       #9A9182;
+  --text-inv:     #F5F3EC;
 
   /* ── Accent: deep indigo — authoritative ── */
   --accent:       #4F46E5;
@@ -102,10 +103,10 @@ html {
 }
 
 body {
-  font-family: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Lora Variable', 'Lora', Georgia, 'Times New Roman', serif;
   background-color: var(--bg);
   color: var(--text);
-  line-height: 1.6;
+  line-height: 1.65;
   min-height: 100vh;
 }
 
@@ -129,8 +130,8 @@ code, pre, kbd {
   top: 0;
   z-index: 100;
   border-bottom: 1px solid var(--border);
-  background: rgba(248, 249, 250, 0.96);
-  backdrop-filter: blur(24px) saturate(1.6);
+  background: rgba(238, 236, 226, 0.96);
+  backdrop-filter: blur(24px) saturate(1.4);
   -webkit-backdrop-filter: blur(24px) saturate(1.6);
 }
 
@@ -150,10 +151,10 @@ code, pre, kbd {
   align-items: center;
   gap: var(--s2);
   color: var(--text);
-  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
+  font-family: 'Poppins', 'Inter Variable', 'Inter', system-ui, sans-serif;
   font-weight: 700;
-  font-size: 17px;
-  letter-spacing: -0.03em;
+  font-size: 16px;
+  letter-spacing: -0.01em;
   flex-shrink: 0;
 }
 .site-logo:hover { color: var(--text); opacity: 0.75; }
@@ -177,6 +178,7 @@ code, pre, kbd {
 
 .nav-link {
   color: var(--text-2);
+  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
   font-size: 13px;
   font-weight: 500;
   padding: 6px var(--s3);
@@ -201,7 +203,7 @@ code, pre, kbd {
   border-top: 1px solid var(--border);
   padding: var(--s8) var(--s6);
   margin-top: var(--s16);
-  background: var(--surface);
+  background: var(--surface-2);
 }
 
 .footer-inner {
@@ -278,7 +280,7 @@ code, pre, kbd {
   width: 100%;
   height: 100%;
   background:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(79, 70, 229, 0.04) 0%, transparent 70%),
+    radial-gradient(ellipse 90% 55% at 50% -10%, rgba(61, 57, 41, 0.04) 0%, transparent 70%),
     transparent;
   pointer-events: none;
   z-index: 0;
@@ -303,7 +305,7 @@ code, pre, kbd {
 }
 
 .hero-title {
-  font-family: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+  font-family: 'Instrument Serif', 'Lora Variable', 'Lora', Georgia, serif;
   font-size: clamp(36px, 5.5vw, 60px);
   font-weight: 400;
   letter-spacing: -0.02em;
@@ -313,7 +315,7 @@ code, pre, kbd {
 }
 
 .hero-title em {
-  font-family: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+  font-family: 'Instrument Serif', 'Lora Variable', 'Lora', Georgia, serif;
   font-style: italic;
   font-weight: 400;
   color: var(--accent);
@@ -321,11 +323,12 @@ code, pre, kbd {
 }
 
 .hero-sub {
+  font-family: 'Lora Variable', 'Lora', Georgia, serif;
   font-size: 18px;
   color: var(--text-2);
   max-width: 540px;
   margin: 0 auto var(--s8);
-  line-height: 1.65;
+  line-height: 1.7;
   font-weight: 400;
 }
 
@@ -354,16 +357,17 @@ code, pre, kbd {
 }
 
 .stat-value {
-  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
+  font-family: 'Poppins', 'Inter Variable', 'Inter', system-ui, sans-serif;
   font-size: 30px;
   font-weight: 700;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.03em;
   color: var(--text);
   line-height: 1.1;
 }
 
 .stat-label {
-  font-size: 12px;
+  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
+  font-size: 11px;
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.07em;
@@ -383,10 +387,10 @@ code, pre, kbd {
 }
 
 .featured-heading {
-  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
-  font-size: 18px;
+  font-family: 'Poppins', 'Inter Variable', 'Inter', system-ui, sans-serif;
+  font-size: 17px;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   color: var(--text);
 }
 
@@ -429,10 +433,10 @@ code, pre, kbd {
 }
 
 .featured-card-name {
-  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-family: 'Poppins', 'Inter Variable', 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   color: var(--text);
   line-height: 1.3;
   transition: color var(--t-fast) var(--ease);
@@ -440,9 +444,10 @@ code, pre, kbd {
 .featured-card:hover .featured-card-name { color: var(--accent); }
 
 .featured-card-desc {
+  font-family: 'Lora Variable', 'Lora', Georgia, serif;
   font-size: 13px;
   color: var(--text-2);
-  line-height: 1.55;
+  line-height: 1.6;
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -490,7 +495,7 @@ code, pre, kbd {
   width: 100%;
   padding: 13px 16px 13px 44px;
   font-size: 15px;
-  font-family: inherit;
+  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
   background: var(--surface);
   border: 1px solid var(--border-md);
   border-radius: var(--r-lg);
@@ -516,7 +521,7 @@ code, pre, kbd {
 .filter-select {
   padding: 8px 10px;
   font-size: 13px;
-  font-family: inherit;
+  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
   background: var(--surface);
   border: 1px solid var(--border-md);
   border-radius: var(--r-sm);
@@ -561,6 +566,7 @@ code, pre, kbd {
 
 .data-table th {
   padding: var(--s3) var(--s4);
+  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
@@ -584,15 +590,18 @@ code, pre, kbd {
 
 .data-table td {
   padding: var(--s3) var(--s4);
+  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
   font-size: 14px;
   vertical-align: middle;
 }
 
 .server-name-link {
+  font-family: 'Poppins', 'Inter Variable', 'Inter', system-ui, sans-serif;
   color: var(--text);
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
   display: block;
+  letter-spacing: -0.01em;
   transition: color var(--t-fast) var(--ease);
 }
 .server-name-link:hover { color: var(--accent); }
@@ -677,10 +686,10 @@ code, pre, kbd {
 
 /* ── Section headings ───────────────────────────────────── */
 .section-title {
-  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
-  font-size: 16px;
+  font-family: 'Poppins', 'Inter Variable', 'Inter', system-ui, sans-serif;
+  font-size: 15px;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   color: var(--text);
   margin-bottom: var(--s4);
   display: flex;
@@ -1032,10 +1041,10 @@ code, pre, kbd {
 }
 
 .mini-stat-val {
-  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
+  font-family: 'Poppins', 'Inter Variable', 'Inter', system-ui, sans-serif;
   font-size: 22px;
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
   color: var(--text);
 }
 
@@ -1067,10 +1076,10 @@ code, pre, kbd {
 .breadcrumb a:hover { color: var(--text-2); }
 
 .server-title {
-  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
-  font-size: 30px;
+  font-family: 'Poppins', 'Inter Variable', 'Inter', system-ui, sans-serif;
+  font-size: 28px;
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
   margin-bottom: var(--s2);
   color: var(--text);
 }
@@ -1187,19 +1196,20 @@ code, pre, kbd {
 }
 
 .about-h1 {
-  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
-  font-size: clamp(28px, 4vw, 46px);
+  font-family: 'Poppins', 'Inter Variable', 'Inter', system-ui, sans-serif;
+  font-size: clamp(28px, 4vw, 44px);
   font-weight: 800;
-  letter-spacing: -0.04em;
-  line-height: 1.05;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
   margin-bottom: var(--s4);
   color: var(--text);
 }
 
 .about-lead {
+  font-family: 'Lora Variable', 'Lora', Georgia, serif;
   font-size: 18px;
   color: var(--text-2);
-  line-height: 1.65;
+  line-height: 1.7;
 }
 
 .pipeline-grid {
@@ -1230,17 +1240,19 @@ code, pre, kbd {
 }
 
 .pipeline-name {
-  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
-  font-size: 15px;
+  font-family: 'Poppins', 'Inter Variable', 'Inter', system-ui, sans-serif;
+  font-size: 14px;
   font-weight: 700;
   margin-bottom: var(--s2);
+  letter-spacing: -0.01em;
   color: var(--text);
 }
 
 .pipeline-desc {
+  font-family: 'Lora Variable', 'Lora', Georgia, serif;
   font-size: 13px;
   color: var(--text-3);
-  line-height: 1.55;
+  line-height: 1.6;
 }
 
 .rules-table {
@@ -1257,6 +1269,7 @@ code, pre, kbd {
 
 .rules-table th {
   padding: var(--s3) var(--s4);
+  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
   text-align: left;
   font-size: 11px;
   font-weight: 600;
@@ -1268,6 +1281,7 @@ code, pre, kbd {
 
 .rules-table td {
   padding: var(--s3) var(--s4);
+  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
   border-bottom: 1px solid var(--border);
   color: var(--text-2);
 }
@@ -1296,10 +1310,10 @@ code, pre, kbd {
 }
 
 .notfound-code {
-  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
+  font-family: 'Poppins', 'Inter Variable', 'Inter', system-ui, sans-serif;
   font-size: 80px;
   font-weight: 800;
-  letter-spacing: -0.05em;
+  letter-spacing: -0.04em;
   color: var(--surface-3);
   -webkit-text-stroke: 1px var(--border-md);
   line-height: 1;
@@ -1317,11 +1331,12 @@ code, pre, kbd {
   background: var(--accent);
   color: #FFFFFF;
   border-radius: var(--r-md);
+  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
   font-size: 14px;
   font-weight: 600;
   transition: background var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
   text-decoration: none;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  box-shadow: 0 1px 4px rgba(79, 70, 229, 0.18);
 }
 .btn-primary:hover {
   background: var(--accent-hover);
@@ -1391,17 +1406,18 @@ code, pre, kbd {
 }
 
 .cat-name {
-  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
-  font-size: 15px;
+  font-family: 'Poppins', 'Inter Variable', 'Inter', system-ui, sans-serif;
+  font-size: 14px;
   font-weight: 700;
   color: var(--text);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 
 .cat-desc {
+  font-family: 'Lora Variable', 'Lora', Georgia, serif;
   font-size: 13px;
   color: var(--text-2);
-  line-height: 1.55;
+  line-height: 1.6;
   flex: 1;
 }
 
@@ -1461,10 +1477,10 @@ code, pre, kbd {
 }
 
 .cat-detail-title {
-  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
-  font-size: clamp(24px, 4vw, 36px);
+  font-family: 'Poppins', 'Inter Variable', 'Inter', system-ui, sans-serif;
+  font-size: clamp(22px, 4vw, 34px);
   font-weight: 800;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.02em;
   color: var(--text);
   line-height: 1.1;
 }
