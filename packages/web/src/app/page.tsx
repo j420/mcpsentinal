@@ -38,14 +38,13 @@ interface EcosystemStats {
   category_breakdown: Record<string, number>;
   severity_breakdown: Record<string, number>;
   score_distribution: Array<{ range: string; count: number }>;
-  multi_source_count?: number;
-  unique_with_identifier?: number;
 }
 
 // ── Data fetching ─────────────────────────────────────────────────────────────
 
 async function getServers(params: {
   q?: string;
+  author?: string;
   category?: string;
   sort?: string;
   order?: string;
@@ -57,7 +56,8 @@ async function getServers(params: {
     sp.set("limit", "25");
     sp.set("sort", params.sort || "score");
     sp.set("order", params.order || "desc");
-    if (params.q) sp.set("q", params.q);
+    const searchQ = [params.q, params.author].filter(Boolean).join(" ");
+    if (searchQ) sp.set("q", searchQ);
     if (params.category && params.category !== "all")
       sp.set("category", params.category);
     if (params.page && params.page > 1) sp.set("page", String(params.page));
@@ -74,6 +74,25 @@ async function getServers(params: {
     };
   } catch {
     return { servers: [], pagination: { total: 0, page: 1, limit: 25, pages: 0 } };
+  }
+}
+
+async function getFeaturedServers(): Promise<Server[]> {
+  try {
+    const sp = new URLSearchParams();
+    sp.set("min_score", "90");
+    sp.set("sort", "score");
+    sp.set("order", "desc");
+    sp.set("limit", "6");
+
+    const res = await fetch(`${API_URL}/api/v1/servers?${sp}`, {
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.data || [];
+  } catch {
+    return [];
   }
 }
 
@@ -148,6 +167,28 @@ function CategoryChip({ cat }: { cat: string | null }) {
   return <span className="category-chip">{cat}</span>;
 }
 
+function FeaturedCard({ server }: { server: Server }) {
+  return (
+    <a href={`/server/${server.slug}`} className="featured-card">
+      <div className="featured-card-name">{server.name}</div>
+      {server.description && (
+        <div className="featured-card-desc">{server.description}</div>
+      )}
+      <div className="featured-card-footer">
+        <div className="featured-card-meta">
+          {server.category && <CategoryChip cat={server.category} />}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          {server.author && (
+            <span className="featured-card-author">by {server.author}</span>
+          )}
+          <ScoreBadge score={server.latest_score} />
+        </div>
+      </div>
+    </a>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function HomePage({
@@ -155,6 +196,7 @@ export default async function HomePage({
 }: {
   searchParams: Promise<{
     q?: string;
+    author?: string;
     category?: string;
     sort?: string;
     order?: string;
@@ -165,9 +207,16 @@ export default async function HomePage({
   const sp = await searchParams;
   const page = Number(sp.page || 1);
 
-  const [{ servers, pagination }, stats] = await Promise.all([
+  const isFiltered =
+    !!sp.q ||
+    !!sp.author ||
+    (!!sp.category && sp.category !== "all") ||
+    !!sp.min_score;
+
+  const [{ servers, pagination }, stats, featuredServers] = await Promise.all([
     getServers({
       q: sp.q,
+      author: sp.author,
       category: sp.category,
       sort: sp.sort,
       order: sp.order,
@@ -175,6 +224,7 @@ export default async function HomePage({
       min_score: sp.min_score,
     }),
     getStats(),
+    isFiltered ? Promise.resolve([]) : getFeaturedServers(),
   ]);
 
   const avgScoreColor =
@@ -207,7 +257,7 @@ export default async function HomePage({
             color: "var(--text-2)",
           }}
         >
-          <span style={{ color: "var(--poor)", fontWeight: 700, fontSize: "16px", lineHeight: 1 }}>!</span>
+          <span style={{ color: "var(--poor)", fontWeight: 700, fontSize: "16px", lineHeight: "1" }}>!</span>
           <span>
             Unable to reach the API. Showing cached data where available.
             If this persists, check <code style={{ fontSize: "12px" }}>NEXT_PUBLIC_API_URL</code>.
@@ -236,8 +286,8 @@ export default async function HomePage({
         </h1>
         <p className="hero-sub">
           {stats?.total_servers
-            ? `${stats.total_servers.toLocaleString()} MCP servers scanned across ${Object.keys(stats.category_breakdown || {}).length} categories.`
-            : "22,000+ MCP servers."}{" "}
+            ? `${stats.total_servers.toLocaleString()} MCP servers discovered across ${Object.keys(stats.category_breakdown || {}).length} categories.`
+            : "22,000+ MCP servers discovered across the ecosystem."}{" "}
           103 detection rules. Zero guesswork.
         </p>
       </section>
@@ -279,14 +329,23 @@ export default async function HomePage({
             <span className="stat-value">103</span>
             <span className="stat-label">Detection Rules</span>
           </div>
-          {stats.unique_with_identifier != null && (
-            <div className="stat-card">
-              <span className="stat-value">
-                {stats.unique_with_identifier.toLocaleString()}
-              </span>
-              <span className="stat-label">Verified Unique</span>
-            </div>
-          )}
+        </section>
+      )}
+
+      {/* ── Featured Servers ──────────────────────────── */}
+      {!isFiltered && featuredServers.length > 0 && (
+        <section className="featured-section" aria-label="Featured servers">
+          <div className="featured-header">
+            <h2 className="featured-heading">Featured Servers</h2>
+            <a href="/?min_score=80&sort=score" className="featured-view-all">
+              View all top-rated →
+            </a>
+          </div>
+          <div className="featured-grid">
+            {featuredServers.map((server) => (
+              <FeaturedCard key={server.id} server={server} />
+            ))}
+          </div>
         </section>
       )}
 
@@ -343,6 +402,16 @@ export default async function HomePage({
             <option value="60">Moderate (60+)</option>
             <option value="40">Poor (40+)</option>
           </select>
+
+          <input
+            className="filter-select"
+            type="text"
+            name="author"
+            style={{ width: "140px" }}
+            defaultValue={sp.author || ""}
+            placeholder="by owner…"
+            autoComplete="off"
+          />
 
           <select
             className="filter-select"
@@ -511,6 +580,7 @@ function buildPageUrl(
 ): string {
   const params = new URLSearchParams();
   if (sp.q) params.set("q", sp.q);
+  if (sp.author) params.set("author", sp.author);
   if (sp.category && sp.category !== "all") params.set("category", sp.category);
   if (sp.sort && sp.sort !== "score") params.set("sort", sp.sort);
   if (sp.order && sp.order !== "desc") params.set("order", sp.order);
