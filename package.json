@@ -14,6 +14,7 @@
     "crawl": "pnpm --filter=@mcp-sentinel/crawler run crawl",
     "scan": "pnpm --filter=@mcp-sentinel/scanner run scan",
     "score": "pnpm --filter=@mcp-sentinel/scorer run score",
+    "risk-matrix": "pnpm --filter=@mcp-sentinel/risk-matrix run risk-matrix",
     "cli": "pnpm --filter=@mcp-sentinel/cli run cli"
   },
   "devDependencies": {

@@ -16,7 +16,9 @@
     "@mcp-sentinel/analyzer": "workspace:*",
     "@mcp-sentinel/connector": "workspace:*",
     "@mcp-sentinel/database": "workspace:*",
+    "@mcp-sentinel/dynamic-tester": "workspace:*",
     "@mcp-sentinel/scorer": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.0.0",
     "pg": "^8.13.0",
     "pino": "^9.0.0",
     "zod": "^3.23.0"

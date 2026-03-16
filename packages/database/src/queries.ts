@@ -813,6 +813,117 @@ export class DatabaseQueries {
     }
   }
 
+  // ─── Risk Matrix Queries ──────────────────────────────────────────────────
+
+  /**
+   * Load all scored servers with their tools for cross-server risk analysis.
+   * Returns servers that have at least one completed scan (have a latest_score).
+   * Used by RiskMatrixAnalyzer to build the capability graph.
+   */
+  async getServersWithTools(limit: number = 5000): Promise<
+    Array<{
+      server_id: string;
+      server_name: string;
+      server_slug: string;
+      latest_score: number | null;
+      category: string | null;
+      tools: Array<{ name: string; description: string | null; capability_tags: string[] }>;
+    }>
+  > {
+    const serversResult = await this.pool.query(
+      `SELECT id, name, slug, latest_score, category
+       FROM servers
+       WHERE latest_score IS NOT NULL
+       ORDER BY latest_score ASC
+       LIMIT $1`,
+      [limit]
+    );
+
+    if (serversResult.rows.length === 0) return [];
+
+    const serverIds = serversResult.rows.map((r: { id: string }) => r.id);
+    const toolsResult = await this.pool.query(
+      `SELECT server_id, name, description, capability_tags
+       FROM tools
+       WHERE server_id = ANY($1::uuid[])`,
+      [serverIds]
+    );
+
+    const toolsByServer = new Map<string, Array<{ name: string; description: string | null; capability_tags: string[] }>>();
+    for (const tool of toolsResult.rows) {
+      const existing = toolsByServer.get(tool.server_id) ?? [];
+      existing.push({
+        name: tool.name,
+        description: tool.description,
+        capability_tags: tool.capability_tags ?? [],
+      });
+      toolsByServer.set(tool.server_id, existing);
+    }
+
+    return serversResult.rows.map((s: { id: string; name: string; slug: string; latest_score: number | null; category: string | null }) => ({
+      server_id: s.id,
+      server_name: s.name,
+      server_slug: s.slug,
+      latest_score: s.latest_score,
+      category: s.category,
+      tools: toolsByServer.get(s.id) ?? [],
+    }));
+  }
+
+  /**
+   * Persist cross-server risk edges detected by RiskMatrixAnalyzer.
+   * config_id is a hash of the server IDs in the analyzed set.
+   */
+  async upsertRiskEdges(
+    configId: string,
+    edges: Array<{
+      from_server_id: string;
+      to_server_id: string;
+      edge_type: string;
+      pattern_id: string;
+      severity: string;
+      description: string;
+      owasp_category?: string | null;
+      mitre_technique?: string | null;
+    }>
+  ): Promise<void> {
+    for (const edge of edges) {
+      await this.pool.query(
+        `INSERT INTO risk_edges (config_id, from_server_id, to_server_id, edge_type, pattern_id, severity, description, owasp_category, mitre_technique)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [
+          configId,
+          edge.from_server_id,
+          edge.to_server_id,
+          edge.edge_type,
+          edge.pattern_id,
+          edge.severity,
+          edge.description,
+          edge.owasp_category ?? null,
+          edge.mitre_technique ?? null,
+        ]
+      );
+    }
+  }
+
+  /**
+   * Apply score caps recommended by the risk matrix to servers.latest_score.
+   * Only lowers a score — never raises it.
+   * caps is a map of server_id → cap value (e.g. { "uuid-123": 40 }).
+   */
+  async applyRiskScoreCaps(caps: Record<string, number>): Promise<number> {
+    let applied = 0;
+    for (const [serverId, cap] of Object.entries(caps)) {
+      const result = await this.pool.query(
+        `UPDATE servers SET latest_score = LEAST(latest_score, $1), updated_at = NOW()
+         WHERE id = $2 AND latest_score > $1`,
+        [cap, serverId]
+      );
+      if ((result.rowCount ?? 0) > 0) applied++;
+    }
+    return applied;
+  }
+
   // ─── Helpers ───────────────────────────────────────────────────────────────
 
   private slugify(name: string): string {

@@ -54,6 +54,8 @@ export interface RiskEdge {
   description: string;
   owasp: string;
   mitre: string;
+  /** Pattern ID that produced this edge (e.g. "P01") — set by RiskMatrixAnalyzer */
+  pattern_id?: string;
 }
 
 // ── Risk patterns ─────────────────────────────────────────────────────────────

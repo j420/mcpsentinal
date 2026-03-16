@@ -4,15 +4,17 @@
  * CLI entry point for the MCP Sentinel scan pipeline.
  *
  * Usage:
- *   pnpm scan                          Scan all unscanned servers (up to --limit)
- *   pnpm scan --server=<uuid>          Scan a specific server by ID
- *   pnpm scan --rescan                 Re-scan servers with stale scans
- *   pnpm scan --rescan --stale-days=3  Re-scan servers not scanned in 3 days
- *   pnpm scan --dry-run                List servers to scan without scanning
- *   pnpm scan --concurrency=10         Use 10 parallel scan workers
- *   pnpm scan --limit=500              Scan up to 500 servers
- *   pnpm scan --json                   Output results as JSON (for CI)
- *   pnpm scan --rules-dir=/path/rules  Override rules directory
+ *   pnpm scan                                  Scan all unscanned servers (up to --limit)
+ *   pnpm scan --server=<uuid>                  Scan a specific server by ID
+ *   pnpm scan --rescan                         Re-scan servers with stale scans
+ *   pnpm scan --rescan --stale-days=3          Re-scan servers not scanned in 3 days
+ *   pnpm scan --dry-run                        List servers to scan without scanning
+ *   pnpm scan --concurrency=10                 Use 10 parallel scan workers
+ *   pnpm scan --limit=500                      Scan up to 500 servers
+ *   pnpm scan --json                           Output results as JSON (for CI)
+ *   pnpm scan --rules-dir=/path/rules          Override rules directory
+ *   pnpm scan --dynamic                        Enable dynamic testing (Layer 5 gated)
+ *   pnpm scan --dynamic --dynamic-allowlist=<id1,id2>  Pre-approve server IDs
  *
  * Environment variables:
  *   DATABASE_URL     PostgreSQL connection string (required)
@@ -35,15 +37,17 @@ async function main(): Promise<void> {
   const { values } = parseArgs({
     options: {
       server: { type: "string" },
-      mode: { type: "string", default: "incremental" }, // incremental | rescan-failed | full
-      "batch-size": { type: "string" },                 // alias for --limit (used by scan.yml)
-      rescan: { type: "boolean", default: false },       // deprecated: use --mode=full
+      mode: { type: "string", default: "incremental" },   // incremental | rescan-failed | full
+      "batch-size": { type: "string" },                   // alias for --limit (used by scan.yml)
+      rescan: { type: "boolean", default: false },         // deprecated: use --mode=full
       "stale-days": { type: "string", default: "7" },
       concurrency: { type: "string", default: "5" },
       limit: { type: "string", default: "100" },
       "dry-run": { type: "boolean", default: false },
       json: { type: "boolean", default: false },
       "rules-dir": { type: "string" },
+      dynamic: { type: "boolean", default: false },        // Layer 5 gated dynamic testing
+      "dynamic-allowlist": { type: "string" },             // comma-separated server IDs
     },
     strict: true,
   });
@@ -83,6 +87,17 @@ async function main(): Promise<void> {
       rulesDir: values["rules-dir"],
     });
 
+    const dynamicAllowlist = values["dynamic-allowlist"]
+      ? values["dynamic-allowlist"].split(",").map((id) => id.trim()).filter(Boolean)
+      : [];
+
+    if (values.dynamic) {
+      logger.info(
+        { allowlist_count: dynamicAllowlist.length },
+        "Dynamic testing enabled — will probe consenting servers with Layer 5 gated capability"
+      );
+    }
+
     const stats = await pipeline.run({
       serverId: values.server,
       mode,
@@ -90,6 +105,8 @@ async function main(): Promise<void> {
       concurrency: parseInt(values.concurrency ?? "5", 10),
       limit: parseInt(effectiveLimit, 10),
       dryRun: values["dry-run"] ?? false,
+      dynamic: values.dynamic ?? false,
+      dynamicAllowlist,
     });
 
     // ── Output ─────────────────────────────────────────────────────────────
