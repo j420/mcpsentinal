@@ -286,6 +286,59 @@ const MIGRATIONS = [
       CREATE INDEX IF NOT EXISTS idx_risk_edges_detected ON risk_edges(detected_at);
     `,
   },
+  {
+    id: "006_dynamic_test_results",
+    sql: `
+      -- dynamic_test_results: one row per DynamicTester.test() execution.
+      --
+      -- Append-only (ADR-008). Provides:
+      --   • Legal/ethical paper trail: consent was obtained before any tool call
+      --   • Historical coverage: which servers have been dynamically tested
+      --   • Trend analysis: injection vulnerability rate over time
+      --   • Operational metrics: tool coverage, timing anomalies
+      --
+      -- raw_report stores the full DynamicReport JSON for compliance audit export.
+      -- It is intentionally not indexed — it exists purely for record-keeping.
+      CREATE TABLE IF NOT EXISTS dynamic_test_results (
+        id                        UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
+        server_id                 UUID         NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+        scan_id                   UUID         REFERENCES scans(id) ON DELETE SET NULL,
+        endpoint                  TEXT         NOT NULL,
+        consented                 BOOLEAN      NOT NULL DEFAULT false,
+        consent_method            VARCHAR(30),
+        tested_at                 TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+        elapsed_ms                INTEGER      NOT NULL DEFAULT 0,
+        tools_tested              INTEGER      NOT NULL DEFAULT 0,
+        tools_skipped             INTEGER      NOT NULL DEFAULT 0,
+        output_findings_count     INTEGER      NOT NULL DEFAULT 0,
+        injection_vulnerable_count INTEGER     NOT NULL DEFAULT 0,
+        output_injection_risk     VARCHAR(20)  NOT NULL DEFAULT 'none',
+        injection_vulnerability   VARCHAR(20)  NOT NULL DEFAULT 'none',
+        schema_compliance         VARCHAR(10)  NOT NULL DEFAULT 'pass',
+        timing_anomalies          INTEGER      NOT NULL DEFAULT 0,
+        raw_report                JSONB,
+        created_at                TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+      );
+
+      -- Lookup by server (most common: "has this server been dynamically tested?")
+      CREATE INDEX IF NOT EXISTS idx_dtr_server_id
+        ON dynamic_test_results(server_id);
+
+      -- Lookup by scan (pipeline: find dynamic result for a given scan)
+      CREATE INDEX IF NOT EXISTS idx_dtr_scan_id
+        ON dynamic_test_results(scan_id)
+        WHERE scan_id IS NOT NULL;
+
+      -- Time-based queries: "tests in the last 30 days"
+      CREATE INDEX IF NOT EXISTS idx_dtr_tested_at
+        ON dynamic_test_results(tested_at DESC);
+
+      -- Coverage query: "how many consented servers have we found injection vulns in?"
+      CREATE INDEX IF NOT EXISTS idx_dtr_consented_vulnerable
+        ON dynamic_test_results(consented, injection_vulnerable_count)
+        WHERE consented = true;
+    `,
+  },
 ];
 
 export async function migrate(connectionString: string): Promise<void> {

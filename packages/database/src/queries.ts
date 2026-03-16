@@ -983,6 +983,148 @@ export class DatabaseQueries {
     return applied;
   }
 
+  // ─── Dynamic Test Result Operations ──────────────────────────────────────
+
+  /**
+   * Persist one dynamic test session result.
+   * Append-only (ADR-008) — never updated after insert.
+   *
+   * Called from the scanner pipeline (Stage 5b) after DynamicTester.test()
+   * completes, regardless of whether the server consented or not.
+   * Storing both outcomes lets us track coverage and consent ratios.
+   */
+  async saveDynamicReport(
+    serverId: string,
+    scanId: string | null,
+    report: {
+      endpoint: string;
+      consented: boolean;
+      consent_method: string | null;
+      tested_at: string;
+      elapsed_ms: number;
+      tools_tested: number;
+      tools_skipped: number;
+      output_findings_count: number;
+      injection_vulnerable_count: number;
+      output_injection_risk: string;
+      injection_vulnerability: string;
+      schema_compliance: string;
+      timing_anomalies: number;
+      raw_report: Record<string, unknown>;
+    }
+  ): Promise<string> {
+    const result = await this.pool.query(
+      `INSERT INTO dynamic_test_results (
+         server_id, scan_id, endpoint,
+         consented, consent_method, tested_at, elapsed_ms,
+         tools_tested, tools_skipped,
+         output_findings_count, injection_vulnerable_count,
+         output_injection_risk, injection_vulnerability,
+         schema_compliance, timing_anomalies, raw_report
+       ) VALUES (
+         $1, $2, $3,
+         $4, $5, $6, $7,
+         $8, $9,
+         $10, $11,
+         $12, $13,
+         $14, $15, $16
+       ) RETURNING id`,
+      [
+        serverId,
+        scanId,
+        report.endpoint,
+        report.consented,
+        report.consent_method,
+        new Date(report.tested_at),
+        report.elapsed_ms,
+        report.tools_tested,
+        report.tools_skipped,
+        report.output_findings_count,
+        report.injection_vulnerable_count,
+        report.output_injection_risk,
+        report.injection_vulnerability,
+        report.schema_compliance,
+        report.timing_anomalies,
+        JSON.stringify(report.raw_report),
+      ]
+    );
+    return result.rows[0].id;
+  }
+
+  /**
+   * Return all dynamic test results for a server, newest first.
+   * Excludes raw_report (large JSONB) unless the caller explicitly needs it.
+   * Used by the API to surface dynamic test history on server detail pages.
+   */
+  async getDynamicResultsForServer(
+    serverId: string,
+    limit: number = 20
+  ): Promise<Array<{
+    id: string;
+    scan_id: string | null;
+    endpoint: string;
+    consented: boolean;
+    consent_method: string | null;
+    tested_at: Date;
+    elapsed_ms: number;
+    tools_tested: number;
+    tools_skipped: number;
+    output_findings_count: number;
+    injection_vulnerable_count: number;
+    output_injection_risk: string;
+    injection_vulnerability: string;
+    schema_compliance: string;
+    timing_anomalies: number;
+    created_at: Date;
+  }>> {
+    const result = await this.pool.query(
+      `SELECT
+         id, scan_id, endpoint,
+         consented, consent_method, tested_at, elapsed_ms,
+         tools_tested, tools_skipped,
+         output_findings_count, injection_vulnerable_count,
+         output_injection_risk, injection_vulnerability,
+         schema_compliance, timing_anomalies, created_at
+       FROM dynamic_test_results
+       WHERE server_id = $1
+       ORDER BY tested_at DESC
+       LIMIT $2`,
+      [serverId, limit]
+    );
+    return result.rows;
+  }
+
+  /**
+   * Return the most recent dynamic test result for a server.
+   * Used to quickly check if a server has been recently tested and
+   * whether it passed consent + whether injection vulns were found.
+   */
+  async getLatestDynamicResultForServer(serverId: string): Promise<{
+    id: string;
+    consented: boolean;
+    consent_method: string | null;
+    tested_at: Date;
+    tools_tested: number;
+    output_findings_count: number;
+    injection_vulnerable_count: number;
+    output_injection_risk: string;
+    injection_vulnerability: string;
+    schema_compliance: string;
+  } | null> {
+    const result = await this.pool.query(
+      `SELECT
+         id, consented, consent_method, tested_at,
+         tools_tested, output_findings_count, injection_vulnerable_count,
+         output_injection_risk, injection_vulnerability, schema_compliance
+       FROM dynamic_test_results
+       WHERE server_id = $1
+       ORDER BY tested_at DESC
+       LIMIT 1`,
+      [serverId]
+    );
+    return result.rows[0] ?? null;
+  }
+
   // ─── Helpers ───────────────────────────────────────────────────────────────
 
   private slugify(name: string): string {

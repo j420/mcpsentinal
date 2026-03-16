@@ -16,6 +16,7 @@
   "dependencies": {
     "@mcp-sentinel/analyzer": "workspace:*",
     "@mcp-sentinel/database": "workspace:*",
+    "@mcp-sentinel/dynamic-tester": "workspace:*",
     "@mcp-sentinel/risk-matrix": "workspace:*",
     "@mcp-sentinel/scorer": "workspace:*",
     "yaml": "^2.4.0",
