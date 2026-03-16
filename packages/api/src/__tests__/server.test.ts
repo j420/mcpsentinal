@@ -59,16 +59,19 @@ process.env["NODE_ENV"] = "test";
 // Import AFTER mocks are in place
 const { app } = await import("../server.js");
 
-// Helper to get the mock db object for per-test configuration
-const { _mockDb: db } = await import("@mcp-sentinel/database") as {
-  _mockDb: {
-    findServerBySlug: ReturnType<typeof vi.fn>;
-    searchServers: ReturnType<typeof vi.fn>;
-    getFindingsForServer: ReturnType<typeof vi.fn>;
-    getScoreHistory: ReturnType<typeof vi.fn>;
-    getLatestScoreForServer: ReturnType<typeof vi.fn>;
-    getToolsForServer: ReturnType<typeof vi.fn>;
-  }
+// Helper to get the mock db object for per-test configuration.
+// The double cast (as unknown as ...) is required because _mockDb is injected
+// by vi.mock() at runtime and does not exist in the real module's TypeScript types.
+type MockDb = {
+  findServerBySlug: ReturnType<typeof vi.fn>;
+  searchServers: ReturnType<typeof vi.fn>;
+  getFindingsForServer: ReturnType<typeof vi.fn>;
+  getScoreHistory: ReturnType<typeof vi.fn>;
+  getLatestScoreForServer: ReturnType<typeof vi.fn>;
+  getToolsForServer: ReturnType<typeof vi.fn>;
+};
+const { _mockDb: db } = (await import("@mcp-sentinel/database")) as unknown as {
+  _mockDb: MockDb;
 };
 
 beforeEach(() => {
