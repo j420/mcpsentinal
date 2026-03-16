@@ -190,7 +190,8 @@ describe("scanToolOutput", () => {
 
   it("returns empty array for benign tool output", () => {
     const benign = "Successfully listed 3 files: report.pdf, data.csv, notes.txt";
-    const result = scanToolOutput("list_files", benign, SRV);
+    // Use a non-shadowing tool name so A4 (cross-server name shadowing) doesn't fire
+    const result = scanToolOutput("custom_result_display", benign, SRV);
     // For a clean benign string, we expect zero findings (or at most low-severity)
     const criticalOrHigh = result.filter((f) => ["critical", "high"].includes(f.severity));
     expect(criticalOrHigh.length).toBe(0);
