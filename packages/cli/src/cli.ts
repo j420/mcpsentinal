@@ -55,6 +55,7 @@ interface CLIArgs {
   failOn: Severity | null;
   configPath: string | null;
   showVersion: boolean;
+  showHelp: boolean;
 }
 
 // ─── Scan Result ─────────────────────────────────────────────────────────────
@@ -85,8 +86,14 @@ function sanitizeForTerminal(input: string, maxLen = 200): string {
     .replace(/\x1b\[[0-9;]*[a-zA-Z]/g, "")
     // OSC sequences (hyperlinks, titles)
     .replace(/\x1b\][^\x07\x1b]*(\x07|\x1b\\)/g, "")
-    // Remaining ESC sequences
-    .replace(/\x1b[^[]/g, "")
+    // Any remaining bare ESC byte (not already consumed by CSI/OSC patterns above)
+    // NOTE: do NOT use /\x1b[^[]/g — that pattern also consumes the char after ESC,
+    // turning e.g. "a\x1bb" into "a" instead of "ab".
+    .replace(/\x1b/g, "")
+    // Unicode bidirectional/direction override characters (terminal direction attacks)
+    // Covers: zero-width spaces, LRM/RLM, LRE/RLE/PDF/LRO/RLO (U+202A–U+202E),
+    // and directional isolates LRI/RLI/FSI/PDI (U+2066–U+2069)
+    .replace(/[\u200b-\u200f\u202a-\u202e\u2066-\u2069]/g, "")
     // C0 control chars except tab (\x09) and LF (\x0a)
     .replace(/[\x00-\x08\x0b-\x1f\x7f]/g, "")
     .substring(0, maxLen);
@@ -164,6 +171,7 @@ function parseArgs(argv: string[]): CLIArgs {
   const jsonOutput = args.includes("--json");
   const ciMode = args.includes("--ci");
   const showVersion = args.includes("--version") || args.includes("-v");
+  const showHelp = args.includes("--help") || args.includes("-h");
 
   // --min-score <n>  (integer 0–100, default 60)
   let minScore = 60;
@@ -210,7 +218,7 @@ function parseArgs(argv: string[]): CLIArgs {
     configPath = raw;
   }
 
-  return { command, jsonOutput, ciMode, minScore, failOn, configPath, showVersion };
+  return { command, jsonOutput, ciMode, minScore, failOn, configPath, showVersion, showHelp };
 }
 
 // ─── Config Loading ───────────────────────────────────────────────────────────
@@ -308,6 +316,11 @@ async function main() {
 
   if (cliArgs.showVersion) {
     console.log("0.1.0");
+    process.exit(EXIT.CLEAN);
+  }
+
+  if (cliArgs.showHelp) {
+    printHelp();
     process.exit(EXIT.CLEAN);
   }
 
@@ -654,11 +667,19 @@ export { sanitizeForTerminal, validateConfigPath, parseArgs, parseConfigFile, EX
 export type { CLIArgs };
 
 // ─── Entry Point ──────────────────────────────────────────────────────────────
+// Guard: only execute main() when this file is run directly as a script.
+// When the module is imported by test runners (vitest) or other modules,
+// process.argv[1] won't match this file's path, so main() is skipped.
+// Both `node dist/cli.js` and `tsx src/cli.ts` set argv[1] to the script path.
+const _entryFilePath = fileURLToPath(import.meta.url);
+const _isEntryPoint = resolve(process.argv[1] ?? "") === _entryFilePath;
 
-main().catch((err: unknown) => {
-  // Unexpected error — don't expose full stack trace by default
-  const message = err instanceof Error ? err.message : String(err);
-  console.error(`Unexpected error: ${message}`);
-  console.error("Please report this at https://github.com/j420n/mcpsentinal/issues");
-  process.exit(EXIT.INTERNAL_ERROR);
-});
+if (_isEntryPoint) {
+  main().catch((err: unknown) => {
+    // Unexpected error — don't expose full stack trace by default
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`Unexpected error: ${message}`);
+    console.error("Please report this at https://github.com/j420n/mcpsentinal/issues");
+    process.exit(EXIT.INTERNAL_ERROR);
+  });
+}

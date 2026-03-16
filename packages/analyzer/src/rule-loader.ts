@@ -4,7 +4,8 @@ import { parse as parseYaml } from "yaml";
 import { DetectionRuleSchema, type DetectionRule } from "@mcp-sentinel/database";
 import pino from "pino";
 
-const logger = pino({ name: "analyzer:rule-loader" });
+// Log to stderr so that stdout is clean for callers that parse it (e.g. CLI --json mode)
+const logger = pino({ name: "analyzer:rule-loader" }, process.stderr);
 
 export function loadRules(rulesDir: string): DetectionRule[] {
   const rules: DetectionRule[] = [];

@@ -30,8 +30,9 @@ import {
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const CLI_PATH = resolve(__dirname, "../cli.ts");
-// tsx is a monorepo root devDependency — resolve from workspace root
-const TSX_BIN = resolve(__dirname, "../../../../../node_modules/.bin/tsx");
+// tsx is a devDependency of packages/cli — resolve from the cli package root
+// Path: __tests__ -> src -> packages/cli -> node_modules/.bin/tsx  (2 levels up)
+const TSX_BIN = resolve(__dirname, "../../node_modules/.bin/tsx");
 
 interface CLIResult {
   exitCode: number;
@@ -40,12 +41,25 @@ interface CLIResult {
 }
 
 function runCLI(args: string[], opts?: { cwd?: string; env?: Record<string, string> }): CLIResult {
-  const result = spawnSync(TSX_BIN, [CLI_PATH, ...args], {
-    encoding: "utf-8",
-    cwd: opts?.cwd ?? tmpdir(),
-    env: { ...process.env, NODE_ENV: "test", ...opts?.env },
-    timeout: 15_000,
-  });
+  let result;
+  try {
+    result = spawnSync(TSX_BIN, [CLI_PATH, ...args], {
+      encoding: "utf-8",
+      cwd: opts?.cwd ?? tmpdir(),
+      env: { ...process.env, NODE_ENV: "test", ...opts?.env },
+      timeout: 15_000,
+    });
+  } catch (err) {
+    // Node.js child_process rejects certain arguments synchronously before
+    // spawning — e.g. strings containing null bytes (ERR_INVALID_ARG_VALUE).
+    // This is OS-level protection equivalent to CLI input validation.
+    // Treat as INPUT_ERROR so callers can assert the expected exit code.
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code === "ERR_INVALID_ARG_VALUE" || code === "ERR_INVALID_ARG_TYPE") {
+      return { exitCode: EXIT.INPUT_ERROR, stdout: "", stderr: String(err) };
+    }
+    throw err;
+  }
 
   return {
     exitCode: result.status ?? 3,
