@@ -508,6 +508,85 @@ const OWASP_LABELS: Record<string, string> = {
   "MCP10-supply-chain": "MCP10 Supply Chain",
 };
 
+const OWASP_TEST_TYPES: {
+  id: string;
+  name: string;
+  description: string;
+  ruleCount: number;
+  frameworks: string[];
+}[] = [
+  {
+    id: "MCP01-prompt-injection",
+    name: "Prompt Injection",
+    description: "Injection of malicious instructions into AI context",
+    ruleCount: 14,
+    frameworks: ["NIST AI RMF", "MITRE ATLAS", "EU AI Act"],
+  },
+  {
+    id: "MCP02-tool-poisoning",
+    name: "Tool Poisoning",
+    description: "Malicious tool metadata designed to deceive AI agents",
+    ruleCount: 9,
+    frameworks: ["OWASP Agentic", "CoSAI MCP"],
+  },
+  {
+    id: "MCP03-command-injection",
+    name: "Command Injection",
+    description: "Execution of arbitrary OS commands via tool inputs",
+    ruleCount: 6,
+    frameworks: ["NIST AI RMF", "MITRE ATLAS", "ISO 27001"],
+  },
+  {
+    id: "MCP04-data-exfiltration",
+    name: "Data Exfiltration",
+    description: "Unauthorized transmission of sensitive data",
+    ruleCount: 6,
+    frameworks: ["MITRE ATLAS", "CoSAI MCP", "ISO 27001"],
+  },
+  {
+    id: "MCP05-privilege-escalation",
+    name: "Privilege Escalation",
+    description: "Gaining unauthorized elevated access or permissions",
+    ruleCount: 7,
+    frameworks: ["MITRE ATLAS", "ISO 27001", "MAESTRO"],
+  },
+  {
+    id: "MCP06-excessive-permissions",
+    name: "Excessive Permissions",
+    description: "Tools claiming broader access than necessary",
+    ruleCount: 7,
+    frameworks: ["NIST AI RMF", "ISO 27001", "CoSAI MCP"],
+  },
+  {
+    id: "MCP07-insecure-configuration",
+    name: "Insecure Configuration",
+    description: "Misconfigured server settings exposing attack surface",
+    ruleCount: 11,
+    frameworks: ["ISO 27001", "NIST AI RMF", "CoSAI MCP"],
+  },
+  {
+    id: "MCP08-dependency-vulnerabilities",
+    name: "Dependency Vulnerabilities",
+    description: "Known CVEs, malicious, or abandoned packages",
+    ruleCount: 7,
+    frameworks: ["ISO 27001", "CoSAI MCP", "OWASP Agentic"],
+  },
+  {
+    id: "MCP09-logging-monitoring",
+    name: "Logging & Monitoring",
+    description: "Insufficient audit trails and observability",
+    ruleCount: 2,
+    frameworks: ["ISO 27001", "NIST AI RMF", "MAESTRO"],
+  },
+  {
+    id: "MCP10-supply-chain",
+    name: "Supply Chain",
+    description: "Compromised packages, namespace squatting, typosquatting",
+    ruleCount: 7,
+    frameworks: ["MITRE ATLAS", "ISO 27001", "CoSAI MCP"],
+  },
+];
+
 // ── JSON-LD ───────────────────────────────────────────────────────────────────
 
 function buildJsonLd(server: ServerDetail, siteUrl: string) {
@@ -542,9 +621,9 @@ function buildJsonLd(server: ServerDetail, siteUrl: string) {
   return jsonLd;
 }
 
-// ── Security Check Coverage ───────────────────────────────────────────────────
+// ── Security Test Summary (OWASP MCP Top 10) ─────────────────────────────────
 
-function SecurityCheckCoverage({
+function SecurityTestSummary({
   findings,
   score,
 }: {
@@ -553,23 +632,23 @@ function SecurityCheckCoverage({
 }) {
   if (score === null) return null;
 
-  // Index findings by category prefix
-  const byPrefix = new Map<string, Finding[]>();
+  // Index findings by owasp_category
+  const byOwasp = new Map<string, Finding[]>();
   for (const f of findings) {
-    const p = f.rule_id.charAt(0).toUpperCase();
-    if (!byPrefix.has(p)) byPrefix.set(p, []);
-    byPrefix.get(p)!.push(f);
+    if (!f.owasp_category) continue;
+    if (!byOwasp.has(f.owasp_category)) byOwasp.set(f.owasp_category, []);
+    byOwasp.get(f.owasp_category)!.push(f);
   }
 
-  const failCount = RULE_CATEGORIES.filter(
-    (c) => (byPrefix.get(c.prefix) ?? []).length > 0
+  const failCount = OWASP_TEST_TYPES.filter(
+    (t) => (byOwasp.get(t.id) ?? []).length > 0
   ).length;
 
   return (
     <section className="section-gap">
       <h2 className="section-title">
-        Security Check Coverage
-        <span className="count">103 checks</span>
+        Security Test Coverage
+        <span className="count">10 test types</span>
       </h2>
       <div
         style={{
@@ -578,45 +657,63 @@ function SecurityCheckCoverage({
           marginBottom: "var(--s3)",
         }}
       >
-        11 categories ·{" "}
         <span style={{ color: "var(--good)", fontWeight: 600 }}>
-          {11 - failCount} passed
+          {10 - failCount} of 10
         </span>
+        {" test types clean"}
         {failCount > 0 && (
           <>
             {" · "}
             <span style={{ color: "var(--critical)", fontWeight: 600 }}>
-              {failCount} flagged
+              {failCount} issue{failCount !== 1 ? "s" : ""} detected
             </span>
           </>
         )}
       </div>
-      <div className="checks-grid">
-        {RULE_CATEGORIES.map((cat) => {
-          const catFindings = byPrefix.get(cat.prefix) ?? [];
-          const passed = catFindings.length === 0;
+      <div className="test-type-list">
+        {OWASP_TEST_TYPES.map((tt) => {
+          const ttFindings = byOwasp.get(tt.id) ?? [];
+          const passed = ttFindings.length === 0;
           const worstSev = passed
             ? null
-            : SEV_ORDER.find((s) => catFindings.some((f) => f.severity === s)) ?? null;
-          const statusColor =
+            : SEV_ORDER.find((s) => ttFindings.some((f) => f.severity === s)) ?? null;
+          const sevColor =
             worstSev === "critical"
-              ? "var(--critical)"
+              ? "var(--sev-critical)"
               : worstSev === "high"
-                ? "var(--poor)"
+                ? "var(--sev-high)"
                 : worstSev === "medium"
-                  ? "var(--moderate)"
+                  ? "var(--sev-medium)"
                   : worstSev
-                    ? "var(--text-2)"
+                    ? "var(--sev-low)"
                     : "var(--good)";
+          const shortId = tt.id.split("-")[0].toUpperCase();
           return (
-            <div key={cat.prefix} className="check-row">
-              <span className="check-prefix">{cat.prefix}</span>
-              <span className="check-name">{cat.name}</span>
-              <span className="check-rule-count">{cat.count} rules</span>
-              <span className="check-status" style={{ color: statusColor }}>
+            <div
+              key={tt.id}
+              className={`test-type-row ${passed ? "tt-pass" : "tt-fail"}`}
+              style={passed ? undefined : { color: sevColor }}
+            >
+              <span className={`tt-icon ${passed ? "pass" : "fail"}`}>
+                {passed ? "✓" : "✗"}
+              </span>
+              <span className="tt-id">{shortId}</span>
+              <div className="tt-body">
+                <div className="tt-name">{tt.name}</div>
+                <div className="tt-desc">{tt.description}</div>
+              </div>
+              <span className="tt-rule-count">{tt.ruleCount} rules</span>
+              <div className="tt-frameworks">
+                {tt.frameworks.map((fw) => (
+                  <span key={fw} className="tt-fw-tag">
+                    {fw}
+                  </span>
+                ))}
+              </div>
+              <span className={`tt-result ${passed ? "pass" : "fail"}`}>
                 {passed
-                  ? "✓ Passed"
-                  : `${catFindings.length} issue${catFindings.length !== 1 ? "s" : ""}`}
+                  ? "✓ Clean"
+                  : `${ttFindings.length} issue${ttFindings.length !== 1 ? "s" : ""}`}
               </span>
             </div>
           );
@@ -1008,9 +1105,9 @@ export default async function ServerPage({
             )}
           </section>
 
-          {/* Security Check Coverage */}
+          {/* Security Test Coverage */}
           {score !== null && (
-            <SecurityCheckCoverage
+            <SecurityTestSummary
               findings={server.findings ?? []}
               score={score}
             />

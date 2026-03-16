@@ -432,6 +432,20 @@ app.get("/api/v1/ecosystem/stats", rateLimitMiddleware(), async (_req: Request, 
   }
 });
 
+// GET /api/v1/ecosystem/dedup-stats — Deduplication quality report
+// Shows how well canonical identifiers (github_url, npm_package, pypi_package) are
+// populated and how many servers are confirmed by multiple independent sources.
+// Useful for operational monitoring of crawler data quality.
+app.get("/api/v1/ecosystem/dedup-stats", rateLimitMiddleware(), async (_req: Request, res: Response) => {
+  try {
+    const stats = await db.getDedupStats();
+    res.json({ data: stats });
+  } catch (err) {
+    logger.error(err, "Dedup stats error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // GET / — API root info
 app.get("/", (_req: Request, res: Response) => {
   res.json({ name: "MCP Sentinel API", version: "1.0.0", docs: "/api/v1" });
