@@ -1176,6 +1176,140 @@ code, pre, kbd {
 }
 .server-row-hover:hover { background: var(--surface-2); }
 
+/* ── Category browse ────────────────────────────────────── */
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--s4);
+  margin-top: var(--s8);
+}
+
+.cat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s5) var(--s6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  text-decoration: none;
+  color: inherit;
+  box-shadow: var(--shadow-card);
+  transition: border-color var(--t-base) var(--ease),
+              box-shadow var(--t-base) var(--ease),
+              transform var(--t-base) var(--ease);
+}
+.cat-card:hover {
+  border-color: var(--border-md);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+  color: inherit;
+}
+
+.cat-card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.cat-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--r-md);
+  background: var(--accent-sub);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.cat-name {
+  font-family: 'Outfit Variable', 'Outfit', system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.cat-desc {
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.55;
+  flex: 1;
+}
+
+.cat-risk {
+  font-size: 11px;
+  color: var(--text-3);
+  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+  padding: var(--s1) var(--s2);
+  background: var(--surface-2);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+}
+
+.cat-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+}
+
+.cat-count {
+  font-size: 13px;
+  color: var(--text-2);
+  font-weight: 500;
+}
+
+.cat-cta {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Category detail page */
+.cat-detail-header {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  padding: var(--s8) 0 var(--s6);
+}
+
+.cat-icon-lg {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--r-lg);
+  background: var(--accent-sub);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  flex-shrink: 0;
+  border: 1px solid var(--accent-ring);
+}
+
+.cat-detail-title {
+  font-family: 'Outfit Variable', 'Outfit', system-ui, sans-serif;
+  font-size: clamp(24px, 4vw, 36px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.cat-detail-meta {
+  margin-top: var(--s1);
+  font-size: 14px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+
 /* ── Utilities ──────────────────────────────────────────── */
 .divider {
   height: 1px;
@@ -1212,4 +1346,6 @@ code, pre, kbd {
   .mini-stats   { grid-template-columns: repeat(2, 1fr); }
   .filter-row   { flex-direction: column; align-items: stretch; }
   .result-count { margin-left: 0; }
+  .cat-grid     { grid-template-columns: 1fr; }
+  .cat-detail-header { flex-direction: column; align-items: flex-start; }
 }

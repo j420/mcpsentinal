@@ -159,6 +159,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
             <nav className="site-nav" aria-label="Main navigation">
               <a href="/" className="nav-link">Registry</a>
+              <a href="/categories" className="nav-link">Categories</a>
               <a href="/dashboard" className="nav-link">Dashboard</a>
               <a href="/about" className="nav-link">About</a>
               <a href="/api/v1" className="nav-link nav-link-api" target="_blank" rel="noopener noreferrer">
