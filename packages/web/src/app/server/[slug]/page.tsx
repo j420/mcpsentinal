@@ -430,6 +430,71 @@ const SEV_ORDER: Finding["severity"][] = [
   "informational",
 ];
 
+// ── Check coverage & framework compliance data ────────────────────────────────
+
+const RULE_CATEGORIES: { prefix: string; name: string; count: number }[] = [
+  { prefix: "A", name: "Description Analysis", count: 9 },
+  { prefix: "B", name: "Schema Analysis", count: 7 },
+  { prefix: "C", name: "Code Analysis", count: 16 },
+  { prefix: "D", name: "Dependency Analysis", count: 7 },
+  { prefix: "E", name: "Behavioral Analysis", count: 4 },
+  { prefix: "F", name: "Ecosystem Context", count: 7 },
+  { prefix: "G", name: "Adversarial AI", count: 7 },
+  { prefix: "H", name: "2026 Attack Surface", count: 3 },
+  { prefix: "I", name: "Protocol Surface", count: 16 },
+  { prefix: "J", name: "Threat Intelligence", count: 7 },
+  { prefix: "K", name: "Compliance & Governance", count: 20 },
+];
+
+const FRAMEWORKS: {
+  id: string;
+  name: string;
+  ruleIds: string[];
+  checkMitreTechnique?: boolean;
+}[] = [
+  {
+    id: "nist-ai-rmf",
+    name: "NIST AI RMF",
+    ruleIds: ["K1", "K3", "K4", "K18"],
+  },
+  {
+    id: "owasp-agentic",
+    name: "OWASP Agentic Top 10",
+    ruleIds: ["K5", "K6", "K7", "K8", "K9", "K10", "K12", "K13", "K14", "K15", "K16", "K17"],
+  },
+  {
+    id: "mitre-atlas",
+    name: "MITRE ATLAS",
+    ruleIds: ["K9", "K14"],
+    checkMitreTechnique: true,
+  },
+  {
+    id: "eu-ai-act",
+    name: "EU AI Act",
+    ruleIds: ["K2", "K4", "K5", "K16", "K17"],
+  },
+  {
+    id: "iso-42001",
+    name: "ISO 42001",
+    ruleIds: ["K4", "K5", "K20"],
+  },
+  {
+    id: "iso-27001",
+    name: "ISO 27001",
+    ruleIds: ["K1", "K2", "K3", "K6", "K7", "K8", "K10", "K11", "K18", "K19", "K20"],
+  },
+  {
+    id: "cosai",
+    name: "CoSAI MCP Security",
+    ruleIds: ["K1", "K2", "K3", "K6", "K7", "K8", "K9", "K10", "K11", "K12", "K13", "K15", "K16", "K17", "K18", "K19"],
+  },
+  {
+    id: "maestro",
+    name: "MAESTRO",
+    ruleIds: ["K1", "K3", "K8", "K11", "K13", "K14", "K15", "K17", "K19", "K20"],
+  },
+];
+
 const OWASP_LABELS: Record<string, string> = {
   "MCP01-prompt-injection": "MCP01 Prompt Injection",
   "MCP02-tool-poisoning": "MCP02 Tool Poisoning",
@@ -475,6 +540,135 @@ function buildJsonLd(server: ServerDetail, siteUrl: string) {
   }
 
   return jsonLd;
+}
+
+// ── Security Check Coverage ───────────────────────────────────────────────────
+
+function SecurityCheckCoverage({
+  findings,
+  score,
+}: {
+  findings: Finding[];
+  score: number | null;
+}) {
+  if (score === null) return null;
+
+  // Index findings by category prefix
+  const byPrefix = new Map<string, Finding[]>();
+  for (const f of findings) {
+    const p = f.rule_id.charAt(0).toUpperCase();
+    if (!byPrefix.has(p)) byPrefix.set(p, []);
+    byPrefix.get(p)!.push(f);
+  }
+
+  const failCount = RULE_CATEGORIES.filter(
+    (c) => (byPrefix.get(c.prefix) ?? []).length > 0
+  ).length;
+
+  return (
+    <section className="section-gap">
+      <h2 className="section-title">
+        Security Check Coverage
+        <span className="count">103 checks</span>
+      </h2>
+      <div
+        style={{
+          fontSize: "12px",
+          color: "var(--text-3)",
+          marginBottom: "var(--s3)",
+        }}
+      >
+        11 categories ·{" "}
+        <span style={{ color: "var(--good)", fontWeight: 600 }}>
+          {11 - failCount} passed
+        </span>
+        {failCount > 0 && (
+          <>
+            {" · "}
+            <span style={{ color: "var(--critical)", fontWeight: 600 }}>
+              {failCount} flagged
+            </span>
+          </>
+        )}
+      </div>
+      <div className="checks-grid">
+        {RULE_CATEGORIES.map((cat) => {
+          const catFindings = byPrefix.get(cat.prefix) ?? [];
+          const passed = catFindings.length === 0;
+          const worstSev = passed
+            ? null
+            : SEV_ORDER.find((s) => catFindings.some((f) => f.severity === s)) ?? null;
+          const statusColor =
+            worstSev === "critical"
+              ? "var(--critical)"
+              : worstSev === "high"
+                ? "var(--poor)"
+                : worstSev === "medium"
+                  ? "var(--moderate)"
+                  : worstSev
+                    ? "var(--text-2)"
+                    : "var(--good)";
+          return (
+            <div key={cat.prefix} className="check-row">
+              <span className="check-prefix">{cat.prefix}</span>
+              <span className="check-name">{cat.name}</span>
+              <span className="check-rule-count">{cat.count} rules</span>
+              <span className="check-status" style={{ color: statusColor }}>
+                {passed
+                  ? "✓ Passed"
+                  : `${catFindings.length} issue${catFindings.length !== 1 ? "s" : ""}`}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+// ── Framework Compliance Card ─────────────────────────────────────────────────
+
+function FrameworkComplianceCard({ findings }: { findings: Finding[] }) {
+  if (findings === undefined) return null;
+
+  const findingRuleIds = new Set(findings.map((f) => f.rule_id));
+  const hasMitreTechnique = findings.some((f) => f.mitre_technique);
+
+  return (
+    <div className="card">
+      <h3
+        style={{
+          fontSize: "12px",
+          fontWeight: 700,
+          textTransform: "uppercase",
+          letterSpacing: "0.06em",
+          color: "var(--text-3)",
+          marginBottom: "var(--s3)",
+        }}
+      >
+        Framework Compliance
+      </h3>
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        {FRAMEWORKS.map((fw) => {
+          const violatedRules = fw.ruleIds.filter((r) => findingRuleIds.has(r));
+          const failed =
+            violatedRules.length > 0 ||
+            (fw.checkMitreTechnique && hasMitreTechnique);
+          return (
+            <div key={fw.id} className={`framework-row ${failed ? "fw-fail" : "fw-pass"}`}>
+              <span className="fw-dot" />
+              <span className="fw-name">{fw.name}</span>
+              <span className="fw-status">
+                {failed
+                  ? `${violatedRules.length + (fw.checkMitreTechnique && hasMitreTechnique && !violatedRules.length ? 1 : 0)} issue${violatedRules.length !== 1 ? "s" : ""}`
+                  : "Clean"}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -814,6 +1008,14 @@ export default async function ServerPage({
             )}
           </section>
 
+          {/* Security Check Coverage */}
+          {score !== null && (
+            <SecurityCheckCoverage
+              findings={server.findings ?? []}
+              score={score}
+            />
+          )}
+
           {/* Badge embed */}
           <section>
             <h2 className="section-title">Add to your README</h2>
@@ -902,6 +1104,11 @@ export default async function ServerPage({
                 </div>
               </div>
             )}
+
+          {/* Framework Compliance */}
+          {score !== null && (
+            <FrameworkComplianceCard findings={server.findings ?? []} />
+          )}
 
           {/* Cross-server attack paths */}
           {riskEdges.length > 0 && (

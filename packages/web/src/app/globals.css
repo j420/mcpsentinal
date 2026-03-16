@@ -723,6 +723,87 @@ code, pre, kbd {
 .owasp-item.clean .owasp-dot { background: var(--good); }
 .owasp-item.dirty .owasp-dot { background: var(--critical); }
 
+/* ── Security Check Coverage ────────────────────────────── */
+.checks-grid {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+
+.check-row {
+  display: grid;
+  grid-template-columns: 22px 1fr auto auto;
+  gap: var(--s3);
+  align-items: center;
+  padding: 9px var(--s4);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.check-row:last-child { border-bottom: none; }
+.check-row:nth-child(even) { background: var(--surface-2); }
+
+.check-prefix {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-3);
+  background: var(--surface-3);
+  border-radius: 4px;
+  text-align: center;
+  padding: 2px 4px;
+  letter-spacing: 0.04em;
+}
+
+.check-name {
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.check-rule-count {
+  color: var(--text-3);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.check-status {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ── Framework Compliance ────────────────────────────────── */
+.framework-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.framework-row:last-child { border-bottom: none; }
+
+.fw-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-full);
+  flex-shrink: 0;
+}
+.fw-pass .fw-dot { background: var(--good); }
+.fw-fail .fw-dot { background: var(--critical); }
+
+.fw-name {
+  flex: 1;
+  color: var(--text-2);
+}
+
+.fw-status {
+  font-size: 11px;
+  font-weight: 600;
+}
+.fw-pass .fw-status { color: var(--good); }
+.fw-fail .fw-status { color: var(--critical); }
+
 /* ── Tools grid ─────────────────────────────────────────── */
 .tools-grid {
   display: grid;
