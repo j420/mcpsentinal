@@ -364,6 +364,12 @@ async function start() {
   });
 }
 
-start();
+// Only auto-start when NOT imported by a test runner.
+// Tests import `app` directly and drive it via supertest — no port binding needed.
+// Only auto-start when NOT imported by a test runner.
+// Tests import `app` directly and drive it via supertest — no port binding needed.
+if (process.env["NODE_ENV"] !== "test") {
+  start();
+}
 
 export { app };
