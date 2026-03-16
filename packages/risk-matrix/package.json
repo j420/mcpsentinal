@@ -9,14 +9,17 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "risk-matrix": "tsx src/cli.ts"
   },
   "dependencies": {
     "@mcp-sentinel/database": "workspace:*",
+    "pg": "^8.13.0",
     "pino": "^9.0.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@types/pg": "^8.11.0",
     "typescript": "^5.5.0",
     "vitest": "^2.0.0",
     "tsx": "^4.19.0"

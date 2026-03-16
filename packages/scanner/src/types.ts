@@ -32,6 +32,19 @@ export interface ScanOptions {
   dryRun?: boolean;
   /** Absolute path to the rules directory (default: project root /rules) */
   rulesDir?: string;
+  /**
+   * Enable dynamic tool invocation testing (Stage 5b — Layer 5 gated capability).
+   * Only runs against servers that have explicitly opted in via one of three
+   * consent mechanisms (allowlist, mcp_sentinel_consent tool, .well-known endpoint).
+   * Requires a live MCP endpoint to be reachable.
+   * Default: false (never on in standard scans)
+   */
+  dynamic?: boolean;
+  /**
+   * Server IDs pre-approved for dynamic testing (explicit allowlist consent).
+   * These servers bypass the .well-known consent check.
+   */
+  dynamicAllowlist?: string[];
 }
 
 // ─── Per-Server Result ────────────────────────────────────────────────────────
@@ -45,6 +58,8 @@ export interface ScanStages {
   connection_succeeded: boolean;
   /** OSV dependency CVE audit was executed */
   dependencies_audited: boolean;
+  /** Dynamic tool invocation testing ran (Layer 5 gated, consent required) */
+  dynamic_tested?: boolean;
 }
 
 export interface ScanServerResult {

@@ -18,6 +18,8 @@
  *       ↓
  *   Stage 5: AnalysisEngine        — run all 103 detection rules → FindingInput[]
  *       ↓
+ *   Stage 5b: DynamicTester        — gated tool invocation (consent required, --dynamic only)
+ *       ↓
  *   Stage 6: computeScore()        — compute composite 0–100 score
  *       ↓
  *   Stage 7: Persist               — insertFindings + insertScore + completeScan
@@ -28,6 +30,7 @@
  *   (e.g., failed source fetch → analysis still runs on tool descriptions)
  * - Structured logging: every stage logs with a correlation ID (server_id prefix)
  * - SAFETY: MCPConnector ONLY calls initialize + tools/list, never invokes tools
+ * - SAFETY: DynamicTester only runs when --dynamic is set AND server has opted in
  */
 
 import path from "node:path";
@@ -38,6 +41,10 @@ import { AnalysisEngine, loadRules, getRulesVersion } from "@mcp-sentinel/analyz
 import type { AnalysisContext } from "@mcp-sentinel/analyzer";
 import { MCPConnector } from "@mcp-sentinel/connector";
 import { computeScore } from "@mcp-sentinel/scorer";
+import { DynamicTester } from "@mcp-sentinel/dynamic-tester";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { SourceFetcher } from "./fetcher.js";
 import { DependencyAuditor } from "./auditor.js";
 import type { ScanOptions, ScanServerResult, ScanRunStats, EnrichedDependency } from "./types.js";
@@ -56,6 +63,8 @@ const DEFAULT_RULES_DIR = path.resolve(__dirname, "../../../rules");
 export interface PipelineConfig {
   /** Override the rules directory path (default: <monorepo-root>/rules) */
   rulesDir?: string;
+  /** Path to write the dynamic testing audit log (default: ./dynamic-test-audit.jsonl) */
+  dynamicAuditLogPath?: string;
 }
 
 export class ScanPipeline {
@@ -63,6 +72,7 @@ export class ScanPipeline {
   private readonly auditor: DependencyAuditor;
   private readonly connector: MCPConnector;
   private readonly rulesDir: string;
+  private readonly dynamicAuditLogPath: string;
 
   constructor(
     private readonly db: DatabaseQueries,
@@ -72,6 +82,7 @@ export class ScanPipeline {
     this.auditor = new DependencyAuditor();
     this.connector = new MCPConnector();
     this.rulesDir = config?.rulesDir ?? DEFAULT_RULES_DIR;
+    this.dynamicAuditLogPath = config?.dynamicAuditLogPath ?? "./dynamic-test-audit.jsonl";
   }
 
   /**
@@ -166,10 +177,13 @@ export class ScanPipeline {
     // ── Concurrent scan execution with semaphore ──────────────────────────────
     const semaphore = new Semaphore(concurrency);
 
+    const dynamicEnabled  = options.dynamic         ?? false;
+    const dynamicAllowlist = options.dynamicAllowlist ?? [];
+
     const results: ScanServerResult[] = await Promise.all(
       servers.map((server) =>
         semaphore.run(() =>
-          this.scanOneServer(server, engine, ruleCategories, rulesVersion)
+          this.scanOneServer(server, engine, ruleCategories, rulesVersion, dynamicEnabled, dynamicAllowlist)
         )
       )
     );
@@ -204,7 +218,9 @@ export class ScanPipeline {
     server: Server,
     engine: AnalysisEngine,
     ruleCategories: Record<string, string>,
-    rulesVersion: string
+    rulesVersion: string,
+    dynamicEnabled: boolean = false,
+    dynamicAllowlist: string[] = []
   ): Promise<ScanServerResult> {
     const serverStart = Date.now();
     const stages = {
@@ -212,6 +228,7 @@ export class ScanPipeline {
       connection_attempted: false,
       connection_succeeded: false,
       dependencies_audited: false,
+      dynamic_tested: false,
     };
 
     // Scoped child logger with correlation ID for this server
@@ -411,6 +428,74 @@ export class ScanPipeline {
       log.info({ rules: "all", tools: toolsForAnalysis.length }, "Stage 5: Running analysis engine");
       const findings = engine.analyze(context);
       log.info({ findings: findings.length }, "Stage 5: Analysis complete");
+
+      // ── Stage 5b: Dynamic tool invocation (gated, consent required) ────────
+      // Only runs when --dynamic is set and a live endpoint exists.
+      // DynamicTester enforces consent before invoking any tool.
+      if (dynamicEnabled && endpoint && stages.connection_succeeded) {
+        try {
+          log.info("Stage 5b: Running dynamic tester (consent check first)");
+          const tester = new DynamicTester({
+            allowlist: dynamicAllowlist,
+            audit_log_path: this.dynamicAuditLogPath,
+          });
+
+          // Build a callTool function using the MCP SDK Client directly.
+          // This is intentionally separate from MCPConnector (ADR-007 scope).
+          const dynamicReport = await tester.test(
+            { id: server.id, name: server.name },
+            endpoint,
+            toolsForAnalysis.map((t) => ({
+              name: t.name,
+              description: t.description ?? null,
+              input_schema: t.input_schema as Record<string, unknown> | null,
+            })),
+            async (toolName: string, input: Record<string, unknown>) => {
+              const sdkClient = new Client(
+                { name: "mcp-sentinel-dynamic-tester", version: "0.1.0" },
+                { capabilities: {} }
+              );
+              const transport = endpoint.endsWith("/sse") || endpoint.includes("?sse=")
+                ? new SSEClientTransport(new URL(endpoint))
+                : new StreamableHTTPClientTransport(new URL(endpoint));
+              await sdkClient.connect(transport);
+              try {
+                const result = await sdkClient.callTool({ name: toolName, arguments: input });
+                const content = result.content;
+                if (Array.isArray(content)) {
+                  return content
+                    .map((c: { type?: string; text?: string }) => c.type === "text" ? (c.text ?? "") : "")
+                    .join("\n");
+                }
+                return JSON.stringify(content);
+              } finally {
+                await sdkClient.close();
+              }
+            }
+          );
+
+          if (dynamicReport.consent.consented) {
+            stages.dynamic_tested = true;
+            log.info(
+              {
+                tools_tested:             dynamicReport.tools_tested,
+                output_findings:          dynamicReport.output_findings_count,
+                injection_vulnerable:     dynamicReport.injection_vulnerable_count,
+                output_injection_risk:    dynamicReport.risk_summary.output_injection_risk,
+                injection_vulnerability:  dynamicReport.risk_summary.injection_vulnerability,
+              },
+              "Stage 5b: Dynamic testing complete"
+            );
+          } else {
+            log.info("Stage 5b: Server did not consent to dynamic testing — skipped");
+          }
+        } catch (dynamicErr) {
+          log.warn(
+            { err: dynamicErr instanceof Error ? dynamicErr.message : String(dynamicErr) },
+            "Stage 5b: Dynamic testing failed — continuing with static findings"
+          );
+        }
+      }
 
       // ── Stage 6: Compute composite score ──────────────────────────────────
       const score = computeScore(findings, ruleCategories);

@@ -97,7 +97,8 @@ export class RiskMatrixAnalyzer {
     for (const pattern of ALL_PATTERNS) {
       const patternEdges = pattern.detect(nodes);
       if (patternEdges.length > 0) {
-        allEdges.push(...patternEdges);
+        // Stamp pattern_id onto every edge so consumers can group/filter by pattern
+        allEdges.push(...patternEdges.map((e) => ({ ...e, pattern_id: pattern.id })));
         firedPatternIds.push(pattern.id);
       }
     }

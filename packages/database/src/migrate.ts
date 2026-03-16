@@ -258,6 +258,34 @@ const MIGRATIONS = [
         ADD COLUMN IF NOT EXISTS cve_severity VARCHAR(20);
     `,
   },
+  {
+    id: "005_risk_edges",
+    sql: `
+      -- risk_edges: cross-server attack path results from RiskMatrixAnalyzer.
+      -- Each row represents a dangerous capability edge between two servers
+      -- detected by one of the 12 cross-server patterns (P01–P12).
+      -- Append-only (ADR-008): never UPDATE. Re-runs insert new rows.
+      CREATE TABLE IF NOT EXISTS risk_edges (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        config_id VARCHAR(32) NOT NULL,
+        from_server_id UUID NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+        to_server_id UUID NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+        edge_type VARCHAR(50) NOT NULL,
+        pattern_id VARCHAR(10) NOT NULL,
+        severity VARCHAR(20) NOT NULL,
+        description TEXT NOT NULL,
+        owasp_category VARCHAR(50),
+        mitre_technique VARCHAR(100),
+        detected_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_risk_edges_from ON risk_edges(from_server_id);
+      CREATE INDEX IF NOT EXISTS idx_risk_edges_to ON risk_edges(to_server_id);
+      CREATE INDEX IF NOT EXISTS idx_risk_edges_pattern ON risk_edges(pattern_id);
+      CREATE INDEX IF NOT EXISTS idx_risk_edges_config ON risk_edges(config_id);
+      CREATE INDEX IF NOT EXISTS idx_risk_edges_detected ON risk_edges(detected_at);
+    `,
+  },
 ];
 
 export async function migrate(connectionString: string): Promise<void> {
