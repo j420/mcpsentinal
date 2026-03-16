@@ -5,6 +5,7 @@ import { join, resolve, isAbsolute } from "path";
 import { fileURLToPath } from "url";
 import { AnalysisEngine, loadRules, getRulesVersion } from "@mcp-sentinel/analyzer";
 import { computeScore } from "@mcp-sentinel/scorer";
+import { RiskMatrixAnalyzer } from "@mcp-sentinel/risk-matrix";
 import type { AnalysisContext } from "@mcp-sentinel/analyzer";
 import { z } from "zod";
 
@@ -70,6 +71,14 @@ interface ScanResult {
   medium: number;
   low: number;
   top_findings: string[];
+}
+
+interface CrossServerResult {
+  aggregate_risk: "none" | "low" | "medium" | "high" | "critical";
+  patterns_detected: string[];
+  attack_edges: number;
+  score_caps: Record<string, number>;
+  summary: string;
 }
 
 // ─── Security Utilities ───────────────────────────────────────────────────────
@@ -474,57 +483,61 @@ async function runCheck(cliArgs: CLIArgs): Promise<never> {
     }
   }
 
-  // ── 5. Cross-config analysis (I13 — distributed lethal trifecta) ──────────
-  // A single server may look safe, but combining read + untrusted content +
-  // exfiltration across multiple servers is the I13 pattern.
+  // ── 5. Cross-server risk matrix (Layer 5 — P01–P12 patterns) ─────────────
+  // Analyzes capability combinations across all servers in the config.
+  // Detects attack paths that no individual server scan can find:
+  // credential harvesting chains, injection propagation, multi-hop exfiltration, etc.
+  let crossServerResult: CrossServerResult | null = null;
+
   if (serverNames.length > 1) {
-    const crossContext: AnalysisContext = {
-      server: {
-        id: "cross-config",
-        name: "Cross-Config Analysis",
-        description: `Aggregated analysis across ${serverNames.length} servers`,
-        github_url: null,
-      },
-      tools: [],
-      source_code: null,
-      dependencies: [],
-      connection_metadata: null,
-    };
+    const riskMatrixAnalyzer = new RiskMatrixAnalyzer();
 
-    const crossFindings = engine.analyze(crossContext).filter((f) => f.rule_id === "I13");
+    // Build server input from scanned results — tools not available in CLI mode,
+    // so the analyzer classifies based on server name patterns and config metadata.
+    // The per-server scores from the current run are passed in as latest_score
+    // so P11 (low-score server in high-trust config) fires correctly.
+    const serverInputs = serverNames.map((name, i) => ({
+      server_id: name,
+      server_name: name,
+      server_slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      latest_score: results[i]?.score ?? null,
+      category: null,
+      tools: [],  // CLI mode: tools not available without live enumeration
+    }));
 
-    if (crossFindings.length > 0) {
-      const crossScore = computeScore(crossFindings, ruleCategories);
-      worstScore = Math.min(worstScore, crossScore.total_score);
+    const riskReport = riskMatrixAnalyzer.analyze(serverInputs);
 
-      const crossResult: ScanResult = {
-        server_name: "[cross-config]",
-        score: crossScore.total_score,
-        findings_count: crossFindings.length,
-        critical: crossFindings.filter((f) => f.severity === "critical").length,
-        high: crossFindings.filter((f) => f.severity === "high").length,
-        medium: crossFindings.filter((f) => f.severity === "medium").length,
-        low: crossFindings.filter((f) => f.severity === "low").length,
-        top_findings: crossFindings
-          .slice(0, 3)
-          .map(
-            (f) =>
-              `[${f.severity.toUpperCase()}] ${f.rule_id}: ${sanitizeForTerminal(f.evidence, 100)}`
-          ),
+    if (riskReport.edges.length > 0) {
+      crossServerResult = {
+        aggregate_risk: riskReport.aggregate_risk,
+        patterns_detected: riskReport.patterns_detected,
+        attack_edges: riskReport.edges.length,
+        score_caps: riskReport.score_caps,
+        summary: riskReport.summary,
       };
 
-      results.push(crossResult);
+      // Apply score caps from critical cross-server patterns to worstScore
+      const capValues = Object.values(riskReport.score_caps);
+      if (capValues.length > 0) {
+        const lowestCap = Math.min(...capValues);
+        worstScore = Math.min(worstScore, lowestCap);
+      }
 
       if (!cliArgs.jsonOutput) {
-        const indicator = getScoreIndicator(crossScore.total_score);
-        console.log(
-          `\n  ${indicator} ${"[cross-config]".padEnd(40)} Score: ${crossScore.total_score}/100`
-        );
-        console.log(
-          `     Findings: ${crossFindings.length} (${crossResult.critical}C ${crossResult.high}H ${crossResult.medium}M ${crossResult.low}L)`
-        );
-        for (const finding of crossResult.top_findings) {
-          console.log(`     -> ${finding}`);
+        const riskIndicator =
+          riskReport.aggregate_risk === "critical" ? "[CRIT]" :
+          riskReport.aggregate_risk === "high" ? "[WARN]" :
+          riskReport.aggregate_risk === "medium" ? "[WARN]" : "[INFO]";
+        console.log(`\n  ${riskIndicator} [cross-server risk matrix]`);
+        console.log(`     ${sanitizeForTerminal(riskReport.summary, 200)}`);
+        if (riskReport.patterns_detected.length > 0) {
+          console.log(`     Patterns: ${riskReport.patterns_detected.join(", ")}`);
+        }
+        if (Object.keys(riskReport.score_caps).length > 0) {
+          const cappedServers = Object.entries(riskReport.score_caps)
+            .map(([id, cap]) => `${sanitizeForTerminal(id, 40)} → capped at ${cap}`)
+            .join(", ");
+          console.log(`     Score caps applied: ${cappedServers}`);
         }
       }
     }
@@ -533,18 +546,16 @@ async function runCheck(cliArgs: CLIArgs): Promise<never> {
   // ── 6. Output ──────────────────────────────────────────────────────────────
   if (cliArgs.jsonOutput) {
     // Stable public JSON contract — never add or rename fields without a major bump
-    console.log(
-      JSON.stringify(
-        {
-          version: rulesVersion,
-          scanned: results.length,
-          worst_score: worstScore,
-          results,
-        },
-        null,
-        2
-      )
-    );
+    const output: Record<string, unknown> = {
+      version: rulesVersion,
+      scanned: results.length,
+      worst_score: worstScore,
+      results,
+    };
+    if (crossServerResult) {
+      output["cross_server"] = crossServerResult;
+    }
+    console.log(JSON.stringify(output, null, 2));
   } else {
     console.log("\n" + "─".repeat(70));
     console.log(`\n  Summary: ${results.length} servers scanned, worst score: ${worstScore}/100\n`);

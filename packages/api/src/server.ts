@@ -2,7 +2,10 @@ import express, { type Express, type Request, type Response, type NextFunction }
 import cors from "cors";
 import pg from "pg";
 import pino from "pino";
+import { z } from "zod";
 import { DatabaseQueries, ServerListQuerySchema, migrate } from "@mcp-sentinel/database";
+import type { Server } from "@mcp-sentinel/database";
+import { RiskMatrixAnalyzer } from "@mcp-sentinel/risk-matrix";
 import { createBadgeSvg } from "./badge.js";
 
 // Log to stderr — keeps stdout clean for callers that parse it
@@ -325,6 +328,71 @@ app.get(
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Cache-Control", "public, max-age=300");
     res.status(200).send(createBadgeSvg("mcp sentinel", "unknown", "#999"));
+  }
+);
+
+// POST /api/v1/risk-matrix — Cross-server capability graph and attack path detection
+//
+// Accepts a set of server IDs (from the registry database) and returns a
+// RiskMatrixReport describing dangerous capability combinations across them.
+// This is the API surface for the Layer 5 cross-server analysis (P01–P12 patterns).
+//
+// The endpoint is POST (not GET) because the server ID set can be large and is
+// logically a "query body", not a URL parameter.
+//
+// Security: POST endpoint, but still read-only (no DB writes). CORS allows only
+// safe methods on GET/HEAD/OPTIONS — POST here is intentional and controlled.
+const RiskMatrixRequestSchema = z.object({
+  server_ids: z
+    .array(z.string().uuid())
+    .min(1, "At least one server_id is required")
+    .max(100, "Maximum 100 server_ids per request"),
+});
+
+app.post(
+  "/api/v1/risk-matrix",
+  rateLimitMiddleware(),
+  async (req: Request, res: Response) => {
+    const parsed = RiskMatrixRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid request body", issues: parsed.error.issues });
+      return;
+    }
+
+    try {
+      const servers = await db.getServersByIds(parsed.data.server_ids);
+      if (servers.length === 0) {
+        res.status(404).json({ error: "No servers found for the provided IDs" });
+        return;
+      }
+
+      // Fetch tools for each server (needed for capability classification)
+      const serverInputs = await Promise.all(
+        servers.map(async (s: Server) => {
+          const tools = await db.getToolsForServer(s.id);
+          return {
+            server_id: s.id,
+            server_name: s.name,
+            server_slug: s.slug ?? s.name,
+            latest_score: s.latest_score,
+            category: s.category,
+            tools: tools.map((t) => ({
+              name: t.name,
+              description: t.description,
+              capability_tags: (t as Record<string, unknown>)["capability_tags"] as string[] | undefined,
+            })),
+          };
+        })
+      );
+
+      const analyzer = new RiskMatrixAnalyzer();
+      const report = analyzer.analyze(serverInputs);
+
+      res.json({ data: report });
+    } catch (err) {
+      logger.error(err, "Risk matrix error");
+      res.status(500).json({ error: "Internal server error" });
+    }
   }
 );
 

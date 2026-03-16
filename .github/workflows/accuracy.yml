@@ -1,0 +1,198 @@
+name: Rule Accuracy Audit
+
+# Runs the red-team fixture suite to measure detection rule precision and recall.
+# Fails the workflow if overall precision drops below 80% (Layer 5 threshold).
+#
+# Schedule: weekly on Sundays at 03:00 UTC (after crawl.yml at 02:00).
+# Manual dispatch: run at any time to check accuracy after rule changes.
+#
+# Outputs:
+#   - Step summary with per-rule accuracy table
+#   - JSON report uploaded as an artifact (retained 30 days)
+#   - Workflow fails if passes_layer5_threshold is false
+#
+# Related personas: P10 (Adversarial Tester), P8 (Detection Rule Engineer),
+#                   P18 (Trust & Accuracy Auditor), P9 (Scanner Engine Engineer)
+
+on:
+  schedule:
+    - cron: "0 3 * * 0"  # Sundays 03:00 UTC
+  workflow_dispatch:
+    inputs:
+      category:
+        description: "Filter to a specific rule category (e.g. A, C, G). Leave empty to audit all."
+        required: false
+        default: ""
+      rule:
+        description: "Filter to a specific rule ID (e.g. A1, C5). Leave empty to audit all."
+        required: false
+        default: ""
+      fail_fast:
+        description: "Stop on first fixture failure"
+        type: boolean
+        required: false
+        default: false
+
+concurrency:
+  group: accuracy-audit
+  cancel-in-progress: false  # Never cancel a running audit — finish the full report
+
+jobs:
+  accuracy-audit:
+    name: Rule Accuracy Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        # Build dependency chain: database → analyzer → scorer → red-team
+        run: |
+          pnpm --filter=@mcp-sentinel/database run build
+          pnpm --filter=@mcp-sentinel/analyzer run build
+          pnpm --filter=@mcp-sentinel/scorer run build
+          pnpm --filter=@mcp-sentinel/red-team run build
+
+      # ── Run accuracy audit and capture both JSON and text outputs ─────────────
+
+      - name: Run accuracy audit (JSON)
+        id: accuracy_json
+        run: |
+          ARGS="--json"
+          if [ -n "${{ github.event.inputs.category }}" ]; then
+            ARGS="$ARGS --category ${{ github.event.inputs.category }}"
+          fi
+          if [ -n "${{ github.event.inputs.rule }}" ]; then
+            ARGS="$ARGS --rule ${{ github.event.inputs.rule }}"
+          fi
+          if [ "${{ github.event.inputs.fail_fast }}" = "true" ]; then
+            ARGS="$ARGS --fail-fast"
+          fi
+          # Run and capture output — exit code 0 even on failures so we can
+          # upload the artifact and write the step summary before failing.
+          pnpm --filter=@mcp-sentinel/red-team exec tsx src/cli.ts $ARGS > accuracy-report.json 2>&1 || true
+
+      - name: Run accuracy audit (text summary)
+        id: accuracy_text
+        run: |
+          ARGS=""
+          if [ -n "${{ github.event.inputs.category }}" ]; then
+            ARGS="$ARGS --category ${{ github.event.inputs.category }}"
+          fi
+          if [ -n "${{ github.event.inputs.rule }}" ]; then
+            ARGS="$ARGS --rule ${{ github.event.inputs.rule }}"
+          fi
+          pnpm --filter=@mcp-sentinel/red-team exec tsx src/cli.ts $ARGS 2>&1 || true
+
+      # ── Upload artifact (always — even on failure) ────────────────────────────
+
+      - name: Upload accuracy report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: accuracy-report-${{ github.run_id }}
+          path: accuracy-report.json
+          retention-days: 30
+
+      # ── Write GitHub step summary ─────────────────────────────────────────────
+
+      - name: Write step summary
+        if: always()
+        run: |
+          echo "## Rule Accuracy Audit Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Run:** \`${{ github.run_id }}\` | **Trigger:** \`${{ github.event_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f accuracy-report.json ]; then
+            # Extract key metrics from the JSON report using node
+            node --input-type=module << 'EOF' >> $GITHUB_STEP_SUMMARY
+          import { readFileSync } from 'fs';
+          const report = JSON.parse(readFileSync('accuracy-report.json', 'utf-8'));
+
+          const precision = (report.overall_precision * 100).toFixed(1);
+          const recall = (report.overall_recall * 100).toFixed(1);
+          const passes = report.passes_layer5_threshold;
+          const status = passes ? '✅ PASS' : '❌ FAIL';
+
+          console.log(`| Metric | Value |`);
+          console.log(`|--------|-------|`);
+          console.log(`| Overall Precision | ${precision}% |`);
+          console.log(`| Overall Recall | ${recall}% |`);
+          console.log(`| Layer 5 Threshold (≥80%) | ${status} |`);
+          console.log(`| Rules Version | \`${report.rules_version}\` |`);
+          console.log('');
+
+          // Category breakdown
+          if (report.by_category && Object.keys(report.by_category).length > 0) {
+            console.log('### By Category');
+            console.log('');
+            console.log('| Category | Precision | Recall | Total Tests | Failed |');
+            console.log('|----------|-----------|--------|-------------|--------|');
+            for (const [cat, stats] of Object.entries(report.by_category)) {
+              const p = (stats.true_negative_precision * 100).toFixed(0);
+              const r = (stats.true_positive_recall * 100).toFixed(0);
+              const flag = (stats.true_negative_precision < 0.8 || stats.true_positive_recall < 0.8) ? ' ⚠️' : '';
+              console.log(`| ${cat} | ${p}% | ${r}% | ${stats.total} | ${stats.failed}${flag} |`);
+            }
+            console.log('');
+          }
+
+          // Worst performers
+          if (report.worst_performers && report.worst_performers.length > 0) {
+            const failing = report.worst_performers.filter(r => r.failed > 0);
+            if (failing.length > 0) {
+              console.log('### Rules Needing Attention');
+              console.log('');
+              console.log('| Rule | Precision | Recall | Failed Fixtures |');
+              console.log('|------|-----------|--------|-----------------|');
+              for (const r of failing) {
+                const p = (r.true_negative_precision * 100).toFixed(0);
+                const rc = (r.true_positive_recall * 100).toFixed(0);
+                console.log(`| ${r.rule_id} | ${p}% | ${rc}% | ${r.failed} |`);
+              }
+            }
+          }
+          EOF
+          else
+            echo "**Error:** accuracy-report.json was not generated." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      # ── Enforce Layer 5 threshold ─────────────────────────────────────────────
+
+      - name: Enforce Layer 5 accuracy threshold
+        run: |
+          if [ ! -f accuracy-report.json ]; then
+            echo "::error::accuracy-report.json not found — audit failed to run"
+            exit 1
+          fi
+
+          PASSES=$(node --input-type=module -e "
+          import { readFileSync } from 'fs';
+          const r = JSON.parse(readFileSync('accuracy-report.json', 'utf-8'));
+          process.exit(r.passes_layer5_threshold ? 0 : 1);
+          " 2>&1; echo $?)
+
+          if [ "$PASSES" = "1" ]; then
+            PRECISION=$(node --input-type=module -e "
+            import { readFileSync } from 'fs';
+            const r = JSON.parse(readFileSync('accuracy-report.json', 'utf-8'));
+            console.log((r.overall_precision * 100).toFixed(1) + '%');
+            " 2>/dev/null || echo "unknown")
+            echo "::error::Rule accuracy is below the 80% Layer 5 threshold (current precision: $PRECISION)."
+            echo "::error::Run the audit locally with: pnpm --filter=@mcp-sentinel/red-team exec tsx src/cli.ts"
+            echo "::error::Review the accuracy-report artifact for per-rule details."
+            exit 1
+          fi
+
+          echo "✅ Rule accuracy passes the Layer 5 threshold (≥80% precision)"

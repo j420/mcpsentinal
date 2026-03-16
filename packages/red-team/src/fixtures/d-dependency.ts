@@ -1,0 +1,446 @@
+import type { RuleFixtureSet } from "../types.js";
+
+const base = {
+  server: { id: "test", name: "test-server", description: null, github_url: null },
+  tools: [],
+  source_code: null,
+  connection_metadata: null,
+};
+
+function depsCtx(dependencies: Array<{ name: string; version: string | null; has_known_cve: boolean; cve_ids: string[]; last_updated: Date | null }>) {
+  return { ...base, dependencies };
+}
+
+const NOW = new Date();
+const OLD_DATE = new Date("2021-01-01");
+
+// ── D1: Known CVEs in Dependencies ────────────────────────────────────────────
+export const D1: RuleFixtureSet = {
+  rule_id: "D1",
+  rule_name: "Known CVEs in Dependencies",
+  fixtures: [
+    {
+      description: "Dependency with known CVE",
+      context: depsCtx([
+        {
+          name: "lodash",
+          version: "4.17.15",
+          has_known_cve: true,
+          cve_ids: ["CVE-2021-23337"],
+          last_updated: NOW,
+        },
+      ]),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "Multiple CVEs in dependency",
+      context: depsCtx([
+        {
+          name: "node-forge",
+          version: "0.10.0",
+          has_known_cve: true,
+          cve_ids: ["CVE-2022-0122", "CVE-2022-24771"],
+          last_updated: NOW,
+        },
+      ]),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "Clean dependency — no CVEs",
+      context: depsCtx([
+        {
+          name: "zod",
+          version: "3.23.0",
+          has_known_cve: false,
+          cve_ids: [],
+          last_updated: NOW,
+        },
+      ]),
+      expect_finding: false,
+      kind: "true_negative",
+    },
+    {
+      description: "Empty dependencies — no findings",
+      context: depsCtx([]),
+      expect_finding: false,
+      kind: "true_negative",
+    },
+  ],
+};
+
+// ── D2: Abandoned Dependencies ────────────────────────────────────────────────
+export const D2: RuleFixtureSet = {
+  rule_id: "D2",
+  rule_name: "Abandoned Dependencies",
+  fixtures: [
+    {
+      description: "Dependency not updated in over 3 years",
+      context: depsCtx([
+        {
+          name: "request",
+          version: "2.88.2",
+          has_known_cve: false,
+          cve_ids: [],
+          last_updated: new Date("2019-03-15"),
+        },
+      ]),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "Dependency updated last month",
+      context: depsCtx([
+        {
+          name: "axios",
+          version: "1.7.0",
+          has_known_cve: false,
+          cve_ids: [],
+          last_updated: new Date(NOW.getTime() - 30 * 24 * 60 * 60 * 1000),
+        },
+      ]),
+      expect_finding: false,
+      kind: "true_negative",
+    },
+    {
+      description: "Dependency with no last_updated data",
+      context: depsCtx([
+        {
+          name: "some-mystery-package",
+          version: "1.0.0",
+          has_known_cve: false,
+          cve_ids: [],
+          last_updated: null,
+        },
+      ]),
+      expect_finding: false, // null = unknown, not abandoned
+      kind: "edge_case",
+    },
+  ],
+};
+
+// ── D5: Known Malicious Packages ──────────────────────────────────────────────
+export const D5: RuleFixtureSet = {
+  rule_id: "D5",
+  rule_name: "Known Malicious Packages",
+  fixtures: [
+    {
+      description: "MCP ecosystem typosquat: @mcp/sdk (not @modelcontextprotocol/sdk)",
+      context: depsCtx([
+        {
+          name: "@mcp/sdk",
+          version: "1.0.0",
+          has_known_cve: false,
+          cve_ids: [],
+          last_updated: NOW,
+        },
+      ]),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "Known malicious: event-stream (2018 supply chain attack)",
+      context: depsCtx([
+        {
+          name: "event-stream",
+          version: "3.3.6",
+          has_known_cve: true,
+          cve_ids: ["CVE-2018-16484"],
+          last_updated: OLD_DATE,
+        },
+      ]),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "Known malicious: colors (protestware v1.4.44+1.4.2)",
+      context: depsCtx([
+        {
+          name: "colors",
+          version: "1.4.44",
+          has_known_cve: true,
+          cve_ids: ["CVE-2022-21803"],
+          last_updated: OLD_DATE,
+        },
+      ]),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "Legitimate package: @modelcontextprotocol/sdk",
+      context: depsCtx([
+        {
+          name: "@modelcontextprotocol/sdk",
+          version: "1.0.4",
+          has_known_cve: false,
+          cve_ids: [],
+          last_updated: NOW,
+        },
+      ]),
+      expect_finding: false,
+      kind: "true_negative",
+    },
+    {
+      description: "Legitimate popular package: express",
+      context: depsCtx([
+        {
+          name: "express",
+          version: "4.21.0",
+          has_known_cve: false,
+          cve_ids: [],
+          last_updated: NOW,
+        },
+      ]),
+      expect_finding: false,
+      kind: "true_negative",
+    },
+  ],
+};
+
+// ── D7: Dependency Confusion Attack Risk ──────────────────────────────────────
+export const D7: RuleFixtureSet = {
+  rule_id: "D7",
+  rule_name: "Dependency Confusion Attack Risk",
+  fixtures: [
+    {
+      description: "Suspiciously high version number — attacker trick",
+      context: depsCtx([
+        {
+          name: "my-internal-package",
+          version: "9999.0.0",
+          has_known_cve: false,
+          cve_ids: [],
+          last_updated: NOW,
+        },
+      ]),
+      expect_finding: true,
+      kind: "true_positive",
+      threat_ref: "Alex Birsan 2021 dependency confusion",
+    },
+    {
+      description: "Scoped internal package with high version",
+      context: depsCtx([
+        {
+          name: "@mycompany/internal-lib",
+          version: "1000.0.0",
+          has_known_cve: false,
+          cve_ids: [],
+          last_updated: NOW,
+        },
+      ]),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "Normal version number — not suspicious",
+      context: depsCtx([
+        {
+          name: "@mycompany/internal-lib",
+          version: "1.5.3",
+          has_known_cve: false,
+          cve_ids: [],
+          last_updated: NOW,
+        },
+      ]),
+      expect_finding: false,
+      kind: "true_negative",
+    },
+    {
+      description: "Edge case: version 100.0.0 — moderate suspicion, below threshold",
+      context: depsCtx([
+        {
+          name: "some-package",
+          version: "100.0.0",
+          has_known_cve: false,
+          cve_ids: [],
+          last_updated: NOW,
+        },
+      ]),
+      expect_finding: false, // threshold is typically 999+
+      kind: "edge_case",
+    },
+  ],
+};
+
+// ── D3: Typosquatting Risk ─────────────────────────────────────────────────────
+export const D3: RuleFixtureSet = {
+  rule_id: "D3",
+  rule_name: "Typosquatting Risk in Dependencies",
+  fixtures: [
+    {
+      description: "'expresss' — one extra 's', Levenshtein distance 1 from 'express'",
+      context: {
+        ...base,
+        tools: [],
+        dependencies: [{ name: "expresss", version: "4.18.0", has_known_cve: false, cve_ids: [], last_updated: new Date() }],
+      },
+      expect_finding: true,
+      kind: "true_positive",
+      threat_ref: "D3 — typosquat Levenshtein distance 1",
+    },
+    {
+      description: "'fastmpc' — transposition of 'fastmcp', high similarity",
+      context: {
+        ...base,
+        tools: [],
+        dependencies: [{ name: "fastmpc", version: "0.1.0", has_known_cve: false, cve_ids: [], last_updated: new Date() }],
+      },
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "Exact '@modelcontextprotocol/sdk' — official package",
+      context: {
+        ...base,
+        tools: [],
+        dependencies: [{ name: "@modelcontextprotocol/sdk", version: "1.0.0", has_known_cve: false, cve_ids: [], last_updated: new Date() }],
+      },
+      expect_finding: false,
+      kind: "true_negative",
+    },
+    {
+      description: "'totally-unique-package' — no similarity to known packages",
+      context: {
+        ...base,
+        tools: [],
+        dependencies: [{ name: "totally-unique-package", version: "1.0.0", has_known_cve: false, cve_ids: [], last_updated: new Date() }],
+      },
+      expect_finding: false,
+      kind: "true_negative",
+    },
+  ],
+};
+
+// ── D4: Excessive Dependency Count ─────────────────────────────────────────────
+export const D4: RuleFixtureSet = {
+  rule_id: "D4",
+  rule_name: "Excessive Dependency Count",
+  fixtures: [
+    {
+      description: "75 direct dependencies — exceeds threshold of 50",
+      context: {
+        ...base,
+        tools: [],
+        dependencies: Array.from({ length: 75 }, (_, i) => ({
+          name: `package-${i}`,
+          version: "1.0.0",
+          has_known_cve: false,
+          cve_ids: [],
+          last_updated: new Date(),
+        })),
+      },
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "60 direct dependencies — over threshold",
+      context: {
+        ...base,
+        tools: [],
+        dependencies: Array.from({ length: 60 }, (_, i) => ({
+          name: `dep-${i}`,
+          version: "1.0.0",
+          has_known_cve: false,
+          cve_ids: [],
+          last_updated: new Date(),
+        })),
+      },
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "15 direct dependencies — well under threshold",
+      context: {
+        ...base,
+        tools: [],
+        dependencies: Array.from({ length: 15 }, (_, i) => ({
+          name: `pkg-${i}`,
+          version: "1.0.0",
+          has_known_cve: false,
+          cve_ids: [],
+          last_updated: new Date(),
+        })),
+      },
+      expect_finding: false,
+      kind: "true_negative",
+    },
+    {
+      description: "Exactly 50 dependencies — at boundary (threshold is >50)",
+      context: {
+        ...base,
+        tools: [],
+        dependencies: Array.from({ length: 50 }, (_, i) => ({
+          name: `lib-${i}`,
+          version: "1.0.0",
+          has_known_cve: false,
+          cve_ids: [],
+          last_updated: new Date(),
+        })),
+      },
+      expect_finding: false,
+      kind: "edge_case",
+    },
+  ],
+};
+
+// ── D6: Weak Cryptography Dependencies ─────────────────────────────────────────
+export const D6: RuleFixtureSet = {
+  rule_id: "D6",
+  rule_name: "Weak or Deprecated Cryptography Dependencies",
+  fixtures: [
+    {
+      description: "'md5' package — cryptographically broken",
+      context: {
+        ...base,
+        tools: [],
+        dependencies: [{ name: "md5", version: "2.3.0", has_known_cve: false, cve_ids: [], last_updated: new Date() }],
+      },
+      expect_finding: true,
+      kind: "true_positive",
+      threat_ref: "D6 — MD5 collision attacks demonstrated in seconds",
+    },
+    {
+      description: "'pycrypto' — unmaintained with known CVEs",
+      context: {
+        ...base,
+        tools: [],
+        dependencies: [{ name: "pycrypto", version: "2.6.1", has_known_cve: true, cve_ids: ["CVE-2013-7459"], last_updated: new Date("2013-01-01") }],
+      },
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "'bcrypt-nodejs' — unmaintained, use bcrypt instead",
+      context: {
+        ...base,
+        tools: [],
+        dependencies: [{ name: "bcrypt-nodejs", version: "0.0.3", has_known_cve: false, cve_ids: [], last_updated: new Date("2014-01-01") }],
+      },
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "'bcrypt' — modern maintained alternative",
+      context: {
+        ...base,
+        tools: [],
+        dependencies: [{ name: "bcrypt", version: "5.1.1", has_known_cve: false, cve_ids: [], last_updated: new Date() }],
+      },
+      expect_finding: false,
+      kind: "true_negative",
+    },
+    {
+      description: "'node-forge@1.3.1' — above vulnerable version range",
+      context: {
+        ...base,
+        tools: [],
+        dependencies: [{ name: "node-forge", version: "1.3.1", has_known_cve: false, cve_ids: [], last_updated: new Date() }],
+      },
+      expect_finding: false,
+      kind: "true_negative",
+    },
+  ],
+};
+
+export const ALL_D_FIXTURES: RuleFixtureSet[] = [D1, D2, D3, D4, D5, D6, D7];

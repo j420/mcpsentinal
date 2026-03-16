@@ -735,6 +735,22 @@ export class DatabaseQueries {
   }
 
   /**
+   * Return multiple servers by their UUIDs.
+   * Used by the risk-matrix API endpoint to load a set of servers for
+   * cross-server capability analysis (P01–P12 patterns).
+   * IDs not found in the DB are silently omitted.
+   */
+  async getServersByIds(ids: string[]): Promise<Server[]> {
+    if (ids.length === 0) return [];
+    // Parameterized using ANY($1::uuid[]) — safe against injection
+    const result = await this.pool.query(
+      "SELECT * FROM servers WHERE id = ANY($1::uuid[]) ORDER BY name",
+      [ids]
+    );
+    return result.rows;
+  }
+
+  /**
    * Return all source records for a server, including raw_metadata.
    * Used by the scanner to discover live HTTP endpoints embedded in
    * raw_metadata by PulseMCP, Smithery, Glama, and other registries.
