@@ -1,16 +1,16 @@
 /* ============================================================
    MCP Sentinel — Design System
    Light security intelligence palette (Anthropic.com style)
-   bg: #FAF9F7  surface: #FFFFFF  accent: #C86B43 (warm coral)
+   bg: #faf9f5  surface: #FFFFFF  accent: #6a9bcc (Anthropic blue)
    ============================================================ */
 
 /* ── Tokens ─────────────────────────────────────────────── */
 :root {
   /* ── Light backgrounds ── */
-  --bg:           #FAF9F7;
+  --bg:           #faf9f5;
   --surface:      #FFFFFF;
-  --surface-2:    #F0EDE6;
-  --surface-3:    #E8E4DC;
+  --surface-2:    #f0ede8;
+  --surface-3:    #e8e6dc;
 
   /* ── Borders ── */
   --border:        rgba(0, 0, 0, 0.08);
@@ -18,17 +18,17 @@
   --border-strong: rgba(0, 0, 0, 0.22);
 
   /* ── Text — warm-toned ── */
-  --text:         #1A1A1A;
-  --text-2:       #555555;
-  --text-3:       #9A9A9A;
+  --text:         #141413;
+  --text-2:       #4a4a47;
+  --text-3:       #b0aea5;
   --text-inv:     #FFFFFF;
 
-  /* ── Accent: coral/terracotta — Anthropic warm ── */
-  --accent:       #C86B43;
-  --accent-hover: #A8532B;
-  --accent-light: #E08A62;
-  --accent-sub:   rgba(200, 107, 67, 0.10);
-  --accent-ring:  rgba(200, 107, 67, 0.22);
+  /* ── Accent: Anthropic blue ── */
+  --accent:       #6a9bcc;
+  --accent-hover: #4d7fa8;
+  --accent-light: #8ab4d4;
+  --accent-sub:   rgba(106, 155, 204, 0.10);
+  --accent-ring:  rgba(106, 155, 204, 0.22);
 
   /* ── Score semantic colors (calibrated for light bg) ── */
   --good:         #1A7A4A;
@@ -102,7 +102,7 @@ html {
 }
 
 body {
-  font-family: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Styrene A', 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background-color: var(--bg);
   color: var(--text);
   line-height: 1.6;
@@ -278,8 +278,8 @@ code, pre, kbd {
   width: 100%;
   height: 100%;
   background:
-    radial-gradient(ellipse 70% 60% at 50% 0%, rgba(200, 107, 67, 0.06) 0%, transparent 70%),
-    radial-gradient(ellipse 40% 35% at 50% 100%, rgba(240, 237, 230, 0.60) 0%, transparent 80%);
+    radial-gradient(ellipse 70% 60% at 50% 0%, rgba(106, 155, 204, 0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 35% at 50% 100%, rgba(240, 237, 232, 0.60) 0%, transparent 80%);
   pointer-events: none;
   z-index: 0;
 }
@@ -1489,6 +1489,125 @@ code, pre, kbd {
 .text-2     { color: var(--text-2); }
 
 .mono { font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace; }
+
+/* ── Security Test Coverage table ──────────────────────── */
+.test-type-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.test-type-row {
+  display: grid;
+  grid-template-columns: 22px 52px 1fr 64px 120px 80px;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  border-bottom: 1px solid var(--border);
+  transition: background var(--t-fast) var(--ease);
+}
+.test-type-row:last-child { border-bottom: none; }
+.test-type-row:hover { background: var(--surface-2); }
+.test-type-row.tt-fail { background: rgba(168, 32, 32, 0.025); }
+.test-type-row.tt-fail:hover { background: rgba(168, 32, 32, 0.05); }
+
+.tt-icon {
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.tt-icon.pass { color: var(--good); }
+.tt-icon.fail { color: currentColor; }
+
+.tt-id {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+.test-type-row.tt-fail .tt-id { color: inherit; opacity: 0.9; }
+
+.tt-body { min-width: 0; }
+.tt-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tt-desc {
+  font-size: 11px;
+  color: var(--text-3);
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.test-type-row.tt-fail .tt-name { color: currentColor; }
+.test-type-row.tt-fail .tt-desc { color: currentColor; opacity: 0.7; }
+
+.tt-rule-count {
+  font-size: 11px;
+  color: var(--text-3);
+  text-align: right;
+  white-space: nowrap;
+}
+.test-type-row.tt-fail .tt-rule-count { color: inherit; opacity: 0.75; }
+
+.tt-frameworks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  justify-content: flex-end;
+}
+.tt-fw-tag {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--text-3);
+  border: 1px solid var(--border);
+  white-space: nowrap;
+  letter-spacing: 0.03em;
+}
+.test-type-row.tt-fail .tt-fw-tag {
+  background: rgba(168,32,32,0.06);
+  border-color: rgba(168,32,32,0.15);
+  color: currentColor;
+  opacity: 0.8;
+}
+
+.tt-result {
+  font-size: 12px;
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+}
+.tt-result.pass { color: var(--good); }
+.tt-result.fail { color: currentColor; }
+
+@media (max-width: 768px) {
+  .test-type-row {
+    grid-template-columns: 22px 52px 1fr 64px;
+    row-gap: 4px;
+  }
+  .tt-frameworks { display: none; }
+  .tt-result { grid-column: 4; }
+}
+@media (max-width: 520px) {
+  .test-type-row { grid-template-columns: 22px 1fr 64px; }
+  .tt-id { display: none; }
+}
 
 /* ── Responsive ─────────────────────────────────────────── */
 @media (max-width: 900px) {
