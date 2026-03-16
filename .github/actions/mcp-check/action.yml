@@ -1,0 +1,278 @@
+name: MCP Sentinel Security Check
+description: >
+  Scan MCP server configurations for security issues using MCP Sentinel.
+  Reports findings as a PR comment (when permitted) and always writes to
+  the GitHub Actions step summary.
+author: MCP Sentinel
+
+# ─── Inputs ───────────────────────────────────────────────────────────────────
+inputs:
+  config-path:
+    description: >
+      Path to MCP config file, relative to the workspace root.
+      Defaults to auto-discovery (claude_desktop_config.json, mcp.json, .mcp.json).
+    required: false
+    default: ""
+
+  min-score:
+    description: >
+      Minimum acceptable security score (0-100). The action fails if any server
+      scores below this threshold. Default: 60.
+    required: false
+    default: "60"
+
+  fail-on:
+    description: >
+      Fail the action if any finding at this severity or higher is detected.
+      Values: critical | high | medium | low | "" (disabled).
+      Default: critical.
+    required: false
+    default: "critical"
+
+  comment-on-pr:
+    description: >
+      Post scan results as a PR comment. Requires pull-requests: write permission.
+      Set to "false" to disable — results always appear in the step summary.
+    required: false
+    default: "true"
+
+# ─── Outputs ──────────────────────────────────────────────────────────────────
+outputs:
+  worst-score:
+    description: Lowest security score across all scanned servers (0-100).
+    value: ${{ steps.scan.outputs.worst_score }}
+
+  findings-count:
+    description: Total number of findings across all scanned servers.
+    value: ${{ steps.scan.outputs.findings_count }}
+
+  passed:
+    description: "true" if all servers passed the threshold, "false" otherwise.
+    value: ${{ steps.scan.outputs.passed }}
+
+# ─── Implementation ───────────────────────────────────────────────────────────
+runs:
+  using: composite
+
+  steps:
+    # ── Step 1: Validate all action inputs ──────────────────────────────────
+    # Do this before installing anything to fail fast on operator error.
+    - name: Validate inputs
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        # min-score must be an integer between 0 and 100
+        MIN_SCORE="${{ inputs.min-score }}"
+        if ! [[ "$MIN_SCORE" =~ ^[0-9]+$ ]] || [ "$MIN_SCORE" -gt 100 ]; then
+          echo "::error title=Invalid input::min-score must be an integer between 0 and 100, got: ${MIN_SCORE}"
+          exit 2
+        fi
+
+        # fail-on must be one of the accepted severities (or empty to disable)
+        FAIL_ON="${{ inputs.fail-on }}"
+        case "$FAIL_ON" in
+          critical|high|medium|low|"") ;;
+          *)
+            echo "::error title=Invalid input::fail-on must be one of: critical, high, medium, low (or empty to disable), got: ${FAIL_ON}"
+            exit 2
+            ;;
+        esac
+
+        # config-path must be within the workspace to prevent path traversal
+        CONFIG_PATH="${{ inputs.config-path }}"
+        if [ -n "$CONFIG_PATH" ]; then
+          # Resolve both paths and verify config is inside the workspace
+          WORKSPACE_REAL=$(realpath "$GITHUB_WORKSPACE")
+          CONFIG_REAL=$(realpath "$GITHUB_WORKSPACE/$CONFIG_PATH" 2>/dev/null || echo "")
+          if [ -z "$CONFIG_REAL" ] || [[ "$CONFIG_REAL" != "$WORKSPACE_REAL"* ]]; then
+            echo "::error title=Invalid input::config-path must be a path within the workspace directory"
+            exit 2
+          fi
+          # Must be a .json file
+          if [[ "$CONFIG_REAL" != *.json ]]; then
+            echo "::error title=Invalid input::config-path must point to a .json file"
+            exit 2
+          fi
+        fi
+
+        echo "Input validation passed."
+
+    # ── Step 2: Run the scan ─────────────────────────────────────────────────
+    - name: Run MCP Sentinel scan
+      id: scan
+      shell: bash
+      run: |
+        set -uo pipefail
+
+        # Build argument list from validated inputs.
+        # Use an array to prevent word-splitting and injection from input values.
+        ARGS=("check" "--json" "--ci" "--min-score" "${{ inputs.min-score }}")
+
+        # Append --fail-on only if a value was provided
+        if [ -n "${{ inputs.fail-on }}" ]; then
+          ARGS+=("--fail-on" "${{ inputs.fail-on }}")
+        fi
+
+        # Append --config only if a path was provided (and validation passed above)
+        CONFIG_PATH="${{ inputs.config-path }}"
+        if [ -n "$CONFIG_PATH" ]; then
+          ARGS+=("--config" "$GITHUB_WORKSPACE/$CONFIG_PATH")
+        fi
+
+        # Run the scanner. Capture stdout (JSON) and stderr (human messages) separately.
+        # Allow the command to fail (|| true) — we check the exit code manually.
+        SCAN_JSON=$(npx --yes mcp-sentinel@latest "${ARGS[@]}" 2>/tmp/mcp-sentinel-stderr.txt) || SCAN_EXIT=$?
+        SCAN_EXIT=${SCAN_EXIT:-0}
+
+        # Validate that we got parseable JSON before using jq
+        if ! echo "$SCAN_JSON" | jq empty 2>/dev/null; then
+          echo "::error title=Scanner error::mcp-sentinel did not produce valid JSON output"
+          echo "stderr output:"
+          cat /tmp/mcp-sentinel-stderr.txt || true
+          # Exit with the scanner's exit code (2=input error, 3=internal error)
+          exit "${SCAN_EXIT:-3}"
+        fi
+
+        # Write JSON to a temp file for use by subsequent steps
+        echo "$SCAN_JSON" > /tmp/mcp-sentinel-output.json
+
+        # Extract summary metrics using jq
+        WORST_SCORE=$(echo "$SCAN_JSON" | jq -r '.worst_score // 100')
+        FINDINGS_TOTAL=$(echo "$SCAN_JSON" | jq -r '[.results[].findings_count] | add // 0')
+        PASSED=$( [ "$SCAN_EXIT" -eq 0 ] && echo "true" || echo "false" )
+
+        # Surface metrics as outputs for downstream steps and calling workflows
+        echo "worst_score=$WORST_SCORE" >> "$GITHUB_OUTPUT"
+        echo "findings_count=$FINDINGS_TOTAL" >> "$GITHUB_OUTPUT"
+        echo "passed=$PASSED" >> "$GITHUB_OUTPUT"
+        echo "scan_exit=$SCAN_EXIT" >> "$GITHUB_OUTPUT"
+
+        echo "Scan complete. Worst score: ${WORST_SCORE}/100. Total findings: ${FINDINGS_TOTAL}."
+
+    # ── Step 3: Post PR comment ──────────────────────────────────────────────
+    # Fork safety: only post comments on PRs from the same repo (not forks).
+    # Forked PRs do not have write access to pull-requests, so we check the
+    # fork condition and gracefully fall through to the step summary instead.
+    - name: Post PR comment
+      if: >
+        inputs.comment-on-pr == 'true' &&
+        github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name == github.repository
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        WORST_SCORE: ${{ steps.scan.outputs.worst_score }}
+        FINDINGS: ${{ steps.scan.outputs.findings_count }}
+        PASSED: ${{ steps.scan.outputs.passed }}
+        SCAN_EXIT: ${{ steps.scan.outputs.scan_exit }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        REPO: ${{ github.repository }}
+        SHA: ${{ github.sha }}
+      run: |
+        set -euo pipefail
+
+        SCAN_JSON=$(cat /tmp/mcp-sentinel-output.json)
+
+        if [ "$PASSED" = "true" ]; then
+          STATUS_ICON="✅"
+          STATUS_TEXT="passed"
+        else
+          STATUS_ICON="🔴"
+          STATUS_TEXT="failed"
+        fi
+
+        # Build the comment body using a heredoc to avoid quoting issues.
+        # The JSON block is syntax-highlighted. We do NOT embed raw finding
+        # evidence as markdown because it could contain injection payloads —
+        # all evidence is contained inside the fenced code block.
+        COMMENT_BODY=$(cat <<COMMENT_EOF
+${STATUS_ICON} **MCP Sentinel Security Check — ${STATUS_TEXT}**
+
+| Metric | Value |
+|--------|-------|
+| Worst Score | ${WORST_SCORE}/100 |
+| Total Findings | ${FINDINGS} |
+| Commit | \`${SHA:0:7}\` |
+
+<details>
+<summary>Full scan output (JSON)</summary>
+
+\`\`\`json
+${SCAN_JSON}
+\`\`\`
+
+</details>
+
+_[MCP Sentinel](https://mcp-sentinel.com) · [View registry](https://mcp-sentinel.com)_
+COMMENT_EOF
+        )
+
+        # Delete any previous MCP Sentinel comment on this PR to avoid spam.
+        # This uses the GitHub API directly — gh pr comment --edit is not reliable
+        # when the previous comment was created by a different workflow run.
+        EXISTING_COMMENT_IDS=$(
+          gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+            --jq '.[] | select(.user.login == "github-actions[bot]") | select(.body | contains("MCP Sentinel Security Check")) | .id' \
+            2>/dev/null || echo ""
+        )
+        for COMMENT_ID in $EXISTING_COMMENT_IDS; do
+          gh api --method DELETE "repos/${REPO}/issues/comments/${COMMENT_ID}" \
+            --silent 2>/dev/null || true
+        done
+
+        # Post the new comment
+        gh pr comment "${PR_NUMBER}" \
+          --repo "${REPO}" \
+          --body "$COMMENT_BODY"
+
+    # ── Step 4: Write step summary (always runs, including forks) ────────────
+    # The step summary is always written regardless of fork status or PR context.
+    # This ensures scan results are always visible even when PR comments are
+    # disabled or unavailable.
+    - name: Write step summary
+      if: always()
+      shell: bash
+      env:
+        WORST_SCORE: ${{ steps.scan.outputs.worst_score }}
+        FINDINGS: ${{ steps.scan.outputs.findings_count }}
+        PASSED: ${{ steps.scan.outputs.passed }}
+      run: |
+        set -uo pipefail
+
+        SCAN_JSON=$(cat /tmp/mcp-sentinel-output.json 2>/dev/null || echo "{}")
+
+        if [ "${PASSED:-false}" = "true" ]; then
+          STATUS_LINE="✅ All servers passed the security threshold"
+        else
+          STATUS_LINE="🔴 Security threshold not met — review findings below"
+        fi
+
+        cat >> "$GITHUB_STEP_SUMMARY" <<SUMMARY_EOF
+## MCP Sentinel Security Check
+
+${STATUS_LINE}
+
+| Metric | Value |
+|--------|-------|
+| Worst Score | ${WORST_SCORE:-unknown}/100 |
+| Total Findings | ${FINDINGS:-0} |
+
+<details>
+<summary>Full scan output</summary>
+
+\`\`\`json
+${SCAN_JSON}
+\`\`\`
+
+</details>
+SUMMARY_EOF
+
+    # ── Step 5: Propagate exit code ──────────────────────────────────────────
+    # Done last so all reporting steps run before the action fails the workflow.
+    - name: Propagate exit code
+      if: always()
+      shell: bash
+      run: |
+        SCAN_EXIT="${{ steps.scan.outputs.scan_exit }}"
+        exit "${SCAN_EXIT:-0}"
