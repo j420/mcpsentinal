@@ -41,6 +41,23 @@ interface ScoreHistoryEntry {
   recorded_at: string;
 }
 
+interface RiskEdge {
+  id: string;
+  from_server_id: string;
+  from_server_name: string;
+  from_server_slug: string;
+  to_server_id: string;
+  to_server_name: string;
+  to_server_slug: string;
+  edge_type: string;
+  pattern_id: string;
+  severity: string;
+  description: string;
+  owasp_category: string | null;
+  mitre_technique: string | null;
+  detected_at: string;
+}
+
 interface ServerDetail {
   id: string;
   name: string;
@@ -85,6 +102,19 @@ async function getServer(slug: string): Promise<ServerDetail | null> {
 async function getScoreHistory(slug: string): Promise<ScoreHistoryEntry[]> {
   try {
     const res = await fetch(`${API_URL}/api/v1/servers/${encodeURIComponent(slug)}/history`, {
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.data ?? [];
+  } catch {
+    return [];
+  }
+}
+
+async function getRiskEdges(slug: string): Promise<RiskEdge[]> {
+  try {
+    const res = await fetch(`${API_URL}/api/v1/servers/${encodeURIComponent(slug)}/risk-edges`, {
       signal: AbortSignal.timeout(4000),
     });
     if (!res.ok) return [];
@@ -455,9 +485,10 @@ export default async function ServerPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const [server, scoreHistory] = await Promise.all([
+  const [server, scoreHistory, riskEdges] = await Promise.all([
     getServer(slug),
     getScoreHistory(slug),
+    getRiskEdges(slug),
   ]);
 
   if (!server) {
@@ -493,7 +524,7 @@ export default async function ServerPage({
     (f) => f.severity === "critical"
   ).length;
 
-  const badgeMd = `[![MCP Sentinel Score](${SITE_URL}/api/v1/servers/${server.slug}/badge.svg)](${SITE_URL}/server/${server.slug})`;
+  const badgeMd = `[![MCP Sentinel Score](${API_URL}/api/v1/servers/${server.slug}/badge.svg)](${SITE_URL}/server/${server.slug})`;
 
   const jsonLd = buildJsonLd(server, SITE_URL);
 
@@ -800,7 +831,7 @@ export default async function ServerPage({
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={`/api/v1/servers/${server.slug}/badge.svg`}
+                  src={`${API_URL}/api/v1/servers/${server.slug}/badge.svg`}
                   alt={`MCP Sentinel score for ${server.name}`}
                 />
                 <span style={{ fontSize: "12px", color: "var(--text-3)" }}>
@@ -871,6 +902,86 @@ export default async function ServerPage({
                 </div>
               </div>
             )}
+
+          {/* Cross-server attack paths */}
+          {riskEdges.length > 0 && (
+            <div className="card">
+              <h3
+                style={{
+                  fontSize: "12px",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                  color: "var(--text-3)",
+                  marginBottom: "var(--s3)",
+                }}
+              >
+                Cross-Server Attack Paths
+              </h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: "var(--s3)" }}>
+                {riskEdges.slice(0, 5).map((edge) => {
+                  const isSource = edge.from_server_slug === slug;
+                  const peerName = isSource ? edge.to_server_name : edge.from_server_name;
+                  const peerSlug = isSource ? edge.to_server_slug : edge.from_server_slug;
+                  const sevColor = edge.severity === "critical"
+                    ? "var(--critical)"
+                    : edge.severity === "high"
+                      ? "var(--poor)"
+                      : edge.severity === "medium"
+                        ? "var(--moderate)"
+                        : "var(--text-3)";
+                  return (
+                    <div
+                      key={edge.id}
+                      style={{
+                        padding: "var(--s2) var(--s3)",
+                        background: "var(--surface-2)",
+                        borderRadius: "var(--r-sm)",
+                        borderLeft: `3px solid ${sevColor}`,
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "var(--s2)", marginBottom: "4px" }}>
+                        <span
+                          style={{
+                            fontSize: "10px",
+                            fontWeight: 700,
+                            textTransform: "uppercase",
+                            color: sevColor,
+                            letterSpacing: "0.04em",
+                          }}
+                        >
+                          {edge.severity}
+                        </span>
+                        <span style={{ fontSize: "10px", color: "var(--text-3)", fontFamily: "'JetBrains Mono', monospace" }}>
+                          {edge.pattern_id}
+                        </span>
+                      </div>
+                      <p style={{ fontSize: "11px", color: "var(--text-2)", margin: "0 0 4px" }}>
+                        {edge.edge_type.replace(/_/g, " ")}
+                        {" — "}
+                        <a
+                          href={`/server/${peerSlug}`}
+                          style={{ color: "var(--accent)" }}
+                        >
+                          {peerName}
+                        </a>
+                      </p>
+                      <p style={{ fontSize: "11px", color: "var(--text-3)", margin: 0, lineHeight: 1.4 }}>
+                        {edge.description.length > 100
+                          ? edge.description.slice(0, 100) + "…"
+                          : edge.description}
+                      </p>
+                    </div>
+                  );
+                })}
+                {riskEdges.length > 5 && (
+                  <p style={{ fontSize: "11px", color: "var(--text-3)", textAlign: "center" }}>
+                    +{riskEdges.length - 5} more attack paths
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Score history timeline */}
           <ScoreHistoryTimeline history={scoreHistory} />

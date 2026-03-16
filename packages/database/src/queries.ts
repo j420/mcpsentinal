@@ -907,6 +907,65 @@ export class DatabaseQueries {
   }
 
   /**
+   * Fetch all risk edges that involve a given server (as source or target).
+   * Joins with the servers table to return peer server name and slug.
+   */
+  async getRiskEdgesForServer(serverId: string): Promise<
+    Array<{
+      id: string;
+      config_id: string;
+      from_server_id: string;
+      from_server_name: string;
+      from_server_slug: string;
+      to_server_id: string;
+      to_server_name: string;
+      to_server_slug: string;
+      edge_type: string;
+      pattern_id: string;
+      severity: string;
+      description: string;
+      owasp_category: string | null;
+      mitre_technique: string | null;
+      detected_at: string;
+    }>
+  > {
+    const result = await this.pool.query(
+      `SELECT
+         re.id,
+         re.config_id,
+         re.from_server_id,
+         fs.name   AS from_server_name,
+         fs.slug   AS from_server_slug,
+         re.to_server_id,
+         ts.name   AS to_server_name,
+         ts.slug   AS to_server_slug,
+         re.edge_type,
+         re.pattern_id,
+         re.severity,
+         re.description,
+         re.owasp_category,
+         re.mitre_technique,
+         re.detected_at
+       FROM risk_edges re
+       JOIN servers fs ON fs.id = re.from_server_id
+       JOIN servers ts ON ts.id = re.to_server_id
+       WHERE re.from_server_id = $1 OR re.to_server_id = $1
+       ORDER BY
+         CASE re.severity
+           WHEN 'critical' THEN 0
+           WHEN 'high'     THEN 1
+           WHEN 'medium'   THEN 2
+           WHEN 'low'      THEN 3
+           ELSE 4
+         END,
+         re.detected_at DESC
+       LIMIT 50`,
+      [serverId]
+    );
+    return result.rows;
+  }
+
+  /**
    * Apply score caps recommended by the risk matrix to servers.latest_score.
    * Only lowers a score — never raises it.
    * caps is a map of server_id → cap value (e.g. { "uuid-123": 40 }).
