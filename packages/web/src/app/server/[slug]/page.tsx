@@ -508,6 +508,124 @@ const OWASP_LABELS: Record<string, string> = {
   "MCP10-supply-chain": "MCP10 Supply Chain",
 };
 
+/** Human-readable names for all 103 detection rules */
+const RULE_NAMES: Record<string, string> = {
+  // A — Description Analysis
+  A1: "Prompt Injection in Tool Description",
+  A2: "Excessive Scope Claims",
+  A3: "Suspicious URLs",
+  A4: "Cross-Server Tool Name Shadowing",
+  A5: "Description Length Anomaly",
+  A6: "Unicode Homoglyph Attack",
+  A7: "Zero-Width Character Injection",
+  A8: "Description-Capability Mismatch",
+  A9: "Encoded Instructions in Description",
+  // B — Schema Analysis
+  B1: "Missing Input Validation",
+  B2: "Dangerous Parameter Types",
+  B3: "Excessive Parameter Count",
+  B4: "Schema-less Tools",
+  B5: "Prompt Injection in Parameter Description",
+  B6: "Schema Allows Unconstrained Additional Properties",
+  B7: "Dangerous Default Parameter Values",
+  // C — Code Analysis
+  C1: "Command Injection",
+  C2: "Path Traversal",
+  C3: "Server-Side Request Forgery (SSRF)",
+  C4: "SQL Injection",
+  C5: "Hardcoded Secrets",
+  C6: "Error Leakage",
+  C7: "Wildcard CORS",
+  C8: "No Auth on Network Interface",
+  C9: "Excessive Filesystem Scope",
+  C10: "Prototype Pollution",
+  C11: "ReDoS Vulnerability",
+  C12: "Unsafe Deserialization",
+  C13: "Server-Side Template Injection",
+  C14: "JWT Algorithm Confusion",
+  C15: "Timing Attack on Secret Comparison",
+  C16: "Dynamic Code Evaluation with User Input",
+  // D — Dependency Analysis
+  D1: "Known CVEs in Dependencies",
+  D2: "Abandoned Dependencies",
+  D3: "Typosquatting Risk",
+  D4: "Excessive Dependency Count",
+  D5: "Known Malicious Packages",
+  D6: "Weak Cryptography Dependencies",
+  D7: "Dependency Confusion Attack Risk",
+  // E — Behavioral Analysis
+  E1: "No Authentication Required",
+  E2: "Insecure Transport (HTTP/WS)",
+  E3: "Response Time Anomaly",
+  E4: "Excessive Tool Count",
+  // F — Ecosystem Context
+  F1: "Lethal Trifecta",
+  F2: "High-Risk Capability Profile",
+  F3: "Data Flow Risk (Source → Sink)",
+  F4: "MCP Spec Non-Compliance",
+  F5: "Official Namespace Squatting",
+  F6: "Circular Data Loop",
+  F7: "Multi-Step Exfiltration Chain",
+  // G — Adversarial AI
+  G1: "Indirect Prompt Injection Gateway",
+  G2: "Trust Assertion Injection",
+  G3: "Tool Response Format Injection",
+  G4: "Context Window Saturation",
+  G5: "Capability Escalation via Prior Approval",
+  G6: "Rug Pull / Tool Behavior Drift",
+  G7: "DNS-Based Data Exfiltration Channel",
+  // H — 2026 Attack Surface
+  H1: "MCP OAuth 2.0 Insecure Implementation",
+  H2: "Prompt Injection in MCP Initialize Response",
+  H3: "Multi-Agent Propagation Risk",
+  // I — Protocol Surface
+  I1: "Annotation Deception",
+  I2: "Missing Destructive Annotation",
+  I3: "Resource Metadata Injection",
+  I4: "Dangerous Resource URI",
+  I5: "Resource-Tool Shadowing",
+  I6: "Prompt Template Injection",
+  I7: "Sampling Capability Abuse",
+  I8: "Sampling Cost Attack",
+  I9: "Elicitation Credential Harvesting",
+  I10: "Elicitation URL Redirect",
+  I11: "Over-Privileged Root",
+  I12: "Capability Escalation Post-Init",
+  I13: "Cross-Config Lethal Trifecta",
+  I14: "Rolling Capability Drift",
+  I15: "Transport Session Security",
+  I16: "Consent Fatigue Exploitation",
+  // J — Threat Intelligence (CVE-backed)
+  J1: "Cross-Agent Configuration Poisoning",
+  J2: "Git Argument Injection",
+  J3: "Full Schema Poisoning",
+  J4: "Health Endpoint Information Disclosure",
+  J5: "Tool Output Poisoning Patterns",
+  J6: "Tool Preference Manipulation",
+  J7: "OpenAPI Specification Field Injection",
+  // K — Compliance & Governance
+  K1: "Absent Structured Logging",
+  K2: "Audit Trail Destruction",
+  K3: "Audit Log Tampering",
+  K4: "Missing Human Confirmation for Destructive Ops",
+  K5: "Auto-Approve / Bypass Confirmation Pattern",
+  K6: "Overly Broad OAuth Scopes",
+  K7: "Long-Lived Tokens Without Rotation",
+  K8: "Cross-Boundary Credential Sharing",
+  K9: "Dangerous Post-Install Hooks",
+  K10: "Package Registry Substitution",
+  K11: "Missing Server Integrity Verification",
+  K12: "Executable Content in Tool Response",
+  K13: "Unsanitized Tool Output",
+  K14: "Agent Credential Propagation via Shared State",
+  K15: "Multi-Agent Collusion Preconditions",
+  K16: "Unbounded Recursion / Missing Depth Limits",
+  K17: "Missing Timeout or Circuit Breaker",
+  K18: "Cross-Trust-Boundary Data Flow in Tool Response",
+  K19: "Missing Runtime Sandbox Enforcement",
+  K20: "Insufficient Audit Context in Logging",
+};
+
 const OWASP_TEST_TYPES: {
   id: string;
   name: string;
@@ -1070,6 +1188,16 @@ export default async function ServerPage({
                           >
                             <div className="finding-header">
                               <SeverityBadge severity={finding.severity} />
+                              <span
+                                style={{
+                                  fontWeight: 600,
+                                  fontSize: "13px",
+                                  color: "var(--text)",
+                                  flex: 1,
+                                }}
+                              >
+                                {RULE_NAMES[finding.rule_id] ?? finding.rule_id}
+                              </span>
                               <span className="finding-rule-id">
                                 {finding.rule_id}
                               </span>
@@ -1086,7 +1214,7 @@ export default async function ServerPage({
                               )}
                               {finding.owasp_category && (
                                 <span className="finding-owasp">
-                                  {finding.owasp_category}
+                                  {OWASP_LABELS[finding.owasp_category] ?? finding.owasp_category.replace(/-/g, " ")}
                                 </span>
                               )}
                             </div>
@@ -1194,7 +1322,7 @@ export default async function ServerPage({
                     >
                       <span className="owasp-dot" />
                       <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {key.split("-")[0]}
+                        {OWASP_LABELS[key] ?? key.split("-")[0]}
                       </span>
                     </div>
                   ))}
