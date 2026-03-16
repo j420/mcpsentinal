@@ -50,7 +50,7 @@ function reflectingTool(canary: string) {
 }
 
 /** callTool that always times out */
-const slowTool = async () =>
+const slowTool = async (_toolName: string, _input: Record<string, unknown>) =>
   new Promise<string>((_, reject) =>
     setTimeout(() => reject(new Error("timeout")), 200)
   );

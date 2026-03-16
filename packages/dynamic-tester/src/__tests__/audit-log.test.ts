@@ -7,7 +7,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync, readFileSync, existsSync } from "fs";
-import { join } from "path";
+import { join, dirname } from "path";
 import { tmpdir } from "os";
 import { AuditLog } from "../audit-log.js";
 import type { ConsentResult, ProbeResult, DynamicReport } from "../types.js";
@@ -91,10 +91,7 @@ describe("AuditLog — file creation", () => {
 
   it("creates parent directories on construction", () => {
     new AuditLog(logPath);
-    // No write yet, but the directory should exist after construction
-    const { existsSync: eS } = await import("fs");
     // Constructor calls mkdirSync — dir should exist after instantiation
-    const { dirname } = await import("path");
     expect(existsSync(dirname(logPath))).toBe(true);
   });
 
