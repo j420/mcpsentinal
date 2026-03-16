@@ -5,7 +5,8 @@ import pino from "pino";
 import { DatabaseQueries, ServerListQuerySchema, migrate } from "@mcp-sentinel/database";
 import { createBadgeSvg } from "./badge.js";
 
-const logger = pino({ name: "api" });
+// Log to stderr — keeps stdout clean for callers that parse it
+const logger = pino({ name: "api" }, process.stderr);
 
 const app: Express = express();
 
@@ -95,7 +96,8 @@ function rateLimitMiddleware(max = RATE_MAX_REQUESTS) {
 
 // Slugs are auto-generated from server names: lowercase, hyphens, alphanumeric.
 // Reject anything else before it reaches the database layer.
-const SLUG_RE = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,98}[a-zA-Z0-9]$|^[a-zA-Z0-9]$/;
+// Uppercase letters are rejected — all slugs are normalised to lowercase on ingest.
+const SLUG_RE = /^[a-z0-9][a-z0-9_-]{0,98}[a-z0-9]$|^[a-z0-9]$/;
 
 function isValidSlug(slug: string): boolean {
   return (
@@ -308,6 +310,24 @@ app.get(
   }
 );
 
+// Fallback badge route — catches badge.svg requests that don't match the strict
+// /api/v1/servers/:slug/badge.svg pattern. Express normalises path traversal before
+// routing (e.g. /api/v1/servers/../etc/badge.svg → /api/v1/etc/badge.svg), so the
+// fallback must match any URL that ends with /badge.svg, not just ones under /servers/.
+// Returns a grey "unknown" badge (200) rather than 404 so that embedded badge images
+// in README files don't appear broken and don't leak server-existence information.
+app.get(
+  /\/badge\.svg$/,
+  rateLimitMiddleware(RATE_MAX_BADGE),
+  (_req: Request, res: Response) => {
+    res.setHeader("Content-Type", "image/svg+xml");
+    res.setHeader("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Cache-Control", "public, max-age=300");
+    res.status(200).send(createBadgeSvg("mcp sentinel", "unknown", "#999"));
+  }
+);
+
 // GET /api/v1/ecosystem/stats — Aggregate ecosystem statistics
 app.get("/api/v1/ecosystem/stats", rateLimitMiddleware(), async (_req: Request, res: Response) => {
   try {
@@ -373,3 +393,10 @@ if (process.env["NODE_ENV"] !== "test") {
 }
 
 export { app };
+
+// ─── Test helpers ─────────────────────────────────────────────────────────────
+// Exported with a _test prefix so it is clearly not part of the public API.
+// Call this in beforeEach to prevent rate-limit state from leaking between tests.
+export function _resetRateLimiters(): void {
+  rateLimitStore.clear();
+}

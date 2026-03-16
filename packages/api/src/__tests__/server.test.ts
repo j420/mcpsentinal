@@ -57,7 +57,7 @@ vi.mock("pg", () => ({
 process.env["NODE_ENV"] = "test";
 
 // Import AFTER mocks are in place
-const { app } = await import("../server.js");
+const { app, _resetRateLimiters } = await import("../server.js");
 
 // Helper to get the mock db object for per-test configuration.
 // The double cast (as unknown as ...) is required because _mockDb is injected
@@ -78,6 +78,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   // Default: server not found
   db.findServerBySlug.mockResolvedValue(null);
+  // Clear the in-memory rate limit store so tests don't bleed rate-limit state
+  // into each other (the rate limiting tests deliberately exhaust the limit).
+  _resetRateLimiters();
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -207,7 +210,9 @@ describe("Badge endpoint", () => {
   it("returns 200 with grey badge for invalid slug (no info leakage)", async () => {
     const res = await request(app).get("/api/v1/servers/../etc/badge.svg");
     expect(res.status).toBe(200);
-    expect(res.text).toContain("unknown");
+    // supertest/superagent treats image/* as binary; fall back to Buffer when res.text is absent
+    const body = res.text ?? Buffer.from(res.body as Buffer).toString("utf-8");
+    expect(body).toContain("unknown");
   });
 
   it("includes Content-Security-Policy: default-src 'none' on badge responses", async () => {
@@ -274,7 +279,8 @@ describe("Badge endpoint", () => {
       last_scanned_at: new Date().toISOString(),
     });
     const res = await request(app).get("/api/v1/servers/my-server/badge.svg");
-    const svg = res.text;
+    // supertest/superagent treats image/* as binary; fall back to Buffer when res.text is absent
+    const svg = res.text ?? Buffer.from(res.body as Buffer).toString("utf-8");
     // Score values are numeric — no injection surface here, but verify
     expect(svg).not.toContain("<script>");
     expect(svg).toContain("55/100");
