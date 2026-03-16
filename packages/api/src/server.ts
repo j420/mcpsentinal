@@ -231,6 +231,31 @@ app.get(
   }
 );
 
+// GET /api/v1/servers/:slug/risk-edges — Cross-server attack paths involving this server
+app.get(
+  "/api/v1/servers/:slug/risk-edges",
+  rateLimitMiddleware(),
+  async (req: Request, res: Response) => {
+    const { slug } = req.params;
+    if (!slug || !isValidSlug(slug)) {
+      res.status(400).json({ error: "Invalid server slug" });
+      return;
+    }
+    try {
+      const server = await db.findServerBySlug(slug);
+      if (!server) {
+        res.status(404).json({ error: "Server not found" });
+        return;
+      }
+      const edges = await db.getRiskEdgesForServer(server.id);
+      res.json({ data: edges });
+    } catch (err) {
+      logger.error(err, "Risk edges error");
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
 // GET /api/v1/servers/:slug/badge.svg — Dynamic SVG security badge
 //
 // Security notes:

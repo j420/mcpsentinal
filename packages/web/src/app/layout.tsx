@@ -9,6 +9,7 @@ import "@fontsource/jetbrains-mono/500.css";
 import "./globals.css";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://mcp-sentinel.com";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.mcp-sentinel.com";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -162,7 +163,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <a href="/categories" className="nav-link">Categories</a>
               <a href="/dashboard" className="nav-link">Dashboard</a>
               <a href="/about" className="nav-link">About</a>
-              <a href="/api/v1" className="nav-link nav-link-api" target="_blank" rel="noopener noreferrer">
+              <a href={API_URL} className="nav-link nav-link-api" target="_blank" rel="noopener noreferrer">
                 API
               </a>
             </nav>
@@ -183,7 +184,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 GitHub
               </a>
               <a href="/about" className="footer-link">About</a>
-              <a href="/api/v1" className="footer-link" target="_blank" rel="noopener noreferrer">
+              <a href={API_URL} className="footer-link" target="_blank" rel="noopener noreferrer">
                 API Docs
               </a>
               <a href="https://modelcontextprotocol.io" className="footer-link" target="_blank" rel="noopener noreferrer">
