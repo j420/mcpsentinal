@@ -646,6 +646,13 @@ JSON Output (stable public contract — v0.1.0):
 `);
 }
 
+// ─── Exports for unit testing ─────────────────────────────────────────────────
+// Pure functions and types are exported so tests can validate security logic
+// directly without spawning subprocesses. The main() entry point is NOT
+// exported — use subprocess tests to validate full CLI behaviour and exit codes.
+export { sanitizeForTerminal, validateConfigPath, parseArgs, parseConfigFile, EXIT };
+export type { CLIArgs };
+
 // ─── Entry Point ──────────────────────────────────────────────────────────────
 
 main().catch((err: unknown) => {
