@@ -1,7 +1,8 @@
 import type { DetectionRule, FindingInput } from "@mcp-sentinel/database";
 import pino from "pino";
 
-const logger = pino({ name: "analyzer:engine" });
+// Log to stderr so that stdout is clean for callers that parse it (e.g. CLI --json mode)
+const logger = pino({ name: "analyzer:engine" }, process.stderr);
 
 export interface AnalysisContext {
   server: {
