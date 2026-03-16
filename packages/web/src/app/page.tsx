@@ -77,25 +77,6 @@ async function getServers(params: {
   }
 }
 
-async function getFeaturedServers(): Promise<Server[]> {
-  try {
-    const sp = new URLSearchParams();
-    sp.set("min_score", "90");
-    sp.set("sort", "score");
-    sp.set("order", "desc");
-    sp.set("limit", "6");
-
-    const res = await fetch(`${API_URL}/api/v1/servers?${sp}`, {
-      signal: AbortSignal.timeout(4000),
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.data || [];
-  } catch {
-    return [];
-  }
-}
-
 async function getStats(): Promise<EcosystemStats | null> {
   try {
     const res = await fetch(`${API_URL}/api/v1/ecosystem/stats`, {
@@ -151,6 +132,72 @@ const SORT_OPTIONS = [
   { value: "updated", label: "Last Updated" },
 ];
 
+// ── Official org featured servers ────────────────────────────────────────────
+const FEATURED_ORGS: Array<{
+  name: string;
+  org: string;
+  slug: string;
+  desc: string;
+  color: string;
+  textColor: string;
+  initials: string;
+}> = [
+  {
+    name: "GitHub MCP Server",
+    org: "GitHub",
+    slug: "github-mcp-server",
+    desc: "Official GitHub server — repos, issues, PRs, code search, Actions.",
+    color: "#0969da",
+    textColor: "#0969da",
+    initials: "GH",
+  },
+  {
+    name: "Stripe Agent Toolkit",
+    org: "Stripe",
+    slug: "stripe-agent-toolkit",
+    desc: "Official Stripe server — payments, customers, invoices, subscriptions.",
+    color: "#635BFF",
+    textColor: "#635BFF",
+    initials: "ST",
+  },
+  {
+    name: "Cloudflare MCP Server",
+    org: "Cloudflare",
+    slug: "mcp-server-cloudflare",
+    desc: "Official Cloudflare server — Workers, R2, KV, D1, Durable Objects.",
+    color: "#F6821F",
+    textColor: "#e06a0a",
+    initials: "CF",
+  },
+  {
+    name: "Linear MCP",
+    org: "Linear",
+    slug: "linear-mcp",
+    desc: "Official Linear server — issues, projects, cycles, teams.",
+    color: "#5E6AD2",
+    textColor: "#5E6AD2",
+    initials: "LN",
+  },
+  {
+    name: "Notion MCP",
+    org: "Notion",
+    slug: "notion-mcp",
+    desc: "Official Notion server — pages, databases, blocks, search.",
+    color: "#1a1a1a",
+    textColor: "#1a1a1a",
+    initials: "NT",
+  },
+  {
+    name: "Atlassian Remote MCP",
+    org: "Atlassian",
+    slug: "atlassian-remote-mcp-server",
+    desc: "Official Atlassian server — Jira issues, Confluence pages, Bitbucket.",
+    color: "#0052CC",
+    textColor: "#0052CC",
+    initials: "AT",
+  },
+];
+
 // ── Components ────────────────────────────────────────────────────────────────
 
 function ScoreBadge({ score }: { score: number | null }) {
@@ -167,24 +214,36 @@ function CategoryChip({ cat }: { cat: string | null }) {
   return <span className="category-chip">{cat}</span>;
 }
 
-function FeaturedCard({ server }: { server: Server }) {
+function FeaturedOrgCard({ org }: { org: (typeof FEATURED_ORGS)[0] }) {
   return (
-    <a href={`/server/${server.slug}`} className="featured-card">
-      <div className="featured-card-name">{server.name}</div>
-      {server.description && (
-        <div className="featured-card-desc">{server.description}</div>
-      )}
-      <div className="featured-card-footer">
-        <div className="featured-card-meta">
-          {server.category && <CategoryChip cat={server.category} />}
+    <a href={`/server/${org.slug}`} className="featured-card" style={{ paddingTop: 0, overflow: "hidden" }}>
+      {/* Brand color top bar */}
+      <div style={{ height: "3px", background: org.color, margin: "0 calc(-1 * var(--s5)) var(--s4)", marginTop: 0, borderRadius: 0 }} />
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "var(--s2)" }}>
+        <div style={{
+          width: "32px",
+          height: "32px",
+          borderRadius: "8px",
+          background: `${org.color}18`,
+          border: `1px solid ${org.color}30`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "10px",
+          fontWeight: 800,
+          letterSpacing: "0.05em",
+          color: org.textColor,
+          flexShrink: 0,
+          fontFamily: "monospace",
+        }}>
+          {org.initials}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          {server.author && (
-            <span className="featured-card-author">by {server.author}</span>
-          )}
-          <ScoreBadge score={server.latest_score} />
-        </div>
+        <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          {org.org}
+        </span>
       </div>
+      <div className="featured-card-name">{org.name}</div>
+      <div className="featured-card-desc">{org.desc}</div>
     </a>
   );
 }
@@ -213,7 +272,7 @@ export default async function HomePage({
     (!!sp.category && sp.category !== "all") ||
     !!sp.min_score;
 
-  const [{ servers, pagination }, stats, featuredServers] = await Promise.all([
+  const [{ servers, pagination }, stats] = await Promise.all([
     getServers({
       q: sp.q,
       author: sp.author,
@@ -224,7 +283,6 @@ export default async function HomePage({
       min_score: sp.min_score,
     }),
     getStats(),
-    isFiltered ? Promise.resolve([]) : getFeaturedServers(),
   ]);
 
   const avgScoreColor =
@@ -293,57 +351,71 @@ export default async function HomePage({
       </section>
 
       {/* ── Stats strip ───────────────────────────────── */}
-      {stats && (
-        <section className="stats-grid" aria-label="Ecosystem statistics">
-          <div className="stat-card">
-            <span className="stat-value">
-              {stats.total_servers.toLocaleString()}
-            </span>
-            <span className="stat-label">Total Servers</span>
-          </div>
-          <div className="stat-card">
-            <span className="stat-value">
-              {stats.total_scanned.toLocaleString()}
-            </span>
-            <span className="stat-label">Scanned</span>
-          </div>
-          <div className="stat-card">
-            <span
-              className="stat-value"
-              style={{ color: avgScoreColor }}
-            >
+      <section
+        style={{
+          display: "flex",
+          alignItems: "baseline",
+          gap: "10px",
+          flexWrap: "wrap",
+          marginBottom: "var(--s8)",
+          padding: "var(--s5) var(--s6)",
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--r-lg)",
+          boxShadow: "var(--shadow-card)",
+        }}
+        aria-label="Ecosystem statistics"
+      >
+        <span
+          style={{
+            fontFamily: "'Outfit Variable','Outfit',system-ui,sans-serif",
+            fontSize: "36px",
+            fontWeight: 700,
+            letterSpacing: "-0.04em",
+            color: "var(--text)",
+            lineHeight: 1,
+          }}
+        >
+          {stats ? stats.total_servers.toLocaleString() : "—"}
+        </span>
+        <span
+          style={{
+            fontSize: "15px",
+            fontWeight: 500,
+            color: "var(--text-2)",
+          }}
+        >
+          unique MCP servers indexed
+        </span>
+        {stats && stats.total_scanned > 0 && (
+          <span
+            style={{
+              marginLeft: "auto",
+              fontSize: "12px",
+              color: "var(--text-3)",
+            }}
+          >
+            {stats.total_scanned.toLocaleString()} scanned · avg score{" "}
+            <strong style={{ color: avgScoreColor, fontWeight: 600 }}>
               {stats.average_score ?? 0}
-              <span
-                style={{
-                  fontSize: "16px",
-                  color: "var(--text-3)",
-                  fontWeight: 400,
-                }}
-              >
-                /100
-              </span>
-            </span>
-            <span className="stat-label">Average Score</span>
-          </div>
-          <div className="stat-card">
-            <span className="stat-value">103</span>
-            <span className="stat-label">Detection Rules</span>
-          </div>
-        </section>
-      )}
+            </strong>
+            /100 · 103 rules
+          </span>
+        )}
+      </section>
 
-      {/* ── Featured Servers ──────────────────────────── */}
-      {!isFiltered && featuredServers.length > 0 && (
-        <section className="featured-section" aria-label="Featured servers">
+      {/* ── Featured Official Servers ─────────────────── */}
+      {!isFiltered && (
+        <section className="featured-section" aria-label="Official server integrations">
           <div className="featured-header">
-            <h2 className="featured-heading">Featured Servers</h2>
-            <a href="/?min_score=80&sort=score" className="featured-view-all">
-              View all top-rated →
+            <h2 className="featured-heading">Official Integrations</h2>
+            <a href="/?sort=score&order=desc" className="featured-view-all">
+              Browse all →
             </a>
           </div>
           <div className="featured-grid">
-            {featuredServers.map((server) => (
-              <FeaturedCard key={server.id} server={server} />
+            {FEATURED_ORGS.map((org) => (
+              <FeaturedOrgCard key={org.slug} org={org} />
             ))}
           </div>
         </section>
