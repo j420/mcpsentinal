@@ -405,4 +405,259 @@ export const B7: RuleFixtureSet = {
   ],
 };
 
-export const ALL_B_FIXTURES: RuleFixtureSet[] = [B1, B2, B5, B7];
+// ── B3: Excessive Parameter Count ─────────────────────────────────────────────
+export const B3: RuleFixtureSet = {
+  rule_id: "B3",
+  rule_name: "Excessive Parameter Count",
+  fixtures: [
+    {
+      description: "Tool with 16 parameters — exceeds threshold of 15",
+      context: {
+        ...base,
+        tools: [
+          {
+            name: "complex_operation",
+            description: "Complex database operation",
+            input_schema: {
+              type: "object",
+              properties: Object.fromEntries(
+                Array.from({ length: 16 }, (_, i) => [`param_${i}`, { type: "string" }])
+              ),
+            },
+          },
+        ],
+      },
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "Tool with 20 parameters — well above threshold",
+      context: {
+        ...base,
+        tools: [
+          {
+            name: "bulk_configure",
+            description: "Configures many settings at once",
+            input_schema: {
+              type: "object",
+              properties: Object.fromEntries(
+                Array.from({ length: 20 }, (_, i) => [`setting_${i}`, { type: "string" }])
+              ),
+            },
+          },
+        ],
+      },
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "Tool with 10 parameters — under threshold",
+      context: {
+        ...base,
+        tools: [
+          {
+            name: "search",
+            description: "Searches with filters",
+            input_schema: {
+              type: "object",
+              properties: Object.fromEntries(
+                Array.from({ length: 10 }, (_, i) => [`field_${i}`, { type: "string" }])
+              ),
+            },
+          },
+        ],
+      },
+      expect_finding: false,
+      kind: "true_negative",
+    },
+    {
+      description: "Tool with exactly 15 parameters — at threshold boundary, not over",
+      context: {
+        ...base,
+        tools: [
+          {
+            name: "batch_update",
+            description: "Batch update operation",
+            input_schema: {
+              type: "object",
+              properties: Object.fromEntries(
+                Array.from({ length: 15 }, (_, i) => [`field_${i}`, { type: "string" }])
+              ),
+            },
+          },
+        ],
+      },
+      expect_finding: false,
+      kind: "edge_case",
+    },
+  ],
+};
+
+// ── B4: Schema-less Tool ───────────────────────────────────────────────────────
+export const B4: RuleFixtureSet = {
+  rule_id: "B4",
+  rule_name: "Schema-less Tool",
+  fixtures: [
+    {
+      description: "Tool with null input_schema",
+      context: {
+        ...base,
+        tools: [
+          {
+            name: "execute",
+            description: "Executes an operation with no defined schema",
+            input_schema: null,
+          },
+        ],
+      },
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "Tool with empty object schema — no properties defined",
+      context: {
+        ...base,
+        tools: [
+          {
+            name: "run_command",
+            description: "Runs a command",
+            input_schema: {},
+          },
+        ],
+      },
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "Tool with well-defined schema including required field",
+      context: {
+        ...base,
+        tools: [
+          {
+            name: "read_file",
+            description: "Reads a file",
+            input_schema: {
+              type: "object",
+              properties: { path: { type: "string" } },
+              required: ["path"],
+            },
+          },
+        ],
+      },
+      expect_finding: false,
+      kind: "true_negative",
+    },
+    {
+      description: "Tool with minimal but valid schema",
+      context: {
+        ...base,
+        tools: [
+          {
+            name: "ping",
+            description: "Checks connectivity",
+            input_schema: {
+              type: "object",
+              properties: { host: { type: "string", maxLength: 256 } },
+            },
+          },
+        ],
+      },
+      expect_finding: false,
+      kind: "true_negative",
+    },
+  ],
+};
+
+// ── B6: Unconstrained Additional Properties ────────────────────────────────────
+export const B6: RuleFixtureSet = {
+  rule_id: "B6",
+  rule_name: "Schema Allows Unconstrained Additional Properties",
+  fixtures: [
+    {
+      description: "Schema with additionalProperties: true explicitly",
+      context: {
+        ...base,
+        tools: [
+          {
+            name: "process_data",
+            description: "Processes arbitrary data",
+            input_schema: {
+              type: "object",
+              properties: { name: { type: "string" } },
+              additionalProperties: true,
+            },
+          },
+        ],
+      },
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "Schema without additionalProperties key — defaults to allowed in JSON Schema",
+      context: {
+        ...base,
+        tools: [
+          {
+            name: "create_item",
+            description: "Creates an item",
+            input_schema: {
+              type: "object",
+              properties: { title: { type: "string" } },
+              // No additionalProperties set = defaults to true per JSON Schema spec
+            },
+          },
+        ],
+      },
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "Schema with additionalProperties: false — explicitly locked down",
+      context: {
+        ...base,
+        tools: [
+          {
+            name: "update_user",
+            description: "Updates a user record",
+            input_schema: {
+              type: "object",
+              properties: {
+                id: { type: "string" },
+                email: { type: "string", format: "email" },
+              },
+              required: ["id"],
+              additionalProperties: false,
+            },
+          },
+        ],
+      },
+      expect_finding: false,
+      kind: "true_negative",
+    },
+    {
+      description: "Schema using strict object definition — no extra keys allowed",
+      context: {
+        ...base,
+        tools: [
+          {
+            name: "send_message",
+            description: "Sends a message",
+            input_schema: {
+              type: "object",
+              properties: {
+                to: { type: "string" },
+                body: { type: "string", maxLength: 2000 },
+              },
+              required: ["to", "body"],
+              additionalProperties: false,
+            },
+          },
+        ],
+      },
+      expect_finding: false,
+      kind: "true_negative",
+    },
+  ],
+};
+
+export const ALL_B_FIXTURES: RuleFixtureSet[] = [B1, B2, B3, B4, B5, B6, B7];

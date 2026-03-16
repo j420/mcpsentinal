@@ -14,13 +14,14 @@ describe("generateCanaryInput", () => {
   });
 
   it("fills required string parameters with canary value", () => {
+    // Use "label" — does not match any dangerous-name pattern
     const schema = {
       type: "object",
-      properties: { query: { type: "string" } },
-      required: ["query"],
+      properties: { label: { type: "string" } },
+      required: ["label"],
     };
     const result = generateCanaryInput("search", schema);
-    expect(result.input.query).toBe("mcp-sentinel-canary-test-value");
+    expect(result.input.label).toBe("mcp-sentinel-canary-test-value");
     expect(result.coverage).toContain("string");
   });
 
@@ -82,18 +83,21 @@ describe("generateCanaryInput", () => {
   });
 
   it("skips optional params that are not dangerous", () => {
+    // "name", "title", "author" don't match any DANGEROUS_PARAM_NAMES entry.
+    // "description" contains "script" so it IS treated as dangerous — don't use it here.
+    // "url" IS dangerous and must be filled even though optional.
     const schema = {
       type: "object",
       properties: {
-        name: { type: "string" },         // optional, not dangerous
-        description: { type: "string" },  // optional, not dangerous
-        url: { type: "string" },           // optional but dangerous → included
+        name: { type: "string" },     // optional, not dangerous
+        title: { type: "string" },    // optional, not dangerous
+        url: { type: "string" },      // optional but dangerous → must be filled
       },
       required: [],
     };
     const result = generateCanaryInput("create_item", schema);
     expect(result.input.name).toBeUndefined();
-    expect(result.input.description).toBeUndefined();
+    expect(result.input.title).toBeUndefined();
     expect(result.input.url).toBeDefined(); // dangerous param always filled
   });
 });

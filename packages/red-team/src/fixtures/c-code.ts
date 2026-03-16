@@ -557,4 +557,396 @@ mod = importlib.import_module(user_module_name)`),
   ],
 };
 
-export const ALL_C_FIXTURES: RuleFixtureSet[] = [C1, C2, C4, C5, C10, C12, C14, C16];
+// ── C3: SSRF ───────────────────────────────────────────────────────────────────
+export const C3: RuleFixtureSet = {
+  rule_id: "C3",
+  rule_name: "Server-Side Request Forgery (SSRF)",
+  fixtures: [
+    {
+      description: "fetch() with user-supplied URL parameter directly",
+      context: srcCtx(`const result = await fetch(req.body.url);
+return result.json();`),
+      expect_finding: true,
+      kind: "true_positive",
+      threat_ref: "SSRF via fetch(userInput)",
+    },
+    {
+      description: "axios.get with user-controlled target",
+      context: srcCtx(`const resp = await axios.get(params.target);`),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "requests.get with user param in Python",
+      context: srcCtx(`import requests
+resp = requests.get(params['url'])`),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "new URL(userInput) construction — indirect SSRF",
+      context: srcCtx(`const target = new URL(input.endpoint);
+const data = await fetch(target);`),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "IMDS endpoint reference — cloud credential theft",
+      context: srcCtx(`// fetch metadata
+const meta = await fetch('http://169.254.169.254/latest/meta-data/iam/security-credentials/');`),
+      expect_finding: true,
+      kind: "true_positive",
+      threat_ref: "AWS IMDS credential theft via SSRF",
+    },
+    {
+      description: "httpx with user destination in Python",
+      context: srcCtx(`import httpx
+async with httpx.AsyncClient() as client:
+    resp = await client.get(args.destination)`),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "Safe: fetch with hardcoded API URL — no user input",
+      context: srcCtx(`const resp = await fetch('https://api.github.com/repos/org/repo');`),
+      expect_finding: false,
+      kind: "true_negative",
+    },
+    {
+      description: "Safe: URL validated against allowlist before fetching",
+      context: srcCtx(`const allowed_hosts = ['api.example.com'];
+if (!isAllowedHost(url, allowed_hosts)) throw new Error('URL not allowed');
+const resp = await fetch(url);`),
+      expect_finding: false,
+      kind: "true_negative",
+    },
+  ],
+};
+
+// ── C6: Error Leakage ──────────────────────────────────────────────────────────
+export const C6: RuleFixtureSet = {
+  rule_id: "C6",
+  rule_name: "Error Message Information Leakage",
+  fixtures: [
+    {
+      description: "Stack trace sent in response body",
+      context: srcCtx(`app.use((err, req, res, next) => {
+  res.json({ error: err.stack });
+});`),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "traceback.format_exc() returned to caller in Python",
+      context: srcCtx(`import traceback
+try:
+    result = process()
+except Exception as e:
+    return {"error": traceback.format_exc()}`),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "err.message piped to response in catch handler",
+      context: srcCtx(`try {
+  await doWork();
+} catch (err) {
+  res.send({ message: err.message, stack: err.stack });
+}`),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "Safe: generic error message returned, error logged server-side",
+      context: srcCtx(`try {
+  await doWork();
+} catch (err) {
+  logger.error(err);
+  res.json({ error: 'Internal server error' });
+}`),
+      expect_finding: false,
+      kind: "true_negative",
+    },
+    {
+      description: "Stack trace only shown in development mode",
+      context: srcCtx(`if (process.env.NODE_ENV === 'development') {
+  res.json({ error: err.stack });
+} else {
+  res.json({ error: 'An error occurred' });
+}`),
+      expect_finding: false,
+      kind: "true_negative",
+    },
+  ],
+};
+
+// ── C7: Wildcard CORS ──────────────────────────────────────────────────────────
+export const C7: RuleFixtureSet = {
+  rule_id: "C7",
+  rule_name: "Wildcard CORS Configuration",
+  fixtures: [
+    {
+      description: "cors() called with origin: '*'",
+      context: srcCtx(`const cors = require('cors');
+app.use(cors({ origin: '*' }));`),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "Access-Control-Allow-Origin header set to wildcard",
+      context: srcCtx(`res.setHeader('Access-Control-Allow-Origin', '*');`),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "allow_origins = ['*'] in Python FastAPI/Starlette",
+      context: srcCtx(`from fastapi.middleware.cors import CORSMiddleware
+app.add_middleware(CORSMiddleware, allow_origins=["*"])`),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "Safe: specific origin allowlist",
+      context: srcCtx(`app.use(cors({ origin: 'https://myapp.example.com' }));`),
+      expect_finding: false,
+      kind: "true_negative",
+    },
+    {
+      description: "Safe: CORS configured for localhost only",
+      context: srcCtx(`app.use(cors({ origin: ['http://localhost:3000', '127.0.0.1'] }));`),
+      expect_finding: false,
+      kind: "true_negative",
+    },
+  ],
+};
+
+// ── C8: No Auth on Network Interface ──────────────────────────────────────────
+export const C8: RuleFixtureSet = {
+  rule_id: "C8",
+  rule_name: "No Authentication on Network-Exposed Server",
+  fixtures: [
+    {
+      description: "server.listen on 0.0.0.0 with no auth middleware",
+      context: srcCtx(`const server = http.createServer(handler);
+server.listen(3000, '0.0.0.0');`),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "host = '0.0.0.0' with no bearer/jwt/auth keyword",
+      context: srcCtx(`app.listen(8080, '0.0.0.0', () => console.log('running'));`),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "INADDR_ANY binding without auth",
+      context: srcCtx(`socket.bind(INADDR_ANY, 9000);`),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "Safe: auth middleware registered before listen",
+      context: srcCtx(`app.use(authMiddleware);
+app.use(bearerTokenValidator);
+app.listen(3000);`),
+      expect_finding: false,
+      kind: "true_negative",
+    },
+    {
+      description: "Safe: JWT validation in middleware before server start",
+      context: srcCtx(`app.use(jwt({ secret: process.env.JWT_SECRET }));
+server.listen(3000);`),
+      expect_finding: false,
+      kind: "true_negative",
+    },
+  ],
+};
+
+// ── C9: Excessive Filesystem Scope ─────────────────────────────────────────────
+export const C9: RuleFixtureSet = {
+  rule_id: "C9",
+  rule_name: "Excessive Filesystem Scope",
+  fixtures: [
+    {
+      description: "readdir('/') — listing root filesystem",
+      context: srcCtx(`const entries = fs.readdirSync('/');`),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "os.walk('/') — walking entire filesystem in Python",
+      context: srcCtx(`import os
+for root, dirs, files in os.walk('/'):
+    process(root, files)`),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "allowed path set to '/' root",
+      context: srcCtx(`const allowed_path = '/';
+const files = readdir(allowed_path);`),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "Safe: readdir restricted to /tmp subdirectory",
+      context: srcCtx(`const appDir = '/tmp/myapp';
+const entries = fs.readdirSync(appDir);`),
+      expect_finding: false,
+      kind: "true_negative",
+    },
+    {
+      description: "Safe: operation in sandboxed directory",
+      context: srcCtx(`const sandbox = path.resolve('./sandbox');
+const files = await readdir(sandbox);`),
+      expect_finding: false,
+      kind: "true_negative",
+    },
+  ],
+};
+
+// ── C11: ReDoS ─────────────────────────────────────────────────────────────────
+export const C11: RuleFixtureSet = {
+  rule_id: "C11",
+  rule_name: "ReDoS — Catastrophic Regex Backtracking",
+  fixtures: [
+    {
+      description: "Nested quantifiers (a+)+ — catastrophic backtracking",
+      context: srcCtx(`const re = /(a+)+/;
+if (re.test(input)) validate();`),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "new RegExp(userInput) — user-controlled pattern compilation",
+      context: srcCtx(`const pattern = new RegExp(req.body.pattern);
+const matches = text.match(pattern);`),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "Alternation overlap pattern (a|a)* — polynomial backtracking",
+      context: srcCtx(`const badRegex = /(https?|http)*/;
+badRegex.test(userContent);`),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "Safe: static regex with no nested quantifiers",
+      context: srcCtx(`const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+emailRegex.test(input.slice(0, 256));`),
+      expect_finding: false,
+      kind: "true_negative",
+    },
+    {
+      description: "Safe: input bounded with maxLength before regex application",
+      context: srcCtx(`const safeInput = input.substring(0, 100);
+const re = /^[a-z]+$/;
+re.test(safeInput);`),
+      expect_finding: false,
+      kind: "true_negative",
+    },
+  ],
+};
+
+// ── C13: Server-Side Template Injection ────────────────────────────────────────
+export const C13: RuleFixtureSet = {
+  rule_id: "C13",
+  rule_name: "Server-Side Template Injection (SSTI)",
+  fixtures: [
+    {
+      description: "jinja2.Template(req.body.template) — user input as template",
+      context: srcCtx(`import jinja2
+template = jinja2.Template(req.body.template)
+result = template.render(data=data)`),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "Handlebars.compile(req.body.markup) — user-controlled template",
+      context: srcCtx(`const Handlebars = require('handlebars');
+const tmpl = Handlebars.compile(req.body.markup);
+return tmpl(context);`),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "eval with template literal containing user input",
+      context: srcCtx("eval(`result = ${req.query.expression}`);"),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "nunjucks.renderString with user-supplied template string",
+      context: srcCtx(`const nunjucks = require('nunjucks');
+const output = nunjucks.renderString(input.template, vars);`),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "Safe: static template file with user data as context variables",
+      context: srcCtx(`const template = fs.readFileSync('templates/email.html', 'utf8');
+const result = Handlebars.compile(template)({ name: user.name });`),
+      expect_finding: false,
+      kind: "true_negative",
+    },
+    {
+      description: "Safe: render_template with static file and autoescape",
+      context: srcCtx(`from flask import render_template
+return render_template('index.html', data=sanitized_data)`),
+      expect_finding: false,
+      kind: "true_negative",
+    },
+  ],
+};
+
+// ── C15: Timing Attack on Secret Comparison ─────────────────────────────────────
+export const C15: RuleFixtureSet = {
+  rule_id: "C15",
+  rule_name: "Timing Attack on Secret or Token Comparison",
+  fixtures: [
+    {
+      description: "API key compared with === — timing-unsafe",
+      context: srcCtx(`if (apiKey === req.headers.authorization) {
+  allowAccess();
+}`),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "HMAC signature compared with == in Python — timing leak",
+      context: srcCtx(`if hmac_expected == provided_hmac:
+    verify_signature()`),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "Token compared with secret using !== equality",
+      context: srcCtx(`if (token !== process.env.SECRET_TOKEN) {
+  throw new Error('Invalid token');
+}`),
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "Safe: crypto.timingSafeEqual() for constant-time comparison",
+      context: srcCtx(`const a = Buffer.from(provided);
+const b = Buffer.from(expected);
+if (crypto.timingSafeEqual(a, b)) allowAccess();`),
+      expect_finding: false,
+      kind: "true_negative",
+    },
+    {
+      description: "Safe: hmac.compare_digest() in Python",
+      context: srcCtx(`import hmac
+if hmac.compare_digest(expected_mac, provided_mac):
+    authenticate()`),
+      expect_finding: false,
+      kind: "true_negative",
+    },
+  ],
+};
+
+export const ALL_C_FIXTURES: RuleFixtureSet[] = [
+  C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14, C15, C16,
+];

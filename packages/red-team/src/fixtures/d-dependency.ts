@@ -263,4 +263,184 @@ export const D7: RuleFixtureSet = {
   ],
 };
 
-export const ALL_D_FIXTURES: RuleFixtureSet[] = [D1, D2, D5, D7];
+// ── D3: Typosquatting Risk ─────────────────────────────────────────────────────
+export const D3: RuleFixtureSet = {
+  rule_id: "D3",
+  rule_name: "Typosquatting Risk in Dependencies",
+  fixtures: [
+    {
+      description: "'expresss' — one extra 's', Levenshtein distance 1 from 'express'",
+      context: {
+        ...base,
+        tools: [],
+        dependencies: [{ name: "expresss", version: "4.18.0", has_known_cve: false, cve_ids: [], last_updated: new Date() }],
+      },
+      expect_finding: true,
+      kind: "true_positive",
+      threat_ref: "D3 — typosquat Levenshtein distance 1",
+    },
+    {
+      description: "'fastmpc' — transposition of 'fastmcp', high similarity",
+      context: {
+        ...base,
+        tools: [],
+        dependencies: [{ name: "fastmpc", version: "0.1.0", has_known_cve: false, cve_ids: [], last_updated: new Date() }],
+      },
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "Exact '@modelcontextprotocol/sdk' — official package",
+      context: {
+        ...base,
+        tools: [],
+        dependencies: [{ name: "@modelcontextprotocol/sdk", version: "1.0.0", has_known_cve: false, cve_ids: [], last_updated: new Date() }],
+      },
+      expect_finding: false,
+      kind: "true_negative",
+    },
+    {
+      description: "'totally-unique-package' — no similarity to known packages",
+      context: {
+        ...base,
+        tools: [],
+        dependencies: [{ name: "totally-unique-package", version: "1.0.0", has_known_cve: false, cve_ids: [], last_updated: new Date() }],
+      },
+      expect_finding: false,
+      kind: "true_negative",
+    },
+  ],
+};
+
+// ── D4: Excessive Dependency Count ─────────────────────────────────────────────
+export const D4: RuleFixtureSet = {
+  rule_id: "D4",
+  rule_name: "Excessive Dependency Count",
+  fixtures: [
+    {
+      description: "75 direct dependencies — exceeds threshold of 50",
+      context: {
+        ...base,
+        tools: [],
+        dependencies: Array.from({ length: 75 }, (_, i) => ({
+          name: `package-${i}`,
+          version: "1.0.0",
+          has_known_cve: false,
+          cve_ids: [],
+          last_updated: new Date(),
+        })),
+      },
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "60 direct dependencies — over threshold",
+      context: {
+        ...base,
+        tools: [],
+        dependencies: Array.from({ length: 60 }, (_, i) => ({
+          name: `dep-${i}`,
+          version: "1.0.0",
+          has_known_cve: false,
+          cve_ids: [],
+          last_updated: new Date(),
+        })),
+      },
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "15 direct dependencies — well under threshold",
+      context: {
+        ...base,
+        tools: [],
+        dependencies: Array.from({ length: 15 }, (_, i) => ({
+          name: `pkg-${i}`,
+          version: "1.0.0",
+          has_known_cve: false,
+          cve_ids: [],
+          last_updated: new Date(),
+        })),
+      },
+      expect_finding: false,
+      kind: "true_negative",
+    },
+    {
+      description: "Exactly 50 dependencies — at boundary (threshold is >50)",
+      context: {
+        ...base,
+        tools: [],
+        dependencies: Array.from({ length: 50 }, (_, i) => ({
+          name: `lib-${i}`,
+          version: "1.0.0",
+          has_known_cve: false,
+          cve_ids: [],
+          last_updated: new Date(),
+        })),
+      },
+      expect_finding: false,
+      kind: "edge_case",
+    },
+  ],
+};
+
+// ── D6: Weak Cryptography Dependencies ─────────────────────────────────────────
+export const D6: RuleFixtureSet = {
+  rule_id: "D6",
+  rule_name: "Weak or Deprecated Cryptography Dependencies",
+  fixtures: [
+    {
+      description: "'md5' package — cryptographically broken",
+      context: {
+        ...base,
+        tools: [],
+        dependencies: [{ name: "md5", version: "2.3.0", has_known_cve: false, cve_ids: [], last_updated: new Date() }],
+      },
+      expect_finding: true,
+      kind: "true_positive",
+      threat_ref: "D6 — MD5 collision attacks demonstrated in seconds",
+    },
+    {
+      description: "'pycrypto' — unmaintained with known CVEs",
+      context: {
+        ...base,
+        tools: [],
+        dependencies: [{ name: "pycrypto", version: "2.6.1", has_known_cve: true, cve_ids: ["CVE-2013-7459"], last_updated: new Date("2013-01-01") }],
+      },
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "'bcrypt-nodejs' — unmaintained, use bcrypt instead",
+      context: {
+        ...base,
+        tools: [],
+        dependencies: [{ name: "bcrypt-nodejs", version: "0.0.3", has_known_cve: false, cve_ids: [], last_updated: new Date("2014-01-01") }],
+      },
+      expect_finding: true,
+      kind: "true_positive",
+    },
+    {
+      description: "'bcrypt' — modern maintained alternative",
+      context: {
+        ...base,
+        tools: [],
+        dependencies: [{ name: "bcrypt", version: "5.1.1", has_known_cve: false, cve_ids: [], last_updated: new Date() }],
+      },
+      expect_finding: false,
+      kind: "true_negative",
+    },
+    {
+      description: "'node-forge@1.3.1' — above vulnerable version range",
+      context: {
+        ...base,
+        tools: [],
+        dependencies: [{ name: "node-forge", version: "1.3.1", has_known_cve: false, cve_ids: [], last_updated: new Date() }],
+      },
+      expect_finding: false,
+      kind: "true_negative",
+    },
+  ],
+};
+
+export const ALL_D_FIXTURES: RuleFixtureSet[] = [D1, D2, D3, D4, D5, D6, D7];

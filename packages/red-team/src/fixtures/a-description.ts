@@ -87,7 +87,7 @@ export const A1: RuleFixtureSet = {
       kind: "true_negative",
     },
     {
-      description: "Security tool that mentions injection as a concept",
+      description: "security tool that mentions injection concepts — not an injection attempt",
       context: toolCtx(
         "Scans code for SQL injection vulnerabilities and prompt injection patterns."
       ),

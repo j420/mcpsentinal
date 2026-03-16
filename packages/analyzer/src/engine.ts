@@ -15,6 +15,13 @@ export interface AnalysisContext {
     name: string;
     description: string | null;
     input_schema: Record<string, unknown> | null;
+    /** MCP 2025-03-26 spec: tool behaviour hints used by I1/I2 annotation rules */
+    annotations?: {
+      readOnlyHint?: boolean;
+      destructiveHint?: boolean;
+      idempotentHint?: boolean;
+      openWorldHint?: boolean;
+    } | null;
   }>;
   source_code: string | null;
   dependencies: Array<{
