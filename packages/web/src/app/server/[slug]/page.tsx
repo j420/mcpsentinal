@@ -1105,9 +1105,9 @@ export default async function ServerPage({
             )}
           </section>
 
-          {/* Security Check Coverage */}
+          {/* Security Test Coverage */}
           {score !== null && (
-            <SecurityCheckCoverage
+            <SecurityTestSummary
               findings={server.findings ?? []}
               score={score}
             />

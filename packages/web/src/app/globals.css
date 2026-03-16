@@ -772,6 +772,34 @@ code, pre, kbd {
   white-space: nowrap;
 }
 
+/* ── Security Test Summary (OWASP MCP Top 10) ───────────── */
+.test-type-list { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden; }
+
+.test-type-row { display: grid; grid-template-columns: 32px 52px 1fr auto auto auto; gap: var(--s3); align-items: center; padding: var(--s3) var(--s4); background: var(--surface); border-bottom: 1px solid var(--border); }
+.test-type-row:last-child { border-bottom: none; }
+.test-type-row:nth-child(even) { background: var(--surface-2); }
+.test-type-row.tt-pass { border-left: 3px solid transparent; }
+.test-type-row.tt-fail { border-left: 3px solid currentColor; }
+
+.tt-icon { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; font-size: 12px; flex-shrink: 0; }
+.tt-icon.pass { background: var(--good-sub); color: var(--good); }
+.tt-icon.fail { background: var(--critical-sub); color: var(--critical); }
+
+.tt-id { font-family: var(--font-mono, monospace); font-size: 10px; font-weight: 700; color: var(--text-3); background: var(--surface-3); border-radius: 4px; padding: 2px 5px; text-align: center; letter-spacing: 0.03em; }
+
+.tt-body { min-width: 0; }
+.tt-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.tt-desc { font-size: 11px; color: var(--text-3); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.tt-rule-count { font-size: 11px; color: var(--text-3); white-space: nowrap; }
+
+.tt-frameworks { display: flex; gap: 3px; flex-wrap: wrap; }
+.tt-fw-tag { font-size: 9px; font-weight: 600; padding: 1px 5px; border-radius: 3px; background: var(--surface-3); color: var(--text-3); white-space: nowrap; letter-spacing: 0.03em; }
+
+.tt-result { font-size: 12px; font-weight: 600; white-space: nowrap; text-align: right; }
+.tt-result.pass { color: var(--good); }
+.tt-result.fail { color: var(--critical); }
+
 /* ── Framework Compliance ────────────────────────────────── */
 .framework-row {
   display: flex;
