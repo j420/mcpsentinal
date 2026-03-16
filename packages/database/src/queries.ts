@@ -589,7 +589,7 @@ export class DatabaseQueries {
   // ─── Ecosystem Stats ──────────────────────────────────────────────────────
 
   async getEcosystemStats() {
-    const [total, scanned, avgScore, categories, severities, distribution] =
+    const [total, scanned, avgScore, categories, severities, distribution, multiSource, uniqueIdent] =
       await Promise.all([
         this.pool.query("SELECT COUNT(*) as cnt FROM servers"),
         this.pool.query(
@@ -622,6 +622,17 @@ export class DatabaseQueries {
            GROUP BY range
            ORDER BY range DESC`
         ),
+        // Servers confirmed from 2+ distinct sources (high-confidence unique)
+        this.pool.query(
+          `SELECT COUNT(*) as cnt FROM (
+             SELECT server_id FROM sources GROUP BY server_id HAVING COUNT(DISTINCT source_name) >= 2
+           ) t`
+        ),
+        // Servers with at least one canonical identifier (not slug-only)
+        this.pool.query(
+          `SELECT COUNT(*) as cnt FROM servers
+           WHERE github_url IS NOT NULL OR npm_package IS NOT NULL OR pypi_package IS NOT NULL`
+        ),
       ]);
 
     return {
@@ -638,6 +649,46 @@ export class DatabaseQueries {
         range: r.range as string,
         count: parseInt(r.count, 10),
       })),
+      multi_source_count: parseInt(multiSource.rows[0]?.cnt ?? '0', 10),
+      unique_with_identifier: parseInt(uniqueIdent.rows[0]?.cnt ?? '0', 10),
+    };
+  }
+
+  /**
+   * Detailed dedup quality report for admin/operational visibility.
+   * Shows how well canonical identifiers are populated across the server table,
+   * and how many servers are confirmed by multiple independent sources.
+   */
+  async getDedupStats(): Promise<{
+    total_servers: number;
+    with_github: number;
+    with_npm: number;
+    with_pypi: number;
+    multi_source: number;
+    slug_only: number;
+  }> {
+    const [total, withGithub, withNpm, withPypi, multiSource] = await Promise.all([
+      this.pool.query('SELECT COUNT(*) as cnt FROM servers'),
+      this.pool.query('SELECT COUNT(*) as cnt FROM servers WHERE github_url IS NOT NULL'),
+      this.pool.query('SELECT COUNT(*) as cnt FROM servers WHERE npm_package IS NOT NULL'),
+      this.pool.query('SELECT COUNT(*) as cnt FROM servers WHERE pypi_package IS NOT NULL'),
+      this.pool.query(
+        `SELECT COUNT(*) as cnt FROM (
+           SELECT server_id FROM sources GROUP BY server_id HAVING COUNT(DISTINCT source_name) >= 2
+         ) t`
+      ),
+    ]);
+    const totalN = parseInt(total.rows[0].cnt, 10);
+    const withAny = await this.pool.query(
+      'SELECT COUNT(*) as cnt FROM servers WHERE github_url IS NOT NULL OR npm_package IS NOT NULL OR pypi_package IS NOT NULL'
+    );
+    return {
+      total_servers: totalN,
+      with_github: parseInt(withGithub.rows[0].cnt, 10),
+      with_npm: parseInt(withNpm.rows[0].cnt, 10),
+      with_pypi: parseInt(withPypi.rows[0].cnt, 10),
+      multi_source: parseInt(multiSource.rows[0].cnt, 10),
+      slug_only: totalN - parseInt(withAny.rows[0].cnt, 10),
     };
   }
 

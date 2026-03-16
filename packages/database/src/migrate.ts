@@ -287,6 +287,14 @@ const MIGRATIONS = [
     `,
   },
   {
+    id: "007_pypi_package_index",
+    sql: `
+      -- Add partial index on pypi_package to match the existing github_url and npm_package indexes.
+      -- Required for upsertServerDedup Priority 3 (PyPI lookup) to use an index scan instead of seq scan.
+      CREATE INDEX IF NOT EXISTS idx_servers_pypi_package ON servers(pypi_package) WHERE pypi_package IS NOT NULL;
+    `,
+  },
+  {
     id: "006_dynamic_test_results",
     sql: `
       -- dynamic_test_results: one row per DynamicTester.test() execution.

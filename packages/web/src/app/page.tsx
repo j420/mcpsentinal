@@ -38,6 +38,8 @@ interface EcosystemStats {
   category_breakdown: Record<string, number>;
   severity_breakdown: Record<string, number>;
   score_distribution: Array<{ range: string; count: number }>;
+  multi_source_count?: number;
+  unique_with_identifier?: number;
 }
 
 // ── Data fetching ─────────────────────────────────────────────────────────────
@@ -277,6 +279,14 @@ export default async function HomePage({
             <span className="stat-value">103</span>
             <span className="stat-label">Detection Rules</span>
           </div>
+          {stats.unique_with_identifier != null && (
+            <div className="stat-card">
+              <span className="stat-value">
+                {stats.unique_with_identifier.toLocaleString()}
+              </span>
+              <span className="stat-label">Verified Unique</span>
+            </div>
+          )}
         </section>
       )}
 
