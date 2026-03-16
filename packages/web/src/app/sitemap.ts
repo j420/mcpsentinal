@@ -62,6 +62,12 @@ async function getAllServerSlugs(): Promise<string[]> {
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 
+  const CATEGORIES = [
+    "database", "filesystem", "api-integration", "dev-tools", "ai-ml",
+    "communication", "cloud-infra", "security", "data-processing",
+    "monitoring", "search", "browser-web", "code-execution", "other",
+  ];
+
   // Static pages
   const staticRoutes: MetadataRoute.Sitemap = [
     {
@@ -76,6 +82,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "hourly",
       priority: 0.9,
     },
+    {
+      url: `${SITE_URL}/categories`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.85,
+    },
+    ...CATEGORIES.map((cat) => ({
+      url: `${SITE_URL}/categories/${cat}`,
+      lastModified: now,
+      changeFrequency: "daily" as const,
+      priority: 0.8,
+    })),
     {
       url: `${SITE_URL}/about`,
       lastModified: now,
