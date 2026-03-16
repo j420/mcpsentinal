@@ -103,6 +103,9 @@ importers:
       '@mcp-sentinel/database':
         specifier: workspace:*
         version: link:../database
+      '@mcp-sentinel/dynamic-tester':
+        specifier: workspace:*
+        version: link:../dynamic-tester
       '@mcp-sentinel/risk-matrix':
         specifier: workspace:*
         version: link:../risk-matrix

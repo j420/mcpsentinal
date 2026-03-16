@@ -6,6 +6,8 @@ import { fileURLToPath } from "url";
 import { AnalysisEngine, loadRules, getRulesVersion } from "@mcp-sentinel/analyzer";
 import { computeScore } from "@mcp-sentinel/scorer";
 import { RiskMatrixAnalyzer } from "@mcp-sentinel/risk-matrix";
+import { DynamicTester } from "@mcp-sentinel/dynamic-tester";
+import type { DynamicReport } from "@mcp-sentinel/dynamic-tester";
 import type { AnalysisContext } from "@mcp-sentinel/analyzer";
 import { z } from "zod";
 
@@ -57,6 +59,12 @@ interface CLIArgs {
   configPath: string | null;
   showVersion: boolean;
   showHelp: boolean;
+  /** Enable gated dynamic tool invocation testing (requires server consent) */
+  dynamic: boolean;
+  /** Explicit server IDs pre-approved for dynamic testing (comma-separated) */
+  dynamicAllowlist: string[];
+  /** Path to write the dynamic test audit log */
+  dynamicAuditLog: string | null;
 }
 
 // ─── Scan Result ─────────────────────────────────────────────────────────────
@@ -227,7 +235,37 @@ function parseArgs(argv: string[]): CLIArgs {
     configPath = raw;
   }
 
-  return { command, jsonOutput, ciMode, minScore, failOn, configPath, showVersion, showHelp };
+  // --dynamic: enable gated dynamic testing (requires explicit consent from server)
+  const dynamic = args.includes("--dynamic");
+
+  // --dynamic-allowlist <id1,id2,...>: pre-approve server IDs for dynamic testing
+  let dynamicAllowlist: string[] = [];
+  const allowlistIdx = args.findIndex((a) => a === "--dynamic-allowlist");
+  if (allowlistIdx !== -1) {
+    const raw = args[allowlistIdx + 1];
+    if (!raw || raw.startsWith("--")) {
+      console.error("Error: --dynamic-allowlist requires a comma-separated list of server IDs");
+      process.exit(EXIT.INPUT_ERROR);
+    }
+    dynamicAllowlist = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  }
+
+  // --dynamic-audit-log <path>: write dynamic test audit log to this file
+  let dynamicAuditLog: string | null = null;
+  const auditLogIdx = args.findIndex((a) => a === "--dynamic-audit-log");
+  if (auditLogIdx !== -1) {
+    const raw = args[auditLogIdx + 1];
+    if (!raw || raw.startsWith("--")) {
+      console.error("Error: --dynamic-audit-log requires a file path argument");
+      process.exit(EXIT.INPUT_ERROR);
+    }
+    dynamicAuditLog = raw;
+  }
+
+  return {
+    command, jsonOutput, ciMode, minScore, failOn, configPath,
+    showVersion, showHelp, dynamic, dynamicAllowlist, dynamicAuditLog,
+  };
 }
 
 // ─── Config Loading ───────────────────────────────────────────────────────────
@@ -543,7 +581,80 @@ async function runCheck(cliArgs: CLIArgs): Promise<never> {
     }
   }
 
-  // ── 6. Output ──────────────────────────────────────────────────────────────
+  // ── 6. Dynamic testing (--dynamic flag — gated by server consent) ─────────
+  // Only runs when:
+  //   (a) --dynamic is passed explicitly
+  //   (b) Server entry has a `url` field (HTTP/SSE transport — required for SDK connect)
+  //   (c) Server grants consent via allowlist, tool_declaration, or .well-known
+  //
+  // ADR-007: We NEVER call tools without consent. The DynamicTester enforces
+  // this internally, but we also check for the url field here to avoid
+  // attempting dynamic tests against stdio servers that have no HTTP endpoint.
+  const dynamicResults: Record<string, DynamicReport> = {};
+
+  if (cliArgs.dynamic) {
+    if (!cliArgs.jsonOutput) {
+      console.log("\n" + "─".repeat(70));
+      console.log("  Dynamic Testing (consent-gated)\n");
+    }
+
+    const tester = new DynamicTester({
+      allowlist: cliArgs.dynamicAllowlist,
+      ...(cliArgs.dynamicAuditLog ? { audit_log_path: cliArgs.dynamicAuditLog } : {}),
+    });
+
+    for (const [name, serverConfig] of Object.entries(servers)) {
+      const endpoint = serverConfig.url;
+      if (!endpoint) {
+        if (!cliArgs.jsonOutput) {
+          console.log(`  [SKIP] ${sanitizeForTerminal(name, 40)} — no url (stdio server, skipping dynamic test)`);
+        }
+        continue;
+      }
+
+      if (!cliArgs.jsonOutput) {
+        console.log(`  [TEST] ${sanitizeForTerminal(name, 40)} @ ${sanitizeForTerminal(endpoint, 60)}`);
+      }
+
+      try {
+        // In CLI mode we have no live tool enumeration, so pass an empty tools
+        // list. DynamicTester will check consent and report consent_denied if
+        // the server hasn't opted in — this is the correct behaviour.
+        const report = await tester.test(
+          { id: name, name },
+          endpoint,
+          [],
+          // callTool stub — not invoked until consent granted AND tools available
+          async (_toolName: string, _input: Record<string, unknown>) => {
+            throw new Error("No tools available for dynamic testing in CLI static-analysis mode");
+          }
+        );
+
+        dynamicResults[name] = report;
+
+        if (!cliArgs.jsonOutput) {
+          if (!report.consent.consented) {
+            console.log(`       Consent: DENIED — server has not opted in`);
+          } else {
+            console.log(`       Consent: ${report.consent.method ?? "granted"}`);
+            console.log(`       Tools tested: ${report.tools_tested}, skipped: ${report.tools_skipped}`);
+            console.log(`       Output injection risk: ${report.risk_summary.output_injection_risk}`);
+            console.log(`       Injection vulnerability: ${report.risk_summary.injection_vulnerability}`);
+            if (report.output_findings_count > 0) {
+              console.log(`       Output findings: ${report.output_findings_count}`);
+            }
+          }
+        }
+      } catch (dynErr) {
+        const msg = dynErr instanceof Error ? dynErr.message : String(dynErr);
+        if (!cliArgs.jsonOutput) {
+          console.log(`       Error: ${sanitizeForTerminal(msg, 120)}`);
+        }
+      }
+    }
+  }
+
+  // ── 7. Output ──────────────────────────────────────────────────────────────
   if (cliArgs.jsonOutput) {
     // Stable public JSON contract — never add or rename fields without a major bump
     const output: Record<string, unknown> = {
@@ -555,13 +666,33 @@ async function runCheck(cliArgs: CLIArgs): Promise<never> {
     if (crossServerResult) {
       output["cross_server"] = crossServerResult;
     }
+    if (Object.keys(dynamicResults).length > 0) {
+      // Include consent status and risk summary — omit full probes array (too large)
+      output["dynamic"] = Object.fromEntries(
+        Object.entries(dynamicResults).map(([name, r]) => [
+          name,
+          {
+            consented: r.consent.consented,
+            consent_method: r.consent.method,
+            tools_tested: r.tools_tested,
+            tools_skipped: r.tools_skipped,
+            output_findings_count: r.output_findings_count,
+            injection_vulnerable_count: r.injection_vulnerable_count,
+            output_injection_risk: r.risk_summary.output_injection_risk,
+            injection_vulnerability: r.risk_summary.injection_vulnerability,
+            schema_compliance: r.risk_summary.schema_compliance,
+            timing_anomalies: r.risk_summary.timing_anomalies,
+          },
+        ])
+      );
+    }
     console.log(JSON.stringify(output, null, 2));
   } else {
     console.log("\n" + "─".repeat(70));
     console.log(`\n  Summary: ${results.length} servers scanned, worst score: ${worstScore}/100\n`);
   }
 
-  // ── 7. CI failure evaluation ───────────────────────────────────────────────
+  // ── 8. CI failure evaluation ───────────────────────────────────────────────
   const SEVERITY_ORDER: Severity[] = [
     "informational",
     "low",
@@ -620,22 +751,32 @@ function printHelp(): void {
 MCP Sentinel — MCP Server Security Scanner
 
 Usage:
-  npx mcp-sentinel check                   Scan MCP servers in your config
-  npx mcp-sentinel check --json            Machine-readable JSON output
-  npx mcp-sentinel check --ci              CI mode: exit 1 if worst score < 60
-  npx mcp-sentinel check --min-score 80    Custom CI score threshold (0-100)
-  npx mcp-sentinel check --fail-on high    Exit 1 if any high or critical finding
-  npx mcp-sentinel check --config <path>   Specify config file explicitly
-  npx mcp-sentinel --version               Print version
+  npx mcp-sentinel check                        Scan MCP servers in your config
+  npx mcp-sentinel check --json                 Machine-readable JSON output
+  npx mcp-sentinel check --ci                   CI mode: exit 1 if worst score < 60
+  npx mcp-sentinel check --min-score 80         Custom CI score threshold (0-100)
+  npx mcp-sentinel check --fail-on high         Exit 1 if any high or critical finding
+  npx mcp-sentinel check --config <path>        Specify config file explicitly
+  npx mcp-sentinel check --dynamic              Enable dynamic tool invocation (consent-gated)
+  npx mcp-sentinel check --dynamic-allowlist <ids>  Pre-approve server IDs (comma-separated)
+  npx mcp-sentinel --version                    Print version
 
 Options:
-  --json              Machine-readable JSON output (stable contract)
-  --ci                Enable CI mode (non-zero exit on score below threshold)
-  --min-score <n>     CI failure threshold, integer 0-100 (default: 60)
-  --fail-on <sev>     Fail on findings at or above severity: critical|high|medium|low
-  --config <path>     Path to MCP JSON config file (must be a .json file)
-  --version / -v      Print version and exit
-  --help / -h         Show this help message
+  --json                       Machine-readable JSON output (stable contract)
+  --ci                         Enable CI mode (non-zero exit on score below threshold)
+  --min-score <n>              CI failure threshold, integer 0-100 (default: 60)
+  --fail-on <sev>              Fail on findings at or above severity: critical|high|medium|low
+  --config <path>              Path to MCP JSON config file (must be a .json file)
+  --dynamic                    Enable consent-gated dynamic tool invocation testing.
+                               Only servers that opt in via allowlist, tool_declaration,
+                               or .well-known/mcp-sentinel.json are tested. Requires
+                               servers to have a 'url' field (HTTP/SSE transport).
+  --dynamic-allowlist <ids>    Comma-separated list of server names to pre-approve
+                               for dynamic testing (equivalent to an explicit allowlist).
+  --dynamic-audit-log <path>   Path to write the dynamic test audit log (JSONL format).
+                               Defaults to ./dynamic-test-audit.jsonl.
+  --version / -v               Print version and exit
+  --help / -h                  Show this help message
 
 Exit Codes:
   0  All servers pass threshold — safe to proceed

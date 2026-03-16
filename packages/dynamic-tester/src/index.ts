@@ -86,11 +86,12 @@ class DynamicTester {
     }
 
     // ── Step 2: Filter tools ────────────────────────────────────────────────
-    const eligibleTools = tools
-      .filter((t) => !this.isBlocklisted(t.name))
-      .slice(0, this.config.max_tools_per_server);
+    const nonBlocklisted = tools.filter((t) => !this.isBlocklisted(t.name));
+    const eligibleTools = nonBlocklisted.slice(0, this.config.max_tools_per_server);
 
-    const skippedCount = tools.length - eligibleTools.length;
+    // tools_skipped counts eligible (non-blocklisted) tools cut off by max_tools_per_server,
+    // not blocklisted tools (those are simply not considered for testing)
+    const skippedCount = nonBlocklisted.length - eligibleTools.length;
 
     // ── Step 3: Probe each tool ─────────────────────────────────────────────
     const probes: ProbeResult[] = [];

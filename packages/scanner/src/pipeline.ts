@@ -474,6 +474,32 @@ export class ScanPipeline {
             }
           );
 
+          // Persist result regardless of consent — both outcomes are useful
+          // for coverage metrics and consent-ratio reporting.
+          try {
+            await this.db.saveDynamicReport(server.id, scanId, {
+              endpoint,
+              consented: dynamicReport.consent.consented,
+              consent_method: dynamicReport.consent.method,
+              tested_at: dynamicReport.tested_at,
+              elapsed_ms: dynamicReport.elapsed_ms,
+              tools_tested: dynamicReport.tools_tested,
+              tools_skipped: dynamicReport.tools_skipped,
+              output_findings_count: dynamicReport.output_findings_count,
+              injection_vulnerable_count: dynamicReport.injection_vulnerable_count,
+              output_injection_risk: dynamicReport.risk_summary.output_injection_risk,
+              injection_vulnerability: dynamicReport.risk_summary.injection_vulnerability,
+              schema_compliance: dynamicReport.risk_summary.schema_compliance,
+              timing_anomalies: dynamicReport.risk_summary.timing_anomalies,
+              raw_report: dynamicReport as unknown as Record<string, unknown>,
+            });
+          } catch (persistErr) {
+            log.warn(
+              { err: persistErr instanceof Error ? persistErr.message : String(persistErr) },
+              "Stage 5b: Failed to persist dynamic test result — non-fatal"
+            );
+          }
+
           if (dynamicReport.consent.consented) {
             stages.dynamic_tested = true;
             log.info(

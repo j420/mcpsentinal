@@ -358,6 +358,38 @@ export const DetectionRuleSchema = z.object({
 });
 export type DetectionRule = z.infer<typeof DetectionRuleSchema>;
 
+// ─── Dynamic Test Results ────────────────────────────────────────────────────
+
+/**
+ * Persisted result of a dynamic tool invocation test session.
+ * Append-only (ADR-008) — one row per DynamicTester.test() execution.
+ * The raw_report column holds the full DynamicReport for audit purposes.
+ */
+export const DynamicTestResultSchema = z.object({
+  id: z.string().uuid(),
+  server_id: z.string().uuid(),
+  /** Scan that triggered this dynamic test — null when run standalone */
+  scan_id: z.string().uuid().nullable(),
+  endpoint: z.string().url(),
+  consented: z.boolean(),
+  /** Which of the three consent mechanisms granted access */
+  consent_method: z.enum(["allowlist", "tool_declaration", "wellknown"]).nullable(),
+  tested_at: z.coerce.date(),
+  elapsed_ms: z.number().int().nonnegative(),
+  tools_tested: z.number().int().nonnegative().default(0),
+  tools_skipped: z.number().int().nonnegative().default(0),
+  output_findings_count: z.number().int().nonnegative().default(0),
+  injection_vulnerable_count: z.number().int().nonnegative().default(0),
+  output_injection_risk: z.enum(["none", "low", "medium", "high", "critical"]),
+  injection_vulnerability: z.enum(["none", "low", "medium", "high", "critical"]),
+  schema_compliance: z.enum(["pass", "warn", "fail"]),
+  timing_anomalies: z.number().int().nonnegative().default(0),
+  /** Full DynamicReport JSON for audit trail — never queried, only fetched for export */
+  raw_report: z.record(z.unknown()).nullable(),
+  created_at: z.coerce.date(),
+});
+export type DynamicTestResult = z.infer<typeof DynamicTestResultSchema>;
+
 // ─── API Response Schemas ────────────────────────────────────────────────────
 
 export const ServerListQuerySchema = z.object({
