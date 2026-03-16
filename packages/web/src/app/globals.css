@@ -177,9 +177,9 @@ code, pre, kbd {
 
 .nav-link {
   color: var(--text-2);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
-  padding: var(--s2) var(--s3);
+  padding: 6px var(--s3);
   border-radius: var(--r-sm);
   transition: color var(--t-fast) var(--ease);
 }
@@ -668,7 +668,7 @@ code, pre, kbd {
   white-space: nowrap;
   border: 1px solid transparent;
 }
-.cap-executes-code      { background: var(--cap-exec);  color: var(--cap-exec-text); border-color: rgba(168,32,32,0.15); }
+.cap-executes-code      { background: var(--cap-exec);  color: var(--cap-exec-text); border-color: rgba(153,27,27,0.15); }
 .cap-writes-data        { background: var(--cap-write); color: var(--cap-write-text); border-color: rgba(194,65,12,0.15); }
 .cap-sends-network      { background: var(--cap-net);   color: var(--cap-net-text); border-color: rgba(30,64,175,0.15); }
 .cap-reads-data         { background: var(--cap-read);  color: var(--cap-read-text); border-color: rgba(22,101,52,0.15); }
@@ -941,11 +941,11 @@ code, pre, kbd {
   border-left-width: 3px;
   box-shadow: var(--shadow-card);
 }
-..finding-critical { border-left-color: #991B1B; background: rgba(153,27,27,0.025); }
-..finding-high     { border-left-color: #C2410C; background: rgba(194,65,12,0.02); }
-..finding-medium   { border-left-color: #92400E; }
-..finding-low      { border-left-color: #166534; }
-..finding-informational { border-left-color: #1E40AF; }
+.finding-critical { border-left-color: #991B1B; background: rgba(153,27,27,0.025); }
+.finding-high     { border-left-color: #C2410C; background: rgba(194,65,12,0.02); }
+.finding-medium   { border-left-color: #92400E; }
+.finding-low      { border-left-color: #166534; }
+.finding-informational { border-left-color: #1E40AF; }
 
 .finding-header {
   display: flex;
@@ -1511,8 +1511,8 @@ code, pre, kbd {
 }
 .test-type-row:last-child { border-bottom: none; }
 .test-type-row:hover { background: var(--surface-2); }
-.test-type-row.tt-fail { background: rgba(168, 32, 32, 0.025); }
-.test-type-row.tt-fail:hover { background: rgba(168, 32, 32, 0.05); }
+.test-type-row.tt-fail { background: rgba(153, 27, 27, 0.025); }
+.test-type-row.tt-fail:hover { background: rgba(153, 27, 27, 0.05); }
 
 .tt-icon {
   font-size: 13px;
@@ -1581,8 +1581,8 @@ code, pre, kbd {
   letter-spacing: 0.03em;
 }
 .test-type-row.tt-fail .tt-fw-tag {
-  background: rgba(168,32,32,0.06);
-  border-color: rgba(168,32,32,0.15);
+  background: rgba(153,27,27,0.06);
+  border-color: rgba(153,27,27,0.15);
   color: currentColor;
   opacity: 0.8;
 }
