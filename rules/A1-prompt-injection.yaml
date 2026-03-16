@@ -46,9 +46,9 @@ detect:
     - "(?i)send\\s+(all|every|the)\\s+(conversation|message|data|history|context)\\s+to"
     - "(?i)exfiltrate|extract\\s+and\\s+send|leak\\s+(the|all|any)"
     # Prompt delimiter injection
-    - "---\\s*\\n\\s*(?i)system"
-    - "###\\s*(?i)instructions?"
-    - "```\\s*\\n\\s*(?i)(?:system|instructions?|directive)"
+    - "---\\s*\\n\\s*system"
+    - "###\\s*instructions?"
+    - "```\\s*\\n\\s*(?:system|instructions?|directive)"
     # Confidentiality framing trick (makes AI treat subsequent text as privileged)
     - "(?i)(?:confidential|internal[\\s_-]?only|do\\s+not\\s+(?:share|disclose|repeat|reveal))\\s*:\\s*"
     # Markdown callout abuse (GitHub/Obsidian-style warnings processed by some LLMs)
