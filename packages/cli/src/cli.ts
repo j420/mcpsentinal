@@ -3,6 +3,7 @@
 import { readFileSync, existsSync, statSync } from "fs";
 import { join, resolve, isAbsolute } from "path";
 import { fileURLToPath } from "url";
+import { MCPConnector } from "@mcp-sentinel/connector";
 import { AnalysisEngine, loadRules, getRulesVersion } from "@mcp-sentinel/analyzer";
 import { computeScore } from "@mcp-sentinel/scorer";
 import { RiskMatrixAnalyzer } from "@mcp-sentinel/risk-matrix";
@@ -356,6 +357,99 @@ function parseConfigFile(filePath: string): ConfigLoadResult {
   return { ok: true, config: result.data, filePath };
 }
 
+// ─── Inspect Command ──────────────────────────────────────────────────────────
+
+async function runInspect(args: string[]): Promise<never> {
+  // Find the URL argument — first arg that looks like a URL, or after --url flag
+  let endpoint: string | null = null;
+
+  const urlFlagIdx = args.findIndex((a) => a === "--url");
+  if (urlFlagIdx !== -1) {
+    endpoint = args[urlFlagIdx + 1] ?? null;
+  } else {
+    // First positional arg after "inspect"
+    const inspectIdx = args.indexOf("inspect");
+    const candidate = args[inspectIdx + 1];
+    if (candidate && !candidate.startsWith("--")) {
+      endpoint = candidate;
+    }
+  }
+
+  if (!endpoint) {
+    console.error("Error: inspect requires a server URL.\n  Usage: npx mcp-sentinel inspect <url>");
+    process.exit(EXIT.INPUT_ERROR);
+  }
+
+  // Basic URL validation
+  try {
+    new URL(endpoint);
+  } catch {
+    console.error(`Error: Invalid URL: ${sanitizeForTerminal(endpoint, 100)}`);
+    process.exit(EXIT.INPUT_ERROR);
+  }
+
+  const jsonOutput = args.includes("--json");
+  const connector = new MCPConnector({ timeout: 30_000 });
+
+  if (!jsonOutput) {
+    console.log(`\nMCP Sentinel — Server Inspector`);
+    console.log(`   Endpoint: ${sanitizeForTerminal(endpoint, 100)}`);
+    console.log("\nConnecting...");
+  }
+
+  const result = await connector.enumerate("inspect", endpoint);
+
+  if (!result.connection_success) {
+    console.error(`\nConnection failed: ${sanitizeForTerminal(result.connection_error ?? "unknown error", 200)}`);
+    process.exit(EXIT.INTERNAL_ERROR);
+  }
+
+  if (jsonOutput) {
+    console.log(JSON.stringify({
+      endpoint,
+      server_version: result.server_version,
+      tools: result.tools.map((t) => ({
+        name: t.name,
+        description: t.description,
+      })),
+    }, null, 2));
+    process.exit(EXIT.CLEAN);
+  }
+
+  // Human-readable output
+  console.log(`\n   Server version : ${result.server_version ?? "(not reported)"}`);
+  console.log(`   Tools found    : ${result.tools.length}`);
+  console.log("\n" + "─".repeat(70));
+
+  if (result.tools.length === 0) {
+    console.log("\n  No tools found.");
+  } else {
+    for (const tool of result.tools) {
+      console.log(`\n  ${sanitizeForTerminal(tool.name, 60)}`);
+      if (tool.description) {
+        // Wrap description at 66 chars with 4-space indent
+        const desc = sanitizeForTerminal(tool.description, 500);
+        const words = desc.split(" ");
+        let line = "    ";
+        for (const word of words) {
+          if (line.length + word.length > 70) {
+            console.log(line);
+            line = "    " + word + " ";
+          } else {
+            line += word + " ";
+          }
+        }
+        if (line.trim()) console.log(line);
+      } else {
+        console.log("    (no description)");
+      }
+    }
+  }
+
+  console.log("\n" + "─".repeat(70));
+  process.exit(EXIT.CLEAN);
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -373,6 +467,8 @@ async function main() {
 
   if (cliArgs.command === "check") {
     await runCheck(cliArgs);
+  } else if (cliArgs.command === "inspect") {
+    await runInspect(process.argv.slice(2));
   } else if (
     cliArgs.command === "help" ||
     cliArgs.command === "--help" ||
@@ -751,6 +847,8 @@ function printHelp(): void {
 MCP Sentinel — MCP Server Security Scanner
 
 Usage:
+  npx mcp-sentinel inspect <url>                List tools exposed by an MCP server
+  npx mcp-sentinel inspect <url> --json         JSON output of tool names + descriptions
   npx mcp-sentinel check                        Scan MCP servers in your config
   npx mcp-sentinel check --json                 Machine-readable JSON output
   npx mcp-sentinel check --ci                   CI mode: exit 1 if worst score < 60

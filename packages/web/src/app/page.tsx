@@ -475,15 +475,44 @@ export default async function HomePage({
             <option value="40">Poor (40+)</option>
           </select>
 
-          <input
-            className="filter-select"
-            type="text"
-            name="author"
-            style={{ width: "140px" }}
-            defaultValue={sp.author || ""}
-            placeholder="by owner…"
-            autoComplete="off"
-          />
+          <label
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "5px",
+              background: "var(--surface)",
+              border: "1px solid var(--border-md)",
+              borderRadius: "6px",
+              padding: "0 8px 0 10px",
+              height: "32px",
+              cursor: "text",
+              fontSize: "13px",
+              color: "var(--text-3)",
+              fontWeight: 500,
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <circle cx="8" cy="5.5" r="2.5" />
+              <path d="M3 13c0-2.76 2.24-5 5-5s5 2.24 5 5" />
+            </svg>
+            <span style={{ whiteSpace: "nowrap" }}>Owner</span>
+            <input
+              type="text"
+              name="author"
+              style={{
+                border: "none",
+                outline: "none",
+                background: "transparent",
+                width: "110px",
+                fontSize: "13px",
+                color: "var(--text)",
+                padding: "0 4px",
+              }}
+              defaultValue={sp.author || ""}
+              placeholder="any…"
+              autoComplete="off"
+            />
+          </label>
 
           <select
             className="filter-select"
