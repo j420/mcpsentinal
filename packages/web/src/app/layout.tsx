@@ -157,8 +157,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </span>
             </a>
 
-            <nav className="site-nav" aria-label="Main navigation">
+            <button
+              className="nav-toggle"
+              aria-label="Toggle navigation"
+              aria-expanded="false"
+              onClick={undefined}
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                <path d="M3 5h14M3 10h14M3 15h14" />
+              </svg>
+            </button>
+            <nav className="site-nav" id="site-nav" aria-label="Main navigation">
               <a href="/" className="nav-link">Registry</a>
+              <a href="/servers" className="nav-link">Servers</a>
               <a href="/categories" className="nav-link">Categories</a>
               <a href="/dashboard" className="nav-link">Dashboard</a>
               <a href="/about" className="nav-link">About</a>
@@ -231,6 +242,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           </div>
         </footer>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `document.querySelector('.nav-toggle')?.addEventListener('click',function(){var n=document.getElementById('site-nav');if(n){n.classList.toggle('nav-open');this.setAttribute('aria-expanded',n.classList.contains('nav-open'))}})`,
+          }}
+        />
       </body>
     </html>
   );
