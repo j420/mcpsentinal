@@ -1,3 +1,4 @@
+import React from "react";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -848,6 +849,221 @@ const RULE_CATEGORY_DATA: {
   { prefix: "K", name: "Compliance & Governance", tagline: "8-framework mapped — audit trails, human oversight, credential lifecycle", rules: ["K1","K2","K3","K4","K5","K6","K7","K8","K9","K10","K11","K12","K13","K14","K15","K16","K17","K18","K19","K20"] },
 ];
 
+// ── Rule detail enrichment data ───────────────────────────────────────────────
+
+/** Attack vectors per rule-category prefix */
+const CAT_VECTORS: Record<string, string[]> = {
+  A: ["Tool description text", "AI context window", "Client rendering"],
+  B: ["Input schema definition", "Parameter constraints", "Schema metadata"],
+  C: ["Source code execution", "Code repository", "Runtime environment"],
+  D: ["Package manifest", "Dependency registry", "Build pipeline"],
+  E: ["Network connection", "Transport layer", "Server runtime"],
+  F: ["Cross-tool capability profile", "Tool metadata graph", "Client config"],
+  G: ["AI model context window", "Agent session state", "Tool invocation flow"],
+  H: ["OAuth redirect flow", "Initialize handshake fields", "Agent network boundary"],
+  I: ["MCP protocol fields", "Wire format metadata", "Capability declarations"],
+  J: ["Source code patterns", "Runtime behavior", "External API surface"],
+  K: ["Logging subsystem", "Audit pipeline", "Runtime permissions"],
+};
+
+/** Mitigations per rule-category prefix */
+const CAT_MITIGATIONS: Record<string, string[]> = {
+  A: ["Sanitize and length-limit tool description text", "Validate encoding — reject non-ASCII where not needed"],
+  B: ["Set additionalProperties: false on all schemas", "Add maxLength, pattern, enum constraints to every parameter"],
+  C: ["Avoid exec/eval with user-supplied input — use safe APIs", "Use parameterized queries; validate all inputs against allowlists"],
+  D: ["Pin all dependency versions with integrity hashes", "Run npm audit / pip-audit in CI; block PRs on new CVEs"],
+  E: ["Require authentication middleware before all route handlers", "Enforce HTTPS/WSS — reject HTTP/WS connections at load balancer"],
+  F: ["Audit cross-tool capability combinations before deployment", "Isolate server capabilities — split multi-capability servers"],
+  G: ["Monitor tool description hashes across scans for drift", "Treat all content ingested from external sources as untrusted"],
+  H: ["Follow OAuth 2.1 BCP — enforce PKCE, reject implicit flow", "Validate all initialize response fields before processing"],
+  I: ["Set destructiveHint: true on any tool with delete/drop parameters", "Validate resource URIs against an allowlist before access"],
+  J: ["Apply vendor security patches from CVE advisories promptly", "Add automated CVE scanning to CI/CD pipeline"],
+  K: ["Implement append-only structured audit logging with correlation IDs", "Require human confirmation for all destructive operations"],
+};
+
+/** Per-rule specific test case descriptions */
+const RULE_TESTS: Record<string, string[]> = {
+  A1: ["Known injection payload patterns", "Role override phrase detection", "Multi-turn setup instruction detection", "Base64-encoded directive detection"],
+  A6: ["Cyrillic lookalike character detection", "Greek homoglyph in tool name", "Mathematical alphanumeric substitution", "Fullwidth Latin character rejection"],
+  A7: ["Zero-width space injection detection", "RTL override character (U+202E) rejection", "Tag character block detection", "Soft hyphen invisible separator"],
+  C1: ["exec() with user input detection", "Python subprocess shell=True pattern", "shelljs.exec call flagging", "Template literal in exec argument"],
+  C5: ["OpenAI sk-* token pattern", "AWS AKIA/ASIA key detection", "GitHub PAT ghp_ prefix", "Anthropic sk-ant-* token match"],
+  G1: ["Web scraper tool content ingestion", "Email reader external content", "GitHub issue comment ingestion", "Slack message processing tool"],
+  H1: ["redirect_uri from user input detection", "Implicit flow response_type=token", "ROPC grant_type=password usage", "OAuth state parameter bypass"],
+  H2: ["Role injection in instructions field", "LLM special tokens in serverInfo.name", "Base64 payload in server version string", "Authority claim in initialize response"],
+};
+
+/** Get framework badges for a rule from HEATMAP_FRAMEWORKS */
+function getRuleFrameworks(ruleId: string): { abbr: string; color: string }[] {
+  const FW_COLORS: Record<string, string> = {
+    "owasp-mcp":     "#ef4444",
+    "owasp-agentic": "#f97316",
+    "mitre":         "#a855f7",
+    "nist":          "#3b82f6",
+    "iso27k":        "#6366f1",
+    "iso42k":        "#8b5cf6",
+    "eu-ai":         "#06b6d4",
+    "cosai":         "#10b981",
+    "maestro":       "#f59e0b",
+  };
+  return HEATMAP_FRAMEWORKS
+    .filter((fw) => fw.rules.includes(ruleId))
+    .map((fw) => ({ abbr: fw.abbr, color: FW_COLORS[fw.id] ?? "#6b7280" }));
+}
+
+// ── Category Deep Dive — static data ─────────────────────────────────────────
+
+interface SubCat {
+  id: string;
+  name: string;
+  desc: string;
+  rules: string[];
+}
+interface ThreatCat {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  tagline: string;
+  subCats: SubCat[];
+  frameworks: string[];
+  killChain: string[];
+}
+
+const THREAT_CATS: ThreatCat[] = [
+  {
+    id: "PI", name: "Prompt Injection", icon: "⚡", color: "#f97316",
+    tagline: "Prompt & context manipulation attacks",
+    subCats: [
+      { id: "PI-DIR", name: "Direct Input Injection",        desc: "Injection via tool descriptions and parameter fields",          rules: ["A1", "B5", "A5"] },
+      { id: "PI-IND", name: "Indirect / Gateway Injection",  desc: "Hidden instructions via external content and tool responses",   rules: ["G1", "G3", "H2", "I3"] },
+      { id: "PI-CTX", name: "Context Manipulation",          desc: "Context window saturation and prior-approval exploitation",     rules: ["G4", "G5"] },
+      { id: "PI-ENC", name: "Encoding & Obfuscation",        desc: "Payload hiding via invisible chars, base64, schema fields",     rules: ["A7", "A9", "J3"] },
+      { id: "PI-TPL", name: "Template & Output Poisoning",   desc: "Injection via prompt templates and runtime tool output",        rules: ["I6", "J5"] },
+    ],
+    frameworks: ["OWASP MCP Top 10", "MITRE ATLAS", "CoSAI MCP", "OWASP Agentic Top 10"],
+    killChain: ["Initial Access", "Defense Evasion", "Execution", "Persistence"],
+  },
+  {
+    id: "TP", name: "Tool Poisoning", icon: "☠", color: "#ef4444",
+    tagline: "Deceptive tools, spoofing, annotation fraud",
+    subCats: [
+      { id: "TP-SHD", name: "Name Shadowing & Squatting",    desc: "Tools impersonating official Anthropic/GitHub server names",    rules: ["A4", "F5"] },
+      { id: "TP-ANN", name: "Annotation Deception",          desc: "False readOnlyHint / missing destructiveHint annotations",     rules: ["I1", "I2"] },
+      { id: "TP-DEC", name: "Deceptive Claims & Spoofing",   desc: "Scope mismatch, homoglyph attacks, preference manipulation",   rules: ["A2", "A6", "A8", "J6"] },
+    ],
+    frameworks: ["OWASP MCP Top 10", "MITRE ATLAS", "CoSAI MCP", "OWASP Agentic Top 10"],
+    killChain: ["Initial Access", "Defense Evasion", "Execution"],
+  },
+  {
+    id: "CI", name: "Code Injection", icon: "💉", color: "#dc2626",
+    tagline: "OS commands, SQL, templates, deserialization",
+    subCats: [
+      { id: "CI-CMD", name: "Command & Dynamic Eval",        desc: "exec(), eval(), new Function() with user-controlled input",    rules: ["C1", "C16"] },
+      { id: "CI-INJ", name: "SQL & Template Injection",      desc: "Query string manipulation and server-side template engines",   rules: ["C4", "C13"] },
+      { id: "CI-PTH", name: "Path Traversal & SSRF",         desc: "Filesystem boundary escape and server-side request forgery",  rules: ["C2", "C3", "C9"] },
+      { id: "CI-DSR", name: "Deserialization & Git Injection",desc: "Unsafe deserialization and git argument injection chains",    rules: ["C12", "J2"] },
+    ],
+    frameworks: ["OWASP MCP Top 10", "MITRE ATLAS", "OWASP Agentic Top 10"],
+    killChain: ["Execution", "Privilege Escalation", "Lateral Movement"],
+  },
+  {
+    id: "DE", name: "Data Exfiltration", icon: "📤", color: "#f59e0b",
+    tagline: "Exfiltration chains, lethal trifecta, covert channels",
+    subCats: [
+      { id: "DE-LET", name: "Lethal Trifecta",               desc: "Private data + untrusted input + external comms — score cap 40", rules: ["F1", "I13"] },
+      { id: "DE-CHN", name: "Multi-Step Exfil Chain",        desc: "Read → encode → exfiltrate cross-tool chain + circular loops",  rules: ["F3", "F7", "F6"] },
+      { id: "DE-CHL", name: "Covert Channels",               desc: "DNS subdomain exfil and suspicious external endpoints",          rules: ["G7", "A3"] },
+      { id: "DE-ELI", name: "Elicitation Harvesting",        desc: "Protocol-level social engineering via elicitation capability",   rules: ["I9", "I10"] },
+    ],
+    frameworks: ["OWASP MCP Top 10", "MITRE ATLAS", "CoSAI MCP", "NIST AI RMF"],
+    killChain: ["Collection", "Exfiltration", "Command & Control"],
+  },
+  {
+    id: "PV", name: "Privilege & Permissions", icon: "⬆", color: "#8b5cf6",
+    tagline: "Capability escalation, over-privileged roots, consent fatigue",
+    subCats: [
+      { id: "PV-CAP", name: "Capability Escalation",         desc: "Post-init capability use and gradual privilege drift",           rules: ["I12", "I14", "G5"] },
+      { id: "PV-ROOT", name: "Over-Privileged Access",       desc: "Dangerous filesystem roots, path boundaries, prototype pollution",rules: ["I11", "I4", "C10"] },
+      { id: "PV-CRS", name: "Cross-Boundary Attacks",        desc: "Cross-agent config poisoning and excessive parameter scope",     rules: ["J1", "B7"] },
+      { id: "PV-FAT", name: "Consent Fatigue",               desc: "Many benign tools masking dangerous ones (84% success rate)",   rules: ["I16", "B3"] },
+    ],
+    frameworks: ["OWASP MCP Top 10", "MITRE ATLAS", "OWASP Agentic Top 10", "MAESTRO"],
+    killChain: ["Privilege Escalation", "Persistence", "Lateral Movement"],
+  },
+  {
+    id: "IC", name: "Insecure Config", icon: "⚙", color: "#64748b",
+    tagline: "Schema gaps, crypto weaknesses, network exposure",
+    subCats: [
+      { id: "IC-SCH", name: "Schema Validation Gaps",        desc: "Missing constraints, unconstrained schemas, dangerous param types",rules: ["B1", "B2", "B4", "B6"] },
+      { id: "IC-CRY", name: "Cryptography Weaknesses",       desc: "JWT algorithm confusion, timing attacks, wildcard CORS",         rules: ["C14", "C15", "C7"] },
+      { id: "IC-NET", name: "Network Exposure",              desc: "Unauthenticated interfaces, insecure transport, spec non-compliance",rules: ["C8", "E1", "E2", "F4"] },
+      { id: "IC-DOS", name: "Denial of Service Risk",        desc: "ReDoS, transport session security, health endpoint disclosure",  rules: ["C11", "I15", "J4"] },
+    ],
+    frameworks: ["OWASP MCP Top 10", "ISO 27001", "NIST AI RMF", "EU AI Act"],
+    killChain: ["Initial Access", "Defense Evasion"],
+  },
+  {
+    id: "DV", name: "Dependency Vulns", icon: "📦", color: "#0ea5e9",
+    tagline: "CVEs, malicious packages, typosquatting, supply chain",
+    subCats: [
+      { id: "DV-CVE", name: "Known Vulnerabilities",         desc: "Published CVEs and weak cryptography libraries",                 rules: ["D1", "D6"] },
+      { id: "DV-MAL", name: "Malicious & Typosquat",         desc: "50+ confirmed malicious packages and MCP ecosystem typosquats", rules: ["D5", "D3"] },
+      { id: "DV-CON", name: "Dependency Confusion",          desc: "High-version scoped package registry substitution attack",      rules: ["D7"] },
+      { id: "DV-ABN", name: "Abandoned & Excessive",         desc: "Unmaintained dependencies and bloated dependency trees",        rules: ["D2", "D4"] },
+    ],
+    frameworks: ["OWASP MCP Top 10", "CoSAI MCP", "OWASP Agentic Top 10", "ISO 27001"],
+    killChain: ["Initial Access", "Supply Chain Compromise"],
+  },
+  {
+    id: "SC", name: "Supply Chain", icon: "🔗", color: "#14b8a6",
+    tagline: "Install hooks, generated code injection, resource shadowing",
+    subCats: [
+      { id: "SC-SHD", name: "Resource-Tool Shadowing",       desc: "Resources with names matching common tools causing ambiguity",  rules: ["I5"] },
+      { id: "SC-HKS", name: "Post-Install Attack Surface",   desc: "Malicious hooks, registry substitution, integrity verification",rules: ["K9", "K10", "K11"] },
+      { id: "SC-GEN", name: "Generated Code Injection",      desc: "OpenAPI spec field injection into generated MCP server code",   rules: ["J7"] },
+    ],
+    frameworks: ["OWASP MCP Top 10", "CoSAI MCP", "MITRE ATLAS", "ISO 27001"],
+    killChain: ["Supply Chain Compromise", "Initial Access", "Execution"],
+  },
+  {
+    id: "AT", name: "Authentication", icon: "🔑", color: "#10b981",
+    tagline: "OAuth, hardcoded secrets, token lifecycle",
+    subCats: [
+      { id: "AT-OAU", name: "OAuth 2.0 Vulnerabilities",     desc: "RFC 9700 / OAuth 2.1 — redirect_uri, implicit flow, ROPC, CSRF", rules: ["H1"] },
+      { id: "AT-SEC", name: "Hardcoded Secrets & Leakage",   desc: "20+ token formats in source + stack trace disclosure in responses",rules: ["C5", "C6"] },
+      { id: "AT-TKN", name: "Token Lifecycle",               desc: "Broad scopes, long-lived tokens, cross-boundary credential sharing",rules: ["K6", "K7", "K8"] },
+    ],
+    frameworks: ["OWASP MCP Top 10", "ISO 27001", "CoSAI MCP", "OWASP Agentic Top 10"],
+    killChain: ["Initial Access", "Credential Access", "Defense Evasion"],
+  },
+  {
+    id: "AI", name: "Adversarial AI", icon: "🤖", color: "#a855f7",
+    tagline: "AI-native attacks — rug pulls, sampling abuse, multi-agent",
+    subCats: [
+      { id: "AI-TRU", name: "Trust Assertion Spoofing",      desc: "Claiming Anthropic approval or system authority to skip consent",rules: ["G2"] },
+      { id: "AI-RUG", name: "Rug Pull & Behavior Drift",     desc: "Establishing trust then changing tools; response-time anomalies", rules: ["G6", "E3"] },
+      { id: "AI-MUL", name: "Multi-Agent & Sampling Abuse",  desc: "Cross-agent propagation, sampling callbacks, injection amplification",rules: ["H3", "I7", "I8"] },
+      { id: "AI-ATK", name: "Agentic Attack Surface",        desc: "High-risk capability profiles and excessive tool count exposure",  rules: ["E4", "F2"] },
+    ],
+    frameworks: ["OWASP Agentic Top 10", "MITRE ATLAS", "CoSAI MCP", "MAESTRO"],
+    killChain: ["Initial Access", "Defense Evasion", "Execution", "Persistence"],
+  },
+  {
+    id: "CG", name: "Compliance & Governance", icon: "📋", color: "#6366f1",
+    tagline: "8-framework mapped — audit, oversight, credential lifecycle",
+    subCats: [
+      { id: "CG-AUD", name: "Audit Trail Integrity",         desc: "Logging adequacy, log destruction, tampering, audit context",  rules: ["K1", "K2", "K3", "K20"] },
+      { id: "CG-HUM", name: "Human Oversight",               desc: "Missing confirmation for destructive ops, auto-approve bypass",rules: ["K4", "K5"] },
+      { id: "CG-OUT", name: "Output Safety & Data Flow",     desc: "Executable responses, unsanitized output, cross-boundary flows",rules: ["K12", "K13", "K18"] },
+      { id: "CG-MLT", name: "Multi-Agent Trust",             desc: "Agent credential propagation, collusion preconditions",        rules: ["K14", "K15"] },
+      { id: "CG-RBT", name: "Robustness & Sandbox",          desc: "Recursion limits, timeouts, circuit breakers, sandbox enforcement",rules: ["K16", "K17", "K19"] },
+    ],
+    frameworks: ["ISO 27001", "ISO 42001", "EU AI Act", "NIST AI RMF", "MAESTRO", "CoSAI MCP"],
+    killChain: ["Persistence", "Defense Evasion", "Impact"],
+  },
+];
+
 // ── JSON-LD ───────────────────────────────────────────────────────────────────
 
 function buildJsonLd(server: ServerDetail, siteUrl: string) {
@@ -977,6 +1193,346 @@ function SecurityTestSummary({
                   : `${ttFindings.length} issue${ttFindings.length !== 1 ? "s" : ""}`}
               </span>
             </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+// ── Category Deep Dive Panel ──────────────────────────────────────────────────
+
+function CategoryDeepDivePanel({ findings }: { findings: Finding[] }) {
+  const triggered = new Set(findings.map((f) => f.rule_id));
+
+  // Default to first category that has findings, else PI
+  const defaultCat =
+    THREAT_CATS.find((cat) =>
+      cat.subCats.some((sc) => sc.rules.some((r) => triggered.has(r)))
+    )?.id ?? "PI";
+
+  return (
+    <section className="cdd-section">
+      <div className="cdd-section-header">
+        <h2 className="cdd-section-title">Security Category Deep Dive</h2>
+        <p className="cdd-section-sub">
+          Sub-Category Tree · Framework Coverage · Kill Chain · Compliance Overlay
+        </p>
+      </div>
+
+      <div className="cdd-wrap">
+        {/* Tab bar (labels) — always visible at top */}
+        <div className="cdd-tabs">
+          {THREAT_CATS.map((cat) => {
+            const catRules = cat.subCats.flatMap((sc) => sc.rules);
+            const catFindings = catRules.filter((r) => triggered.has(r)).length;
+            return (
+              <label
+                key={cat.id}
+                htmlFor={`cdd-${cat.id}`}
+                className="cdd-tab"
+                style={{ "--cc": cat.color } as React.CSSProperties}
+              >
+                <span className="cdd-tab-icon">{cat.icon}</span>
+                <span className="cdd-tab-code">{cat.id}</span>
+                {catFindings > 0 && (
+                  <span className="cdd-tab-dot" />
+                )}
+              </label>
+            );
+          })}
+        </div>
+
+        {/* Radio+panel pairs — input MUST directly precede its panel for CSS + combinator */}
+        {THREAT_CATS.map((cat) => {
+          const allRules = cat.subCats.flatMap((sc) => sc.rules);
+          const catHits = allRules.filter((r) => triggered.has(r));
+          const cleanCount = allRules.length - catHits.length;
+          const pct = allRules.length > 0 ? Math.round((cleanCount / allRules.length) * 100) : 100;
+          const totalTests = allRules.length * 4;
+          const passingTests = cleanCount * 4;
+          const maturity = pct;
+
+          return (
+            <React.Fragment key={cat.id}>
+            <input
+              type="radio"
+              name="cdd-cat"
+              id={`cdd-${cat.id}`}
+              className="cdd-radio"
+              defaultChecked={cat.id === defaultCat}
+            />
+            <div className="cdd-panel">
+              {/* Category header */}
+              <div
+                className="cdd-cat-hdr"
+                style={{ "--cc": cat.color } as React.CSSProperties}
+              >
+                <div className="cdd-cat-hdr-left">
+                  <span className="cdd-cat-icon">{cat.icon}</span>
+                  <div>
+                    <div className="cdd-cat-name">{cat.name}</div>
+                    <div className="cdd-cat-tagline">{cat.tagline}</div>
+                  </div>
+                </div>
+                <div className="cdd-maturity">
+                  <div
+                    className="cdd-maturity-num"
+                    style={{
+                      color: maturity >= 80 ? "#10b981" : maturity >= 50 ? "#f59e0b" : "#ef4444",
+                    }}
+                  >
+                    {maturity}
+                  </div>
+                  <div className="cdd-maturity-label">MATURITY</div>
+                </div>
+              </div>
+
+              {/* Stats row */}
+              <div className="cdd-stats">
+                {[
+                  { num: allRules.length, label: "RULES" },
+                  { num: cat.subCats.length, label: "SUB-CATS" },
+                  { num: catHits.length, label: "FINDINGS", color: catHits.length > 0 ? "#ef4444" : "#10b981" },
+                  { num: `${pct}%`, label: "CLEAN", color: pct >= 80 ? "#10b981" : pct >= 50 ? "#f59e0b" : "#ef4444" },
+                  { num: totalTests, label: "TESTS" },
+                  { num: cat.frameworks.length, label: "FRAMEWORKS" },
+                ].map((s) => (
+                  <div key={s.label} className="cdd-stat">
+                    <div className="cdd-stat-num" style={s.color ? { color: s.color } : {}}>
+                      {s.num}
+                    </div>
+                    <div className="cdd-stat-label">{s.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Body: left tree + right sidebar */}
+              <div className="cdd-body">
+                {/* Left — sub-category tree */}
+                <div className="cdd-left">
+                  {cat.subCats.map((sc) => {
+                    const scHits = sc.rules.filter((r) => triggered.has(r));
+                    const scPct =
+                      sc.rules.length > 0
+                        ? Math.round(((sc.rules.length - scHits.length) / sc.rules.length) * 100)
+                        : 100;
+                    const barColor = scPct === 100 ? "#10b981" : scPct >= 50 ? "#f59e0b" : "#ef4444";
+
+                    return (
+                      <div
+                        key={sc.id}
+                        className={`cdd-subcat${scHits.length > 0 ? " cdd-subcat-hit" : ""}`}
+                      >
+                        <div className="cdd-subcat-hdr">
+                          <div className="cdd-subcat-meta">
+                            <span
+                              className="cdd-subcat-id"
+                              style={{ color: cat.color }}
+                            >
+                              {sc.id}
+                            </span>
+                            <span className="cdd-subcat-name">{sc.name}</span>
+                          </div>
+                          <div className="cdd-subcat-right">
+                            <div className="cdd-bar-wrap">
+                              <div
+                                className="cdd-bar"
+                                style={{ width: `${scPct}%`, background: barColor }}
+                              />
+                            </div>
+                            <span className="cdd-pct" style={{ color: barColor }}>
+                              {scPct}%
+                            </span>
+                            <span className="cdd-badge cdd-badge-rules">{sc.rules.length} rules</span>
+                            {scHits.length > 0 && (
+                              <span className="cdd-badge cdd-badge-hit">
+                                {scHits.length} found
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="cdd-subcat-desc">{sc.desc}</div>
+
+                        {/* Rule rows */}
+                        <div className="cdd-rule-list">
+                          {sc.rules.map((ruleId) => {
+                            const isHit = triggered.has(ruleId);
+                            const sev = RULE_SEVERITIES[ruleId] ?? "medium";
+                            const catPrefix = ruleId.replace(/\d+$/, "");
+                            const vectors = CAT_VECTORS[catPrefix] ?? ["Tool metadata", "Server analysis"];
+                            const mitigations = CAT_MITIGATIONS[catPrefix] ?? ["Apply security best practices", "Review rule documentation"];
+                            const tests = RULE_TESTS[ruleId] ?? [
+                              "True positive: malicious payload detected",
+                              "True positive: variant pattern detected",
+                              "True negative: safe pattern passes",
+                              "True negative: sanitized input passes",
+                            ];
+                            const fwBadges = getRuleFrameworks(ruleId);
+                            return (
+                              <details
+                                key={ruleId}
+                                className={`cdd-rule${isHit ? " cdd-rule-hit" : " cdd-rule-clean"}`}
+                                open={isHit}
+                              >
+                                <summary className="cdd-rule-summary">
+                                  <span
+                                    className="cdd-rule-id"
+                                    style={{ color: cat.color }}
+                                  >
+                                    {ruleId}
+                                  </span>
+                                  <span className={`cdd-sev-dot cdd-sev-${sev}`} />
+                                  <span className="cdd-rule-name">
+                                    {RULE_NAMES[ruleId] ?? ruleId}
+                                  </span>
+                                  <div className="cdd-rule-right">
+                                    {isHit ? (
+                                      <span className="cdd-badge cdd-badge-triggered">triggered</span>
+                                    ) : (
+                                      <span className="cdd-badge cdd-badge-clean">clean</span>
+                                    )}
+                                    <span className="cdd-tests">{tests.length}✓</span>
+                                    <span className="cdd-expand-arrow">▼</span>
+                                  </div>
+                                </summary>
+                                {/* Expanded detail */}
+                                <div className="cdd-rule-detail">
+                                  <div className="cdd-rule-detail-cols">
+                                    {/* Left: Tests */}
+                                    <div className="cdd-detail-col">
+                                      <div className="cdd-detail-heading">TESTS</div>
+                                      {tests.map((t, ti) => (
+                                        <div key={ti} className="cdd-detail-item cdd-detail-test">
+                                          <span className="cdd-detail-check">✓</span>
+                                          <span>{t}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                    {/* Right: Vectors + Mitigations */}
+                                    <div className="cdd-detail-col">
+                                      <div className="cdd-detail-heading">ATTACK VECTORS</div>
+                                      {vectors.map((v, vi) => (
+                                        <div key={vi} className="cdd-detail-item cdd-detail-vector">
+                                          <span
+                                            className="cdd-detail-bar"
+                                            style={{ background: cat.color }}
+                                          />
+                                          <span>{v}</span>
+                                        </div>
+                                      ))}
+                                      <div className="cdd-detail-heading" style={{ marginTop: "0.6rem" }}>
+                                        MITIGATIONS
+                                      </div>
+                                      {mitigations.map((m, mi) => (
+                                        <div key={mi} className="cdd-detail-item cdd-detail-mitigation">
+                                          <span className="cdd-detail-bar cdd-detail-bar-mit" />
+                                          <span>{m}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                  {/* Framework alignment badges */}
+                                  {fwBadges.length > 0 && (
+                                    <div className="cdd-fw-badges">
+                                      {fwBadges.map((fw) => (
+                                        <span
+                                          key={fw.abbr}
+                                          className="cdd-fw-pill"
+                                          style={{ borderColor: fw.color, color: fw.color }}
+                                        >
+                                          {fw.abbr}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </details>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Right — sidebar */}
+                <div className="cdd-right">
+                  {/* Framework Coverage */}
+                  <div className="cdd-sidebar-card">
+                    <div className="cdd-sidebar-title">Framework Coverage</div>
+                    {cat.frameworks.map((fw) => (
+                      <div key={fw} className="cdd-fw-row">
+                        <span className="cdd-fw-name">{fw}</span>
+                        <div className="cdd-fw-bar-wrap">
+                          <div
+                            className="cdd-fw-bar"
+                            style={{
+                              width: `${pct}%`,
+                              background: cat.color,
+                            }}
+                          />
+                        </div>
+                        <span className="cdd-fw-count" style={{ color: cat.color }}>
+                          {cleanCount}/{allRules.length}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Test Execution */}
+                  <div className="cdd-sidebar-card">
+                    <div className="cdd-sidebar-title">Test Execution</div>
+                    {[
+                      { label: "Passing", count: passingTests, color: "#10b981" },
+                      { label: "Failing", count: totalTests - passingTests, color: "#ef4444" },
+                    ].map((row) => (
+                      <div key={row.label} className="cdd-test-row">
+                        <span className="cdd-test-label">{row.label}</span>
+                        <div className="cdd-fw-bar-wrap">
+                          <div
+                            className="cdd-fw-bar"
+                            style={{
+                              width: `${Math.round((row.count / (totalTests || 1)) * 100)}%`,
+                              background: row.color,
+                            }}
+                          />
+                        </div>
+                        <span className="cdd-fw-count" style={{ color: row.color }}>
+                          {row.count}/{totalTests}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Kill Chain Phases */}
+                  <div className="cdd-sidebar-card">
+                    <div className="cdd-sidebar-title">Kill Chain Phases</div>
+                    {cat.killChain.map((phase) => {
+                      const phaseCount =
+                        catHits.length > 0
+                          ? Math.max(1, Math.round(catHits.length / cat.killChain.length))
+                          : 0;
+                      return (
+                        <div key={phase} className="cdd-kc-row">
+                          <span
+                            className="cdd-kc-badge"
+                            style={{
+                              background: phaseCount > 0 ? cat.color : "#1f2937",
+                              color: phaseCount > 0 ? "#fff" : "#6b7280",
+                            }}
+                          >
+                            {phaseCount}
+                          </span>
+                          <span className="cdd-kc-phase">{phase}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+            </React.Fragment>
           );
         })}
       </div>
@@ -1618,6 +2174,11 @@ export default async function ServerPage({
               findings={server.findings ?? []}
               score={score}
             />
+          )}
+
+          {/* Category Deep Dive — threat-area tabs + sub-category tree */}
+          {score !== null && (
+            <CategoryDeepDivePanel findings={server.findings ?? []} />
           )}
 
           {/* Rule Intelligence Panel — heatmap + accordion */}

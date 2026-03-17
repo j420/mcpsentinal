@@ -450,6 +450,261 @@ async function runInspect(args: string[]): Promise<never> {
   process.exit(EXIT.CLEAN);
 }
 
+// ─── Scan Command — live URL → enumerate → analyze → score ───────────────────
+// This is the missing link: inspect enumerates tools but runs no rules;
+// check runs rules but has no live connection. scan <url> does both.
+
+async function runScan(args: string[]): Promise<never> {
+  // ── Parse args ────────────────────────────────────────────────────────────
+  let endpoint: string | null = null;
+  let filterRule: string | null = null;
+  const jsonOutput = args.includes("--json");
+
+  const scanIdx = args.indexOf("scan");
+  if (scanIdx !== -1) {
+    const candidate = args[scanIdx + 1];
+    if (candidate && !candidate.startsWith("--")) {
+      endpoint = candidate;
+    }
+  }
+  const urlFlagIdx = args.findIndex((a) => a === "--url");
+  if (urlFlagIdx !== -1) endpoint = args[urlFlagIdx + 1] ?? null;
+
+  const ruleFlagIdx = args.findIndex((a) => a === "--rule");
+  if (ruleFlagIdx !== -1) filterRule = args[ruleFlagIdx + 1] ?? null;
+
+  if (!endpoint) {
+    console.error(
+      "Error: scan requires a server URL.\n" +
+      "  Usage: npx mcp-sentinel scan <url> [--rule <id>] [--json]"
+    );
+    process.exit(EXIT.INPUT_ERROR);
+  }
+
+  try { new URL(endpoint); } catch {
+    console.error(`Error: Invalid URL: ${sanitizeForTerminal(endpoint, 100)}`);
+    process.exit(EXIT.INPUT_ERROR);
+  }
+
+  // ── Load rules ────────────────────────────────────────────────────────────
+  let rules;
+  try {
+    rules = loadRules(RULES_DIR);
+  } catch (err) {
+    console.error(`Error loading rules: ${err instanceof Error ? err.message : String(err)}`);
+    process.exit(EXIT.INTERNAL_ERROR);
+  }
+  const rulesVersion = getRulesVersion(rules);
+  const engine = new AnalysisEngine(rules);
+  const ruleCategories: Record<string, string> = {};
+  for (const rule of rules) {
+    ruleCategories[rule.id] = rule.category;
+  }
+
+  if (!jsonOutput) {
+    console.log(`\nMCP Sentinel — Live Security Scan`);
+    console.log(`   Endpoint  : ${sanitizeForTerminal(endpoint, 120)}`);
+    console.log(`   Rules     : ${rules.length} rules loaded (v${rulesVersion})`);
+    if (filterRule) {
+      console.log(`   Filter    : rule ${sanitizeForTerminal(filterRule, 20)} only`);
+    }
+    console.log("\nStep 1/3  Connecting and enumerating tools...");
+  }
+
+  // ── Step 1: Enumerate tools from live server ──────────────────────────────
+  const connector = new MCPConnector({ timeout: 30_000 });
+  const enumResult = await connector.enumerate("cli-scan", endpoint);
+
+  if (!enumResult.connection_success) {
+    const errMsg = sanitizeForTerminal(enumResult.connection_error ?? "unknown error", 200);
+    if (jsonOutput) {
+      console.log(JSON.stringify({
+        endpoint,
+        connection_success: false,
+        error: errMsg,
+        findings: [],
+        score: null,
+      }, null, 2));
+    } else {
+      console.error(`\nConnection failed: ${errMsg}`);
+    }
+    process.exit(EXIT.INTERNAL_ERROR);
+  }
+
+  if (!jsonOutput) {
+    console.log(`          ✓ Connected — ${enumResult.tools.length} tool(s) found`);
+    if (enumResult.server_version) {
+      console.log(`            Server version: ${sanitizeForTerminal(enumResult.server_version, 60)}`);
+    }
+    if (enumResult.server_instructions) {
+      console.log(`            Instructions field: present (${enumResult.server_instructions.length} chars)`);
+    }
+    console.log("\nStep 2/3  Running analysis rules...");
+  }
+
+  // ── Step 2: Build analysis context from enumeration result ────────────────
+  const context: AnalysisContext = {
+    server: {
+      id: "cli-scan",
+      name: sanitizeForTerminal(new URL(endpoint).hostname, 100),
+      description: null,
+      github_url: null,
+    },
+    tools: enumResult.tools.map((t) => ({
+      name: t.name,
+      description: t.description ?? null,
+      input_schema: t.input_schema as Record<string, unknown> | null ?? null,
+      annotations: (t as { annotations?: Record<string, unknown> }).annotations ?? null,
+    })),
+    source_code: null,       // not fetched in CLI scan — run pnpm scan for full pipeline
+    dependencies: [],        // not audited in CLI scan
+    connection_metadata: {
+      auth_required: false,
+      transport: endpoint.startsWith("https") ? "streamable-http" : "sse",
+      response_time_ms: enumResult.response_time_ms ?? 0,
+    },
+    initialize_metadata: {
+      server_version: enumResult.server_version ?? null,
+      server_instructions: enumResult.server_instructions ?? null,
+    },
+    resources: (enumResult.resources ?? []).map((r) => ({
+      uri: r.uri,
+      name: r.name,
+      description: r.description ?? null,
+      mimeType: r.mimeType ?? null,
+    })),
+    prompts: (enumResult.prompts ?? []).map((p) => ({
+      name: p.name,
+      description: p.description ?? null,
+      arguments: (p.arguments ?? []).map((a) => ({
+        name: a.name,
+        description: a.description ?? null,
+        required: a.required ?? false,
+      })),
+    })),
+    roots: enumResult.roots ?? [],
+    declared_capabilities: enumResult.declared_capabilities ?? null,
+  };
+
+  // ── Step 3: Run rules + score ─────────────────────────────────────────────
+  let findings = engine.analyze(context);
+
+  // Optionally filter to a single rule for focused testing
+  if (filterRule) {
+    const ruleUpper = filterRule.toUpperCase();
+    findings = findings.filter((f) => f.rule_id === ruleUpper);
+  }
+
+  const scoreResult = computeScore(findings, ruleCategories);
+
+  if (!jsonOutput) {
+    console.log(`          ✓ Analysis complete — ${findings.length} finding(s)\n`);
+  }
+
+  // ── Output ────────────────────────────────────────────────────────────────
+  const SEV_ORDER = ["critical", "high", "medium", "low", "informational"] as const;
+
+  if (jsonOutput) {
+    console.log(JSON.stringify({
+      endpoint,
+      rules_version: rulesVersion,
+      server_version: enumResult.server_version ?? null,
+      tools_enumerated: enumResult.tools.length,
+      score: scoreResult.total_score,
+      sub_scores: {
+        code: scoreResult.code_score,
+        deps: scoreResult.deps_score,
+        config: scoreResult.config_score,
+        description: scoreResult.description_score,
+        behavior: scoreResult.behavior_score,
+      },
+      findings_count: findings.length,
+      findings: findings.map((f) => ({
+        rule_id: f.rule_id,
+        severity: f.severity,
+        owasp: f.owasp_category,
+        mitre: f.mitre_technique,
+        evidence: f.evidence,
+        remediation: f.remediation,
+      })),
+    }, null, 2));
+    process.exit(findings.length > 0 ? EXIT.FINDINGS : EXIT.CLEAN);
+  }
+
+  // Human-readable output
+  const divider = "─".repeat(72);
+
+  // Score banner
+  const scoreLabel =
+    scoreResult.total_score >= 80 ? "GOOD" :
+    scoreResult.total_score >= 60 ? "MODERATE" :
+    scoreResult.total_score >= 40 ? "POOR" : "CRITICAL";
+  console.log(`Step 3/3  Score: ${scoreResult.total_score}/100  [${scoreLabel}]`);
+  console.log(`          Findings: ${findings.length} total`);
+  for (const sev of SEV_ORDER) {
+    const count = findings.filter((f) => f.severity === sev).length;
+    if (count > 0) console.log(`            ${sev.padEnd(14)}: ${count}`);
+  }
+  console.log();
+
+  // Tools summary
+  console.log(divider);
+  console.log(`TOOLS ENUMERATED (${enumResult.tools.length})`);
+  console.log(divider);
+  for (const tool of enumResult.tools.slice(0, 20)) {
+    const toolName = sanitizeForTerminal(tool.name, 40);
+    const hasFindings = findings.some(
+      (f) => f.evidence.includes(`tool:${tool.name}`) || f.evidence.includes(tool.name)
+    );
+    console.log(`  ${hasFindings ? "⚠" : "✓"}  ${toolName}`);
+  }
+  if (enumResult.tools.length > 20) {
+    console.log(`  ... and ${enumResult.tools.length - 20} more`);
+  }
+  console.log();
+
+  // Findings
+  if (findings.length === 0) {
+    console.log(divider);
+    console.log("FINDINGS");
+    console.log(divider);
+    console.log("  ✓  No findings detected across applicable rules.\n");
+  } else {
+    for (const sev of SEV_ORDER) {
+      const sevFindings = findings.filter((f) => f.severity === sev);
+      if (sevFindings.length === 0) continue;
+
+      console.log(divider);
+      console.log(`${sev.toUpperCase()} (${sevFindings.length})`);
+      console.log(divider);
+
+      for (const f of sevFindings) {
+        console.log(`\n  [${f.rule_id}] ${sanitizeForTerminal(
+          (f.rule_id + " — " + f.evidence).slice(0, 200), 200
+        )}`);
+        if (f.owasp_category) {
+          console.log(`         OWASP: ${f.owasp_category}`);
+        }
+        if (f.mitre_technique) {
+          console.log(`         MITRE: ${f.mitre_technique}`);
+        }
+        console.log(`         Fix  : ${sanitizeForTerminal(f.remediation, 160)}`);
+      }
+      console.log();
+    }
+  }
+
+  console.log(divider);
+  console.log(
+    `NOTE: This scan covers rules that apply to live tool enumeration.\n` +
+    `      Source code (C1–C16), dependency (D1–D7), and full compliance\n` +
+    `      rules require the full pipeline: pnpm scan --server=<id>`
+  );
+  console.log(divider);
+
+  process.exit(findings.length > 0 ? EXIT.FINDINGS : EXIT.CLEAN);
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -469,6 +724,8 @@ async function main() {
     await runCheck(cliArgs);
   } else if (cliArgs.command === "inspect") {
     await runInspect(process.argv.slice(2));
+  } else if (cliArgs.command === "scan") {
+    await runScan(process.argv.slice(2));
   } else if (
     cliArgs.command === "help" ||
     cliArgs.command === "--help" ||
@@ -849,6 +1106,9 @@ MCP Sentinel — MCP Server Security Scanner
 Usage:
   npx mcp-sentinel inspect <url>                List tools exposed by an MCP server
   npx mcp-sentinel inspect <url> --json         JSON output of tool names + descriptions
+  npx mcp-sentinel scan <url>                   Connect to a live MCP server and run security rules
+  npx mcp-sentinel scan <url> --rule A1         Run only the specified rule (e.g. A1 = Prompt Injection)
+  npx mcp-sentinel scan <url> --json            Machine-readable JSON scan output
   npx mcp-sentinel check                        Scan MCP servers in your config
   npx mcp-sentinel check --json                 Machine-readable JSON output
   npx mcp-sentinel check --ci                   CI mode: exit 1 if worst score < 60
