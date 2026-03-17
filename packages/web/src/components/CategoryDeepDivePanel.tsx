@@ -84,7 +84,7 @@ export default function CategoryDeepDivePanel({ findings }: { findings: CddFindi
                   <div className="cdd-maturity">
                     <div
                       className="cdd-maturity-num"
-                      style={{ color: maturity >= 80 ? "#10b981" : maturity >= 50 ? "#f59e0b" : "#ef4444" }}
+                      style={{ color: maturity >= 80 ? "var(--good)" : maturity >= 50 ? "var(--moderate)" : "var(--critical)" }}
                     >
                       {maturity}
                     </div>
@@ -97,8 +97,8 @@ export default function CategoryDeepDivePanel({ findings }: { findings: CddFindi
                   {[
                     { num: allRules.length, label: "RULES" },
                     { num: cat.subCats.length, label: "SUB-CATS" },
-                    { num: catHits.length, label: "FINDINGS", color: catHits.length > 0 ? "#ef4444" : "#10b981" },
-                    { num: `${pct}%`, label: "CLEAN", color: pct >= 80 ? "#10b981" : pct >= 50 ? "#f59e0b" : "#ef4444" },
+                    { num: catHits.length, label: "FINDINGS", color: catHits.length > 0 ? "var(--critical)" : "var(--good)" },
+                    { num: `${pct}%`, label: "CLEAN", color: pct >= 80 ? "var(--good)" : pct >= 50 ? "var(--moderate)" : "var(--critical)" },
                     { num: totalTests, label: "TESTS" },
                     { num: cat.frameworks.length, label: "FRAMEWORKS" },
                   ].map((s) => (
@@ -121,7 +121,7 @@ export default function CategoryDeepDivePanel({ findings }: { findings: CddFindi
                         sc.rules.length > 0
                           ? Math.round(((sc.rules.length - scHits.length) / sc.rules.length) * 100)
                           : 100;
-                      const barColor = scPct === 100 ? "#10b981" : scPct >= 50 ? "#f59e0b" : "#ef4444";
+                      const barColor = scPct === 100 ? "var(--good)" : scPct >= 50 ? "var(--moderate)" : "var(--critical)";
 
                       return (
                         <div key={sc.id} className={`cdd-subcat${scHits.length > 0 ? " cdd-subcat-hit" : ""}`}>
@@ -202,7 +202,7 @@ export default function CategoryDeepDivePanel({ findings }: { findings: CddFindi
                                         </div>
                                         {mitigations.map((m, mi) => (
                                           <div key={mi} className="cdd-detail-item">
-                                            <span className="cdd-detail-check" style={{ color: "#10b981" }}>→</span>
+                                            <span className="cdd-detail-check" style={{ color: "var(--good)" }}>→</span>
                                             <span>{m}</span>
                                           </div>
                                         ))}
@@ -251,8 +251,8 @@ export default function CategoryDeepDivePanel({ findings }: { findings: CddFindi
                     <div className="cdd-sidebar-card">
                       <div className="cdd-sidebar-title">Test Execution</div>
                       {[
-                        { label: "Passing", count: passingTests, color: "#10b981" },
-                        { label: "Failing", count: totalTests - passingTests, color: "#ef4444" },
+                        { label: "Passing", count: passingTests, color: "var(--good)" },
+                        { label: "Failing", count: totalTests - passingTests, color: "var(--critical)" },
                       ].map((row) => (
                         <div key={row.label} className="cdd-test-row">
                           <span className="cdd-test-label">{row.label}</span>
@@ -284,8 +284,8 @@ export default function CategoryDeepDivePanel({ findings }: { findings: CddFindi
                             <span
                               className="cdd-kc-badge"
                               style={{
-                                background: phaseCount > 0 ? cat.color : "#1f2937",
-                                color: phaseCount > 0 ? "#fff" : "#6b7280",
+                                background: phaseCount > 0 ? cat.color : "var(--text-2)",
+                                color: phaseCount > 0 ? "var(--text-inv)" : "var(--text-3)",
                               }}
                             >
                               {phaseCount}

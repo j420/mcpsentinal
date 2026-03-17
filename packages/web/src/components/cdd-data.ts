@@ -185,15 +185,15 @@ export const HEATMAP_FRAMEWORKS: { id: string; abbr: string; rules: string[] }[]
 ];
 
 const FW_COLORS: Record<string, string> = {
-  "owasp-mcp": "#ef4444", "owasp-agentic": "#f97316", "mitre": "#a855f7",
-  "nist": "#3b82f6",       "iso27k": "#6366f1",        "iso42k": "#8b5cf6",
-  "eu-ai": "#06b6d4",      "cosai": "#10b981",          "maestro": "#f59e0b",
+  "owasp-mcp": "#B91C1C", "owasp-agentic": "#C2410C", "mitre": "#7C3AED",
+  "nist": "#1D4ED8",       "iso27k": "#4338CA",        "iso42k": "#6D28D9",
+  "eu-ai": "#0D9488",      "cosai": "#0D7C5F",          "maestro": "#B45309",
 };
 
 export function getRuleFrameworks(ruleId: string): { abbr: string; color: string }[] {
   return HEATMAP_FRAMEWORKS
     .filter((fw) => fw.rules.includes(ruleId))
-    .map((fw) => ({ abbr: fw.abbr, color: FW_COLORS[fw.id] ?? "#6b7280" }));
+    .map((fw) => ({ abbr: fw.abbr, color: FW_COLORS[fw.id] ?? "#8891AB" }));
 }
 
 // ── Attack vectors + mitigations per category prefix ─────────────────────
@@ -356,7 +356,7 @@ export interface ThreatCat {
 
 export const THREAT_CATS: ThreatCat[] = [
   {
-    id: "PI", name: "Prompt Injection", icon: "⚡", color: "#f97316",
+    id: "PI", name: "Prompt Injection", icon: "⚡", color: "#C2410C",
     tagline: "Prompt & context manipulation attacks",
     subCats: [
       { id: "PI-DIR", name: "Direct Input Injection",       desc: "Injection via tool descriptions and parameter fields",         rules: ["A1", "B5", "A5"] },
@@ -369,7 +369,7 @@ export const THREAT_CATS: ThreatCat[] = [
     killChain: ["Initial Access", "Defense Evasion", "Execution", "Persistence"],
   },
   {
-    id: "TP", name: "Tool Poisoning", icon: "☠", color: "#ef4444",
+    id: "TP", name: "Tool Poisoning", icon: "☠", color: "#B91C1C",
     tagline: "Deceptive tools, spoofing, annotation fraud",
     subCats: [
       { id: "TP-SHD", name: "Name Shadowing & Squatting",  desc: "Tools impersonating official Anthropic/GitHub server names",   rules: ["A4", "F5"] },
@@ -380,7 +380,7 @@ export const THREAT_CATS: ThreatCat[] = [
     killChain: ["Initial Access", "Defense Evasion", "Execution"],
   },
   {
-    id: "CI", name: "Code Injection", icon: "💉", color: "#dc2626",
+    id: "CI", name: "Code Injection", icon: "💉", color: "#9B1C1C",
     tagline: "OS commands, SQL, templates, deserialization",
     subCats: [
       { id: "CI-CMD", name: "Command & Dynamic Eval",         desc: "exec(), eval(), new Function() with user-controlled input",  rules: ["C1", "C16"] },
@@ -392,7 +392,7 @@ export const THREAT_CATS: ThreatCat[] = [
     killChain: ["Execution", "Privilege Escalation", "Lateral Movement"],
   },
   {
-    id: "DE", name: "Data Exfiltration", icon: "📤", color: "#f59e0b",
+    id: "DE", name: "Data Exfiltration", icon: "📤", color: "#B45309",
     tagline: "Exfiltration chains, lethal trifecta, covert channels",
     subCats: [
       { id: "DE-LET", name: "Lethal Trifecta",        desc: "Private data + untrusted input + external comms — score cap 40",  rules: ["F1", "I13"] },
@@ -404,7 +404,7 @@ export const THREAT_CATS: ThreatCat[] = [
     killChain: ["Collection", "Exfiltration", "Command & Control"],
   },
   {
-    id: "PV", name: "Privilege & Permissions", icon: "⬆", color: "#8b5cf6",
+    id: "PV", name: "Privilege & Permissions", icon: "⬆", color: "#6D28D9",
     tagline: "Capability escalation, over-privileged roots, consent fatigue",
     subCats: [
       { id: "PV-CAP",  name: "Capability Escalation",   desc: "Post-init capability use and gradual privilege drift",            rules: ["I12", "I14"] },
@@ -416,7 +416,7 @@ export const THREAT_CATS: ThreatCat[] = [
     killChain: ["Privilege Escalation", "Persistence", "Lateral Movement"],
   },
   {
-    id: "IC", name: "Insecure Config", icon: "⚙", color: "#64748b",
+    id: "IC", name: "Insecure Config", icon: "⚙", color: "#5A6378",
     tagline: "Schema gaps, crypto weaknesses, network exposure",
     subCats: [
       { id: "IC-SCH", name: "Schema Validation Gaps",  desc: "Missing constraints, unconstrained schemas, dangerous param types", rules: ["B1", "B2", "B4", "B6"] },
@@ -428,7 +428,7 @@ export const THREAT_CATS: ThreatCat[] = [
     killChain: ["Initial Access", "Defense Evasion"],
   },
   {
-    id: "DV", name: "Dependency Vulns", icon: "📦", color: "#0ea5e9",
+    id: "DV", name: "Dependency Vulns", icon: "📦", color: "#0E7490",
     tagline: "CVEs, malicious packages, typosquatting, supply chain",
     subCats: [
       { id: "DV-CVE", name: "Known Vulnerabilities",  desc: "Published CVEs and weak cryptography libraries",                  rules: ["D1", "D6"] },
@@ -440,7 +440,7 @@ export const THREAT_CATS: ThreatCat[] = [
     killChain: ["Initial Access", "Supply Chain Compromise"],
   },
   {
-    id: "SC", name: "Supply Chain", icon: "🔗", color: "#14b8a6",
+    id: "SC", name: "Supply Chain", icon: "🔗", color: "#0D9488",
     tagline: "Install hooks, generated code injection, resource shadowing",
     subCats: [
       { id: "SC-SHD", name: "Resource-Tool Shadowing",    desc: "Resources with names matching common tools causing ambiguity",   rules: ["I5"] },
@@ -451,7 +451,7 @@ export const THREAT_CATS: ThreatCat[] = [
     killChain: ["Supply Chain Compromise", "Initial Access", "Execution"],
   },
   {
-    id: "AT", name: "Authentication", icon: "🔑", color: "#10b981",
+    id: "AT", name: "Authentication", icon: "🔑", color: "#0D7C5F",
     tagline: "OAuth, hardcoded secrets, token lifecycle",
     subCats: [
       { id: "AT-OAU", name: "OAuth 2.0 Vulnerabilities",   desc: "RFC 9700 / OAuth 2.1 — redirect_uri, implicit flow, ROPC, CSRF", rules: ["H1"] },
@@ -462,7 +462,7 @@ export const THREAT_CATS: ThreatCat[] = [
     killChain: ["Initial Access", "Credential Access", "Defense Evasion"],
   },
   {
-    id: "AI", name: "Adversarial AI", icon: "🤖", color: "#a855f7",
+    id: "AI", name: "Adversarial AI", icon: "🤖", color: "#7C3AED",
     tagline: "AI-native attacks — rug pulls, sampling abuse, multi-agent",
     subCats: [
       { id: "AI-TRU", name: "Trust Assertion Spoofing",    desc: "Claiming Anthropic approval or system authority to skip consent", rules: ["G2"] },
@@ -474,7 +474,7 @@ export const THREAT_CATS: ThreatCat[] = [
     killChain: ["Initial Access", "Defense Evasion", "Execution", "Persistence"],
   },
   {
-    id: "CG", name: "Compliance & Governance", icon: "📋", color: "#6366f1",
+    id: "CG", name: "Compliance & Governance", icon: "📋", color: "#3B35C4",
     tagline: "8-framework mapped — audit, oversight, credential lifecycle",
     subCats: [
       { id: "CG-AUD", name: "Audit Trail Integrity",    desc: "Logging adequacy, log destruction, tampering, audit context",     rules: ["K1", "K2", "K3", "K20"] },
