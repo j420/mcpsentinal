@@ -705,6 +705,149 @@ const OWASP_TEST_TYPES: {
   },
 ];
 
+// ── Rule Intelligence static data ─────────────────────────────────────────────
+
+/** Severity for every rule — used for heatmap cell colouring */
+const RULE_SEVERITIES: Record<string, Finding["severity"]> = {
+  A1: "critical", A2: "high", A3: "medium", A4: "high", A5: "low",
+  A6: "critical", A7: "critical", A8: "high", A9: "critical",
+  B1: "medium", B2: "high", B3: "low", B4: "medium", B5: "critical",
+  B6: "medium", B7: "high",
+  C1: "critical", C2: "critical", C3: "high", C4: "critical", C5: "critical",
+  C6: "medium", C7: "high", C8: "high", C9: "high", C10: "critical",
+  C11: "high", C12: "critical", C13: "critical", C14: "critical",
+  C15: "high", C16: "critical",
+  D1: "high", D2: "medium", D3: "high", D4: "low", D5: "critical",
+  D6: "high", D7: "high",
+  E1: "medium", E2: "high", E3: "low", E4: "medium",
+  F1: "critical", F2: "medium", F3: "high", F4: "low", F5: "critical",
+  F6: "high", F7: "critical",
+  G1: "critical", G2: "critical", G3: "critical", G4: "high", G5: "critical",
+  G6: "critical", G7: "critical",
+  H1: "critical", H2: "critical", H3: "high",
+  I1: "critical", I2: "high", I3: "critical", I4: "critical", I5: "high",
+  I6: "critical", I7: "critical", I8: "high", I9: "critical", I10: "high",
+  I11: "high", I12: "critical", I13: "critical", I14: "high", I15: "high",
+  I16: "high",
+  J1: "critical", J2: "critical", J3: "critical", J4: "high", J5: "critical",
+  J6: "high", J7: "critical",
+  K1: "high", K2: "critical", K3: "critical", K4: "high", K5: "critical",
+  K6: "high", K7: "high", K8: "critical", K9: "critical", K10: "high",
+  K11: "high", K12: "critical", K13: "high", K14: "critical", K15: "high",
+  K16: "high", K17: "medium", K18: "high", K19: "high", K20: "medium",
+};
+
+/** Category prefix → short display name (for finding cards) */
+const CATEGORY_SHORT_NAMES: Record<string, string> = {
+  A: "Description", B: "Schema", C: "Code", D: "Dependencies",
+  E: "Behavioral", F: "Ecosystem", G: "Adversarial AI",
+  H: "2026 Attack Surface", I: "Protocol Surface",
+  J: "Threat Intel", K: "Compliance",
+};
+
+/** 9 frameworks with their rule sets — drives the heatmap */
+const HEATMAP_FRAMEWORKS: { id: string; abbr: string; name: string; rules: string[] }[] = [
+  {
+    id: "owasp-mcp",
+    abbr: "OWASP MCP",
+    name: "OWASP MCP Top 10",
+    rules: Object.keys(RULE_NAMES), // all 103 rules map to OWASP MCP
+  },
+  {
+    id: "owasp-agentic",
+    abbr: "OWASP Agn",
+    name: "OWASP Agentic Top 10",
+    rules: [
+      "A1","A2","A7","A8","A9",
+      "B2","B5","B7",
+      "C1","C8","C9","C12","C13","C16",
+      "D1","D3","D5","D7",
+      "E1",
+      "F1","F3","F5","F7",
+      "G1","G2","G4","G5",
+      "H1","H2","H3",
+      "I1","I2","I3","I5","I6","I9","I10","I11","I12","I13","I14","I16",
+      "J1","J2","J3","J5","J6","J7",
+      "K5","K6","K7","K8","K9","K10","K12","K13","K14","K15","K16","K17",
+    ],
+  },
+  {
+    id: "mitre",
+    abbr: "MITRE",
+    name: "MITRE ATLAS",
+    rules: [
+      "A1","A4","A5","A7","A9",
+      "B5",
+      "C1","C3","C16",
+      "F1","F3","F6","F7",
+      "G1","G2","G3","G4","G5","G7",
+      "H1","H2","H3",
+      "I1","I2","I3","I4","I5","I6","I7","I8","I9","I10","I11","I12","I13","I14","I15","I16",
+      "J1","J2","J3","J4","J5","J6","J7",
+      "K9","K14",
+    ],
+  },
+  {
+    id: "nist",
+    abbr: "NIST",
+    name: "NIST AI RMF",
+    rules: ["K1","K3","K4","K18"],
+  },
+  {
+    id: "iso27k",
+    abbr: "ISO 27k",
+    name: "ISO 27001",
+    rules: ["K1","K2","K3","K6","K7","K8","K10","K11","K18","K19","K20"],
+  },
+  {
+    id: "iso42k",
+    abbr: "ISO 42k",
+    name: "ISO 42001",
+    rules: ["K4","K5","K20"],
+  },
+  {
+    id: "eu-ai",
+    abbr: "EU AI",
+    name: "EU AI Act",
+    rules: ["K2","K4","K5","K16","K17"],
+  },
+  {
+    id: "cosai",
+    abbr: "CoSAI",
+    name: "CoSAI MCP Security",
+    rules: [
+      "I1","I2","I3","I4","I5","I6","I7","I8","I9","I10","I11","I12","I13","I14","I15","I16",
+      "K1","K2","K3","K6","K7","K8","K9","K10","K11","K12","K13","K15","K16","K17","K18","K19",
+    ],
+  },
+  {
+    id: "maestro",
+    abbr: "MAESTRO",
+    name: "MAESTRO Framework",
+    rules: ["G4","I3","K1","K3","K8","K11","K13","K14","K15","K17","K19","K20"],
+  },
+];
+
+/** Per-category metadata for the accordion panel */
+const RULE_CATEGORY_DATA: {
+  prefix: string;
+  name: string;
+  tagline: string;
+  rules: string[];
+}[] = [
+  { prefix: "A", name: "Description Analysis", tagline: "Tool description text — injection, deception, encoding", rules: ["A1","A2","A3","A4","A5","A6","A7","A8","A9"] },
+  { prefix: "B", name: "Schema Analysis", tagline: "JSON schema constraints, dangerous defaults, parameter injection", rules: ["B1","B2","B3","B4","B5","B6","B7"] },
+  { prefix: "C", name: "Code Analysis", tagline: "Source code — injection, deserialization, secrets, crypto", rules: ["C1","C2","C3","C4","C5","C6","C7","C8","C9","C10","C11","C12","C13","C14","C15","C16"] },
+  { prefix: "D", name: "Dependency Analysis", tagline: "CVEs, malicious packages, typosquatting, dependency confusion", rules: ["D1","D2","D3","D4","D5","D6","D7"] },
+  { prefix: "E", name: "Behavioral Analysis", tagline: "Runtime behavior — auth, transport, response time, tool count", rules: ["E1","E2","E3","E4"] },
+  { prefix: "F", name: "Ecosystem Context", tagline: "Cross-tool analysis — lethal trifecta, exfiltration chains", rules: ["F1","F2","F3","F4","F5","F6","F7"] },
+  { prefix: "G", name: "Adversarial AI", tagline: "AI-native attacks — rug pulls, context saturation, DNS exfil", rules: ["G1","G2","G3","G4","G5","G6","G7"] },
+  { prefix: "H", name: "2026 Attack Surface", tagline: "OAuth, initialize-field injection, multi-agent propagation", rules: ["H1","H2","H3"] },
+  { prefix: "I", name: "Protocol Surface", tagline: "Annotations, resources, prompts, sampling, elicitation (2025-03-26 spec)", rules: ["I1","I2","I3","I4","I5","I6","I7","I8","I9","I10","I11","I12","I13","I14","I15","I16"] },
+  { prefix: "J", name: "Threat Intelligence", tagline: "CVE-backed rules from real-world attacks (2025–2026)", rules: ["J1","J2","J3","J4","J5","J6","J7"] },
+  { prefix: "K", name: "Compliance & Governance", tagline: "8-framework mapped — audit trails, human oversight, credential lifecycle", rules: ["K1","K2","K3","K4","K5","K6","K7","K8","K9","K10","K11","K12","K13","K14","K15","K16","K17","K18","K19","K20"] },
+];
+
 // ── JSON-LD ───────────────────────────────────────────────────────────────────
 
 function buildJsonLd(server: ServerDetail, siteUrl: string) {
@@ -883,6 +1026,226 @@ function FrameworkComplianceCard({ findings }: { findings: Finding[] }) {
         })}
       </div>
     </div>
+  );
+}
+
+// ── Rule Intelligence Panel ───────────────────────────────────────────────────
+// Combines: (1) heatmap grid, (2) accordion drill-down, (3) category cards
+
+function RuleIntelligencePanel({ findings }: { findings: Finding[] }) {
+  const findingRuleIds = new Set(findings.map((f) => f.rule_id));
+  // Index findings by rule_id for quick lookup
+  const findingsByRule = new Map<string, Finding[]>();
+  for (const f of findings) {
+    if (!findingsByRule.has(f.rule_id)) findingsByRule.set(f.rule_id, []);
+    findingsByRule.get(f.rule_id)!.push(f);
+  }
+
+  const totalCats = RULE_CATEGORY_DATA.length;
+  const affectedCats = RULE_CATEGORY_DATA.filter((cat) =>
+    cat.rules.some((r) => findingRuleIds.has(r))
+  ).length;
+
+  return (
+    <section className="section-gap">
+      <h2 className="section-title">
+        Rule Intelligence
+        <span className="count">103 rules · 11 categories · 9 frameworks</span>
+      </h2>
+
+      <div
+        style={{
+          fontSize: "12px",
+          color: "var(--text-3)",
+          marginBottom: "var(--s4)",
+        }}
+      >
+        <span style={{ color: affectedCats > 0 ? "var(--poor)" : "var(--good)", fontWeight: 600 }}>
+          {affectedCats > 0 ? `${affectedCats} of ${totalCats} categories` : `All ${totalCats} categories`}
+        </span>
+        {affectedCats > 0 ? " have findings" : " clean"}
+        {" · Expand any row to see individual rules"}
+      </div>
+
+      {/* ── (1) Heatmap grid ────────────────────────────────────── */}
+      <div className="intel-heatmap-wrap">
+        <table className="intel-heatmap">
+          <thead>
+            <tr>
+              <th className="hm-th-cat">Category</th>
+              {HEATMAP_FRAMEWORKS.map((fw) => (
+                <th key={fw.id} className="hm-th-fw" title={fw.name}>
+                  {fw.abbr}
+                </th>
+              ))}
+              <th className="hm-th-total">Findings</th>
+            </tr>
+          </thead>
+          <tbody>
+            {RULE_CATEGORY_DATA.map((cat) => {
+              const catFindings = findings.filter((f) => f.rule_id.startsWith(cat.prefix));
+              const hasCatFindings = catFindings.length > 0;
+              const worstCatSev = hasCatFindings
+                ? SEV_ORDER.find((s) => catFindings.some((f) => f.severity === s))
+                : null;
+
+              return (
+                <tr key={cat.prefix} className={hasCatFindings ? "hm-row-violated" : "hm-row-clean"}>
+                  <td className="hm-td-cat">
+                    <span className="hm-cat-prefix">{cat.prefix}</span>
+                    <span className="hm-cat-name">{cat.name}</span>
+                  </td>
+                  {HEATMAP_FRAMEWORKS.map((fw) => {
+                    const catFwRules = fw.rules.filter((r) => r.startsWith(cat.prefix));
+                    if (catFwRules.length === 0) {
+                      return (
+                        <td key={fw.id} className="hm-cell hm-na" title="Not applicable to this framework">
+                          <span className="hm-dash">—</span>
+                        </td>
+                      );
+                    }
+                    const violatedRules = catFwRules.filter((r) => findingRuleIds.has(r));
+                    if (violatedRules.length > 0) {
+                      const worstSev = SEV_ORDER.find((s) =>
+                        violatedRules.some(
+                          (r) => (findingsByRule.get(r) ?? []).some((f) => f.severity === s)
+                        )
+                      );
+                      return (
+                        <td
+                          key={fw.id}
+                          className={`hm-cell hm-violated hm-sev-${worstSev}`}
+                          title={`${violatedRules.length} finding(s): ${violatedRules.join(", ")}`}
+                        >
+                          <span className="hm-dot" />
+                          <span className="hm-count">{violatedRules.length}</span>
+                        </td>
+                      );
+                    }
+                    return (
+                      <td
+                        key={fw.id}
+                        className="hm-cell hm-clean"
+                        title={`Clean — ${catFwRules.length} rule(s) tested`}
+                      >
+                        <span className="hm-dot" />
+                      </td>
+                    );
+                  })}
+                  <td className="hm-td-total">
+                    {hasCatFindings ? (
+                      <span className={`hm-total-badge hm-total-${worstCatSev}`}>
+                        {catFindings.length}
+                      </span>
+                    ) : (
+                      <span className="hm-total-clean">✓</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        <div className="hm-legend">
+          <span className="hm-legend-item">
+            <span className="hm-dot hm-sev-critical" style={{ display: "inline-block", verticalAlign: "middle" }} /> critical
+          </span>
+          <span className="hm-legend-item">
+            <span className="hm-dot hm-sev-high" style={{ display: "inline-block", verticalAlign: "middle" }} /> high
+          </span>
+          <span className="hm-legend-item">
+            <span className="hm-dot hm-clean" style={{ display: "inline-block", verticalAlign: "middle" }} /> clean
+          </span>
+          <span className="hm-legend-item">
+            <span className="hm-dash" style={{ marginRight: "4px" }}>—</span> n/a
+          </span>
+        </div>
+      </div>
+
+      {/* ── (2) Accordion drill-down (CSS-only, uses <details>/<summary>) ──── */}
+      <div className="intel-accordion">
+        {RULE_CATEGORY_DATA.map((cat) => {
+          const catFindings = findings.filter((f) => f.rule_id.startsWith(cat.prefix));
+          const hasCatFindings = catFindings.length > 0;
+          // Which frameworks does this category contribute to at all?
+          const catFrameworks = HEATMAP_FRAMEWORKS.filter((fw) =>
+            fw.rules.some((r) => r.startsWith(cat.prefix))
+          );
+
+          return (
+            <details
+              key={cat.prefix}
+              className={`intel-cat ${hasCatFindings ? "intel-cat-violated" : "intel-cat-clean"}`}
+              open={hasCatFindings}
+            >
+              <summary className="intel-cat-summary">
+                {/* ── (3) Category card header — this IS the "cards" view ── */}
+                <div className="intel-cat-card">
+                  <div className="intel-cat-left">
+                    <span className={`intel-cat-badge ${hasCatFindings ? "badge-violated" : "badge-clean"}`}>
+                      {cat.prefix}
+                    </span>
+                    <div className="intel-cat-meta">
+                      <span className="intel-cat-name">{cat.name}</span>
+                      <span className="intel-cat-tagline">{cat.tagline}</span>
+                    </div>
+                  </div>
+                  <div className="intel-cat-right">
+                    <div className="intel-cat-fw-row">
+                      {catFrameworks.map((fw) => (
+                        <span key={fw.id} className="intel-fw-badge">{fw.abbr}</span>
+                      ))}
+                    </div>
+                    <div className="intel-cat-stats">
+                      <span className="intel-cat-rule-count">{cat.rules.length} rules</span>
+                      {hasCatFindings ? (
+                        <span className="intel-cat-finding-count">{catFindings.length} findings</span>
+                      ) : (
+                        <span className="intel-cat-clean-label">✓ clean</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </summary>
+
+              {/* Expanded: individual rule rows */}
+              <div className="intel-rule-list">
+                {cat.rules.map((ruleId) => {
+                  const ruleFindings = findingsByRule.get(ruleId) ?? [];
+                  const triggered = ruleFindings.length > 0;
+                  const sev = RULE_SEVERITIES[ruleId] ?? "informational";
+                  const ruleFws = HEATMAP_FRAMEWORKS.filter((fw) => fw.rules.includes(ruleId));
+                  const worstSev = triggered
+                    ? SEV_ORDER.find((s) => ruleFindings.some((f) => f.severity === s))
+                    : null;
+
+                  return (
+                    <div key={ruleId} className={`intel-rule ${triggered ? "intel-rule-triggered" : "intel-rule-clean"}`}>
+                      <span className="intel-rule-id">{ruleId}</span>
+                      <span
+                        className={`intel-rule-sev-dot intel-sev-dot-${sev}`}
+                        title={sev}
+                      />
+                      <span className="intel-rule-name">
+                        {RULE_NAMES[ruleId] ?? ruleId}
+                      </span>
+                      <div className="intel-rule-fws">
+                        {ruleFws.map((fw) => (
+                          <span key={fw.id} className="intel-fw-badge intel-fw-mini">{fw.abbr}</span>
+                        ))}
+                      </div>
+                      <span className={`intel-rule-status ${triggered ? `intel-status-${worstSev}` : "intel-status-clean"}`}>
+                        {triggered ? `✗ ${ruleFindings.length}` : "✓"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </details>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -1180,52 +1543,68 @@ export default async function ServerPage({
                             {findingsBySev[sev].length !== 1 ? "s" : ""}
                           </span>
                         </div>
-                        {findingsBySev[sev].map((finding) => (
-                          <div
-                            key={finding.id}
-                            className={`finding-card finding-${finding.severity}`}
-                            style={{ marginBottom: "var(--s2)" }}
-                          >
-                            <div className="finding-header">
-                              <SeverityBadge severity={finding.severity} />
-                              <span
-                                style={{
-                                  fontWeight: 600,
-                                  fontSize: "13px",
-                                  color: "var(--text)",
-                                  flex: 1,
-                                }}
-                              >
-                                {RULE_NAMES[finding.rule_id] ?? finding.rule_id}
-                              </span>
-                              <span className="finding-rule-id">
-                                {finding.rule_id}
-                              </span>
-                              {finding.mitre_technique && (
-                                <span
-                                  style={{
-                                    fontSize: "11px",
-                                    color: "var(--text-3)",
-                                    fontFamily: "var(--font-mono, monospace)",
-                                  }}
-                                >
-                                  {finding.mitre_technique}
+                        {findingsBySev[sev].map((finding) => {
+                          // Which frameworks does this rule map to?
+                          const ruleFws = HEATMAP_FRAMEWORKS.filter(
+                            (fw) => fw.rules.includes(finding.rule_id)
+                          );
+                          const catPrefix = finding.rule_id.charAt(0);
+                          const catName = CATEGORY_SHORT_NAMES[catPrefix];
+
+                          return (
+                            <div
+                              key={finding.id}
+                              className={`finding-card finding-${finding.severity}`}
+                              style={{ marginBottom: "var(--s2)" }}
+                            >
+                              {/* ── Row 1: severity + rule name + rule ID ── */}
+                              <div className="finding-header">
+                                <SeverityBadge severity={finding.severity} />
+                                <span className="finding-title">
+                                  {RULE_NAMES[finding.rule_id] ?? finding.rule_id}
                                 </span>
-                              )}
-                              {finding.owasp_category && (
-                                <span className="finding-owasp">
-                                  {OWASP_LABELS[finding.owasp_category] ?? finding.owasp_category.replace(/-/g, " ")}
+                                <span className="finding-rule-id">
+                                  {finding.rule_id}
                                 </span>
-                              )}
+                              </div>
+
+                              {/* ── Row 2: category · MITRE · OWASP · framework badges ── */}
+                              <div className="finding-tags">
+                                {catName && (
+                                  <span className="ftag ftag-cat">{catName}</span>
+                                )}
+                                {finding.mitre_technique && (
+                                  <span className="ftag ftag-mitre" title="MITRE ATLAS technique">
+                                    ⚑ {finding.mitre_technique}
+                                  </span>
+                                )}
+                                {finding.owasp_category && (
+                                  <span className="ftag ftag-owasp" title="OWASP MCP Top 10">
+                                    {OWASP_LABELS[finding.owasp_category] ??
+                                      finding.owasp_category.replace(/-/g, " ")}
+                                  </span>
+                                )}
+                                {ruleFws
+                                  .filter((fw) => fw.id !== "owasp-mcp")
+                                  .map((fw) => (
+                                    <span key={fw.id} className="ftag ftag-fw" title={fw.name}>
+                                      {fw.abbr}
+                                    </span>
+                                  ))}
+                              </div>
+
+                              {/* ── Evidence ── */}
+                              <p className="finding-evidence">
+                                {finding.evidence}
+                              </p>
+
+                              {/* ── Remediation ── */}
+                              <p className="finding-remediation">
+                                {finding.remediation}
+                              </p>
                             </div>
-                            <p className="finding-evidence">
-                              {finding.evidence}
-                            </p>
-                            <p className="finding-remediation">
-                              {finding.remediation}
-                            </p>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )
                 )}
@@ -1239,6 +1618,11 @@ export default async function ServerPage({
               findings={server.findings ?? []}
               score={score}
             />
+          )}
+
+          {/* Rule Intelligence Panel — heatmap + accordion */}
+          {score !== null && (
+            <RuleIntelligencePanel findings={server.findings ?? []} />
           )}
 
           {/* Badge embed */}
