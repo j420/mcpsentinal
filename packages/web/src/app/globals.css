@@ -1,66 +1,66 @@
 /* ============================================================
    MCP Sentinel — Design System
    Premium security intelligence portal
-   bg: #EEECE2  surface: #F5F3EC  accent: #4F46E5 (deep indigo)
+   bg: #F9FAFB  surface: #FFFFFF  accent: #4F46E5 (deep indigo)
    type: Poppins (headings) · Lora (body) · Inter (UI chrome)
    ============================================================ */
 
 /* ── Tokens ─────────────────────────────────────────────── */
 :root {
-  /* ── Backgrounds — warm cream ── */
-  --bg:           #EEECE2;
-  --surface:      #F5F3EC;
-  --surface-2:    #EAE6DC;
-  --surface-3:    #DDD9CF;
+  /* ── Backgrounds — clean white ── */
+  --bg:           #F9FAFB;
+  --surface:      #FFFFFF;
+  --surface-2:    #F3F4F6;
+  --surface-3:    #E5E7EB;
 
-  /* ── Borders — warm, tonal ── */
-  --border:        #D4CFC5;
-  --border-md:     #C4BDB2;
-  --border-strong: #9E9484;
+  /* ── Borders — cool gray ── */
+  --border:        #E5E7EB;
+  --border-md:     #D1D5DB;
+  --border-strong: #9CA3AF;
 
-  /* ── Text — dark warm brown ── */
-  --text:         #3D3929;
-  --text-2:       #5C5444;
-  --text-3:       #9A9182;
-  --text-inv:     #F5F3EC;
+  /* ── Text — slate hierarchy ── */
+  --text:         #111827;
+  --text-2:       #4B5563;
+  --text-3:       #9CA3AF;
+  --text-inv:     #FFFFFF;
 
   /* ── Accent: deep indigo — authoritative ── */
   --accent:       #4F46E5;
   --accent-hover: #4338CA;
   --accent-light: #818CF8;
   --accent-sub:   rgba(79, 70, 229, 0.06);
-  --accent-ring:  rgba(79, 70, 229, 0.20);
+  --accent-ring:  rgba(79, 70, 229, 0.18);
 
   /* ── Score semantic colors ── */
-  --good:         #166534;
-  --good-sub:     rgba(22, 101, 52, 0.07);
-  --moderate:     #92400E;
-  --moderate-sub: rgba(146, 64, 14, 0.07);
-  --poor:         #C2410C;
-  --poor-sub:     rgba(194, 65, 12, 0.07);
-  --critical:     #991B1B;
-  --critical-sub: rgba(153, 27, 27, 0.07);
+  --good:         #059669;
+  --good-sub:     rgba(5, 150, 105, 0.07);
+  --moderate:     #D97706;
+  --moderate-sub: rgba(217, 119, 6, 0.07);
+  --poor:         #EA580C;
+  --poor-sub:     rgba(234, 88, 12, 0.07);
+  --critical:     #DC2626;
+  --critical-sub: rgba(220, 38, 38, 0.07);
 
   /* ── Severity palette ── */
-  --sev-critical: #991B1B;
-  --sev-high:     #C2410C;
-  --sev-medium:   #92400E;
-  --sev-low:      #166534;
-  --sev-info:     #1E40AF;
+  --sev-critical: #DC2626;
+  --sev-high:     #EA580C;
+  --sev-medium:   #D97706;
+  --sev-low:      #059669;
+  --sev-info:     #2563EB;
 
   /* ── Capability tag colors ── */
-  --cap-exec:      rgba(153, 27, 27, 0.07);
-  --cap-exec-text: #991B1B;
-  --cap-write:     rgba(194, 65, 12, 0.07);
-  --cap-write-text:#C2410C;
-  --cap-net:       rgba(30, 64, 175, 0.07);
-  --cap-net-text:  #1E40AF;
-  --cap-read:      rgba(22, 101, 52, 0.07);
-  --cap-read-text: #166534;
-  --cap-cred:      rgba(146, 64, 14, 0.07);
-  --cap-cred-text: #92400E;
-  --cap-fs:        rgba(107, 33, 168, 0.07);
-  --cap-fs-text:   #6B21A8;
+  --cap-exec:      rgba(220, 38, 38, 0.07);
+  --cap-exec-text: #DC2626;
+  --cap-write:     rgba(234, 88, 12, 0.07);
+  --cap-write-text:#EA580C;
+  --cap-net:       rgba(37, 99, 235, 0.07);
+  --cap-net-text:  #2563EB;
+  --cap-read:      rgba(5, 150, 105, 0.07);
+  --cap-read-text: #059669;
+  --cap-cred:      rgba(217, 119, 6, 0.07);
+  --cap-cred-text: #D97706;
+  --cap-fs:        rgba(124, 58, 237, 0.07);
+  --cap-fs-text:   #7C3AED;
 
   /* ── Spacing — 4px base grid ── */
   --s1: 4px;
@@ -86,10 +86,10 @@
   --t-fast: 100ms;
   --t-base: 160ms;
 
-  /* ── Shadows — refined, minimal ── */
-  --shadow-card: 0 1px 2px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.03);
-  --shadow-md:   0 4px 12px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.04);
-  --shadow-lg:   0 8px 30px rgba(0,0,0,0.09), 0 3px 8px rgba(0,0,0,0.05);
+  /* ── Shadows — barely visible, refined ── */
+  --shadow-card: 0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.02);
+  --shadow-md:   0 4px 12px rgba(0,0,0,0.05), 0 2px 4px rgba(0,0,0,0.03);
+  --shadow-lg:   0 8px 30px rgba(0,0,0,0.07), 0 3px 8px rgba(0,0,0,0.04);
 }
 
 /* ── Reset ──────────────────────────────────────────────── */
@@ -130,9 +130,9 @@ code, pre, kbd {
   top: 0;
   z-index: 100;
   border-bottom: 1px solid var(--border);
-  background: rgba(238, 236, 226, 0.96);
-  backdrop-filter: blur(24px) saturate(1.4);
-  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
 }
 
 .header-inner {
@@ -280,7 +280,7 @@ code, pre, kbd {
   width: 100%;
   height: 100%;
   background:
-    radial-gradient(ellipse 90% 55% at 50% -10%, rgba(61, 57, 41, 0.04) 0%, transparent 70%),
+    radial-gradient(ellipse 90% 55% at 50% -10%, rgba(79, 70, 229, 0.04) 0%, transparent 70%),
     transparent;
   pointer-events: none;
   z-index: 0;
@@ -710,10 +710,9 @@ code, pre, kbd {
 
 /* ── Server detail layout ───────────────────────────────── */
 .detail-layout {
-  display: grid;
-  grid-template-columns: 1fr 320px;
+  display: flex;
+  flex-direction: column;
   gap: var(--s6);
-  align-items: start;
 }
 
 .detail-main { min-width: 0; }
@@ -1062,6 +1061,94 @@ code, pre, kbd {
   padding: var(--s8) 0 var(--s6);
   border-bottom: 1px solid var(--border);
   margin-bottom: var(--s6);
+}
+
+.server-header-top {
+  display: flex;
+  gap: var(--s6);
+  align-items: flex-start;
+}
+
+.server-header-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.server-name {
+  font-family: 'Poppins', 'Inter Variable', 'Inter', system-ui, sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: var(--s2);
+  color: var(--text);
+}
+
+.server-description {
+  font-size: 14px;
+  color: var(--text-2);
+  line-height: 1.6;
+  margin-bottom: var(--s4);
+}
+
+.server-meta-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s5);
+  margin-bottom: var(--s4);
+}
+
+.meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.meta-label {
+  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-3);
+}
+
+.meta-value {
+  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.server-github-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent);
+  padding: 5px 12px;
+  border: 1px solid var(--accent-ring);
+  border-radius: var(--r-sm);
+  transition: all var(--t-fast) var(--ease);
+}
+.server-github-link:hover {
+  background: var(--accent-sub);
+  border-color: var(--accent);
+}
+
+.score-summary-section {
+  margin-bottom: var(--s6);
+}
+
+.subscore-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s5);
+  box-shadow: var(--shadow-card);
 }
 
 .breadcrumb {
@@ -2114,7 +2201,7 @@ code, pre, kbd {
 
 /* ═══════════════════════════════════════════════════════════
    CATEGORY DEEP DIVE PANEL
-   Dark-theme security category analysis view
+   Light-theme security category analysis view
    ═══════════════════════════════════════════════════════════ */
 
 .cdd-section {
@@ -2129,7 +2216,7 @@ code, pre, kbd {
 .cdd-section-title {
   font-size: 1.15rem;
   font-weight: 700;
-  color: var(--text-1);
+  color: var(--text);
   margin: 0 0 0.25rem;
   letter-spacing: 0.01em;
 }
@@ -2145,8 +2232,8 @@ code, pre, kbd {
 /* ── Wrapper + radio inputs ─────────────────────────────── */
 
 .cdd-wrap {
-  background: #0a0a0f;
-  border: 1px solid #1e1e2e;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -2158,11 +2245,11 @@ code, pre, kbd {
 .cdd-tabs {
   display: flex;
   gap: 0;
-  border-bottom: 1px solid #1e1e2e;
+  border-bottom: 1px solid var(--border);
   padding: 0.5rem 0.75rem;
   gap: 0.4rem;
   flex-wrap: wrap;
-  background: #060609;
+  background: var(--surface-2);
 }
 
 .cdd-tab {
@@ -2171,11 +2258,11 @@ code, pre, kbd {
   gap: 0.35rem;
   padding: 0.4rem 0.75rem;
   border-radius: 6px;
-  border: 1px solid #2a2a3a;
+  border: 1px solid var(--border-md);
   cursor: pointer;
   font-size: 0.72rem;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--text-3);
   letter-spacing: 0.05em;
   transition: border-color 0.15s, color 0.15s, background 0.15s;
   position: relative;
@@ -2184,7 +2271,7 @@ code, pre, kbd {
 
 .cdd-tab:hover {
   border-color: color-mix(in srgb, var(--cc) 50%, transparent);
-  color: #d1d5db;
+  color: var(--text-2);
 }
 
 .cdd-tab-icon { font-size: 0.85rem; }
@@ -2239,8 +2326,8 @@ code, pre, kbd {
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.25rem;
-  background: color-mix(in srgb, var(--cc) 8%, #0d0d14);
-  border: 1px solid color-mix(in srgb, var(--cc) 30%, transparent);
+  background: color-mix(in srgb, var(--cc) 6%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--cc) 20%, var(--border));
   border-radius: 10px;
   margin-bottom: 1rem;
 }
@@ -2256,20 +2343,20 @@ code, pre, kbd {
 .cdd-cat-name {
   font-size: 1.1rem;
   font-weight: 700;
-  color: #f3f4f6;
+  color: var(--text);
   margin-bottom: 0.2rem;
 }
 
 .cdd-cat-tagline {
   font-size: 0.7rem;
-  color: #6b7280;
+  color: var(--text-3);
   letter-spacing: 0.03em;
 }
 
 .cdd-maturity {
   text-align: center;
-  background: #0a0a10;
-  border: 1px solid #2a2a3a;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 0.5rem 0.9rem;
   min-width: 64px;
@@ -2284,7 +2371,7 @@ code, pre, kbd {
 
 .cdd-maturity-label {
   font-size: 0.55rem;
-  color: #6b7280;
+  color: var(--text-3);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   margin-top: 0.2rem;
@@ -2295,8 +2382,8 @@ code, pre, kbd {
 .cdd-stats {
   display: flex;
   gap: 0;
-  background: #0d0d14;
-  border: 1px solid #1e1e2e;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
   margin-bottom: 1.25rem;
@@ -2306,7 +2393,7 @@ code, pre, kbd {
   flex: 1;
   text-align: center;
   padding: 0.65rem 0.5rem;
-  border-right: 1px solid #1e1e2e;
+  border-right: 1px solid var(--border);
 }
 
 .cdd-stat:last-child { border-right: none; }
@@ -2314,7 +2401,7 @@ code, pre, kbd {
 .cdd-stat-num {
   font-size: 1.1rem;
   font-weight: 700;
-  color: #e5e7eb;
+  color: var(--text);
   font-variant-numeric: tabular-nums;
   line-height: 1;
   margin-bottom: 0.25rem;
@@ -2322,7 +2409,7 @@ code, pre, kbd {
 
 .cdd-stat-label {
   font-size: 0.55rem;
-  color: #4b5563;
+  color: var(--text-3);
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -2339,16 +2426,16 @@ code, pre, kbd {
 /* ── Sub-category blocks ────────────────────────────────── */
 
 .cdd-subcat {
-  background: #0d0d14;
-  border: 1px solid #1e1e2e;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
   margin-bottom: 0.75rem;
   overflow: hidden;
 }
 
 .cdd-subcat-hit {
-  border-color: #3f1515;
-  background: #0f0a0a;
+  border-color: rgba(220, 38, 38, 0.2);
+  background: rgba(220, 38, 38, 0.02);
 }
 
 .cdd-subcat-hdr {
@@ -2356,13 +2443,13 @@ code, pre, kbd {
   align-items: center;
   justify-content: space-between;
   padding: 0.65rem 0.85rem;
-  border-bottom: 1px solid #1e1e2e;
+  border-bottom: 1px solid var(--border);
   flex-wrap: wrap;
   gap: 0.5rem;
 }
 
 .cdd-subcat-hit .cdd-subcat-hdr {
-  border-bottom-color: #2a1515;
+  border-bottom-color: rgba(220, 38, 38, 0.15);
 }
 
 .cdd-subcat-meta {
@@ -2381,7 +2468,7 @@ code, pre, kbd {
 .cdd-subcat-name {
   font-size: 0.8rem;
   font-weight: 600;
-  color: #d1d5db;
+  color: var(--text);
 }
 
 .cdd-subcat-right {
@@ -2393,7 +2480,7 @@ code, pre, kbd {
 .cdd-bar-wrap {
   width: 80px;
   height: 4px;
-  background: #1e1e2e;
+  background: var(--surface-3);
   border-radius: 2px;
   overflow: hidden;
 }
@@ -2423,21 +2510,21 @@ code, pre, kbd {
   white-space: nowrap;
 }
 
-.cdd-badge-rules    { background: #1e1e2e; color: #6b7280; }
-.cdd-badge-hit      { background: #3f1515; color: #f87171; }
-.cdd-badge-triggered{ background: #3f1515; color: #f87171; }
-.cdd-badge-clean    { background: #0d2518; color: #34d399; }
+.cdd-badge-rules    { background: var(--surface-2); color: var(--text-3); border: 1px solid var(--border); }
+.cdd-badge-hit      { background: rgba(220, 38, 38, 0.08); color: #DC2626; }
+.cdd-badge-triggered{ background: rgba(220, 38, 38, 0.08); color: #DC2626; }
+.cdd-badge-clean    { background: rgba(5, 150, 105, 0.08); color: #059669; }
 
 /* ── Sub-category description ───────────────────────────── */
 
 .cdd-subcat-desc {
   font-size: 0.7rem;
-  color: #6b7280;
+  color: var(--text-3);
   padding: 0.4rem 0.85rem;
-  border-bottom: 1px solid #1e1e2e;
+  border-bottom: 1px solid var(--border);
 }
 
-.cdd-subcat-hit .cdd-subcat-desc { border-bottom-color: #2a1515; }
+.cdd-subcat-hit .cdd-subcat-desc { border-bottom-color: rgba(220, 38, 38, 0.15); }
 
 /* ── Rule rows ──────────────────────────────────────────── */
 
@@ -2448,13 +2535,13 @@ code, pre, kbd {
   align-items: center;
   gap: 0.5rem;
   padding: 0.4rem 0.85rem;
-  border-bottom: 1px solid #13131c;
+  border-bottom: 1px solid var(--border);
   font-size: 0.72rem;
 }
 
 .cdd-rule:last-child { border-bottom: none; }
 
-.cdd-rule-hit   { background: color-mix(in srgb, #ef4444 4%, transparent); }
+.cdd-rule-hit   { background: rgba(220, 38, 38, 0.03); }
 .cdd-rule-clean { }
 
 .cdd-rule-id {
@@ -2473,22 +2560,22 @@ code, pre, kbd {
   flex-shrink: 0;
 }
 
-.cdd-sev-critical     { background: #ef4444; box-shadow: 0 0 4px #ef444466; }
-.cdd-sev-high         { background: #f97316; box-shadow: 0 0 4px #f9731666; }
-.cdd-sev-medium       { background: #eab308; }
-.cdd-sev-low          { background: #6b7280; }
-.cdd-sev-informational{ background: #374151; }
+.cdd-sev-critical     { background: var(--sev-critical); }
+.cdd-sev-high         { background: var(--sev-high); }
+.cdd-sev-medium       { background: var(--sev-medium); }
+.cdd-sev-low          { background: var(--sev-low); }
+.cdd-sev-informational{ background: var(--sev-info); }
 
 .cdd-rule-name {
   flex: 1;
-  color: #9ca3af;
+  color: var(--text-2);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: 0.71rem;
 }
 
-.cdd-rule-hit .cdd-rule-name { color: #d1d5db; }
+.cdd-rule-hit .cdd-rule-name { color: var(--text); }
 
 .cdd-rule-right {
   display: flex;
@@ -2499,7 +2586,7 @@ code, pre, kbd {
 
 .cdd-tests {
   font-size: 0.6rem;
-  color: #374151;
+  color: var(--text-3);
   font-variant-numeric: tabular-nums;
 }
 
@@ -2513,16 +2600,16 @@ code, pre, kbd {
   padding: 0.45rem 0.85rem;
   list-style: none;
   cursor: pointer;
-  border-bottom: 1px solid #13131c;
+  border-bottom: 1px solid var(--border);
 }
 
 .cdd-rule-summary::-webkit-details-marker { display: none; }
 
-.cdd-rule[open] > .cdd-rule-summary { border-bottom-color: #1e1e2e; }
+.cdd-rule[open] > .cdd-rule-summary { border-bottom-color: var(--border-md); }
 
 .cdd-expand-arrow {
   font-size: 0.55rem;
-  color: #374151;
+  color: var(--text-3);
   transition: transform 0.2s;
   display: inline-block;
 }
@@ -2532,11 +2619,11 @@ code, pre, kbd {
 /* Expanded rule detail */
 .cdd-rule-detail {
   padding: 0.75rem 0.85rem 0.85rem;
-  background: #080810;
-  border-bottom: 1px solid #1e1e2e;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
 }
 
-.cdd-rule-hit .cdd-rule-detail { background: #0a0608; }
+.cdd-rule-hit .cdd-rule-detail { background: rgba(220, 38, 38, 0.02); }
 
 .cdd-rule-detail-cols {
   display: grid;
@@ -2549,7 +2636,7 @@ code, pre, kbd {
 
 .cdd-detail-heading {
   font-size: 0.58rem;
-  color: #4b5563;
+  color: var(--text-3);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   font-weight: 700;
@@ -2561,7 +2648,7 @@ code, pre, kbd {
   align-items: flex-start;
   gap: 0.45rem;
   font-size: 0.68rem;
-  color: #9ca3af;
+  color: var(--text-2);
   margin-bottom: 0.3rem;
   line-height: 1.4;
 }
@@ -2569,7 +2656,7 @@ code, pre, kbd {
 .cdd-detail-item:last-child { margin-bottom: 0; }
 
 .cdd-detail-check {
-  color: #10b981;
+  color: var(--good);
   font-size: 0.65rem;
   flex-shrink: 0;
   margin-top: 0.05rem;
@@ -2583,7 +2670,7 @@ code, pre, kbd {
   margin-top: 0.05rem;
 }
 
-.cdd-detail-bar-mit { background: #6b7280; }
+.cdd-detail-bar-mit { background: var(--text-3); }
 
 /* Framework alignment badges at bottom of expanded rule */
 .cdd-fw-badges {
@@ -2608,8 +2695,8 @@ code, pre, kbd {
 .cdd-right { display: flex; flex-direction: column; gap: 0.75rem; }
 
 .cdd-sidebar-card {
-  background: #0d0d14;
-  border: 1px solid #1e1e2e;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 0.85rem;
 }
@@ -2617,7 +2704,7 @@ code, pre, kbd {
 .cdd-sidebar-title {
   font-size: 0.7rem;
   font-weight: 700;
-  color: #9ca3af;
+  color: var(--text-2);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   margin-bottom: 0.75rem;
@@ -2635,7 +2722,7 @@ code, pre, kbd {
 
 .cdd-fw-name {
   font-size: 0.65rem;
-  color: #9ca3af;
+  color: var(--text-2);
   min-width: 110px;
   white-space: nowrap;
   overflow: hidden;
@@ -2645,7 +2732,7 @@ code, pre, kbd {
 .cdd-fw-bar-wrap {
   flex: 1;
   height: 4px;
-  background: #1e1e2e;
+  background: var(--surface-3);
   border-radius: 2px;
   overflow: hidden;
 }
@@ -2675,7 +2762,7 @@ code, pre, kbd {
 .cdd-test-row:last-child { margin-bottom: 0; }
 .cdd-test-label {
   font-size: 0.65rem;
-  color: #9ca3af;
+  color: var(--text-2);
   min-width: 110px;
   white-space: nowrap;
   overflow: hidden;
@@ -2707,7 +2794,7 @@ code, pre, kbd {
 
 .cdd-kc-phase {
   font-size: 0.68rem;
-  color: #9ca3af;
+  color: var(--text-2);
 }
 
 /* ── Responsive ─────────────────────────────────────────── */
