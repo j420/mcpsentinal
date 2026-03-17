@@ -439,21 +439,10 @@ export default async function CategoryPage({
   return (
     <>
       {/* ── Breadcrumb ──────────────────────────────────────── */}
-      <nav
-        aria-label="Breadcrumb"
-        style={{
-          paddingTop: "var(--s8)",
-          marginBottom: "var(--s2)",
-          display: "flex",
-          alignItems: "center",
-          gap: "var(--s2)",
-          fontSize: "13px",
-          color: "var(--text-3)",
-        }}
-      >
-        <a href="/" style={{ color: "var(--text-3)" }}>Registry</a>
+      <nav aria-label="Breadcrumb" className="breadcrumb" style={{ paddingTop: "var(--s8)" }}>
+        <a href="/">Registry</a>
         <span aria-hidden="true">/</span>
-        <a href="/categories" style={{ color: "var(--text-3)" }}>Categories</a>
+        <a href="/categories">Categories</a>
         <span aria-hidden="true">/</span>
         <span style={{ color: "var(--text-2)" }}>{meta.label}</span>
       </nav>
@@ -466,22 +455,8 @@ export default async function CategoryPage({
         <div>
           <h1 className="cat-detail-title">{meta.label}</h1>
           <p className="cat-detail-meta">{meta.description}</p>
-          <div
-            style={{
-              marginTop: "var(--s3)",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-              fontSize: "11px",
-              fontFamily: "'JetBrains Mono', monospace",
-              color: "var(--text-3)",
-              background: "var(--surface-2)",
-              border: "1px solid var(--border)",
-              borderRadius: "var(--r-sm)",
-              padding: "3px 8px",
-            }}
-          >
-            ⚠ {meta.riskNote}
+          <div className="rule-count-badge" style={{ marginTop: "var(--s3)", display: "inline-flex", gap: "6px", fontFamily: "'JetBrains Mono', monospace" }}>
+            &#x26A0; {meta.riskNote}
           </div>
         </div>
       </div>
@@ -501,7 +476,7 @@ export default async function CategoryPage({
             {avg !== null ? (
               <>
                 {avg}
-                <span style={{ fontSize: "16px", color: "var(--text-3)", fontWeight: 400 }}>/100</span>
+                <span className="stat-value-denom">/100</span>
               </>
             ) : "—"}
           </span>
@@ -540,11 +515,7 @@ export default async function CategoryPage({
             <option value="40">Poor (40+)</option>
           </select>
 
-          <button
-            type="submit"
-            className="btn-primary"
-            style={{ padding: "7px 16px", fontSize: "13px" }}
-          >
+          <button type="submit" className="btn-primary btn-primary-sm">
             Apply
           </button>
 
@@ -589,18 +560,18 @@ export default async function CategoryPage({
                     <p className="server-desc">{server.description}</p>
                   )}
                   {server.author && (
-                    <p style={{ color: "var(--text-3)", fontSize: "11px", marginTop: "2px" }}>
+                    <p className="server-author">
                       by {server.author}
                     </p>
                   )}
                 </td>
-                <td style={{ color: "var(--text-3)", fontSize: "13px" }}>
-                  {server.language || "—"}
+                <td className="server-lang">
+                  {server.language || "\u2014"}
                 </td>
-                <td className="right" style={{ color: "var(--text-2)", fontSize: "13px" }}>
+                <td className="right server-metric">
                   {fmtNum(server.github_stars)}
                 </td>
-                <td className="right" style={{ color: "var(--text-2)", fontSize: "13px" }}>
+                <td className="right server-metric">
                   {fmtNum(server.npm_downloads)}
                 </td>
                 <td className="right">
@@ -641,7 +612,7 @@ export default async function CategoryPage({
           })}
           {pagination.pages > 7 && page < pagination.pages && (
             <>
-              <span style={{ color: "var(--text-3)", fontSize: "14px" }}>…</span>
+              <span className="pagination-ellipsis">&hellip;</span>
               <a href={buildPageUrl(category, sp, pagination.pages)} className="page-btn">
                 {pagination.pages}
               </a>
@@ -660,25 +631,14 @@ export default async function CategoryPage({
       )}
 
       {/* ── Footer nav ──────────────────────────────────────── */}
-      <div
-        style={{
-          marginTop: "var(--s12)",
-          display: "flex",
-          alignItems: "center",
-          gap: "var(--s4)",
-          paddingTop: "var(--s6)",
-          borderTop: "1px solid var(--border)",
-        }}
-      >
-        <a href="/categories" style={{ fontSize: "13px", color: "var(--text-3)", display: "inline-flex", alignItems: "center", gap: "6px" }}>
+      <div className="page-footer-nav">
+        <a href="/categories" className="page-footer-link">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M10 3L5 8l5 5" />
           </svg>
           All categories
         </a>
-        <a href="/" style={{ fontSize: "13px", color: "var(--text-3)" }}>
-          Search all servers
-        </a>
+        <a href="/" className="page-footer-link">Search all servers</a>
       </div>
     </>
   );

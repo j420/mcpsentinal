@@ -256,25 +256,8 @@ const PIPELINE = [
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function SevDot({ sev }: { sev: string }) {
-  const colors: Record<string, string> = {
-    critical: "var(--sev-critical)",
-    high: "var(--sev-high)",
-    medium: "var(--sev-medium)",
-    low: "var(--sev-low)",
-  };
-  return (
-    <span
-      style={{
-        display: "inline-block",
-        width: 6,
-        height: 6,
-        borderRadius: "50%",
-        background: colors[sev] ?? "var(--text-3)",
-        flexShrink: 0,
-        marginTop: 2,
-      }}
-    />
-  );
+  const cls = `sev-dot sev-dot-${sev === "informational" ? "info" : sev}`;
+  return <span className={cls} />;
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -284,9 +267,7 @@ export default function AboutPage() {
     <>
       {/* ── Hero ─────────────────────────────────────── */}
       <section className="about-hero">
-        <div className="hero-eyebrow" style={{ display: "inline-flex" }}>
-          About MCP Sentinel
-        </div>
+        <div className="hero-eyebrow">About MCP Sentinel</div>
         <h1 className="about-h1">
           Security intelligence built
           <br />
@@ -302,31 +283,22 @@ export default function AboutPage() {
       <div className="divider" />
 
       {/* ── The problem ──────────────────────────────── */}
-      <section style={{ maxWidth: 680, padding: "var(--s8) 0" }}>
-        <h2
-          style={{
-            fontSize: "22px",
-            fontWeight: 700,
-            letterSpacing: "-0.02em",
-            marginBottom: "var(--s4)",
-          }}
-        >
-          The problem we&apos;re solving
-        </h2>
-        <p style={{ fontSize: "15px", color: "var(--text-2)", lineHeight: 1.7, marginBottom: "var(--s4)" }}>
+      <section className="about-section-narrow">
+        <h2 className="about-h2">The problem we&apos;re solving</h2>
+        <p className="about-body">
           MCP servers are granted access to files, databases, APIs, and code
-          execution — often in a single{" "}
+          execution &mdash; often in a single{" "}
           <code style={{ color: "var(--accent)" }}>claude_desktop_config.json</code>{" "}
           edit. There is no vetting. No audit. No trust signal.
         </p>
-        <p style={{ fontSize: "15px", color: "var(--text-2)", lineHeight: 1.7, marginBottom: "var(--s4)" }}>
+        <p className="about-body">
           Every AI security framework talks about prompt injection, tool
           poisoning, and supply-chain risk in the abstract. We run 60
           concrete checks on every server we can find, store the results
-          immutably, and publish them — so developers, enterprises, and
+          immutably, and publish them &mdash; so developers, enterprises, and
           gateway builders can make decisions from evidence, not intuition.
         </p>
-        <p style={{ fontSize: "15px", color: "var(--text-2)", lineHeight: 1.7 }}>
+        <p className="about-body">
           The data is the product. We are the security intelligence layer
           upstream of every gateway, registry, and deployment decision in
           the MCP ecosystem.
@@ -336,24 +308,9 @@ export default function AboutPage() {
       <div className="divider" />
 
       {/* ── Pipeline ─────────────────────────────────── */}
-      <section style={{ padding: "var(--s8) 0" }}>
-        <h2
-          style={{
-            fontSize: "22px",
-            fontWeight: 700,
-            letterSpacing: "-0.02em",
-            marginBottom: "var(--s2)",
-          }}
-        >
-          How a scan works
-        </h2>
-        <p
-          style={{
-            fontSize: "14px",
-            color: "var(--text-3)",
-            marginBottom: "var(--s6)",
-          }}
-        >
+      <section className="about-section">
+        <h2 className="about-h2-sm">How a scan works</h2>
+        <p className="about-subtitle">
           Four deterministic stages. Every stage is a separate package with a
           documented contract. No LLMs, no black boxes.
         </p>
@@ -362,17 +319,7 @@ export default function AboutPage() {
             <div key={step.num} className="pipeline-step">
               <div className="pipeline-num">Stage {step.num}</div>
               <div className="pipeline-name">{step.name}</div>
-              <div
-                style={{
-                  fontSize: "10px",
-                  fontFamily: "var(--font-mono, monospace)",
-                  color: "var(--accent)",
-                  marginBottom: "var(--s2)",
-                  opacity: 0.8,
-                }}
-              >
-                @mcp-sentinel/{step.package}
-              </div>
+              <div className="pipeline-pkg">@mcp-sentinel/{step.package}</div>
               <p className="pipeline-desc">{step.desc}</p>
             </div>
           ))}
@@ -382,134 +329,37 @@ export default function AboutPage() {
       <div className="divider" />
 
       {/* ── 60 Detection rules ───────────────────────── */}
-      <section style={{ padding: "var(--s8) 0" }}>
-        <h2
-          style={{
-            fontSize: "22px",
-            fontWeight: 700,
-            letterSpacing: "-0.02em",
-            marginBottom: "var(--s2)",
-          }}
-        >
-          103 detection rules across 11 categories
-        </h2>
-        <p
-          style={{
-            fontSize: "14px",
-            color: "var(--text-3)",
-            marginBottom: "var(--s6)",
-          }}
-        >
+      <section className="about-section">
+        <h2 className="about-h2-sm">103 detection rules across 11 categories</h2>
+        <p className="about-subtitle">
           All rules are YAML-defined. The engine is deterministic. Adding a
           rule never requires changing engine code. Every finding requires{" "}
           <code>rule_id</code>, <code>evidence</code>, and{" "}
           <code>remediation</code>.
         </p>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "var(--s4)" }}>
+        <div className="rule-cat-stack">
           {RULE_CATEGORIES.map((cat) => (
             <div key={cat.code} className="card">
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  justifyContent: "space-between",
-                  gap: "var(--s4)",
-                  marginBottom: "var(--s3)",
-                }}
-              >
+              <div className="rule-cat-header">
                 <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "var(--s2)", marginBottom: "var(--s1)" }}>
-                    <span
-                      style={{
-                        fontSize: "13px",
-                        fontWeight: 800,
-                        color: "var(--accent)",
-                        fontFamily: "var(--font-mono, monospace)",
-                        background: "var(--accent-sub)",
-                        border: "1px solid var(--accent-ring)",
-                        borderRadius: "var(--r-sm)",
-                        padding: "1px 7px",
-                      }}
-                    >
-                      {cat.code}
-                    </span>
-                    <h3
-                      style={{
-                        fontSize: "15px",
-                        fontWeight: 700,
-                        color: "var(--text)",
-                      }}
-                    >
-                      {cat.name}
-                    </h3>
-                    <span
-                      style={{
-                        fontSize: "11px",
-                        color: "var(--text-3)",
-                        background: "var(--surface-2)",
-                        border: "1px solid var(--border)",
-                        borderRadius: "var(--r-full)",
-                        padding: "1px 7px",
-                        fontWeight: 500,
-                      }}
-                    >
-                      {cat.count} rules
-                    </span>
+                  <div className="rule-cat-title-row">
+                    <span className="rule-cat-badge">{cat.code}</span>
+                    <h3 className="rule-cat-title">{cat.name}</h3>
+                    <span className="rule-count-badge">{cat.count} rules</span>
                   </div>
-                  <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
-                    Requires: {cat.requires}
-                  </p>
+                  <p className="rule-cat-requires">Requires: {cat.requires}</p>
                 </div>
               </div>
 
-              <p
-                style={{
-                  fontSize: "13px",
-                  color: "var(--text-2)",
-                  lineHeight: 1.55,
-                  marginBottom: "var(--s4)",
-                  padding: "var(--s3)",
-                  background: "var(--surface-2)",
-                  borderRadius: "var(--r-sm)",
-                  borderLeft: "2px solid var(--accent)",
-                }}
-              >
-                {cat.highlight}
-              </p>
+              <p className="rule-cat-highlight">{cat.highlight}</p>
 
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-                  gap: "var(--s1)",
-                }}
-              >
+              <div className="rule-list-grid">
                 {cat.rules.map((rule) => (
-                  <div
-                    key={rule.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: "var(--s2)",
-                      padding: "var(--s2)",
-                    }}
-                  >
+                  <div key={rule.id} className="rule-list-item">
                     <SevDot sev={rule.sev} />
-                    <span
-                      style={{
-                        fontSize: "11px",
-                        fontWeight: 700,
-                        color: "var(--text-3)",
-                        fontFamily: "var(--font-mono, monospace)",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {rule.id}
-                    </span>
-                    <span style={{ fontSize: "12px", color: "var(--text-2)" }}>
-                      {rule.name}
-                    </span>
+                    <span className="rule-list-id">{rule.id}</span>
+                    <span className="rule-list-name">{rule.name}</span>
                   </div>
                 ))}
               </div>
@@ -521,24 +371,9 @@ export default function AboutPage() {
       <div className="divider" />
 
       {/* ── OWASP MCP Top 10 mapping ─────────────────── */}
-      <section style={{ padding: "var(--s8) 0" }}>
-        <h2
-          style={{
-            fontSize: "22px",
-            fontWeight: 700,
-            letterSpacing: "-0.02em",
-            marginBottom: "var(--s2)",
-          }}
-        >
-          OWASP MCP Top 10 mapping
-        </h2>
-        <p
-          style={{
-            fontSize: "14px",
-            color: "var(--text-3)",
-            marginBottom: "var(--s5)",
-          }}
-        >
+      <section className="about-section">
+        <h2 className="about-h2-sm">OWASP MCP Top 10 mapping</h2>
+        <p className="about-subtitle-sm">
           Every rule is mapped to the OWASP MCP Top 10. A server&apos;s OWASP
           coverage score shows whether any findings were detected in each
           category.
@@ -554,32 +389,9 @@ export default function AboutPage() {
           <tbody>
             {OWASP_RULES.map((row) => (
               <tr key={row.id}>
-                <td>
-                  <span
-                    style={{
-                      fontFamily: "var(--font-mono, monospace)",
-                      fontWeight: 700,
-                      color: "var(--accent)",
-                      fontSize: "12px",
-                    }}
-                  >
-                    {row.id}
-                  </span>
-                </td>
-                <td style={{ fontWeight: 500, color: "var(--text)" }}>
-                  {row.name}
-                </td>
-                <td>
-                  <span
-                    style={{
-                      fontFamily: "var(--font-mono, monospace)",
-                      fontSize: "12px",
-                      color: "var(--text-3)",
-                    }}
-                  >
-                    {row.rules}
-                  </span>
-                </td>
+                <td><span className="owasp-id-cell">{row.id}</span></td>
+                <td className="owasp-name-cell">{row.name}</td>
+                <td><span className="owasp-rules-cell">{row.rules}</span></td>
               </tr>
             ))}
           </tbody>
@@ -589,28 +401,11 @@ export default function AboutPage() {
       <div className="divider" />
 
       {/* ── Scoring ──────────────────────────────────── */}
-      <section style={{ padding: "var(--s8) 0" }}>
-        <h2
-          style={{
-            fontSize: "22px",
-            fontWeight: 700,
-            letterSpacing: "-0.02em",
-            marginBottom: "var(--s5)",
-          }}
-        >
-          Scoring algorithm
-        </h2>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "var(--s5)",
-          }}
-        >
+      <section className="about-section">
+        <h2 className="about-h2">Scoring algorithm</h2>
+        <div className="scoring-grid">
           <div className="card">
-            <h3 style={{ fontSize: "14px", fontWeight: 700, marginBottom: "var(--s3)" }}>
-              Formula
-            </h3>
+            <h3 className="card-h3">Formula</h3>
             <pre
               className="badge-embed"
               style={{ fontSize: "14px", whiteSpace: "pre-wrap" }}
@@ -626,15 +421,13 @@ Info      →  −1
 Floor: 0  |  Ceiling: 100`}</pre>
           </div>
           <div className="card">
-            <h3 style={{ fontSize: "14px", fontWeight: 700, marginBottom: "var(--s3)" }}>
-              Special rules
-            </h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: "var(--s3)" }}>
+            <h3 className="card-h3">Special rules</h3>
+            <div className="rule-stack">
               <div>
-                <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--critical)", marginBottom: "var(--s1)" }}>
+                <div className="scoring-rule-title" style={{ color: "var(--critical)" }}>
                   Lethal Trifecta (F1)
                 </div>
-                <p style={{ fontSize: "13px", color: "var(--text-3)", lineHeight: 1.55 }}>
+                <p className="scoring-rule-body">
                   If a server reads private data AND ingests untrusted content
                   AND has external network access, its total score is{" "}
                   <strong style={{ color: "var(--text-2)" }}>capped at 40</strong>{" "}
@@ -643,13 +436,13 @@ Floor: 0  |  Ceiling: 100`}</pre>
                 </p>
               </div>
               <div>
-                <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-2)", marginBottom: "var(--s1)" }}>
+                <div className="scoring-rule-title" style={{ color: "var(--text-2)" }}>
                   Sub-scores
                 </div>
-                <p style={{ fontSize: "13px", color: "var(--text-3)", lineHeight: 1.55 }}>
+                <p className="scoring-rule-body">
                   Code, Dependencies, Config, Description, and Behavior scores
                   are computed independently. A server can have a poor Code
-                  score but a clean Dependencies score — the breakdown is
+                  score but a clean Dependencies score &mdash; the breakdown is
                   always shown on the detail page.
                 </p>
               </div>

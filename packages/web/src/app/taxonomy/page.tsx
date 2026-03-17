@@ -9,56 +9,71 @@ const totalRules = THREAT_CATS.reduce(
 );
 const totalSubCats = THREAT_CATS.reduce((sum, cat) => sum + cat.subCats.length, 0);
 
+const SEV_COUNTS = { critical: 0, high: 0, medium: 0, low: 0 };
+// Count severities across all rules (simplified view)
+const allRuleIds = THREAT_CATS.flatMap((c) => c.subCats.flatMap((sc) => sc.rules));
+
 export default function TaxonomyPage() {
   return (
-    <main style={{ maxWidth: 1200, margin: "0 auto", padding: "var(--s5) var(--s4)" }}>
-      {/* Page header */}
-      <div style={{ marginBottom: "var(--s5)" }}>
-        <h1 style={{ fontSize: "24px", fontWeight: 700, marginBottom: "var(--s2)" }}>
-          Security Rule Taxonomy
-        </h1>
-        <p style={{ color: "var(--text-3)", fontSize: "14px", marginBottom: "var(--s4)" }}>
-          {totalRules} detection rules · {THREAT_CATS.length} threat categories · {totalSubCats} sub-categories · 9 security frameworks
+    <div className="tax-page">
+      {/* Hero header */}
+      <div className="tax-hero">
+        <div className="tax-hero-eyebrow">Detection Engine</div>
+        <h1 className="tax-hero-title">Security Rule Taxonomy</h1>
+        <p className="tax-hero-sub">
+          {totalRules} detection rules across {THREAT_CATS.length} threat categories and {totalSubCats} sub-categories.
+          Every rule is backed by OWASP, MITRE ATLAS, or real-world CVEs. No LLMs. Deterministic.
         </p>
+      </div>
 
-        {/* Summary grid */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
-          gap: "var(--s2)",
-          marginBottom: "var(--s5)",
-        }}>
-          {THREAT_CATS.map((cat) => {
-            const ruleCount = cat.subCats.reduce((s, sc) => s + sc.rules.length, 0);
-            return (
-              <a
-                key={cat.id}
-                href={`#cdd-${cat.id}`}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  padding: "10px 14px",
-                  background: "var(--surface-1)",
-                  border: `1px solid ${cat.color}33`,
-                  borderRadius: "8px",
-                  textDecoration: "none",
-                  color: "inherit",
-                }}
-              >
-                <span style={{ fontSize: "20px" }}>{cat.icon}</span>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: "13px", color: cat.color }}>{cat.id}</div>
-                  <div style={{ fontSize: "11px", color: "var(--text-3)" }}>{ruleCount} rules</div>
-                </div>
-              </a>
-            );
-          })}
+      {/* Category quick-nav grid */}
+      <div className="tax-nav-grid">
+        {THREAT_CATS.map((cat) => {
+          const ruleCount = cat.subCats.reduce((s, sc) => s + sc.rules.length, 0);
+          return (
+            <a
+              key={cat.id}
+              href={`#cdd-${cat.id}`}
+              className="tax-nav-card"
+              style={{ "--tax-cc": cat.color } as React.CSSProperties}
+            >
+              <div className="tax-nav-icon">{cat.icon}</div>
+              <div className="tax-nav-info">
+                <span className="tax-nav-code">{cat.id}</span>
+                <span className="tax-nav-name">{cat.name}</span>
+              </div>
+              <span className="tax-nav-count">{ruleCount}</span>
+            </a>
+          );
+        })}
+      </div>
+
+      {/* Stats strip */}
+      <div className="tax-stats">
+        <div className="tax-stat">
+          <span className="tax-stat-val">{totalRules}</span>
+          <span className="tax-stat-label">Rules</span>
+        </div>
+        <div className="tax-stat">
+          <span className="tax-stat-val">{THREAT_CATS.length}</span>
+          <span className="tax-stat-label">Categories</span>
+        </div>
+        <div className="tax-stat">
+          <span className="tax-stat-val">{totalSubCats}</span>
+          <span className="tax-stat-label">Sub-categories</span>
+        </div>
+        <div className="tax-stat">
+          <span className="tax-stat-val">9</span>
+          <span className="tax-stat-label">Frameworks</span>
+        </div>
+        <div className="tax-stat">
+          <span className="tax-stat-val">4</span>
+          <span className="tax-stat-label">Handler Types</span>
         </div>
       </div>
 
-      {/* The full panel — no findings means everything shows as clean */}
+      {/* The full deep-dive panel */}
       <CategoryDeepDivePanel findings={[]} />
-    </main>
+    </div>
   );
 }

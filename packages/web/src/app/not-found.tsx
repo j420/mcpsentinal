@@ -16,22 +16,7 @@ export default function NotFound() {
         <a href="/" className="btn-primary">
           Browse registry
         </a>
-        <a
-          href="/dashboard"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            padding: "10px 20px",
-            border: "1px solid var(--border-md)",
-            borderRadius: "var(--r-md)",
-            fontSize: "14px",
-            fontWeight: 600,
-            color: "var(--text-2)",
-            background: "var(--surface)",
-            textDecoration: "none",
-            transition: "all var(--t-fast) var(--ease)",
-          }}
-        >
+        <a href="/dashboard" className="btn-secondary">
           Ecosystem dashboard
         </a>
       </div>

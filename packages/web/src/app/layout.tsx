@@ -106,6 +106,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <head>
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <link rel="icon" href="/favicon.svg" sizes="any" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
@@ -121,40 +123,32 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="header-inner">
             <a href="/" className="site-logo">
               <span className="logo-mark" aria-hidden="true">
-                {/* AI Shield: neural network nodes + radar rings inside a security shield */}
                 <svg
                   width="30"
                   height="30"
-                  viewBox="0 0 30 30"
+                  viewBox="0 0 32 32"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
                 >
-                  {/* Shield body */}
                   <path
-                    d="M15 2.5L25.5 6.5V13.5C25.5 20 21 25.5 15 27.5C9 25.5 4.5 20 4.5 13.5V6.5L15 2.5Z"
+                    d="M16 2L27 6.5V14C27 21.5 22 27 16 29C10 27 5 21.5 5 14V6.5L16 2Z"
                     fill="var(--accent-sub)"
                     stroke="var(--accent)"
                     strokeWidth="1.4"
                     strokeLinejoin="round"
                   />
-                  {/* Outer radar ring */}
-                  <circle cx="15" cy="14" r="6.5" stroke="var(--accent)" strokeWidth="0.6" opacity="0.28" strokeDasharray="2 2" />
-                  {/* Inner radar ring */}
-                  <circle cx="15" cy="14" r="3.8" stroke="var(--accent)" strokeWidth="0.5" opacity="0.18" strokeDasharray="1.5 1.8" />
-                  {/* Neural network nodes — upper pair */}
-                  <circle cx="10.5" cy="10.5" r="1.35" fill="var(--accent)" opacity="0.65" />
-                  <circle cx="19.5" cy="10.5" r="1.35" fill="var(--accent)" opacity="0.65" />
-                  {/* Neural network nodes — lower pair */}
-                  <circle cx="10" cy="18.5" r="1.1" fill="var(--accent)" opacity="0.42" />
-                  <circle cx="20" cy="18.5" r="1.1" fill="var(--accent)" opacity="0.42" />
-                  {/* Connection lines from nodes to center */}
-                  <line x1="10.5" y1="10.5" x2="15" y2="14" stroke="var(--accent)" strokeWidth="0.75" opacity="0.40" />
-                  <line x1="19.5" y1="10.5" x2="15" y2="14" stroke="var(--accent)" strokeWidth="0.75" opacity="0.40" />
-                  <line x1="10"   y1="18.5" x2="15" y2="14" stroke="var(--accent)" strokeWidth="0.65" opacity="0.28" />
-                  <line x1="20"   y1="18.5" x2="15" y2="14" stroke="var(--accent)" strokeWidth="0.65" opacity="0.28" />
-                  {/* Center pulse — glow ring + solid core */}
-                  <circle cx="15" cy="14" r="2.6" fill="var(--accent)" opacity="0.18" />
-                  <circle cx="15" cy="14" r="1.7" fill="var(--accent)" />
+                  <circle cx="16" cy="14.5" r="7" stroke="var(--accent-light)" strokeWidth="0.6" opacity="0.35" strokeDasharray="2.5 2" />
+                  <circle cx="16" cy="14.5" r="4.2" stroke="var(--accent-light)" strokeWidth="0.5" opacity="0.2" strokeDasharray="1.5 1.5" />
+                  <line x1="16" y1="14.5" x2="22" y2="10" stroke="var(--accent-light)" strokeWidth="0.8" opacity="0.5" strokeLinecap="round" />
+                  <circle cx="16" cy="14.5" r="2.8" fill="var(--accent)" opacity="0.15" />
+                  <circle cx="16" cy="14.5" r="1.8" fill="var(--accent)" opacity="0.35" />
+                  <circle cx="16" cy="14.5" r="1.1" fill="var(--accent-light)" />
+                  <circle cx="11" cy="11" r="1.2" fill="var(--accent-light)" opacity="0.6" />
+                  <circle cx="21" cy="11" r="1.2" fill="var(--accent-light)" opacity="0.6" />
+                  <circle cx="11.5" cy="19" r="1" fill="var(--accent-light)" opacity="0.4" />
+                  <circle cx="20.5" cy="19" r="1" fill="var(--accent-light)" opacity="0.4" />
+                  <line x1="11" y1="11" x2="16" y2="14.5" stroke="var(--accent-light)" strokeWidth="0.5" opacity="0.3" />
+                  <line x1="21" y1="11" x2="16" y2="14.5" stroke="var(--accent-light)" strokeWidth="0.5" opacity="0.3" />
                 </svg>
               </span>
               <span className="logo-text">
@@ -163,12 +157,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </span>
             </a>
 
-            <nav className="site-nav" aria-label="Main navigation">
+            <button
+              className="nav-toggle"
+              aria-label="Toggle navigation"
+              aria-expanded="false"
+              onClick={undefined}
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                <path d="M3 5h14M3 10h14M3 15h14" />
+              </svg>
+            </button>
+            <nav className="site-nav" id="site-nav" aria-label="Main navigation">
               <a href="/" className="nav-link">Registry</a>
+              <a href="/servers" className="nav-link">Servers</a>
               <a href="/categories" className="nav-link">Categories</a>
               <a href="/dashboard" className="nav-link">Dashboard</a>
               <a href="/about" className="nav-link">About</a>
               <a href={API_URL} className="nav-link nav-link-api" target="_blank" rel="noopener noreferrer">
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" style={{ display: "inline", verticalAlign: "-1px", marginRight: "3px" }}>
+                  <path d="M4 6h8M4 10h5" />
+                  <rect x="1" y="2" width="14" height="12" rx="2" />
+                </svg>
                 API
               </a>
             </nav>
@@ -181,23 +190,63 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* ── Footer ────────────────────────────────── */}
         <footer className="site-footer">
           <div className="footer-inner">
-            <span className="footer-copy">
-              © {new Date().getFullYear()} MCP Sentinel — All detection is deterministic. No LLMs.
-            </span>
-            <nav className="footer-links" aria-label="Footer links">
-              <a href="https://github.com/mcp-sentinel" className="footer-link" target="_blank" rel="noopener noreferrer">
-                GitHub
+            <div className="footer-brand">
+              <a href="/" className="footer-brand-link">
+                <svg width="20" height="20" viewBox="0 0 32 32" fill="none">
+                  <path d="M16 2L27 6.5V14C27 21.5 22 27 16 29C10 27 5 21.5 5 14V6.5L16 2Z" fill="var(--accent-sub)" stroke="var(--accent)" strokeWidth="1.2" strokeLinejoin="round"/>
+                  <circle cx="16" cy="14.5" r="1.1" fill="var(--accent-light)"/>
+                </svg>
+                <span className="footer-brand-text">MCP Sentinel</span>
               </a>
-              <a href="/about" className="footer-link">About</a>
-              <a href={API_URL} className="footer-link" target="_blank" rel="noopener noreferrer">
-                API Docs
-              </a>
-              <a href="https://modelcontextprotocol.io" className="footer-link" target="_blank" rel="noopener noreferrer">
-                MCP Spec
-              </a>
-            </nav>
+              <p className="footer-tagline">
+                Security intelligence for the MCP ecosystem.
+                <br />
+                103 detection rules. Zero guesswork. No LLMs.
+              </p>
+            </div>
+            <div className="footer-columns">
+              <div className="footer-col">
+                <h4 className="footer-col-title">Product</h4>
+                <nav className="footer-col-links" aria-label="Product links">
+                  <a href="/" className="footer-link">Registry</a>
+                  <a href="/categories" className="footer-link">Categories</a>
+                  <a href="/dashboard" className="footer-link">Dashboard</a>
+                  <a href="/about" className="footer-link">About</a>
+                </nav>
+              </div>
+              <div className="footer-col">
+                <h4 className="footer-col-title">Developers</h4>
+                <nav className="footer-col-links" aria-label="Developer links">
+                  <a href={API_URL} className="footer-link" target="_blank" rel="noopener noreferrer">REST API</a>
+                  <a href="https://github.com/mcp-sentinel" className="footer-link" target="_blank" rel="noopener noreferrer">GitHub</a>
+                  <a href="https://www.npmjs.com/package/mcp-sentinel" className="footer-link" target="_blank" rel="noopener noreferrer">npm CLI</a>
+                </nav>
+              </div>
+              <div className="footer-col">
+                <h4 className="footer-col-title">Resources</h4>
+                <nav className="footer-col-links" aria-label="Resource links">
+                  <a href="https://modelcontextprotocol.io" className="footer-link" target="_blank" rel="noopener noreferrer">MCP Spec</a>
+                  <a href="https://owasp.org/www-project-top-10-for-large-language-model-applications/" className="footer-link" target="_blank" rel="noopener noreferrer">OWASP MCP Top 10</a>
+                </nav>
+              </div>
+            </div>
+          </div>
+          <div className="footer-bottom">
+            <div className="footer-bottom-inner">
+              <span className="footer-copy">
+                &copy; {new Date().getFullYear()} MCP Sentinel
+              </span>
+              <span className="footer-copy">
+                All detection is deterministic. No LLMs in the analysis pipeline.
+              </span>
+            </div>
           </div>
         </footer>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `document.querySelector('.nav-toggle')?.addEventListener('click',function(){var n=document.getElementById('site-nav');if(n){n.classList.toggle('nav-open');this.setAttribute('aria-expanded',n.classList.contains('nav-open'))}})`,
+          }}
+        />
       </body>
     </html>
   );

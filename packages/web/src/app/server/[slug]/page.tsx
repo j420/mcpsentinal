@@ -135,12 +135,12 @@ function ScoreRing({ score }: { score: number | null }) {
   const color = scoreColor(score);
 
   return (
-    <div style={{ position: "relative", width: 100, height: 100 }}>
+    <div className="score-ring-wrap">
       <svg
         width="100"
         height="100"
         viewBox="0 0 100 100"
-        style={{ transform: "rotate(-90deg)" }}
+        className="score-ring-svg"
         aria-hidden="true"
       >
         <circle cx="50" cy="50" r={r} fill="none" stroke="var(--surface-3)" strokeWidth="8" />
@@ -155,35 +155,19 @@ function ScoreRing({ score }: { score: number | null }) {
             strokeLinecap="round"
             strokeDasharray={circ}
             strokeDashoffset={offset}
-            style={{ transition: "stroke-dashoffset 0.6s cubic-bezier(0.16,1,0.3,1)" }}
+            className="score-ring-arc"
           />
         )}
       </svg>
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
+      <div className="score-ring-center">
         <span
-          style={{
-            fontSize: score !== null ? "22px" : "13px",
-            fontWeight: 800,
-            letterSpacing: "-0.04em",
-            color,
-            lineHeight: 1,
-          }}
+          className={`score-ring-number ${score !== null ? "score-ring-number-value" : "score-ring-number-empty"}`}
+          style={{ color }}
         >
           {score !== null ? score : "\u2014"}
         </span>
         {score !== null && (
-          <span style={{ fontSize: "9px", color: "var(--text-3)", fontWeight: 600, letterSpacing: "0.04em" }}>
-            / 100
-          </span>
+          <span className="score-ring-denom">/ 100</span>
         )}
       </div>
     </div>

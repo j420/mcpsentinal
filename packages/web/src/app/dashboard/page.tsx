@@ -190,72 +190,41 @@ export default async function DashboardPage() {
     <>
       {/* ── API warning ──────────────────────────────── */}
       {apiDown && (
-        <div
-          role="alert"
-          style={{
-            background: "var(--surface-2)",
-            border: "1px solid var(--poor)",
-            borderRadius: "8px",
-            padding: "12px 16px",
-            margin: "var(--s4) 0",
-            display: "flex",
-            alignItems: "center",
-            gap: "var(--s2)",
-            fontSize: "13px",
-            color: "var(--text-2)",
-          }}
-        >
-          <span style={{ color: "var(--poor)", fontWeight: 700, fontSize: "16px", lineHeight: 1 }}>!</span>
-          <span>
-            Unable to reach the API. Dashboard data is unavailable.
-          </span>
+        <div role="alert" className="api-alert">
+          <span className="api-alert-icon">!</span>
+          <span>Unable to reach the API. Dashboard data is unavailable.</span>
         </div>
       )}
 
       {/* ── Page header ─────────────────────────────── */}
-      <section style={{ paddingTop: "var(--s10)", marginBottom: "var(--s8)" }}>
-        <div className="hero-eyebrow" style={{ display: "inline-flex" }}>
-          Live Data
-        </div>
-        <h1
-          style={{
-            fontSize: "clamp(26px, 4vw, 40px)",
-            fontWeight: 700,
-            letterSpacing: "-0.03em",
-            margin: "var(--s3) 0 var(--s2)",
-          }}
-        >
-          Ecosystem Dashboard
-        </h1>
-        <p style={{ color: "var(--text-2)", fontSize: "16px", maxWidth: "540px" }}>
+      <section className="dash-header">
+        <div className="hero-eyebrow">Live Data</div>
+        <h1 className="dash-title">Ecosystem Dashboard</h1>
+        <p className="dash-sub">
           Aggregated security posture across every MCP server we&apos;ve discovered.
           Updates every 5 minutes.
         </p>
       </section>
 
       {/* ── KPI strip ───────────────────────────────── */}
-      <section className="stats-grid" style={{ marginBottom: "var(--s8)" }}>
+      <section className="stats-grid">
         <div className="stat-card">
           <span className="stat-value">
-            {stats?.total_servers.toLocaleString() ?? "—"}
+            {stats?.total_servers.toLocaleString() ?? "\u2014"}
           </span>
           <span className="stat-label">Total Servers</span>
         </div>
         <div className="stat-card">
           <span className="stat-value">
-            {stats?.total_scanned.toLocaleString() ?? "—"}
-            <span style={{ fontSize: "14px", color: "var(--text-3)", fontWeight: 400 }}>
-              {" "}({scanCoverage}%)
-            </span>
+            {stats?.total_scanned.toLocaleString() ?? "\u2014"}
+            <span className="stat-value-sub"> ({scanCoverage}%)</span>
           </span>
           <span className="stat-label">Scanned</span>
         </div>
         <div className="stat-card">
           <span className="stat-value" style={{ color: avgColor }}>
-            {stats?.average_score ?? "—"}
-            <span style={{ fontSize: "16px", color: "var(--text-3)", fontWeight: 400 }}>
-              /100
-            </span>
+            {stats?.average_score ?? "\u2014"}
+            <span className="stat-value-denom">/100</span>
           </span>
           <span className="stat-label">Avg Security Score</span>
         </div>
@@ -268,14 +237,7 @@ export default async function DashboardPage() {
       </section>
 
       {/* ── Two-column layout ───────────────────────── */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "var(--s5)",
-          marginBottom: "var(--s5)",
-        }}
-      >
+      <div className="dash-two-col">
         {/* Score distribution */}
         <div className="card">
           <h2 className="section-title">Score Distribution</h2>
@@ -309,8 +271,8 @@ export default async function DashboardPage() {
               })}
             </div>
           ) : (
-            <p className="text-muted" style={{ fontSize: "14px" }}>
-              No distribution data yet — run a scan first.
+            <p className="text-muted-sm">
+              No distribution data yet &mdash; run a scan first.
             </p>
           )}
         </div>
@@ -343,9 +305,7 @@ export default async function DashboardPage() {
               })}
             </div>
           ) : (
-            <p className="text-muted" style={{ fontSize: "14px" }}>
-              No finding data yet.
-            </p>
+            <p className="text-muted-sm">No finding data yet.</p>
           )}
         </div>
       </div>
@@ -354,60 +314,22 @@ export default async function DashboardPage() {
       <div className="card section-gap">
         <h2 className="section-title">Category Breakdown</h2>
         {stats?.category_breakdown && Object.keys(stats.category_breakdown).length > 0 ? (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-              gap: "var(--s2)",
-            }}
-          >
+          <div className="dash-auto-grid">
             {Object.entries(stats.category_breakdown)
               .sort((a, b) => b[1] - a[1])
               .map(([cat, count]) => {
                 const pct = Math.round((count / maxCatCount) * 100);
                 return (
-                  <a
-                    key={cat}
-                    href={`/?category=${cat}`}
-                    style={{ textDecoration: "none" }}
-                  >
-                    <div
-                      className="card-sm card-hover"
-                      style={{ display: "flex", flexDirection: "column", gap: "var(--s2)" }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: "13px",
-                            fontWeight: 600,
-                            color: "var(--text)",
-                          }}
-                        >
-                          {cat}
-                        </span>
-                        <span
-                          style={{
-                            fontSize: "12px",
-                            color: "var(--text-3)",
-                          }}
-                        >
-                          {count.toLocaleString()}
-                        </span>
+                  <a key={cat} href={`/?category=${cat}`} style={{ textDecoration: "none" }}>
+                    <div className="card-sm card-hover cat-card-inner">
+                      <div className="cat-card-row">
+                        <span className="cat-card-name">{cat}</span>
+                        <span className="cat-card-count">{count.toLocaleString()}</span>
                       </div>
-                      <div className="dist-bar-bg" style={{ height: "4px" }}>
+                      <div className="dist-bar-bg dist-bar-thin">
                         <div
                           className="dist-bar-fill"
-                          style={{
-                            width: `${pct}%`,
-                            background: "var(--accent)",
-                            opacity: 0.6,
-                          }}
+                          style={{ width: `${pct}%`, background: "var(--accent)", opacity: 0.6 }}
                         />
                       </div>
                     </div>
@@ -416,21 +338,12 @@ export default async function DashboardPage() {
               })}
           </div>
         ) : (
-          <p className="text-muted" style={{ fontSize: "14px" }}>
-            No category data yet.
-          </p>
+          <p className="text-muted-sm">No category data yet.</p>
         )}
       </div>
 
       {/* ── At-risk + Top-scored ────────────────────── */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "var(--s5)",
-          marginBottom: "var(--s5)",
-        }}
-      >
+      <div className="dash-two-col">
         {/* At-risk servers */}
         <div className="card">
           <h2 className="section-title">
@@ -438,35 +351,17 @@ export default async function DashboardPage() {
             <span className="count">{atRisk.length}</span>
           </h2>
           {atRisk.length === 0 ? (
-            <p className="text-muted" style={{ fontSize: "14px" }}>
-              No critical-risk servers found.
-            </p>
+            <p className="text-muted-sm">No critical-risk servers found.</p>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "var(--s1)" }}>
+            <div className="server-list">
               {atRisk.map((server) => (
-                <div
-                  key={server.id}
-                  className="server-row-hover"
-                >
+                <div key={server.id} className="server-row-hover">
                   <div>
-                    <a
-                      href={`/server/${server.slug}`}
-                      style={{
-                        fontSize: "13px",
-                        fontWeight: 600,
-                        color: "var(--text)",
-                        textDecoration: "none",
-                        display: "block",
-                      }}
-                    >
+                    <a href={`/server/${server.slug}`} className="server-row-link">
                       {server.name}
                     </a>
                     {server.category && (
-                      <span
-                        style={{ fontSize: "11px", color: "var(--text-3)" }}
-                      >
-                        {server.category}
-                      </span>
+                      <span className="server-row-cat">{server.category}</span>
                     )}
                   </div>
                   <ScoreBadge score={server.latest_score} />
@@ -483,35 +378,17 @@ export default async function DashboardPage() {
             <span className="count">{topServers.length}</span>
           </h2>
           {topServers.length === 0 ? (
-            <p className="text-muted" style={{ fontSize: "14px" }}>
-              No servers with high scores yet.
-            </p>
+            <p className="text-muted-sm">No servers with high scores yet.</p>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "var(--s1)" }}>
+            <div className="server-list">
               {topServers.map((server) => (
-                <div
-                  key={server.id}
-                  className="server-row-hover"
-                >
+                <div key={server.id} className="server-row-hover">
                   <div>
-                    <a
-                      href={`/server/${server.slug}`}
-                      style={{
-                        fontSize: "13px",
-                        fontWeight: 600,
-                        color: "var(--text)",
-                        textDecoration: "none",
-                        display: "block",
-                      }}
-                    >
+                    <a href={`/server/${server.slug}`} className="server-row-link">
                       {server.name}
                     </a>
                     {server.category && (
-                      <span
-                        style={{ fontSize: "11px", color: "var(--text-3)" }}
-                      >
-                        {server.category}
-                      </span>
+                      <span className="server-row-cat">{server.category}</span>
                     )}
                   </div>
                   <ScoreBadge score={server.latest_score} />
@@ -526,23 +403,22 @@ export default async function DashboardPage() {
       {stats && (
         <div className="card section-gap">
           <h2 className="section-title">Scan Coverage</h2>
-          <div style={{ display: "flex", alignItems: "center", gap: "var(--s3)", marginTop: "var(--s2)" }}>
+          <div className="scan-coverage-row">
             <div className="dist-bar-bg" style={{ flex: 1, height: "8px" }}>
               <div
                 className="dist-bar-fill"
                 style={{
                   width: `${scanCoverage}%`,
                   background: scanCoverage >= 80 ? "var(--good)" : scanCoverage >= 50 ? "var(--moderate)" : "var(--poor)",
-                  borderRadius: "4px",
                 }}
               />
             </div>
-            <span style={{ fontSize: "13px", color: "var(--text-2)", flexShrink: 0 }}>
+            <span className="scan-coverage-label">
               {stats.total_scanned.toLocaleString()} / {stats.total_servers.toLocaleString()} scanned ({scanCoverage}%)
             </span>
           </div>
           {stats.total_servers - stats.total_scanned > 0 && (
-            <p style={{ fontSize: "12px", color: "var(--text-3)", marginTop: "var(--s2)" }}>
+            <p className="scan-coverage-note">
               {(stats.total_servers - stats.total_scanned).toLocaleString()} servers awaiting scan
             </p>
           )}
@@ -551,44 +427,19 @@ export default async function DashboardPage() {
 
       {/* ── Detection rule categories ─────────────────── */}
       <div className="card section-gap">
-        <h2 className="section-title" style={{ marginBottom: "var(--s4)" }}>
+        <h2 className="section-title">
           Detection Rules
           <span className="count">103</span>
         </h2>
-        <p style={{ fontSize: "13px", color: "var(--text-3)", marginBottom: "var(--s4)" }}>
-          103 rules across 11 categories — every server is evaluated against all applicable rules.
+        <p className="section-desc">
+          103 rules across 11 categories &mdash; every server is evaluated against all applicable rules.
         </p>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-            gap: "var(--s2)",
-          }}
-        >
+        <div className="dash-auto-grid-sm">
           {RULE_CATEGORIES.map((cat) => (
-            <div
-              key={cat.code}
-              className="card-sm"
-              style={{ display: "flex", alignItems: "center", gap: "var(--s3)" }}
-            >
-              <span
-                style={{
-                  fontSize: "12px",
-                  fontWeight: 700,
-                  color: "var(--accent)",
-                  fontFamily: "var(--font-mono, monospace)",
-                  flexShrink: 0,
-                  width: "18px",
-                }}
-              >
-                {cat.code}
-              </span>
-              <span style={{ fontSize: "12px", color: "var(--text-2)", flex: 1 }}>
-                {cat.name}
-              </span>
-              <span style={{ fontSize: "12px", color: "var(--text-3)", fontWeight: 600 }}>
-                {cat.count}
-              </span>
+            <div key={cat.code} className="card-sm rule-cat-card">
+              <span className="rule-cat-code">{cat.code}</span>
+              <span className="rule-cat-name">{cat.name}</span>
+              <span className="rule-cat-count">{cat.count}</span>
             </div>
           ))}
         </div>
@@ -596,46 +447,16 @@ export default async function DashboardPage() {
 
       {/* ── OWASP MCP Top 10 overview ───────────────── */}
       <div className="card section-gap">
-        <h2 className="section-title" style={{ marginBottom: "var(--s4)" }}>
-          OWASP MCP Top 10 Coverage
-        </h2>
-        <p
-          style={{
-            fontSize: "13px",
-            color: "var(--text-3)",
-            marginBottom: "var(--s5)",
-          }}
-        >
+        <h2 className="section-title">OWASP MCP Top 10 Coverage</h2>
+        <p className="section-desc-lg">
           Detection rules mapped to all 10 OWASP MCP categories. Every server
           is evaluated against each category on every scan.
         </p>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-            gap: "var(--s2)",
-          }}
-        >
+        <div className="dash-auto-grid-xs">
           {OWASP_LIST.map((owasp) => (
-            <div
-              key={owasp.id}
-              className="card-sm"
-              style={{ display: "flex", alignItems: "center", gap: "var(--s2)" }}
-            >
-              <span
-                style={{
-                  fontSize: "11px",
-                  fontWeight: 700,
-                  color: "var(--accent)",
-                  fontFamily: "var(--font-mono, monospace)",
-                  flexShrink: 0,
-                }}
-              >
-                {owasp.id}
-              </span>
-              <span style={{ fontSize: "12px", color: "var(--text-2)" }}>
-                {owasp.name}
-              </span>
+            <div key={owasp.id} className="card-sm owasp-card">
+              <span className="owasp-card-id">{owasp.id}</span>
+              <span className="owasp-card-name">{owasp.name}</span>
             </div>
           ))}
         </div>

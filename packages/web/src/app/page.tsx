@@ -183,8 +183,8 @@ const FEATURED_ORGS: Array<{
     org: "Notion",
     slug: "notion-mcp",
     desc: "Official Notion server — pages, databases, blocks, search.",
-    color: "#1a1a1a",
-    textColor: "#1a1a1a",
+    color: "#9CA3AF",
+    textColor: "#9CA3AF",
     initials: "NT",
   },
   {
@@ -216,31 +216,20 @@ function CategoryChip({ cat }: { cat: string | null }) {
 
 function FeaturedOrgCard({ org }: { org: (typeof FEATURED_ORGS)[0] }) {
   return (
-    <a href={`/server/${org.slug}`} className="featured-card" style={{ paddingTop: 0, overflow: "hidden" }}>
-      {/* Brand color top bar */}
-      <div style={{ height: "3px", background: org.color, margin: "0 calc(-1 * var(--s5)) var(--s4)", marginTop: 0, borderRadius: 0 }} />
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "var(--s2)" }}>
-        <div style={{
-          width: "32px",
-          height: "32px",
-          borderRadius: "8px",
-          background: `${org.color}18`,
-          border: `1px solid ${org.color}30`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: "10px",
-          fontWeight: 800,
-          letterSpacing: "0.05em",
-          color: org.textColor,
-          flexShrink: 0,
-          fontFamily: "monospace",
-        }}>
+    <a href={`/server/${org.slug}`} className="featured-card" style={{ paddingTop: 0 }}>
+      <div className="featured-brand-bar" style={{ background: org.color }} />
+      <div className="featured-brand-row">
+        <div
+          className="featured-brand-icon"
+          style={{
+            background: `${org.color}18`,
+            border: `1px solid ${org.color}30`,
+            color: org.textColor,
+          }}
+        >
           {org.initials}
         </div>
-        <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-          {org.org}
-        </span>
+        <span className="featured-brand-label">{org.org}</span>
       </div>
       <div className="featured-card-name">{org.name}</div>
       <div className="featured-card-desc">{org.desc}</div>
@@ -300,25 +289,11 @@ export default async function HomePage({
     <>
       {/* ── API warning ──────────────────────────────── */}
       {apiDown && (
-        <div
-          role="alert"
-          style={{
-            background: "var(--surface-2)",
-            border: "1px solid var(--poor)",
-            borderRadius: "8px",
-            padding: "12px 16px",
-            margin: "var(--s4) 0",
-            display: "flex",
-            alignItems: "center",
-            gap: "var(--s2)",
-            fontSize: "13px",
-            color: "var(--text-2)",
-          }}
-        >
-          <span style={{ color: "var(--poor)", fontWeight: 700, fontSize: "16px", lineHeight: "1" }}>!</span>
+        <div role="alert" className="api-alert">
+          <span className="api-alert-icon">!</span>
           <span>
             Unable to reach the API. Showing cached data where available.
-            If this persists, check <code style={{ fontSize: "12px" }}>NEXT_PUBLIC_API_URL</code>.
+            If this persists, check <code>NEXT_PUBLIC_API_URL</code>.
           </span>
         </div>
       )}
@@ -351,55 +326,20 @@ export default async function HomePage({
       </section>
 
       {/* ── Stats strip ───────────────────────────────── */}
-      <section
-        style={{
-          display: "flex",
-          alignItems: "baseline",
-          gap: "10px",
-          flexWrap: "wrap",
-          marginBottom: "var(--s8)",
-          padding: "var(--s5) var(--s6)",
-          background: "var(--surface)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--r-lg)",
-          boxShadow: "var(--shadow-card)",
-        }}
-        aria-label="Ecosystem statistics"
-      >
-        <span
-          style={{
-            fontFamily: "'Outfit Variable','Outfit',system-ui,sans-serif",
-            fontSize: "36px",
-            fontWeight: 700,
-            letterSpacing: "-0.04em",
-            color: "var(--text)",
-            lineHeight: 1,
-          }}
-        >
-          {stats ? stats.total_servers.toLocaleString() : "—"}
+      <section className="stats-strip" aria-label="Ecosystem statistics">
+        <span className="stats-strip-num">
+          {stats ? stats.total_servers.toLocaleString() : "\u2014"}
         </span>
-        <span
-          style={{
-            fontSize: "15px",
-            fontWeight: 500,
-            color: "var(--text-2)",
-          }}
-        >
+        <span className="stats-strip-label">
           unique MCP servers indexed
         </span>
         {stats && stats.total_scanned > 0 && (
-          <span
-            style={{
-              marginLeft: "auto",
-              fontSize: "12px",
-              color: "var(--text-3)",
-            }}
-          >
-            {stats.total_scanned.toLocaleString()} scanned · avg score{" "}
-            <strong style={{ color: avgScoreColor, fontWeight: 600 }}>
+          <span className="stats-strip-detail">
+            {stats.total_scanned.toLocaleString()} scanned &middot; avg score{" "}
+            <strong style={{ color: avgScoreColor }}>
               {stats.average_score ?? 0}
             </strong>
-            /100 · 103 rules
+            /100 &middot; 103 rules
           </span>
         )}
       </section>
@@ -475,41 +415,18 @@ export default async function HomePage({
             <option value="40">Poor (40+)</option>
           </select>
 
-          <label
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "5px",
-              background: "var(--surface)",
-              border: "1px solid var(--border-md)",
-              borderRadius: "6px",
-              padding: "0 8px 0 10px",
-              height: "32px",
-              cursor: "text",
-              fontSize: "13px",
-              color: "var(--text-3)",
-              fontWeight: 500,
-            }}
-          >
+          <label className="author-filter">
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
               <circle cx="8" cy="5.5" r="2.5" />
               <path d="M3 13c0-2.76 2.24-5 5-5s5 2.24 5 5" />
             </svg>
-            <span style={{ whiteSpace: "nowrap" }}>Owner</span>
+            <span className="author-filter-label">Owner</span>
             <input
               type="text"
               name="author"
-              style={{
-                border: "none",
-                outline: "none",
-                background: "transparent",
-                width: "110px",
-                fontSize: "13px",
-                color: "var(--text)",
-                padding: "0 4px",
-              }}
+              className="author-filter-input"
               defaultValue={sp.author || ""}
-              placeholder="any…"
+              placeholder="any\u2026"
               autoComplete="off"
             />
           </label>
@@ -535,11 +452,7 @@ export default async function HomePage({
             <option value="asc">Ascending</option>
           </select>
 
-          <button
-            type="submit"
-            className="btn-primary"
-            style={{ padding: "7px 16px", fontSize: "13px" }}
-          >
+          <button type="submit" className="btn-primary btn-primary-sm">
             Search
           </button>
 
@@ -582,33 +495,19 @@ export default async function HomePage({
                     <p className="server-desc">{server.description}</p>
                   )}
                   {server.author && (
-                    <p
-                      style={{
-                        color: "var(--text-3)",
-                        fontSize: "11px",
-                        marginTop: "2px",
-                      }}
-                    >
-                      by {server.author}
-                    </p>
+                    <p className="server-author">by {server.author}</p>
                   )}
                 </td>
                 <td>
                   <CategoryChip cat={server.category} />
                 </td>
-                <td style={{ color: "var(--text-3)", fontSize: "13px" }}>
-                  {server.language || "—"}
+                <td className="server-lang">
+                  {server.language || "\u2014"}
                 </td>
-                <td
-                  className="right"
-                  style={{ color: "var(--text-2)", fontSize: "13px" }}
-                >
+                <td className="right server-metric">
                   {fmtNum(server.github_stars)}
                 </td>
-                <td
-                  className="right"
-                  style={{ color: "var(--text-2)", fontSize: "13px" }}
-                >
+                <td className="right server-metric">
                   {fmtNum(server.npm_downloads)}
                 </td>
                 <td className="right">
@@ -647,11 +546,7 @@ export default async function HomePage({
           })}
           {pagination.pages > 7 && page < pagination.pages && (
             <>
-              <span
-                style={{ color: "var(--text-3)", fontSize: "14px" }}
-              >
-                …
-              </span>
+              <span className="pagination-ellipsis">&hellip;</span>
               <a
                 href={buildPageUrl(sp, pagination.pages)}
                 className="page-btn"
