@@ -183,8 +183,8 @@ const FEATURED_ORGS: Array<{
     org: "Notion",
     slug: "notion-mcp",
     desc: "Official Notion server — pages, databases, blocks, search.",
-    color: "#1a1a1a",
-    textColor: "#1a1a1a",
+    color: "#9CA3AF",
+    textColor: "#9CA3AF",
     initials: "NT",
   },
   {
