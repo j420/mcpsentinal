@@ -484,6 +484,37 @@ export class AnalysisEngine {
         }
         break;
       }
+
+      case "rolling_capability_drift": {
+        // I14: Gradual capability addition over multiple scans
+        // This requires historical data embedded in connection_metadata by the pipeline
+        const metaExt = meta as typeof meta & {
+          prior_scan_tool_counts?: number[];
+        };
+        if (!metaExt?.prior_scan_tool_counts) break;
+
+        const counts = metaExt.prior_scan_tool_counts;
+        const windowScans = (conditions.window_scans as number) || 4;
+        const cumulativeThreshold = (conditions.cumulative_threshold as number) || 5;
+
+        if (counts.length >= windowScans) {
+          const windowStart = counts[counts.length - windowScans];
+          const windowEnd = context.tools.length;
+          const cumulativeDelta = windowEnd - windowStart;
+
+          if (cumulativeDelta >= cumulativeThreshold) {
+            findings.push({
+              rule_id: rule.id,
+              severity: rule.severity,
+              evidence: `Server tool count grew by ${cumulativeDelta} over ${windowScans} scan periods (${windowStart} → ${windowEnd}) — gradual capability drift below G6 per-scan threshold but significant cumulative growth`,
+              remediation: rule.remediation,
+              owasp_category: rule.owasp,
+              mitre_technique: rule.mitre,
+            });
+          }
+        }
+        break;
+      }
     }
 
     return findings;
@@ -1402,37 +1433,6 @@ export class AnalysisEngine {
             owasp_category: rule.owasp,
             mitre_technique: rule.mitre,
           });
-        }
-        break;
-      }
-
-      case "rolling_capability_drift": {
-        // I14: Gradual capability addition over multiple scans
-        // This requires historical data embedded in connection_metadata by the pipeline
-        const metaExt = context.connection_metadata as typeof context.connection_metadata & {
-          prior_scan_tool_counts?: number[];
-        };
-        if (!metaExt?.prior_scan_tool_counts) break;
-
-        const counts = metaExt.prior_scan_tool_counts;
-        const windowScans = (conditions.window_scans as number) || 4;
-        const cumulativeThreshold = (conditions.cumulative_threshold as number) || 5;
-
-        if (counts.length >= windowScans) {
-          const windowStart = counts[counts.length - windowScans];
-          const windowEnd = context.tools.length;
-          const cumulativeDelta = windowEnd - windowStart;
-
-          if (cumulativeDelta >= cumulativeThreshold) {
-            findings.push({
-              rule_id: rule.id,
-              severity: rule.severity,
-              evidence: `Server tool count grew by ${cumulativeDelta} over ${windowScans} scan periods (${windowStart} → ${windowEnd}) — gradual capability drift below G6 per-scan threshold but significant cumulative growth`,
-              remediation: rule.remediation,
-              owasp_category: rule.owasp,
-              mitre_technique: rule.mitre,
-            });
-          }
         }
         break;
       }

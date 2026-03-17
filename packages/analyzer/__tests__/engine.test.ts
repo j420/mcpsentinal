@@ -5438,8 +5438,6 @@ describe("AnalysisEngine", () => {
   });
 
   describe("I14: Rolling Capability Drift (behavioral: rolling_capability_drift)", () => {
-    // NOTE: The YAML defines type: behavioral, but the handler is in runCompositeRule.
-    // Using type: composite here to test the actual handler implementation.
     const rule: DetectionRule = {
       id: "I14",
       name: "Rolling Capability Drift",
@@ -5448,7 +5446,7 @@ describe("AnalysisEngine", () => {
       owasp: "MCP10-supply-chain",
       mitre: "AML.T0054",
       detect: {
-        type: "composite",
+        type: "behavioral",
         conditions: {
           check: "rolling_capability_drift",
           window_scans: 4,
