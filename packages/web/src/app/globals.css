@@ -959,6 +959,51 @@ code, pre, kbd {
   color: var(--text-3);
 }
 
+/* ── Score Ring SVG ────────────────────────────────────── */
+.score-ring-wrap {
+  position: relative;
+  width: 100px;
+  height: 100px;
+}
+
+.score-ring-svg {
+  transform: rotate(-90deg);
+}
+
+.score-ring-arc {
+  transition: stroke-dashoffset 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.score-ring-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.score-ring-number {
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.score-ring-number-value {
+  font-size: 22px;
+}
+
+.score-ring-number-empty {
+  font-size: 13px;
+}
+
+.score-ring-denom {
+  font-size: 9px;
+  color: var(--text-3);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
 .subscores {
   width: 100%;
   display: flex;
@@ -1767,6 +1812,11 @@ code, pre, kbd {
   box-shadow: 0 0 0 3px var(--accent-ring), 0 1px 4px rgba(79, 70, 229, 0.18);
 }
 
+.btn-primary-sm {
+  padding: 7px 16px;
+  font-size: 13px;
+}
+
 /* ── Dashboard server row ───────────────────────────────── */
 .server-row-hover {
   display: flex;
@@ -2528,6 +2578,619 @@ code, pre, kbd {
 .intel-status-medium   { color: var(--sev-medium); }
 .intel-status-low      { color: var(--sev-low); }
 
+/* ── Stats strip (home page) ───────────────────────────── */
+.stats-strip {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: var(--s8);
+  padding: var(--s5) var(--s6);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.stats-strip-num {
+  font-family: 'Outfit Variable', 'Outfit', system-ui, sans-serif;
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: var(--text);
+  line-height: 1;
+}
+
+.stats-strip-label {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-2);
+}
+
+.stats-strip-detail {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.stats-strip-detail strong {
+  font-weight: 600;
+}
+
+/* ── API warning alert ─────────────────────────────────── */
+.api-alert {
+  background: var(--surface-2);
+  border: 1px solid var(--poor);
+  border-radius: var(--r-md);
+  padding: var(--s3) var(--s4);
+  margin: var(--s4) 0;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.api-alert-icon {
+  color: var(--poor);
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.api-alert code {
+  font-size: 12px;
+}
+
+/* ── Author filter input ───────────────────────────────── */
+.author-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--surface);
+  border: 1px solid var(--border-md);
+  border-radius: 6px;
+  padding: 0 8px 0 10px;
+  height: 36px;
+  cursor: text;
+  font-size: 13px;
+  color: var(--text-3);
+  font-weight: 500;
+  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+}
+.author-filter:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+.author-filter:hover {
+  border-color: var(--border-strong);
+}
+
+.author-filter-label {
+  white-space: nowrap;
+}
+
+.author-filter-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  width: 110px;
+  font-size: 13px;
+  color: var(--text);
+  padding: 0 4px;
+  font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
+}
+
+/* ── Table cell utility classes ────────────────────────── */
+.server-author {
+  color: var(--text-3);
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.server-lang {
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+.server-metric {
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+/* ── Featured card brand bar ──────────────────────────── */
+.featured-brand-bar {
+  height: 3px;
+  margin: 0 calc(-1 * var(--s5)) var(--s4);
+  margin-top: 0;
+  border-radius: 0;
+}
+
+.featured-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: var(--s2);
+}
+
+.featured-brand-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+}
+
+.featured-brand-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ── Pagination ellipsis ──────────────────────────────── */
+.pagination-ellipsis {
+  color: var(--text-3);
+  font-size: 14px;
+}
+
+/* ── Dashboard layout helpers ─────────────────────────── */
+.dash-header {
+  padding-top: var(--s10);
+  margin-bottom: var(--s8);
+}
+
+.dash-title {
+  font-family: 'Poppins', 'Inter Variable', 'Inter', system-ui, sans-serif;
+  font-size: clamp(26px, 4vw, 40px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin: var(--s3) 0 var(--s2);
+  color: var(--text);
+}
+
+.dash-sub {
+  color: var(--text-2);
+  font-size: 16px;
+  max-width: 540px;
+  line-height: 1.6;
+}
+
+.dash-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s5);
+  margin-bottom: var(--s5);
+}
+
+.dash-auto-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--s2);
+}
+
+.dash-auto-grid-sm {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--s2);
+}
+
+.dash-auto-grid-xs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--s2);
+}
+
+/* ── Dashboard stat card helpers ──────────────────────── */
+.stat-value-sub {
+  font-size: 14px;
+  color: var(--text-3);
+  font-weight: 400;
+}
+
+.stat-value-denom {
+  font-size: 16px;
+  color: var(--text-3);
+  font-weight: 400;
+}
+
+/* ── Dashboard category card ──────────────────────────── */
+.cat-card-inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.cat-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cat-card-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.cat-card-count {
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.dist-bar-thin {
+  height: 4px;
+}
+
+/* ── Dashboard rule category card ─────────────────────── */
+.rule-cat-card {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.rule-cat-code {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+  flex-shrink: 0;
+  width: 18px;
+}
+
+.rule-cat-name {
+  font-size: 12px;
+  color: var(--text-2);
+  flex: 1;
+}
+
+.rule-cat-count {
+  font-size: 12px;
+  color: var(--text-3);
+  font-weight: 600;
+}
+
+/* ── Dashboard OWASP card ─────────────────────────────── */
+.owasp-card {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.owasp-card-id {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+  flex-shrink: 0;
+}
+
+.owasp-card-name {
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+/* ── Dashboard server row links ───────────────────────── */
+.server-row-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: none;
+  display: block;
+  transition: color var(--t-fast) var(--ease);
+}
+.server-row-link:hover {
+  color: var(--accent);
+}
+
+.server-row-cat {
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+/* ── Dashboard server list ────────────────────────────── */
+.server-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+
+/* ── Scan coverage bar ────────────────────────────────── */
+.scan-coverage-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin-top: var(--s2);
+}
+
+.scan-coverage-label {
+  font-size: 13px;
+  color: var(--text-2);
+  flex-shrink: 0;
+}
+
+.scan-coverage-note {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-top: var(--s2);
+}
+
+/* ── Section gap utility ──────────────────────────────── */
+.section-gap {
+  margin-top: var(--s5);
+}
+
+.section-desc {
+  font-size: 13px;
+  color: var(--text-3);
+  margin-bottom: var(--s4);
+}
+
+.section-desc-lg {
+  font-size: 13px;
+  color: var(--text-3);
+  margin-bottom: var(--s5);
+}
+
+/* ── Text helpers ─────────────────────────────────────── */
+.text-muted {
+  color: var(--text-3);
+}
+
+.text-muted-sm {
+  font-size: 14px;
+  color: var(--text-3);
+}
+
+/* ── About page helpers ───────────────────────────────── */
+.about-section {
+  padding: var(--s8) 0;
+}
+
+.about-section-narrow {
+  max-width: 680px;
+  padding: var(--s8) 0;
+}
+
+.about-h2 {
+  font-family: 'Poppins', 'Inter Variable', 'Inter', system-ui, sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: var(--s4);
+  color: var(--text);
+}
+
+.about-h2-sm {
+  font-family: 'Poppins', 'Inter Variable', 'Inter', system-ui, sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: var(--s2);
+  color: var(--text);
+}
+
+.about-body {
+  font-size: 15px;
+  color: var(--text-2);
+  line-height: 1.7;
+  margin-bottom: var(--s4);
+}
+
+.about-body:last-child {
+  margin-bottom: 0;
+}
+
+.about-subtitle {
+  font-size: 14px;
+  color: var(--text-3);
+  margin-bottom: var(--s6);
+}
+
+.about-subtitle-sm {
+  font-size: 14px;
+  color: var(--text-3);
+  margin-bottom: var(--s5);
+}
+
+/* ── About: Rule category card ────────────────────────── */
+.rule-cat-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s4);
+  margin-bottom: var(--s3);
+}
+
+.rule-cat-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-bottom: var(--s1);
+}
+
+.rule-cat-badge {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--accent);
+  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+  background: var(--accent-sub);
+  border: 1px solid var(--accent-ring);
+  border-radius: var(--r-sm);
+  padding: 1px 7px;
+}
+
+.rule-cat-title {
+  font-family: 'Poppins', 'Inter Variable', 'Inter', system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.rule-count-badge {
+  font-size: 11px;
+  color: var(--text-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  padding: 1px 7px;
+  font-weight: 500;
+}
+
+.rule-cat-requires {
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.rule-cat-highlight {
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.55;
+  margin-bottom: var(--s4);
+  padding: var(--s3);
+  background: var(--surface-2);
+  border-radius: var(--r-sm);
+  border-left: 2px solid var(--accent);
+}
+
+.rule-list-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--s1);
+}
+
+.rule-list-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  padding: var(--s2);
+}
+
+.rule-list-id {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-3);
+  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+  flex-shrink: 0;
+}
+
+.rule-list-name {
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+/* ── About: Severity dot ──────────────────────────────── */
+.sev-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.sev-dot-critical { background: var(--sev-critical); }
+.sev-dot-high     { background: var(--sev-high); }
+.sev-dot-medium   { background: var(--sev-medium); }
+.sev-dot-low      { background: var(--sev-low); }
+.sev-dot-info     { background: var(--sev-info); }
+
+/* ── About: Pipeline package name ─────────────────────── */
+.pipeline-pkg {
+  font-size: 10px;
+  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+  color: var(--accent);
+  margin-bottom: var(--s2);
+  opacity: 0.8;
+}
+
+/* ── About: OWASP table helpers ───────────────────────── */
+.owasp-id-cell {
+  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.owasp-name-cell {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.owasp-rules-cell {
+  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+/* ── About: Scoring section ───────────────────────────── */
+.scoring-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s5);
+}
+
+.card-h3 {
+  font-family: 'Poppins', 'Inter Variable', 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: var(--s3);
+  color: var(--text);
+}
+
+.scoring-rule-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: var(--s1);
+}
+
+.scoring-rule-body {
+  font-size: 13px;
+  color: var(--text-3);
+  line-height: 1.55;
+}
+
+.rule-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+.rule-cat-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+
+/* ── Page footer nav ──────────────────────────────────── */
+.page-footer-nav {
+  margin-top: var(--s12);
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  padding-top: var(--s6);
+  border-top: 1px solid var(--border);
+}
+
+.page-footer-link {
+  font-size: 13px;
+  color: var(--text-3);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: color var(--t-fast) var(--ease);
+}
+.page-footer-link:hover {
+  color: var(--text-2);
+}
+
 /* ── Responsive ─────────────────────────────────────────── */
 @media (max-width: 900px) {
   .detail-layout        { grid-template-columns: 1fr; }
@@ -2541,6 +3204,8 @@ code, pre, kbd {
   /* Two-column dashboard grids become single */
   .card + .card { margin-top: 0; }
   .server-header-top { flex-direction: column; align-items: stretch; }
+  .dash-two-col { grid-template-columns: 1fr; }
+  .scoring-grid { grid-template-columns: 1fr; }
 }
 
 /* Tablet landscape — better table experience */
@@ -2571,6 +3236,11 @@ code, pre, kbd {
   .cat-detail-header { flex-direction: column; align-items: flex-start; }
   .featured-grid { grid-template-columns: 1fr; }
   .score-badge   { font-size: 12px; min-width: 40px; padding: 3px 8px; }
+  .stats-strip { flex-direction: column; gap: var(--s2); padding: var(--s4); }
+  .stats-strip-num { font-size: 28px; }
+  .stats-strip-detail { margin-left: 0; }
+  .author-filter { width: 100%; }
+  .author-filter-input { flex: 1; width: auto; }
   /* Stack table for mobile */
   .data-table thead { display: none; }
   .data-table tbody tr {
