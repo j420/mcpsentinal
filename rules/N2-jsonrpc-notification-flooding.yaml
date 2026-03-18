@@ -15,6 +15,14 @@ detect:
     - "(?i)(?:res\\.write|response\\.write|write_event|send_event)\\s*\\(.*(?:event|data|notification)(?!.*(?:queue\\.length|buffer\\.length|highWaterMark|MAX_))"
     # Python: unbounded notification sending
     - "(?i)(?:send_notification|emit_event|push_notification)\\s*\\(.*(?:for\\s|while\\s|async\\sfor)"
+    # setInterval firing notifications without clear/cancel conditions
+    - "(?i)setInterval\\s*\\(.*(?:notify|notification|emit|send)(?!.*(?:clearInterval|MAX_|limit|count\\s*[<>]))"
+    # WebSocket send in tight loop without drain event checking
+    - "(?i)(?:ws|socket|websocket)\\.send\\s*\\(.*(?:for|while|forEach)(?!.*(?:drain|bufferedAmount|backpressure))"
+    # Async generator yielding notifications without bound
+    - "(?i)(?:async\\s+function\\s*\\*|async\\s*\\*).*(?:yield|yield\\*)\\s*.*(?:notification|event)(?!.*(?:limit|max|count|take))"
+    # Python: asyncio loop sending without throttle
+    - "(?i)(?:asyncio\\.Queue|async\\s+for).*(?:put_nowait|send_notification|notify)(?!.*(?:maxsize|throttle|sleep))"
   context: source_code
   exclude_patterns:
     - "(?i)test|spec|mock|fixture|example"

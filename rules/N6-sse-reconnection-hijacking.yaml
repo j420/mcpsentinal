@@ -15,6 +15,14 @@ detect:
     - "(?i)(?:last-event-id|lastEventId).*(?:resume|restore|replay|rewind|seek)"
     # Python SSE reconnection without auth check
     - "(?i)(?:last_event_id|last-event-id)\\s*=\\s*(?:request\\.headers|environ)\\.get"
+    # Event IDs using sequential integers (predictable for hijacking)
+    - "(?i)(?:event[_\\s-]?id|id:\\s)\\s*[:=]\\s*(?:\\+\\+|counter|sequence|\\d+\\s*[;,])"
+    # SSE stream bound to event ID rather than authenticated session
+    - "(?i)(?:streams|connections|clients)\\s*(?:\\[|\\.)\\s*(?:lastEventId|last_event_id|eventId)(?!.*(?:session|token|auth|user))"
+    # Reconnection without origin/referrer validation
+    - "(?i)(?:EventSource|evtSource|sse).*(?:onopen|addEventListener.*open)(?!.*(?:origin|referrer|cors|validateOrigin))"
+    # SSE retry field set to aggressive interval without jitter
+    - "(?i)(?:retry:\\s*\\d{1,3}\\n|retry:\\s*['\"]\\d{1,3}['\"])"
   context: source_code
   exclude_patterns:
     - "(?i)test|spec|mock|fixture|example"

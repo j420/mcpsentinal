@@ -15,6 +15,14 @@ detect:
     - "(?i)(?:_meta|meta)\\s*(?:\\.|\\[)\\s*(?:['\"])?progressToken(?:['\"])?\\s*(?:\\])?\\s*(?:&&|\\|\\||\\?|!==\\s*(?:null|undefined))"
     # Python: progress token handling
     - "(?i)progress_token\\s*=\\s*(?:request|params|kwargs)\\s*(?:\\.get|\\.pop|\\[)"
+    # Progress percentage exceeding 100% or going negative (spoofed UI state)
+    - "(?i)(?:progress|percentage|percent)\\s*[:=]\\s*(?:(?:params|data|request)\\.(?:progress|total|current))(?!.*(?:Math\\.min|Math\\.max|clamp|0\\s*<=|<=\\s*100))"
+    # Broadcasting progress to all clients instead of the requesting client
+    - "(?i)(?:broadcast|emit|notify[_\\s-]?all|clients\\.forEach)\\s*\\(.*(?:progress|notifications/progress)"
+    # Progress total from untrusted source enabling misleading UI
+    - "(?i)(?:total|progressTotal|progress_total)\\s*[:=]\\s*(?:params|request|body|data)\\s*\\."
+    # Progress notification without request correlation
+    - "(?i)(?:sendProgress|notifications/progress)\\s*\\((?!.*(?:requestId|request_id|correlationId|tracking))"
   context: source_code
   exclude_patterns:
     - "(?i)test|spec|mock|fixture|example"

@@ -15,6 +15,14 @@ detect:
     - "(?i)(?:await|then)\\s+(?:initialize|waitForInit|waitForHandshake|handleInitialize)\\s*\\((?!.*(?:timeout|deadline|AbortSignal\\.timeout|Promise\\.race))"
     # No connection limit — accepts unlimited pending connections
     - "(?i)(?:createServer|listen)\\s*\\((?!.*(?:maxConnections|maxClients|connectionLimit|MAX_CONN))"
+    # Pending connections stored without eviction policy
+    - "(?i)(?:pendingConnections|pending_clients|waiting_sessions)\\s*(?:\\.|\\[)\\s*(?:push|set|add)\\s*\\((?!.*(?:delete|evict|expire|timeout|MAX_))"
+    # Connection accepted without client IP rate limiting
+    - "(?i)(?:onConnect|on_connect|handleConnection)\\s*(?:=>|=|\\()(?!.*(?:rateLimit|rate_limit|perIpLimit|MAX_PER_IP|throttle))"
+    # Python: accept without timeout or limit
+    - "(?i)(?:async\\s+def\\s+handle_connection|await\\s+websocket\\.accept)\\s*\\((?!.*(?:timeout|max_connections|connection_limit))"
+    # HTTP keep-alive without idle timeout for incomplete handshakes
+    - "(?i)(?:keep-?alive|keepAlive)\\s*[:=]\\s*true(?!.*(?:timeout|idle|HANDSHAKE_TIMEOUT))"
   context: source_code
   exclude_patterns:
     - "(?i)test|spec|mock|fixture|example"

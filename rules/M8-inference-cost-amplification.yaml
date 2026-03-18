@@ -47,6 +47,12 @@ detect:
     - "(?i)(no\\s+(maximum|max|limit|cap)\\s+(iteration|loop|retry|attempt))"
     # Context inflation patterns in source code
     - "(?i)(echo|repeat|mirror|reflect)\\s+(back|input|request)\\s+(with|plus|and)\\s+(additional|extra|more)"
+    # Sampling cascade — tool requests sampling which triggers more sampling
+    - "(?i)(createMessage|sampling|generate|completion)\\s*.{0,50}(createMessage|sampling|generate|completion)"
+    # Tool output deliberately maximizes token count
+    - "(?i)(pad|expand|inflate|extend)\\s+(response|output|result)\\s+(to|with|until)\\s+(maximum|max|\\d{4,})"
+    # Recursive self-invocation pattern in tool descriptions
+    - "(?i)(call|invoke|use|run)\\s+(this\\s+tool|itself|the\\s+same\\s+tool)\\s+(again|recursively|repeatedly)"
   context: tool_description
   exclude_patterns:
     - "(?i)test|spec|mock|fixture|example"

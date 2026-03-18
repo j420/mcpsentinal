@@ -13,9 +13,10 @@ detect:
     - "(?i)mako\\.template\\.Template\\s*\\(\\s*(?:req|input|param|args)"
     # Python .format() on SQL/HTML/command strings with user input
     - "(?i)['\"][^'\"]*\\{[^}]*\\}[^'\"]*['\"]\\s*\\.format\\s*\\(.*(?:req|input|param|args|body)"
-    # JavaScript template literals passed to eval or Function
-    - "eval\\s*\\(`[^`]*\\$\\{(?:req|input|param|args|body|query)"
-    - "new\\s+Function\\s*\\([^)]*`[^`]*\\$\\{(?:req|input|param|args)"
+    # JavaScript template literals passed to template rendering (not eval — C16 covers eval)
+    - "(?i)(?:render|compile|parse)Template\\s*\\(`[^`]*\\$\\{(?:req|input|param|args|body|query)"
+    # new Function with template context (template-engine-like usage, not generic eval — C16 covers generic)
+    - "new\\s+Function\\s*\\([^)]*(?:template|tmpl|markup|html)[^)]*`[^`]*\\$\\{(?:req|input|param|args)"
     # Handlebars compile from user input
     - "(?i)Handlebars\\.compile\\s*\\(\\s*(?:req|input|param|args|body)"
     # Mustache / EJS render with user template string
