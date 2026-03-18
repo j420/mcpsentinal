@@ -15,6 +15,14 @@ detect:
     - "(?i)(?:app|router)\\.(post|use)\\s*\\(.*(?:jsonrpc|rpc|message).*(?:for\\s*\\(|forEach|map)\\s*(?:of|\\()"
     # Python JSON-RPC batch handler without limits
     - "(?i)isinstance\\(\\s*(request|data|body|payload)\\s*,\\s*list\\s*\\)(?!.*(?:len\\(|max_batch|BATCH_LIMIT))"
+    # Batch processed via Promise.all without concurrency limit
+    - "(?i)Promise\\.all\\s*\\(\\s*(?:batch|requests|messages|items)\\s*\\.map\\s*\\("
+    # for...of loop over batch without early exit or size guard
+    - "(?i)for\\s*\\(\\s*(?:const|let|var)\\s+\\w+\\s+of\\s+(?:batch|requests|messages)\\s*\\)(?!.*(?:break|length\\s*>|slice\\(0))"
+    # Python: batch iteration without len() check
+    - "(?i)for\\s+\\w+\\s+in\\s+(?:batch|requests|messages)\\s*:(?!.*(?:len\\(|max_batch|BATCH_LIMIT|islice))"
+    # Batch endpoint handler with no per-request timeout
+    - "(?i)(?:handleBatch|process_batch|batch_handler)\\s*(?:=>|=|\\()(?!.*(?:timeout|deadline|AbortSignal|Promise\\.race))"
   context: source_code
   exclude_patterns:
     - "(?i)test|spec|mock|fixture|example"

@@ -16,6 +16,12 @@ detect:
     - "(?i)(?:request|msg|message)\\.(id|requestId)\\s*(?:=\\s*(?:req|params|body|data|input)\\.)"
     # Python auto-incrementing
     - "(?i)(?:self\\._?(?:request_id|next_id|message_id))\\s*(?:\\+=\\s*1|=\\s*self\\._?(?:request_id|next_id)\\s*\\+)"
+    # Date.now() or timestamp as request ID (predictable)
+    - "(?i)(?:requestId|request_id|id)\\s*[:=]\\s*(?:Date\\.now|time\\.time|int\\(time|performance\\.now)\\s*\\("
+    # Math.random() without crypto — insufficiently random for security
+    - "(?i)(?:requestId|request_id|id)\\s*[:=]\\s*(?:Math\\.random|Math\\.floor\\(Math\\.random)"
+    # No response-to-request ID matching — accepts any response ID
+    - "(?i)(?:onMessage|on_message|handleResponse)\\s*(?:=>|=|\\()(?!.*(?:pendingRequests|pending_requests|requestMap|expected_id|id\\s*===))"
   context: source_code
   exclude_patterns:
     - "(?i)test|spec|mock|fixture|example"
