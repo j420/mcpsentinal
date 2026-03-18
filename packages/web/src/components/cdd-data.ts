@@ -299,6 +299,35 @@ const FW_COLORS: Record<string, string> = {
   "eu-ai": "#0D9488",      "cosai": "#0D7C5F",          "maestro": "#B45309",
 };
 
+// Map display framework names to HEATMAP_FRAMEWORKS ids
+const FW_DISPLAY_TO_ID: Record<string, string> = {
+  "OWASP MCP Top 10": "owasp-mcp",
+  "OWASP Agentic Top 10": "owasp-agentic",
+  "MITRE ATLAS": "mitre",
+  "NIST AI RMF": "nist",
+  "ISO 27001": "iso27k",
+  "ISO 42001": "iso42k",
+  "EU AI Act": "eu-ai",
+  "CoSAI MCP": "cosai",
+  "MAESTRO": "maestro",
+  "MCP Spec": "owasp-mcp",
+};
+
+/** Compute how many rules from `catRules` are covered by each named framework */
+export function getFrameworkCoverage(
+  catRules: string[],
+  frameworkNames: string[]
+): { name: string; covered: number; total: number }[] {
+  const ruleSet = new Set(catRules);
+  return frameworkNames.map((name) => {
+    const fwId = FW_DISPLAY_TO_ID[name];
+    const fw = fwId ? HEATMAP_FRAMEWORKS.find((f) => f.id === fwId) : undefined;
+    const fwRuleSet = fw ? new Set(fw.rules) : new Set<string>();
+    const covered = catRules.filter((r) => fwRuleSet.has(r)).length;
+    return { name, covered, total: catRules.length };
+  });
+}
+
 export function getRuleFrameworks(ruleId: string): { abbr: string; color: string }[] {
   return HEATMAP_FRAMEWORKS
     .filter((fw) => fw.rules.includes(ruleId))
