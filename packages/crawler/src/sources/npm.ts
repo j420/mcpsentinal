@@ -79,6 +79,8 @@ export class NpmCrawler implements CrawlerSource {
           const data = (await response.json()) as NpmSearchResult;
 
           for (const obj of data.objects) {
+            if (limit && servers.length >= limit) break;
+
             const pkg = obj.package;
             if (seen.has(pkg.name)) continue;
             seen.add(pkg.name);

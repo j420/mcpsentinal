@@ -81,6 +81,8 @@ export class McpRegistryCrawler implements CrawlerSource {
         const data = (await response.json()) as RegistryResponse;
 
         for (const entry of data.servers) {
+          if (limit && servers.length >= limit) break;
+
           // Guard: _meta may be absent on community-registry entries
           const meta =
             entry._meta?.["io.modelcontextprotocol.registry/official"];

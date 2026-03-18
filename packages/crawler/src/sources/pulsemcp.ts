@@ -62,6 +62,8 @@ export class PulseMCPCrawler implements CrawlerSource {
         const data = (await response.json()) as PulseMCPResponse;
 
         for (const server of data.servers) {
+          if (limit && servers.length >= limit) break;
+
           // source_code_url is the repo link; url is the server homepage
           const repoUrl = server.source_code_url || server.url;
           const githubUrl = repoUrl?.includes("github.com") ? repoUrl : null;
