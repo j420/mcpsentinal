@@ -179,33 +179,39 @@ export default function CategoryDeepDivePanel({ findings }: { findings: CddFindi
                                     </div>
                                   </summary>
                                   <div className="cdd-rule-detail">
-                                    <div className="cdd-rule-detail-cols">
-                                      <div className="cdd-detail-col">
-                                        <div className="cdd-detail-heading">TESTS</div>
-                                        {tests.map((t, ti) => (
-                                          <div key={ti} className="cdd-detail-item cdd-detail-test">
-                                            <span className="cdd-detail-check">✓</span>
-                                            <span>{t}</span>
-                                          </div>
-                                        ))}
-                                      </div>
-                                      <div className="cdd-detail-col">
-                                        <div className="cdd-detail-heading">ATTACK VECTORS</div>
-                                        {vectors.map((v, vi) => (
-                                          <div key={vi} className="cdd-detail-item cdd-detail-vector">
-                                            <span className="cdd-detail-bar" style={{ background: cat.color }} />
-                                            <span>{v}</span>
-                                          </div>
-                                        ))}
-                                        <div className="cdd-detail-heading" style={{ marginTop: "var(--s3)" }}>
-                                          MITIGATIONS
+                                    <div className="cdd-rule-detail-sections">
+                                      <div className="cdd-detail-section">
+                                        <div className="cdd-detail-heading">Tests</div>
+                                        <div className="cdd-detail-grid">
+                                          {tests.map((t, ti) => (
+                                            <div key={ti} className="cdd-detail-item cdd-detail-test">
+                                              <span className="cdd-detail-check">✓</span>
+                                              <span>{t}</span>
+                                            </div>
+                                          ))}
                                         </div>
-                                        {mitigations.map((m, mi) => (
-                                          <div key={mi} className="cdd-detail-item">
-                                            <span className="cdd-detail-check" style={{ color: "var(--good)" }}>→</span>
-                                            <span>{m}</span>
-                                          </div>
-                                        ))}
+                                      </div>
+                                      <div className="cdd-detail-section">
+                                        <div className="cdd-detail-heading">Attack Vectors</div>
+                                        <div className="cdd-detail-grid">
+                                          {vectors.map((v, vi) => (
+                                            <div key={vi} className="cdd-detail-item cdd-detail-vector">
+                                              <span className="cdd-detail-bar" style={{ background: cat.color }} />
+                                              <span>{v}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                      <div className="cdd-detail-section">
+                                        <div className="cdd-detail-heading">Mitigations</div>
+                                        <div className="cdd-detail-grid">
+                                          {mitigations.map((m, mi) => (
+                                            <div key={mi} className="cdd-detail-item cdd-detail-mitigation">
+                                              <span className="cdd-detail-arrow">→</span>
+                                              <span>{m}</span>
+                                            </div>
+                                          ))}
+                                        </div>
                                       </div>
                                     </div>
                                     {fwBadges.length > 0 && (
