@@ -23,10 +23,7 @@ export default function CategoryDeepDivePanel({ findings }: { findings: CddFindi
     setExpandedRule((prev) => (prev === ruleId ? null : ruleId));
   }, []);
 
-  const defaultCat =
-    THREAT_CATS.find((cat) =>
-      cat.subCats.some((sc) => sc.rules.some((r) => triggered.has(r)))
-    )?.id ?? "PI";
+  const defaultCat = "PI";
 
   return (
     <section className="cdd-section">
