@@ -1,0 +1,31 @@
+id: N1
+name: JSON-RPC Batch Request Abuse
+category: protocol-edge-cases
+severity: high
+owasp: MCP07-insecure-config
+mitre: AML.T0054
+detect:
+  type: regex
+  patterns:
+    # Server accepts batch requests without size limits
+    - "(?i)Array\\.isArray\\(\\s*(body|request|message|data|payload)\\s*\\)(?!.*(?:length\\s*[<>]|maxBatch|batch[_\\s-]?limit|MAX_BATCH))"
+    # JSON.parse without batch size guard — processes arbitrary-length arrays
+    - "(?i)JSON\\.parse\\(.*\\)\\s*\\.(?:forEach|map|every|some|reduce)\\s*\\("
+    # Express/Koa middleware accepting batch without limits
+    - "(?i)(?:app|router)\\.(post|use)\\s*\\(.*(?:jsonrpc|rpc|message).*(?:for\\s*\\(|forEach|map)\\s*(?:of|\\()"
+    # Python JSON-RPC batch handler without limits
+    - "(?i)isinstance\\(\\s*(request|data|body|payload)\\s*,\\s*list\\s*\\)(?!.*(?:len\\(|max_batch|BATCH_LIMIT))"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)maxBatch|batch[_\\s-]?(size|limit|max)|MAX_BATCH"
+remediation: "Enforce a maximum batch size for JSON-RPC requests (recommended: 20-25 requests per batch). Reject batches exceeding the limit with a -32600 (Invalid Request) error. Implement per-batch timeout and memory limits. Reference: JSON-RPC 2.0 Section 6 (Batch) does not mandate limits — servers MUST enforce them."
+test_cases:
+  true_positive:
+    - { description: "Source code parses JSON body as array and iterates without checking length — unbounded batch processing", expected: true }
+    - { description: "Python server checks isinstance(request, list) and processes all items without max batch size", expected: true }
+  true_negative:
+    - { description: "Source code checks Array.isArray(body) then validates body.length < MAX_BATCH_SIZE before processing", expected: false }
+    - { description: "Test file containing batch request mocking for unit tests", expected: false }
+intelligence_source: "CometBFT Issue #2867 (batch size limit), LSP PR #1651 (disallow batch), Parity JSON-RPC DoS resilience spec"
+enabled: true

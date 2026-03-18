@@ -1,0 +1,72 @@
+id: O7
+name: Cross-Session Data Leakage
+category: data-privacy-attacks
+severity: critical
+owasp: MCP04-data-exfiltration
+mitre: AML.T0057
+
+# THREAT INTELLIGENCE NOTE (P1 Threat Researcher):
+# MCP servers that maintain state between sessions can leak data across users or sessions.
+# When context, cache, or memory state bleeds between sessions, authentication becomes
+# irrelevant — data reaches users who were never granted access.
+#
+# THE ATTACK:
+# 1. MCP server uses module-level/global variables to cache user data
+# 2. User A's query populates the cache with sensitive results
+# 3. User B connects to the same server instance and receives User A's cached data
+# 4. OR: Server stores data in shared files/databases without session isolation
+#
+# Research backing:
+# - Giskard AI (2025): "Cross Session Leak" — when context, cache, or memory state
+#   bleeds between user sessions, authentication controls become irrelevant
+# - OWASP LLM02:2025: Sensitive Information Disclosure via shared state
+# - Palo Alto Unit 42 (2026): "Agent Session Smuggling" — stateful attacks leveraging
+#   persistent session state in multi-agent systems
+# - Lakera AI (2026): Memory injection attacks causing persistent false beliefs
+#   across sessions — "poisoned memory persists, the agent recalls it in future sessions"
+# - Galileo AI (Dec 2026): Cascading failures via shared agent state
+#
+# This detects code patterns that create shared mutable state between sessions:
+# module-level caches, global variables storing user data, shared files without
+# session-scoped paths, and unscoped in-memory stores.
+
+detect:
+  type: regex
+  patterns:
+    # Module-level mutable data stores (Node.js)
+    - "(?i)(?:^|\\n)(?:const|let|var)\\s+(?:cache|store|data|users?Data|sessions?|history|memory|context|results?)\\s*[:=]\\s*(?:new Map|new Set|\\{\\}|\\[\\]|new \\w*Cache)"
+    # Global caches without session scoping
+    - "(?i)(?:global|globalThis|GLOBAL)\\s*\\.\\s*(?:cache|store|data|sessions?|memory|context)"
+    # Python module-level mutable state
+    - "(?i)^(?:cache|store|data|user_data|sessions?|history|memory|context|results?)\\s*[:=]\\s*(?:dict\\(\\)|\\{\\}|\\[\\]|defaultdict|OrderedDict|LRUCache)"
+    # Shared file storage without session isolation
+    - "(?i)(?:writeFile|appendFile|open)\\s*\\([^)]*['\"](?:/tmp/|/var/|cache/|data/|shared/)(?:cache|store|data|results?|history)[^)]*['\"]"
+    # In-memory LRU/cache without session key
+    - "(?i)(?:lru_cache|functools\\.cache|cachetools|node-cache|memory-cache|lru-cache).*(?:maxAge|ttl|max_?size)"
+    # Storing user data in class/instance variable without session scoping
+    - "(?i)this\\.(?:cache|store|userData|history|memory|context|results?)\\s*\\[(?!.*session|.*user_?id|.*req\\.)"
+    # SQLite/file-based shared DB without user isolation
+    - "(?i)(?:sqlite3|better-sqlite3|sql\\.js)\\.(?:Database|open)\\s*\\([^)]*['\"](?:shared|cache|data|memory)['\"]"
+  context: source_code
+  exclude_patterns:
+    - "// safe: session-scoped"
+    - "sessionId"
+    - "userId"
+    - "req.session"
+    - "per-user"
+    - "test"
+remediation: >
+  Never use module-level or global variables to cache user data. All data stores must be
+  scoped to the current session or user. Use session-keyed storage (Map keyed by session ID)
+  or per-user database tables. Implement cache isolation between sessions.
+  Clear all user data when a session ends. Never share mutable state between
+  concurrent connections. Use Redis or similar session stores with proper TTL and isolation.
+test_cases:
+  true_positive:
+    - { description: "Source code uses a module-level 'const cache = new Map()' that stores tool results without session scoping", expected: true }
+    - { description: "Source code writes to /tmp/cache/results.json shared across all user sessions", expected: true }
+  true_negative:
+    - { description: "Source code uses a session-scoped Map keyed by req.sessionId for per-user caching", expected: false }
+    - { description: "Source code uses Redis with user-specific key prefix for session isolation", expected: false }
+intelligence_source: "Giskard Cross-Session Leak (2025), OWASP LLM02:2025, Palo Alto Unit42 Agent Session Smuggling (2026), Lakera Memory Injection (2026)"
+enabled: true

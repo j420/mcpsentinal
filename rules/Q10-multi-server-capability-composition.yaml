@@ -1,0 +1,71 @@
+id: Q10
+name: Multi-Server Capability Composition Attack
+category: cross-ecosystem-emergent
+severity: high
+owasp: MCP04-data-exfiltration
+mitre: AML.T0057
+
+# THREAT INTELLIGENCE (Senior Security Architect — Emergent Interactions):
+#
+# Beyond the lethal trifecta (F1: 3 capabilities in 1 server) and cross-config
+# trifecta (I13: 3 capabilities across servers), there exist HIGHER-ORDER
+# composition attacks requiring 4-5 servers to combine individually-safe
+# capabilities into a dangerous workflow.
+#
+# ATTACK MODEL — The "Pentad of Peril":
+#   Server A: Reads email (low risk alone)
+#   Server B: Translates/summarizes text (low risk alone)
+#   Server C: Writes to shared database (low risk alone)
+#   Server D: Reads from shared database (low risk alone)
+#   Server E: Sends HTTP webhooks (low risk alone)
+#
+#   Chain: A reads attacker email → B extracts secrets via prompt injection →
+#          C writes secrets to DB → D reads secrets from DB → E exfiltrates
+#
+#   No individual server has the lethal trifecta. The attack only emerges
+#   from the composition of all five.
+#
+# DETECTION: Count distinct high-risk capability categories across all tools.
+# If a single client config has servers covering 4+ categories from:
+#   {reads-sensitive, ingests-untrusted, writes-state, reads-state, sends-external,
+#    executes-code, manages-credentials}
+# then the composition risk is elevated.
+#
+# Intelligence: Invariant Labs (2025), Trail of Bits (Feb 2026),
+# OWASP ASI07 Insecure Inter-Agent Communication
+
+detect:
+  type: composite
+  conditions:
+    check: multi_server_capability_composition
+    # 7 capability categories — having 4+ in a config = composition risk
+    capability_categories:
+      reads_sensitive:
+        - "(?i)(read|query|get|fetch|select).*(?:database|db|credential|secret|key|password|token|config|env)"
+        - "(?i)(database|db|credential|secret|password|token).*(?:read|query|get|fetch)"
+      ingests_untrusted:
+        - "(?i)(web|scrape|browse|crawl|fetch|download).*(?:url|page|site|content)"
+        - "(?i)(email|mail|slack|discord|chat|webhook|rss|feed).*(?:read|get|fetch|ingest)"
+      writes_state:
+        - "(?i)(write|insert|update|store|save|put|set).*(?:database|db|file|memory|state|cache|store)"
+      reads_state:
+        - "(?i)(read|get|query|fetch|select|load).*(?:database|db|file|memory|state|cache|store)"
+      sends_external:
+        - "(?i)(send|post|upload|push|notify|email|webhook|http|request).*(?:external|remote|api|url|server)"
+        - "(?i)(external|remote|api|server).*(?:send|post|upload|push)"
+      executes_code:
+        - "(?i)(exec|run|execute|spawn|eval|shell|command|bash|script)"
+      manages_credentials:
+        - "(?i)(create|update|rotate|revoke|delete).*(?:token|credential|key|password|secret|cert)"
+    # Threshold: 4+ distinct categories = elevated composition risk
+    min_categories: 4
+  context: metadata
+remediation: "This MCP server (or server configuration) combines 4+ distinct high-risk capability categories, creating emergent attack chains that no individual server analysis would detect. Even though each capability may be safe in isolation, their composition enables multi-step attacks (read sensitive data → transform → store → read → exfiltrate). Implement: (1) capability inventory across all connected MCP servers, (2) data flow analysis between servers, (3) explicit allow-listing of acceptable capability combinations, (4) monitoring for multi-step data movement patterns."
+test_cases:
+  true_positive:
+    - { description: "Server config has tools spanning reads-sensitive + ingests-untrusted + writes-state + sends-external — 4 categories enabling full exfiltration chain", expected: true }
+    - { description: "Server has tools for reading credentials, executing code, writing state, and sending HTTP — 4 categories", expected: true }
+  true_negative:
+    - { description: "Server only reads files and writes files — 2 categories, below threshold", expected: false }
+    - { description: "Server only executes code — 1 category, no composition risk", expected: false }
+enabled: true

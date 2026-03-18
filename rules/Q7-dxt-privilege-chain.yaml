@@ -1,0 +1,61 @@
+id: Q7
+name: Desktop Extension Privilege Chain
+category: cross-ecosystem-emergent
+severity: critical
+owasp: MCP05-privilege-escalation
+mitre: AML.T0054
+
+# THREAT INTELLIGENCE (Senior Security Architect — Desktop App):
+#
+# Claude Desktop Extensions (DXT) run as MCP servers with FULL HOST PRIVILEGES.
+# Unlike browser extensions, DXTs execute without sandboxing. LayerX assigned
+# CVSS 10.0 to the zero-click RCE scenario where:
+#
+#   1. Low-risk DXT (Google Calendar) ingests attacker-crafted calendar event
+#   2. Claude reads event, invokes high-privilege DXT (filesystem/shell executor)
+#   3. Attacker code downloads and executes — no confirmation, no warning
+#
+# This is a CROSS-EXTENSION attack: data flows from a low-sensitivity connector
+# (calendar, email, Slack) into a high-privilege executor (filesystem, shell,
+# git) through Claude's autonomous tool chaining.
+#
+# Anthropic declined to fix this, stating it "falls outside our current threat model."
+#
+# THE DETECTION SIGNAL: MCP server that BOTH ingests external content AND
+# provides local execution capabilities, enabling the attack chain within
+# a single server. Or: tool descriptions that reference other tools' outputs
+# as inputs for destructive operations.
+#
+# Intelligence: LayerX (2025) Claude DXT zero-click RCE (CVSS 10.0),
+# Check Point CVE-2025-59536/CVE-2026-21852
+
+detect:
+  type: composite
+  conditions:
+    check: dxt_privilege_chain
+    # Low-sensitivity ingestion capabilities (attack entry points)
+    ingestion_patterns:
+      - "(?i)(calendar|event|schedule|meeting|appointment)"
+      - "(?i)(email|mail|inbox|message|notification)"
+      - "(?i)(slack|discord|teams|chat|webhook)"
+      - "(?i)(rss|feed|news|article|blog)"
+      - "(?i)(clipboard|paste|screen|screenshot)"
+      - "(?i)(browser|web[_\\s-]?page|url|link)"
+    # High-privilege execution capabilities (attack targets)
+    execution_patterns:
+      - "(?i)(exec|spawn|shell|command|terminal|bash|sh\\s|powershell)"
+      - "(?i)(write[_\\s-]?file|create[_\\s-]?file|save[_\\s-]?file|modify[_\\s-]?file)"
+      - "(?i)(install|download|pip|npm|apt|brew)"
+      - "(?i)(git[_\\s-]?(?:clone|init|push|commit))"
+      - "(?i)(docker|container|kubernetes|kubectl)"
+      - "(?i)(ssh|scp|rsync|sftp)"
+  context: metadata
+remediation: "MCP servers / Desktop Extensions must NOT combine external content ingestion (calendar, email, Slack, RSS) with local execution capabilities (shell, filesystem write, git, docker) in the same server. This enables zero-click RCE chains where attacker-crafted content in a low-sensitivity source triggers high-privilege execution. Separate ingestion and execution into isolated servers with explicit cross-server data flow controls. Reference: LayerX Claude DXT zero-click RCE (CVSS 10.0)."
+test_cases:
+  true_positive:
+    - { description: "MCP server has both 'read_calendar' and 'execute_command' tools, enabling calendar→shell attack chain", expected: true }
+    - { description: "MCP server has both 'read_email' and 'write_file' tools with no isolation between them", expected: true }
+  true_negative:
+    - { description: "MCP server only reads calendar events with no execution capabilities", expected: false }
+    - { description: "MCP server only executes commands with no external content ingestion", expected: false }
+enabled: true

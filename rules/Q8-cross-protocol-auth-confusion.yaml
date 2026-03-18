@@ -1,0 +1,56 @@
+id: Q8
+name: Cross-Protocol Authentication Confusion
+category: cross-ecosystem-emergent
+severity: critical
+owasp: MCP07-insecure-configuration
+mitre: T1550
+
+# THREAT INTELLIGENCE (Senior Security Architect — Cross-Ecosystem):
+#
+# Servers that support both MCP (with OAuth 2.0 per MCP spec) and other
+# protocols (REST API with API keys, gRPC with mTLS, WebSocket with session
+# tokens) create AUTH CONFUSION vulnerabilities:
+#
+#   1. MCP OAuth token accepted by REST API (scope escalation)
+#   2. REST API key accepted for MCP operations (bypasses OAuth consent)
+#   3. Session token from one protocol replayed in another
+#   4. Auth middleware checks MCP auth but not REST, or vice versa
+#
+# REAL-WORLD EVIDENCE:
+# - mcp-remote CVE-2025-6514 (CVSS 9.6): auth library vulnerability in the
+#   npm package used to add OAuth support to MCP servers
+# - Asana MCP breach (June 2025): customer data leaked across MCP instances,
+#   partially caused by session management issues at protocol boundaries
+# - OAuth CSRF attacks across protocol boundaries (RFC 9700 BCP)
+#
+# Intelligence: CVE-2025-6514 (JFrog, 2025), Asana MCP breach (2025),
+# RFC 9700 OAuth Security BCP, OWASP ASI03
+
+detect:
+  type: regex
+  patterns:
+    # Multiple auth mechanisms in same server (indicator of cross-protocol)
+    - "(?i)(?:oauth|bearer).{0,100}(?:api[_\\s-]?key|x-api-key|apiKey)"
+    - "(?i)(?:api[_\\s-]?key|x-api-key).{0,100}(?:oauth|bearer|access[_\\s-]?token)"
+    # Auth token reuse across protocols
+    - "(?i)(?:mcp|rpc).*(?:token|auth).*(?:rest|http|api).*(?:same|reuse|share)"
+    - "(?i)(?:rest|http|api).*(?:token|auth).*(?:mcp|rpc).*(?:same|reuse|share)"
+    # Inconsistent auth middleware — one path checked, another not
+    - "(?i)(?:if|when).*(?:mcp|stdio|sse).*(?:skip|no|bypass|disable).*auth"
+    - "(?i)(?:auth|verify).*(?:mcp|rpc).*(?:else|otherwise).*(?:pass|skip|allow)"
+    # Multiple protocol listeners with different auth levels
+    - "(?i)(?:express|fastify|hono|koa).*(?:listen).{0,200}(?:StdioServerTransport|SSEServerTransport|StreamableHTTPServerTransport)"
+    # Shared secret/token across protocol boundaries
+    - "(?i)(?:shared[_\\s-]?secret|common[_\\s-]?token|global[_\\s-]?auth).*(?:mcp|rest|grpc|websocket)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+remediation: "MCP servers supporting multiple protocols must enforce authentication independently per protocol. Never reuse OAuth tokens across protocol boundaries. Implement protocol-specific middleware with explicit auth checks on every path. Audit auth coverage for all transport types (stdio, SSE, Streamable HTTP, REST). Reference: CVE-2025-6514 demonstrated that auth library vulnerabilities in MCP's OAuth layer cascade to all protocols sharing the same auth middleware."
+test_cases:
+  true_positive:
+    - { description: "Server checks OAuth for MCP requests but skips auth for REST API endpoints sharing the same backend", expected: true }
+    - { description: "Server reuses the same bearer token for both MCP and REST protocols without scope validation", expected: true }
+  true_negative:
+    - { description: "Server with single MCP transport and single auth mechanism", expected: false }
+    - { description: "Server with independent auth middleware for each protocol, properly scoped", expected: false }
+enabled: true

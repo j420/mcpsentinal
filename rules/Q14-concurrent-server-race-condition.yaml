@@ -1,0 +1,65 @@
+id: Q14
+name: Concurrent MCP Server Race Condition
+category: cross-ecosystem-emergent
+severity: high
+owasp: MCP07-insecure-configuration
+mitre: T1068
+
+# THREAT INTELLIGENCE (Senior Security Architect — Emergent Interactions):
+#
+# AI clients (Claude Desktop, Cursor) connect to multiple MCP servers
+# simultaneously. When two servers share a backend resource (filesystem,
+# database, API), concurrent tool calls create RACE CONDITIONS:
+#
+# ATTACK MODEL — TOCTOU (Time-of-Check-Time-of-Use):
+#   1. Server A's tool checks file permissions → returns "safe"
+#   2. Between check and use, Server B's tool modifies the file
+#   3. Server A's subsequent operation acts on the modified (now unsafe) file
+#
+# ATTACK MODEL — Shared State Corruption:
+#   1. Server A writes partial data to shared database
+#   2. Server B reads the partial/inconsistent data
+#   3. AI agent makes decisions based on corrupted intermediate state
+#
+# This is emergent: neither server has a bug individually. The vulnerability
+# only exists when both are connected to the same client simultaneously.
+#
+# EVIDENCE:
+# - CVE-2025-53110 (CVSS 7.3): Anthropic filesystem server directory
+#   containment bypass — filesystem race conditions are real in MCP
+# - CVE-2025-53109 (CVSS 8.4): Symlink bypass in filesystem server
+# - arXiv 2602.19555: "Agentic supply chain forms cyclic graph where
+#   invocation side effects re-enter the system"
+#
+# Intelligence: CVE-2025-53109/53110 (Anthropic filesystem, 2025),
+# arXiv 2602.19555 (Feb 2026), MITRE T1068 Exploitation for Privilege Escalation
+
+detect:
+  type: regex
+  patterns:
+    # Shared filesystem access without locking
+    - "(?i)(?:read|write|modify|delete).*(?:file|path|directory)(?!.*(?:lock|mutex|semaphore|flock|atomic))"
+    - "(?i)(?:fs\\.(?:readFile|writeFile|unlink|rename|chmod))(?!.*(?:lock|atomic|exclusive))"
+    # TOCTOU patterns — check then use with no atomicity
+    - "(?i)(?:exists|stat|access).*(?:then|=>|callback).*(?:read|write|exec|unlink)"
+    - "(?i)(?:check|verify|validate).*(?:permission|access|exists).*(?:then|await).*(?:open|read|write|exec)"
+    # Shared database access without transactions
+    - "(?i)(?:SELECT|read|query).*(?:then|await).*(?:UPDATE|INSERT|DELETE|write)(?!.*(?:transaction|BEGIN|LOCK))"
+    # Symlink following without checks (CVE-2025-53109 pattern)
+    - "(?i)(?:readlink|lstat|realpath).*(?:follow|resolve)(?!.*(?:check|validate|symlink))"
+    - "(?i)(?:fs\\.(?:readFile|writeFile)).*(?:followLinks|resolveLinks)\\s*:\\s*true"
+    # File operations in temp directories (race-prone)
+    - "(?i)(?:tmp|temp|tmpdir|os\\.tmpdir).*(?:write|create|exec)(?!.*(?:mkdtemp|exclusive|O_EXCL))"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)(?:lock|mutex|semaphore|atomic|transaction|flock)"
+remediation: "MCP servers sharing filesystem or database backends with other servers must implement proper concurrency controls. Use: (1) file locking (flock/lockfile) for filesystem operations, (2) database transactions for all read-modify-write sequences, (3) atomic file operations (O_EXCL, mkdtemp) instead of check-then-create, (4) lstat() to detect symlinks before following (CVE-2025-53109). Never assume exclusive access to shared resources — other MCP servers may be operating concurrently."
+test_cases:
+  true_positive:
+    - { description: "Source code checks file exists then reads it in two separate operations without locking", expected: true }
+    - { description: "Source code reads from database then writes based on read value without transaction", expected: true }
+  true_negative:
+    - { description: "Source code uses flock() before all file operations", expected: false }
+    - { description: "Source code wraps database read-modify-write in BEGIN/COMMIT transaction", expected: false }
+enabled: true

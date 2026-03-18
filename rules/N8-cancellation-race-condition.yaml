@@ -1,0 +1,31 @@
+id: N8
+name: Cancellation Race Condition
+category: protocol-edge-cases
+severity: high
+owasp: MCP07-insecure-config
+mitre: AML.T0054
+detect:
+  type: regex
+  patterns:
+    # Cancel handler that doesn't check if operation already committed
+    - "(?i)(?:notifications/cancelled|on[_\\s-]?cancel|handleCancel|cancel_request)\\s*(?:=>|=|\\()(?!.*(?:committed|completed|finalized|atomic|transaction))"
+    # Cancel without cleanup — partial state left behind
+    - "(?i)(?:cancel|abort)\\s*(?:=>|=|\\().*(?:delete|remove|unlink|drop|truncate)(?!.*(?:rollback|cleanup|finally|catch))"
+    # Async operation cancelable mid-mutation
+    - "(?i)(?:AbortController|AbortSignal|signal\\.aborted).*(?:write|insert|update|delete|create|modify)"
+    # Python: cancellation without atomic guard
+    - "(?i)(?:asyncio\\.(?:CancelledError|shield)|task\\.cancel).*(?:write|insert|update|delete|create)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)(?:transaction|atomic|rollback|savepoint|finally\\s*\\{.*(?:cleanup|rollback))"
+remediation: "Wrap mutable operations in atomic transactions. Check for committed state before processing cancellation. Use 'finally' blocks to clean up partial state on cancellation. MCP cancellation (notifications/cancelled) is advisory — the operation may have already completed. Never leave partial state from a cancelled-then-completed operation. Reference: MCP spec 2025-03-26 cancellation semantics."
+test_cases:
+  true_positive:
+    - { description: "Cancel handler deletes partial results without checking if the operation already committed to database", expected: true }
+    - { description: "Async write operation uses AbortSignal but doesn't wrap the mutation in a transaction", expected: true }
+  true_negative:
+    - { description: "Cancel handler checks operation.committed before attempting cleanup, uses transaction rollback", expected: false }
+    - { description: "Mutable operations wrapped in database transaction with automatic rollback on cancellation", expected: false }
+intelligence_source: "MCP spec 2025-03-26 Section 5.3 (Cancellation), TOCTOU race condition class (CWE-367)"
+enabled: true

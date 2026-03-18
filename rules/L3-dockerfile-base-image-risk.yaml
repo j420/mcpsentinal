@@ -1,0 +1,57 @@
+id: L3
+name: Dockerfile Base Image Supply Chain Risk
+category: supply-chain-advanced
+severity: high
+owasp: MCP10-supply-chain
+mitre: AML.T0017
+
+# THREAT INTELLIGENCE (P1 Researcher — Supply Chain):
+# Source: Flare Research (2025) — 10,000+ Docker Hub images with exposed secrets,
+#         CVE-2025-12735 (expr-eval transitive dependency via Docker),
+#         JFrog Research (2024) — millions of malicious imageless containers on Docker Hub,
+#         DockerDash (Nov 2025) — metadata label injection into Docker/MCP toolchain
+#
+# THE ATTACK: MCP servers deployed as Docker containers inherit the security
+# posture of their base image. Attackers exploit this by:
+#   1. Publishing typosquat base images (e.g., 'nod' instead of 'node')
+#   2. Using mutable tags (:latest, :lts) that can be replaced with poisoned images
+#   3. Using deprecated/unmaintained base images with known CVEs
+#   4. Base images with embedded cryptominers or reverse shells
+#   5. Multi-stage builds where intermediate stages leak secrets
+#
+# The Debian XZ backdoor (CVE-2024-3094) remained in Docker Hub base images
+# for over a year after disclosure, demonstrating that base image poisoning
+# persists long after the initial compromise.
+
+detect:
+  type: regex
+  patterns:
+    # Dockerfile FROM using mutable tags instead of digest pinning
+    - "(?i)^FROM\\s+(?!scratch)[\\w./-]+:(?:latest|stable|lts|current|slim|alpine)\\s"
+    # FROM without any tag or digest (defaults to :latest)
+    - "(?i)^FROM\\s+(?!scratch)[\\w./-]+\\s*$"
+    # Untrusted base image sources (not official Docker Hub or verified publishers)
+    - "(?i)^FROM\\s+(?!(?:node|python|alpine|ubuntu|debian|golang|rust|mcr\\.microsoft\\.com|gcr\\.io|ghcr\\.io|public\\.ecr\\.aws))[\\w.-]+/[\\w.-]+/"
+    # Secrets passed as build args (leaked in image layers)
+    - "(?i)ARG\\s+(?:.*(?:PASSWORD|SECRET|TOKEN|API_KEY|PRIVATE_KEY|AWS_ACCESS|DATABASE_URL))"
+    # Copying .env files into the image
+    - "(?i)COPY\\s+.*\\.env"
+    # Running as root without USER directive
+    - "(?i)^(?!.*USER\\s+\\w)(?=.*RUN\\s)(?=.*EXPOSE\\s)"
+    # Curl/wget piped to shell in Dockerfile RUN
+    - "(?i)RUN\\s+.*(?:curl|wget).*\\|.*(?:bash|sh|python)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example|template"
+    - "(?i)^FROM\\s+[\\w./-]+@sha256:[a-f0-9]{64}"
+    - "(?i)ARG\\s+(?:NODE_VERSION|PYTHON_VERSION|ALPINE_VERSION)"
+remediation: "Pin base images by digest (FROM node@sha256:abc123...) not mutable tags. Use Docker Content Trust (DCT) or Cosign to verify image signatures. Never pass secrets as build ARGs — use Docker BuildKit secrets or multi-stage builds. Add a USER directive to run as non-root. Scan images with Trivy or Docker Scout before deployment. Remove .env COPY instructions and use runtime environment injection."
+test_cases:
+  true_positive:
+    - { description: "Dockerfile uses 'FROM node:latest' with mutable tag instead of digest", expected: true }
+    - { description: "Dockerfile has 'ARG DATABASE_URL' passing credentials as build arg", expected: true }
+    - { description: "Dockerfile runs 'curl https://setup.sh | bash' in RUN step", expected: true }
+  true_negative:
+    - { description: "Dockerfile uses 'FROM node@sha256:abc123def456...' with pinned digest", expected: false }
+    - { description: "Test Dockerfile for integration testing in CI", expected: false }
+enabled: true

@@ -1,0 +1,49 @@
+id: P7
+name: Sensitive Host Filesystem Mount
+category: infrastructure-runtime
+severity: critical
+owasp: MCP05-privilege-escalation
+mitre: T1611
+# CVE-2025-53109/53110 (Anthropic filesystem server root boundary bypass): MCP-specific
+# filesystem escape through improperly bounded root paths.
+# CIS Docker Benchmark v1.7.0 §5.4/5.5: "Do not mount sensitive host directories"
+# CIS Kubernetes Benchmark §5.2.13: "Minimize hostPath volume usage"
+# Unit42 Container Escape Techniques (2025): host mounts enable container breakout.
+
+detect:
+  type: regex
+  patterns:
+    # Mounting host root filesystem
+    - "(?i)(?:volumes?|mount|bind|\\-v)\\s*[:\\-]?\\s*[\"']?/\\s*:\\s*/"
+    - "(?i)hostPath\\s*:\\s*\\n?\\s*path\\s*:\\s*[\"']?/$"
+    # Mounting sensitive host directories
+    - "(?i)(?:volumes?|mount|bind|\\-v)\\s*[:\\-]?\\s*[\"']?/etc(?:/|[\"'\\s])"
+    - "(?i)(?:volumes?|mount|bind|\\-v)\\s*[:\\-]?\\s*[\"']?/root(?:/|[\"'\\s])"
+    - "(?i)(?:volumes?|mount|bind|\\-v)\\s*[:\\-]?\\s*[\"']?/home(?:/|[\"'\\s])"
+    - "(?i)(?:volumes?|mount|bind|\\-v)\\s*[:\\-]?\\s*[\"']?/proc(?:/|[\"'\\s])"
+    - "(?i)(?:volumes?|mount|bind|\\-v)\\s*[:\\-]?\\s*[\"']?/sys(?:/|[\"'\\s])"
+    - "(?i)(?:volumes?|mount|bind|\\-v)\\s*[:\\-]?\\s*[\"']?/dev(?:/|[\"'\\s])"
+    - "(?i)(?:volumes?|mount|bind|\\-v)\\s*[:\\-]?\\s*[\"']?/boot(?:/|[\"'\\s])"
+    # SSH keys directory
+    - "(?i)(?:volumes?|mount|bind|\\-v)\\s*[:\\-]?\\s*[\"']?(?:~/?\\.ssh|/root/\\.ssh|/home/[^/]+/\\.ssh)"
+    # Kubernetes hostPath at sensitive locations
+    - "(?i)hostPath\\s*:\\s*\\n?\\s*path\\s*:\\s*[\"']?(?:/etc|/root|/home|/proc|/sys|/dev|/boot)"
+    # Kubernetes hostPath with ReadWrite (not ReadOnly)
+    - "(?i)hostPath[\\s\\S]{0,100}(?:readOnly\\s*:\\s*false|type\\s*:\\s*DirectoryOrCreate)"
+    # Writable /proc/sys mounts (cgroup escape vector)
+    - "(?i)(?:mount|bind).*(?:/proc/sys|/sys/fs/cgroup).*(?:rw|readwrite)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)readOnly\\s*:\\s*true"
+    - "(?i)read[_\\-]?only"
+remediation: "Mount only the specific data directories needed by the MCP server, never entire host filesystem trees. Use read-only mounts (ro flag) wherever possible. For Kubernetes, avoid hostPath volumes entirely — use PersistentVolumeClaims instead. CVE-2025-53109/53110 demonstrated that even Anthropic's own filesystem MCP server had root boundary bypass bugs. Enforce Kubernetes Pod Security Standards 'restricted' profile which prohibits hostPath mounts."
+test_cases:
+  true_positive:
+    - { description: "docker-compose.yml mounts /:/host:rw giving MCP server full host filesystem access", expected: true }
+    - { description: "Kubernetes pod spec mounts /etc via hostPath for configuration reading", expected: true }
+  true_negative:
+    - { description: "docker-compose.yml mounts /app/data:/data for MCP server data storage", expected: false }
+    - { description: "Kubernetes pod uses readOnly: true on a hostPath mount", expected: false }
+intelligence_source: "CVE-2025-53109/53110 (Anthropic filesystem MCP server), CIS Docker Benchmark v1.7.0 Sections 5.4/5.5, CIS Kubernetes Benchmark 5.2.13, Unit42 Container Escape Techniques (2025)"
+enabled: true

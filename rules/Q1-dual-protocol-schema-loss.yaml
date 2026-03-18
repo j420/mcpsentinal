@@ -1,0 +1,56 @@
+id: Q1
+name: Dual-Protocol Schema Constraint Loss
+category: cross-ecosystem-emergent
+severity: critical
+owasp: MCP06-excessive-permissions
+mitre: AML.T0054
+
+# THREAT INTELLIGENCE (Senior Security Architect — Cross-Ecosystem):
+#
+# Many MCP servers also expose OpenAI function-calling or Google Gemini tool
+# definitions. MCP JSON Schema supports `minLength`, `maxLength`, `pattern`,
+# `enum`, `format` constraints that OpenAI's function schema silently drops
+# during translation. A tool that is safely constrained via MCP may become
+# unconstrained when called through the OpenAI adapter.
+#
+# ATTACK MODEL:
+#   1. MCP tool has `pattern: "^[a-z0-9]+$"` on a `filename` parameter
+#   2. A bridge/adapter (e.g. LangChain MCP→OpenAI, Vercel AI SDK) strips
+#      the pattern constraint during schema translation
+#   3. Attacker sends `../../etc/passwd` through the OpenAI interface
+#   4. MCP server receives input that should have been rejected
+#
+# EVIDENCE:
+# - Vercel AI SDK `experimental_toLanguageModelTools` discards regex patterns
+# - LangChain `MCPToolkit` converts MCP schemas to OpenAI format, losing
+#   `minLength`/`maxLength`/`pattern` (verified in langchain-mcp v0.1.x)
+# - OpenAI function calling spec does not support `pattern` or `format`
+#
+# Intelligence: OpenAI function calling schema spec (2024), Vercel AI SDK
+# source (2025), OWASP ASI02 Tool Misuse
+
+detect:
+  type: regex
+  patterns:
+    # Detects dual-protocol server patterns — serves both MCP and OpenAI/Gemini
+    - "(?i)(openai|function[_\\s-]?calling|tool[_\\s-]?choice).{0,60}(mcp|model[_\\s-]?context)"
+    - "(?i)(mcp|model[_\\s-]?context).{0,60}(openai|function[_\\s-]?calling|tool[_\\s-]?choice)"
+    - "(?i)to[_\\s]?(?:openai|language[_\\s]?model)[_\\s]?(?:tools?|functions?|schema)"
+    - "(?i)(?:convert|transform|translate|map)[_\\s]?(?:mcp|tool)[_\\s]?schema.{0,30}(?:openai|gemini|anthropic)"
+    - "(?i)experimental_toLanguageModelTools"
+    - "(?i)MCPToolkit|MCP[_\\s]?to[_\\s]?(?:OpenAI|LangChain|function)"
+    - "(?i)(?:function|tool)_schema_from_mcp"
+    # Pattern constraint stripping indicators
+    - "(?i)(?:delete|remove|strip|omit|drop|ignore)\\s+(?:pattern|format|minLength|maxLength|constraints)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture"
+remediation: "Dual-protocol MCP servers must validate input constraints server-side, not rely on client-side schema enforcement. When translating MCP schemas to OpenAI function-calling format, constraints like `pattern`, `minLength`, `maxLength`, and `format` are silently dropped. Implement server-side Zod/AJV validation on all tool inputs regardless of the calling protocol."
+test_cases:
+  true_positive:
+    - { description: "Source code contains MCPToolkit adapter converting MCP schemas to OpenAI function schemas", expected: true }
+    - { description: "Source code calls experimental_toLanguageModelTools to bridge MCP and Vercel AI SDK", expected: true }
+  true_negative:
+    - { description: "Pure MCP server with no OpenAI/function-calling references", expected: false }
+    - { description: "Test file verifying schema translation correctness", expected: false }
+enabled: true

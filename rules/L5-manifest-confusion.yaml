@@ -1,0 +1,60 @@
+id: L5
+name: Package Manifest Confusion Indicators
+category: supply-chain-advanced
+severity: high
+owasp: MCP10-supply-chain
+mitre: AML.T0017
+
+# THREAT INTELLIGENCE (P1 Researcher — Supply Chain):
+# Source: Darcy Clarke (npm manifest confusion, July 2023 — STILL UNPATCHED),
+#         JFrog Research (March 2024 — 800+ packages with discrepancies),
+#         BleepingComputer/InfoQ coverage (2023-2024)
+#
+# THE ATTACK: npm allows publishing packages where the manifest metadata
+# (displayed on npmjs.com and used by audit tools) differs from the actual
+# package.json inside the tarball. This means:
+#   1. Hidden install scripts not visible in the registry UI
+#   2. Hidden dependencies that bypass npm audit
+#   3. Different entry points than declared (bin/main field mismatch)
+#   4. The displayed version can differ from the actual installed version
+#
+# As of March 2026, npm HAS NOT FIXED this vulnerability. All major package
+# managers (npm, yarn, pnpm) are affected because they trust the tarball
+# package.json, not the registry manifest.
+#
+# DIFFERENCE FROM K9: K9 detects dangerous postinstall hooks in visible source.
+# L5 detects patterns that ENABLE manifest confusion — dual manifest generation,
+# publish scripts that modify package.json before tarball creation, and
+# indicators of manifest/tarball divergence.
+
+detect:
+  type: regex
+  patterns:
+    # Publish scripts that modify package.json before npm pack/publish
+    - "(?i)[\"']prepublish(?:Only)?[\"']\\s*:\\s*[\"'][^\"']*(?:sed|awk|perl|node.*package\\.json|jq.*package\\.json)"
+    # Dynamic modification of package.json during publish lifecycle
+    - "(?i)(?:fs\\.writeFileSync|writeFile)\\s*\\([^)]*package\\.json.*(?:scripts|dependencies|bin|main|exports)"
+    # Programmatic package.json manipulation hiding install hooks
+    - "(?i)(?:JSON\\.parse|require).*package\\.json.*(?:scripts|preinstall|postinstall|install).*(?:delete|remove|unset)"
+    # Different 'main' or 'bin' entry points in publish vs source
+    - "(?i)[\"']prepublish[\"'].*(?:mv|cp|rename|replace).*(?:index|main|bin|entry)"
+    # npm pack with modified manifest
+    - "(?i)(?:npm\\s+pack|npm\\s+publish).*(?:--json|--dry-run).*(?:sed|awk|modify)"
+    # Package exports map overriding declared entry points
+    - "(?i)[\"']exports[\"'].*[\"']\\.[\"'].*[\"'](?:import|require)[\"'].*(?:(?!index)\\w+\\.(?:js|mjs|cjs))"
+    # Hidden bin field entries not matching declared tool names
+    - "(?i)[\"']bin[\"']\\s*:\\s*\\{[^}]*[\"'](?!(?:mcp-sentinel|npx))[\\w-]+[\"']\\s*:\\s*[\"'][^\"']*(?:backdoor|payload|hook|inject)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)(?:prepublish|prepublishOnly).*(?:tsc|build|compile|lint|typecheck)"
+remediation: "Verify package integrity by comparing registry manifest with tarball package.json using npm-manifest-check or similar tools. Pin dependencies by integrity hash in lockfiles. Use 'npm publish --provenance' for Sigstore attestation. Audit prepublish scripts for package.json modifications. Add 'npm pack --dry-run' to CI to verify tarball contents match expectations."
+test_cases:
+  true_positive:
+    - { description: "prepublish script uses sed to remove postinstall from package.json before npm publish", expected: true }
+    - { description: "Source code writes to package.json to add hidden dependency before packing", expected: true }
+    - { description: "Bin field in package.json points to a file named 'payload.js'", expected: true }
+  true_negative:
+    - { description: "prepublish script runs 'tsc' to compile TypeScript before publishing", expected: false }
+    - { description: "Test file reads package.json to verify version number", expected: false }
+enabled: true

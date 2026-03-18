@@ -1,0 +1,42 @@
+id: P1
+name: Docker Socket Mount in Container
+category: infrastructure-runtime
+severity: critical
+owasp: MCP07-insecure-config
+mitre: T1611
+# CIS Docker Benchmark v1.7.0 §5.4: "Do not mount sensitive host system directories on containers"
+# CVE-2025-9074 (Docker Desktop container escape, CVSS 9.3): malicious container accessed
+# Docker Engine without socket mount — socket mount makes this trivially easier.
+# OWASP Docker Security: "Do not expose the Docker daemon socket to containers."
+# Unit42: Docker socket mount gives full host takeover via API.
+
+detect:
+  type: regex
+  patterns:
+    # docker-compose.yml / docker run volume mounts
+    - "(?i)(?:volumes?|mount|bind|\\-v)\\s*[:\\-]?\\s*[\"']?/var/run/docker\\.sock"
+    - "(?i)docker\\.sock\\s*:\\s*/var/run/docker\\.sock"
+    # Dockerfile VOLUME directive
+    - "(?i)VOLUME\\s+.*docker\\.sock"
+    # Kubernetes hostPath mount
+    - "(?i)hostPath\\s*:\\s*\\n?\\s*path\\s*:\\s*[\"']?/var/run/docker\\.sock"
+    # containerd socket
+    - "(?i)(?:volumes?|mount|bind|\\-v)\\s*[:\\-]?\\s*[\"']?/run/containerd/containerd\\.sock"
+    # CRI-O socket
+    - "(?i)(?:volumes?|mount|bind|\\-v)\\s*[:\\-]?\\s*[\"']?/var/run/crio/crio\\.sock"
+    # Podman socket
+    - "(?i)(?:volumes?|mount|bind|\\-v)\\s*[:\\-]?\\s*[\"']?/run/podman/podman\\.sock"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example|sample"
+    - "(?i)#.*docker\\.sock"
+remediation: "Never mount the container runtime socket into MCP server containers. If Docker API access is needed, use a restricted Docker proxy (e.g., Tecnativa docker-socket-proxy) with read-only access to specific endpoints. For CI/CD use cases, prefer Docker-in-Docker (dind) with TLS or Kaniko for rootless image builds. CIS Docker Benchmark 5.4 prohibits mounting sensitive host directories."
+test_cases:
+  true_positive:
+    - { description: "docker-compose.yml mounts /var/run/docker.sock:/var/run/docker.sock into MCP server container", expected: true }
+    - { description: "Kubernetes pod spec uses hostPath to mount containerd socket at /run/containerd/containerd.sock", expected: true }
+  true_negative:
+    - { description: "docker-compose.yml mounts a data volume /app/data:/data without any socket mounts", expected: false }
+    - { description: "Test fixture references docker.sock in a comment explaining the security risk", expected: false }
+intelligence_source: "CVE-2025-9074 (Docker Desktop container escape, CVSS 9.3), CIS Docker Benchmark v1.7.0 Section 5.4, Unit42 Container Escape Techniques (2025)"
+enabled: true

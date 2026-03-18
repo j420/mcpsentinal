@@ -1,0 +1,62 @@
+id: Q11
+name: Code Suggestion Poisoning via MCP
+category: cross-ecosystem-emergent
+severity: critical
+owasp: MCP01-prompt-injection
+mitre: AML.T0054.001
+
+# THREAT INTELLIGENCE (Senior Security Architect — IDE Integration):
+#
+# "IDEsaster" (Dec 2025, MaccariTA): 30+ vulnerabilities across AI IDEs where
+# MCP tool outputs influence code suggestions. The attack:
+#
+#   1. MCP tool returns data containing hidden instructions or malicious code
+#   2. IDE agent (Cursor, Copilot, Kiro, Windsurf) incorporates output into context
+#   3. AI generates code suggestions containing the attacker's payload
+#   4. Developer accepts "AI-generated" code that includes malicious logic
+#
+# This is distinct from direct code injection (C1, C16). Here the MCP tool
+# doesn't execute code — it POISONS the AI's code generation context so the
+# AI writes the malicious code for the developer to accept.
+#
+# REAL-WORLD EVIDENCE:
+# - arXiv 2509.22040: "Your AI, My Shell" — prompt injection in coding editors
+#   via imported context references containing hidden characters
+# - Cursor forum: users reported "Cursor tried to wipe my computer" — rm -rf /
+#   commands generated during normal coding assistance
+# - Context hijacking via user-added context references with hidden characters
+#   not visible to humans but parsable by LLMs
+#
+# Intelligence: "IDEsaster" (Dec 2025), arXiv 2509.22040 (Sep 2025),
+# Check Point MCPoison CVE-2025-54136
+
+detect:
+  type: regex
+  patterns:
+    # MCP tool responses containing code blocks with suspicious patterns
+    - "(?i)(?:tool[_\\s-]?(?:output|response|result)).*(?:```|code[_\\s-]?block|snippet)"
+    - "(?i)(?:return|respond|output).*(?:code[_\\s-]?(?:suggestion|completion|generation|snippet))"
+    # Hidden instructions targeting AI coding assistants
+    - "(?i)(?:copilot|cursor|kiro|windsurf|cline|roo[_\\s-]?code).*(?:suggest|generate|complete|insert)"
+    - "(?i)(?:suggest|generate|complete|insert).*(?:code|function|class|import|require)"
+    # Patterns that inject into code generation context
+    - "(?i)(?:context|prompt).*(?:inject|poison|manipulate|modify).*(?:code|suggest|complet)"
+    - "(?i)(?:hidden|invisible|zero[_\\s-]?width).*(?:instruction|directive|command).*(?:code|suggest)"
+    # Build system injection via MCP outputs
+    - "(?i)(?:package\\.json|requirements\\.txt|Cargo\\.toml|go\\.mod|build\\.gradle).*(?:inject|modify|append|add)"
+    - "(?i)(?:postinstall|preinstall|prepare).*(?:script|hook|command).*(?:inject|add|modify)"
+    # Tool outputs containing shell/system commands framed as "fixes"
+    - "(?i)(?:to[_\\s]?fix|resolution|workaround|try[_\\s]?running).*(?:rm[_\\s]-rf|curl.*\\||wget.*\\||chmod[_\\s]777|sudo)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example|readme"
+    - "(?i)detect|prevent|scan|check.*(?:inject|poison)"
+remediation: "MCP tool outputs flowing into IDE code suggestion contexts must be sanitized. Implement output content policies that: (1) strip hidden Unicode characters (zero-width, RTL override, tag characters), (2) detect embedded instructions targeting AI code assistants, (3) validate code blocks against security patterns before they enter the suggestion pipeline, (4) never include shell commands in tool outputs without explicit [COMMAND] markers visible to the user. Reference: IDEsaster (Dec 2025), arXiv 2509.22040."
+test_cases:
+  true_positive:
+    - { description: "MCP tool output contains code suggestion with hidden rm -rf instruction framed as a fix", expected: true }
+    - { description: "Source code injects content into IDE code completion context via MCP tool response", expected: true }
+  true_negative:
+    - { description: "MCP tool returns plain data (JSON, text) with no code suggestion context", expected: false }
+    - { description: "Security scanner that detects code suggestion poisoning patterns", expected: false }
+enabled: true

@@ -1,0 +1,33 @@
+id: N14
+name: Trust-On-First-Use Bypass (TOFU)
+category: protocol-edge-cases
+severity: critical
+owasp: MCP10-supply-chain
+mitre: AML.T0054
+detect:
+  type: regex
+  patterns:
+    # Trust stored by key name only, not content hash
+    - "(?i)(?:trusted|approved|allowed)[_\\s-]?(?:servers|tools|configs|mcps?)\\s*(?:\\[|\\.)\\s*(?:['\"])?(?:name|key|id)(?:['\"])?\\s*(?:\\])?\\s*(?:=|push|add|set)"
+    # Config approval without content hashing
+    - "(?i)(?:approve|trust|allow|accept)[_\\s-]?(?:server|tool|config|mcp)\\s*\\((?!.*(?:hash|digest|checksum|fingerprint|sha|integrity))"
+    # MCP config stored without signature or hash verification
+    - "(?i)(?:mcp|server)[_\\s-]?config.*(?:save|store|write|persist)\\s*\\((?!.*(?:hash|sign|verify|integrity|checksum))"
+    # JSON/YAML config file read without integrity check
+    - "(?i)(?:readFile|readJSON|loadConfig|parseConfig)\\s*\\(.*(?:\\.mcp|mcp\\.json|mcp\\.yaml|claude_desktop_config)(?!.*(?:verify|validate|checkHash|checkIntegrity))"
+    # Python: config trust without hash
+    - "(?i)(?:trusted_configs|approved_servers)\\s*(?:\\[|\\.).*(?:=|append|add)(?!.*(?:hashlib|sha256|digest|hmac))"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)(?:sha256|sha512|checksum|integrity|fingerprint|signatureVerif)"
+remediation: "Hash the full MCP server configuration (command, args, env) at approval time. On every subsequent load, re-compute and compare the hash. Reject or re-prompt if the config has changed. CVE-2025-54136 (Cursor MCPoison) demonstrated that trust-on-first-use without content verification enables silent config swaps — a benign server is approved, then replaced with a malicious one. Never bind trust to key names alone."
+test_cases:
+  true_positive:
+    - { description: "Client stores approved MCP servers by name only, without hashing the command/args/env configuration", expected: true }
+    - { description: "Config loader reads MCP config file without verifying integrity hash against stored approval", expected: true }
+  true_negative:
+    - { description: "Client computes SHA-256 of full MCP config at approval time and validates hash on every load", expected: false }
+    - { description: "MCP config changes trigger re-approval prompt with diff display to user", expected: false }
+intelligence_source: "CVE-2025-54136 (Cursor MCPoison — TOFU bypass, CVSS 7.2), Check Point Research (Aug 2025), CWE-345 (Insufficient Verification of Data Authenticity)"
+enabled: true

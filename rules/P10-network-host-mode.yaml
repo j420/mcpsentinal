@@ -1,0 +1,43 @@
+id: P10
+name: Host Network Mode and Missing Egress Controls
+category: infrastructure-runtime
+severity: high
+owasp: MCP07-insecure-config
+mitre: T1557
+# CIS Docker Benchmark v1.7.0 §5.9: "Do not use host network mode"
+# CIS Kubernetes Benchmark §5.2.4: "Do not allow containers to use host networking"
+# OWASP Docker Security Cheat Sheet: host network bypasses all container network isolation.
+# Unit42 Container Escape: host network enables ARP spoofing, mDNS scanning, service discovery.
+
+detect:
+  type: regex
+  patterns:
+    # Docker host network mode
+    - "(?i)(?:network[_\\s-]?mode|--net|--network)\\s*[:=]\\s*[\"']?host[\"']?"
+    - "(?i)hostNetwork\\s*:\\s*true"
+    # Missing network policy (Kubernetes allow-all default)
+    - "(?i)kind:\\s*(?:Deployment|Pod|StatefulSet)(?!.*(?:NetworkPolicy|networkPolicy))"
+    # Listening on all interfaces without network policy
+    - "(?i)0\\.0\\.0\\.0:\\d{2,5}(?!.*(?:NetworkPolicy|firewall|iptables|security[_\\-]?group))"
+    # mDNS/SSDP scanning patterns (lateral movement from server context)
+    - "(?i)(?:mdns|ssdp|avahi|bonjour)\\.(?:discover|browse|query|search)"
+    - "(?i)239\\.255\\.255\\.250"
+    - "(?i)224\\.0\\.0\\.251"
+    # Internal network scanning from MCP server
+    - "(?i)(?:nmap|masscan|zmap|net\\.createConnection).*(?:10\\.|172\\.(?:1[6-9]|2\\d|3[01])|192\\.168)"
+    # ARP scanning from container
+    - "(?i)(?:arp[_\\-]?scan|arping|arp\\.(?:request|scan))"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)network[_\\s-]?mode\\s*[:=]\\s*[\"']?(?:bridge|none|overlay)"
+remediation: "Never use host network mode for MCP server containers — it bypasses all network isolation, exposing host services and enabling ARP/mDNS attacks. Use bridge networking with explicit port mapping. In Kubernetes, set hostNetwork: false and apply NetworkPolicy resources to restrict both ingress and egress traffic. Implement egress controls to prevent MCP servers from scanning internal networks or reaching unintended external services."
+test_cases:
+  true_positive:
+    - { description: "docker-compose.yml sets network_mode: host on MCP server container", expected: true }
+    - { description: "Kubernetes pod spec sets hostNetwork: true allowing the container to see all host network interfaces", expected: true }
+  true_negative:
+    - { description: "docker-compose.yml uses default bridge networking with port mapping 3000:3000", expected: false }
+    - { description: "Kubernetes deployment has a NetworkPolicy restricting egress to specific CIDR ranges", expected: false }
+intelligence_source: "CIS Docker Benchmark v1.7.0 Section 5.9, CIS Kubernetes Benchmark 5.2.4, OWASP Docker Security Cheat Sheet, Unit42 Container Escape Techniques"
+enabled: true

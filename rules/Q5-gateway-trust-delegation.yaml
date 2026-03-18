@@ -1,0 +1,61 @@
+id: Q5
+name: MCP Gateway Trust Delegation Confusion
+category: cross-ecosystem-emergent
+severity: critical
+owasp: MCP06-excessive-permissions
+mitre: AML.T0054
+
+# THREAT INTELLIGENCE (Senior Security Architect — Federated MCP):
+#
+# MCP gateways (Cloudflare MCP Server Portals, Docker MCP Gateway, Toolhouse,
+# Mintlify) aggregate multiple MCP servers behind a single trusted endpoint.
+# This creates a TRUST DELEGATION problem:
+#
+#   User trusts Gateway → Gateway trusts Server A, Server B, Server C
+#   User has NO visibility into which underlying server processes their request.
+#
+# ATTACK MODEL:
+#   1. Gateway proxies tool calls to N backend MCP servers
+#   2. One backend server is compromised (or is malicious from the start)
+#   3. User approved the GATEWAY, not the individual servers
+#   4. Compromised server's tool descriptions/responses flow through the
+#      trusted gateway without per-server consent checks
+#
+# Additional vectors:
+# - Gateway bypass: attacker discovers direct backend server URL
+# - Tool description aggregation: gateway combines descriptions from
+#   multiple servers — creates cross-server injection surface
+# - Auth token forwarding: gateway passes user's OAuth token to all backends
+#
+# Intelligence: Cloudflare MCP Server Portals blog (2026), Docker MCP Gateway
+# blog (2025), OWASP ASI03 Identity & Privilege Abuse
+
+detect:
+  type: composite
+  conditions:
+    check: gateway_trust_delegation
+    # Patterns indicating MCP gateway/proxy functionality
+    gateway_patterns:
+      - "(?i)(mcp[_\\s-]?gateway|mcp[_\\s-]?proxy|mcp[_\\s-]?portal|mcp[_\\s-]?hub)"
+      - "(?i)(tool[_\\s-]?aggregat|server[_\\s-]?aggregat|multi[_\\s-]?server[_\\s-]?(?:proxy|gateway))"
+      - "(?i)(upstream[_\\s-]?(?:mcp|server)|backend[_\\s-]?(?:mcp|server))"
+      - "(?i)(proxy[_\\s-]?tool[_\\s-]?call|forward[_\\s-]?tool|relay[_\\s-]?mcp)"
+      - "(?i)(server[_\\s-]?registry|tool[_\\s-]?registry|mcp[_\\s-]?router)"
+    # Dangerous: forwarding auth tokens to backends without scoping
+    token_forwarding_patterns:
+      - "(?i)(forward|pass|relay|propagate).*(?:auth|token|credential|bearer).*(?:backend|upstream|server)"
+      - "(?i)(backend|upstream).*(?:auth|token|header).*(?:req|request|ctx|context)"
+    # Missing per-server consent/approval
+    missing_consent_patterns:
+      - "(?i)(?:auto[_\\s-]?approve|skip[_\\s-]?consent|bypass[_\\s-]?approval)"
+      - "(?i)(?:trust[_\\s-]?all|approve[_\\s-]?all).*(?:server|backend|upstream)"
+  context: metadata
+remediation: "MCP gateways must implement per-backend-server consent and tool approval, not just gateway-level trust. Users must be able to see and approve individual backend servers, not just the gateway. Never forward user OAuth tokens to all backend servers — implement token scoping per backend. Apply tool description scanning (A1-A9 rules) to each backend independently. Implement gateway-level audit logging of which backend server handled each tool call."
+test_cases:
+  true_positive:
+    - { description: "Server description indicates it aggregates multiple MCP servers behind a single gateway with auto-approve for all backends", expected: true }
+    - { description: "Server forwards user auth tokens to all upstream MCP backends without per-backend scoping", expected: true }
+  true_negative:
+    - { description: "Standard single MCP server with no gateway/proxy functionality", expected: false }
+    - { description: "MCP gateway with explicit per-server consent prompts and scoped auth tokens", expected: false }
+enabled: true

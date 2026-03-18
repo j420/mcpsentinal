@@ -1,0 +1,73 @@
+id: O8
+name: Timing-Based Covert Channel
+category: data-privacy-attacks
+severity: high
+owasp: MCP04-data-exfiltration
+mitre: AML.T0057
+
+# THREAT INTELLIGENCE NOTE (P1 Threat Researcher):
+# Timing-based covert channels encode data in response delays. A malicious MCP tool can
+# exfiltrate bits of data by modulating its response time — slow response = 1, fast = 0.
+# This bypasses ALL content-based DLP, network monitoring, and log analysis because no
+# data appears in any payload.
+#
+# THE ATTACK:
+# For each bit of data to exfiltrate:
+# - If bit = 1: sleep(200ms) before responding
+# - If bit = 0: respond immediately
+# The attacker measures response times and reconstructs the data.
+#
+# Also detects: deliberate timeout patterns, heartbeat interval encoding,
+# progress notification timing encoding.
+#
+# Research backing:
+# - Schneier on Security (Feb 2026): "Side-Channel Attacks Against LLMs"
+# - arXiv "Whisper Leak" (Nov 2025): Side-channel attack inferring prompt topics from
+#   encrypted LLM traffic via packet size and timing (>98% AUPRC)
+# - IACR "Wiretapping LLMs" (2025): Speculative decoding introduces data-dependent
+#   timing characteristics exploitable by network adversaries
+# - MITRE ATT&CK T1071.001: Protocol-level timing analysis
+#
+# Why this matters for MCP:
+# No content inspection tool can detect this. The tool returns completely legitimate
+# responses — only the TIMING carries the exfiltrated data.
+
+detect:
+  type: regex
+  patterns:
+    # Dynamic sleep/delay based on data values
+    - "(?i)(?:setTimeout|sleep|delay|wait|pause)\\s*\\([^)]*(?:charAt|charCodeAt|bit|byte|\\[\\s*i\\s*\\]|data|secret|token|password|credential|env)"
+    - "(?i)(?:time\\.sleep|asyncio\\.sleep|await\\s+sleep)\\s*\\([^)]*(?:ord|bit|byte|data|secret|char|encode)"
+    # Calculating delay from data bits/bytes
+    - "(?i)(?:delay|sleep|timeout|wait)\\s*[:=]\\s*(?:[^;]*(?:charCodeAt|charAt|bit|byte|\\&\\s*1|>>|<<|\\[i\\]))"
+    - "(?i)(?:delay|sleep|timeout|interval)\\s*[:=]\\s*(?:[^;]*(?:secret|token|password|credential|key|env))"
+    # Bitwise operations on sensitive data combined with timing
+    - "(?i)(?:>>|<<|\\&\\s*(?:1|0x[0-9a-f]+)).*(?:sleep|delay|timeout|setTimeout|wait)"
+    - "(?i)(?:sleep|delay|timeout|setTimeout|wait).*(?:>>|<<|\\&\\s*(?:1|0x[0-9a-f]+))"
+    # Encoding data in progress notification intervals
+    - "(?i)(?:progress|notification|heartbeat|ping|keepalive).*(?:interval|delay|timeout)\\s*[:=]\\s*(?:[^;]*(?:data|secret|char|byte|bit))"
+    # Python: struct.pack/unpack combined with sleep (binary encoding + timing)
+    - "(?i)struct\\.(?:pack|unpack).*(?:sleep|delay|time\\.time)"
+  context: source_code
+  exclude_patterns:
+    - "// safe: rate limiting"
+    - "// safe: backoff"
+    - "exponentialBackoff"
+    - "retryDelay"
+    - "test"
+    - "mock"
+remediation: >
+  Remove all code that calculates sleep/delay durations from application data, secrets,
+  or any variable-length content. Tool response times should be constant or determined
+  only by legitimate processing time. If rate limiting is needed, use fixed intervals
+  not derived from data values. Monitor for anomalous response time patterns that could
+  indicate timing-based exfiltration.
+test_cases:
+  true_positive:
+    - { description: "Source code calculates setTimeout delay from secret.charCodeAt(i) to encode data in response timing", expected: true }
+    - { description: "Source code uses time.sleep(ord(data[i]) / 1000) to modulate response delay based on exfiltrated bytes", expected: true }
+  true_negative:
+    - { description: "Source code uses setTimeout(callback, 1000) with a fixed 1-second delay for rate limiting", expected: false }
+    - { description: "Source code implements exponential backoff with delay = baseDelay * Math.pow(2, retryCount)", expected: false }
+intelligence_source: "Schneier Side-Channel Attacks (Feb 2026), arXiv Whisper Leak (Nov 2025), IACR Wiretapping LLMs (2025)"
+enabled: true

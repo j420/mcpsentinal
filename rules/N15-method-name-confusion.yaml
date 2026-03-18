@@ -1,0 +1,33 @@
+id: N15
+name: JSON-RPC Method Name Confusion
+category: protocol-edge-cases
+severity: critical
+owasp: MCP05-privilege-escalation
+mitre: AML.T0054
+detect:
+  type: regex
+  patterns:
+    # Method routing without allowlist — accepts arbitrary method names
+    - "(?i)(?:method|action)\\s*[:=]\\s*(?:(?:req|params|body|message|data)\\s*\\.\\s*method)(?!.*(?:allowedMethods|ALLOWED_METHODS|whitelist|allowlist|switch\\s*\\(|includes\\(|has\\())"
+    # Dynamic method dispatch from untrusted input
+    - "(?i)(?:this|self|server|handler)\\s*\\[\\s*(?:(?:req|params|body|message|data)\\.method)\\s*\\]\\s*\\("
+    # Method name used in eval/Function context
+    - "(?i)(?:eval|Function|exec)\\s*\\(.*(?:method|action|procedure)"
+    # No validation between tools/list and tools/call method routing
+    - "(?i)(?:tools/call|tools_call|toolsCall).*(?:(?:req|params)\\.(?:name|method|tool))(?!.*(?:registeredTools|knownTools|toolExists|has\\(|includes\\())"
+    # Python: dynamic dispatch
+    - "(?i)getattr\\s*\\(\\s*(?:self|server|handler)\\s*,\\s*(?:request|params|data)\\s*(?:\\.method|\\.get\\(['\"]method['\"]\\))"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)(?:ALLOWED_METHODS|SUPPORTED_METHODS|methodWhitelist|switch\\s*\\(\\s*method)"
+remediation: "Validate all JSON-RPC method names against an explicit allowlist. Do not use dynamic dispatch (obj[method]()) for method routing — an attacker can invoke internal methods not intended for external access. Separate tool invocation (tools/call) from protocol methods (initialize, ping). Validate that tools/call only dispatches to registered tool names. Reference: JSON-RPC 2.0 Section 4.1, CWE-749 (Exposed Dangerous Method)."
+test_cases:
+  true_positive:
+    - { description: "Server uses bracket notation to dynamically dispatch methods: handler[request.method]()", expected: true }
+    - { description: "tools/call handler passes tool name to execution without checking against registered tools list", expected: true }
+  true_negative:
+    - { description: "Server routes methods through explicit switch statement with defined cases for each MCP method", expected: false }
+    - { description: "tools/call validates tool name against registeredTools.has(name) before dispatch", expected: false }
+intelligence_source: "CWE-749 (Exposed Dangerous Method), JSON-RPC 2.0 spec Section 4.1, Python getattr injection class"
+enabled: true
