@@ -21,6 +21,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@fontsource-variable/sora": "^5.2.8",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "typescript": "^5.5.0",

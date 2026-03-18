@@ -398,6 +398,9 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@fontsource-variable/sora':
+        specifier: ^5.2.8
+        version: 5.2.8
       '@types/react':
         specifier: ^19.0.0
         version: 19.2.14
@@ -718,6 +721,9 @@ packages:
 
   '@fontsource-variable/outfit@5.2.8':
     resolution: {integrity: sha512-4oUDCZx/Tcz6HZP423w/niqEH31Gks5IsqHV2ZZz1qKHaVIZdj2f0/S1IK2n8jl6Xo0o3N+3RjNHlV9R73ozQA==}
+
+  '@fontsource-variable/sora@5.2.8':
+    resolution: {integrity: sha512-sP+ILTfi5r3cqmMBntI4ooQNxFI+LyHyD5hcPbWwwL4uh4kKFAkOz0w2veCXjz18fKRdva6OG0dY+5yQ02f30w==}
 
   '@fontsource/instrument-serif@5.2.8':
     resolution: {integrity: sha512-s+bkz+syj2rO00Rmq9g0P+PwuLig33DR1xDR8pTWmovH1pUjwnncrFk++q9mmOex8fUQ7oW80gPpPDaw7V1MMw==}
@@ -2272,6 +2278,8 @@ snapshots:
   '@fontsource-variable/lora@5.2.8': {}
 
   '@fontsource-variable/outfit@5.2.8': {}
+
+  '@fontsource-variable/sora@5.2.8': {}
 
   '@fontsource/instrument-serif@5.2.8': {}
 
