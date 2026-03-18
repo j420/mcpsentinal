@@ -3863,59 +3863,86 @@ code, pre, kbd {
 
 /* Expanded rule detail */
 .cdd-rule-detail {
-  padding: 0.75rem 0.85rem 0.85rem;
+  padding: 1rem 1.25rem 1.25rem;
   background: var(--surface-2);
   border-bottom: 1px solid var(--border);
 }
 
 .cdd-rule-hit .cdd-rule-detail { background: var(--hit-bg); }
 
-.cdd-rule-detail-cols {
+.cdd-rule-detail-sections {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  margin-bottom: 0.75rem;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1.25rem;
+  margin-bottom: 0.85rem;
 }
 
-.cdd-detail-col { }
+@media (max-width: 900px) {
+  .cdd-rule-detail-sections {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+.cdd-detail-section {
+  min-width: 0;
+}
 
 .cdd-detail-heading {
-  font-size: 0.58rem;
+  font-size: 0.7rem;
   color: var(--text-3);
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   font-weight: 700;
-  margin-bottom: 0.45rem;
+  margin-bottom: 0.6rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.cdd-detail-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
 }
 
 .cdd-detail-item {
   display: flex;
   align-items: flex-start;
-  gap: 0.45rem;
-  font-size: 0.68rem;
+  gap: 0.5rem;
+  font-size: 0.78rem;
   color: var(--text-2);
-  margin-bottom: 0.3rem;
-  line-height: 1.4;
+  line-height: 1.5;
 }
-
-.cdd-detail-item:last-child { margin-bottom: 0; }
 
 .cdd-detail-check {
   color: var(--good);
-  font-size: 0.65rem;
+  font-size: 0.78rem;
   flex-shrink: 0;
   margin-top: 0.05rem;
+  font-weight: 600;
+}
+
+.cdd-detail-arrow {
+  color: var(--good);
+  font-size: 0.78rem;
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+  font-weight: 600;
 }
 
 .cdd-detail-bar {
   width: 3px;
-  height: 14px;
+  min-height: 1rem;
+  align-self: stretch;
   border-radius: 2px;
   flex-shrink: 0;
-  margin-top: 0.05rem;
 }
 
 .cdd-detail-bar-mit { background: var(--text-3); }
+
+.cdd-detail-mitigation {
+  color: var(--text-1);
+}
 
 /* Framework alignment badges at bottom of expanded rule */
 .cdd-fw-badges {
