@@ -16,6 +16,11 @@ on:
           - npm
           - pypi
           - github
+      batch_size:
+        description: "Max servers per source (empty = no limit)"
+        required: false
+        type: string
+        default: ""
 
   # Re-crawl every Sunday at 02:00 UTC
   schedule:
@@ -68,7 +73,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter=@mcp-sentinel/database build
       - name: Crawl Smithery
-        run: pnpm --filter=@mcp-sentinel/crawler run crawl smithery
+        run: pnpm --filter=@mcp-sentinel/crawler run crawl smithery ${{ inputs.batch_size && format('--limit={0}', inputs.batch_size) || '' }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SMITHERY_API_KEY: ${{ secrets.SMITHERY_API_KEY }}
@@ -94,7 +99,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter=@mcp-sentinel/database build
       - name: Crawl PulseMCP
-        run: pnpm --filter=@mcp-sentinel/crawler run crawl pulsemcp
+        run: pnpm --filter=@mcp-sentinel/crawler run crawl pulsemcp ${{ inputs.batch_size && format('--limit={0}', inputs.batch_size) || '' }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
@@ -119,7 +124,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter=@mcp-sentinel/database build
       - name: Crawl npm
-        run: pnpm --filter=@mcp-sentinel/crawler run crawl npm
+        run: pnpm --filter=@mcp-sentinel/crawler run crawl npm ${{ inputs.batch_size && format('--limit={0}', inputs.batch_size) || '' }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
@@ -144,7 +149,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter=@mcp-sentinel/database build
       - name: Crawl PyPI
-        run: pnpm --filter=@mcp-sentinel/crawler run crawl pypi
+        run: pnpm --filter=@mcp-sentinel/crawler run crawl pypi ${{ inputs.batch_size && format('--limit={0}', inputs.batch_size) || '' }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
@@ -169,7 +174,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter=@mcp-sentinel/database build
       - name: Crawl GitHub
-        run: pnpm --filter=@mcp-sentinel/crawler run crawl github
+        run: pnpm --filter=@mcp-sentinel/crawler run crawl github ${{ inputs.batch_size && format('--limit={0}', inputs.batch_size) || '' }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -195,7 +200,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter=@mcp-sentinel/database build
       - name: Crawl Official Registry
-        run: pnpm --filter=@mcp-sentinel/crawler run crawl official-registry
+        run: pnpm --filter=@mcp-sentinel/crawler run crawl official-registry ${{ inputs.batch_size && format('--limit={0}', inputs.batch_size) || '' }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 

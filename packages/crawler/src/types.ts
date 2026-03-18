@@ -12,7 +12,13 @@ export interface CrawlResult {
 
 export interface CrawlerSource {
   name: SourceName;
-  crawl(): Promise<CrawlResult>;
+  crawl(options?: CrawlOptions): Promise<CrawlResult>;
+}
+
+/** Options passed down from CLI/orchestrator to each crawler */
+export interface CrawlOptions {
+  /** Maximum number of servers to fetch from this source. undefined = no limit (fetch all). */
+  limit?: number;
 }
 
 export interface CrawlStats {

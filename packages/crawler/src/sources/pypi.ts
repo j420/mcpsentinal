@@ -1,6 +1,6 @@
 import type { DiscoveredServer } from "@mcp-sentinel/database";
 import pino from "pino";
-import type { CrawlerSource, CrawlResult } from "../types.js";
+import type { CrawlerSource, CrawlResult, CrawlOptions } from "../types.js";
 
 const logger = pino({ name: "crawler:pypi" });
 
@@ -31,7 +31,8 @@ interface PyPIPackageInfo {
 export class PyPICrawler implements CrawlerSource {
   name = "pypi" as const;
 
-  async crawl(): Promise<CrawlResult> {
+  async crawl(options?: CrawlOptions): Promise<CrawlResult> {
+    const limit = options?.limit;
     const start = Date.now();
     const servers: DiscoveredServer[] = [];
     const seen = new Set<string>();
@@ -60,6 +61,7 @@ export class PyPICrawler implements CrawlerSource {
         );
 
         for (const pkg of mcpPackages) {
+          if (limit && servers.length >= limit) break;
           if (seen.has(pkg.name)) continue;
           seen.add(pkg.name);
 

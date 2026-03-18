@@ -1,5 +1,5 @@
 import pino from "pino";
-import type { CrawlerSource, CrawlResult, CrawlStats, CrawlPersistStats } from "./types.js";
+import type { CrawlerSource, CrawlResult, CrawlStats, CrawlPersistStats, CrawlOptions } from "./types.js";
 import type { DiscoveredServer, DatabaseQueries } from "@mcp-sentinel/database";
 import { NpmCrawler } from "./sources/npm.js";
 import { GitHubCrawler } from "./sources/github.js";
@@ -43,15 +43,15 @@ export class CrawlOrchestrator {
     }
   }
 
-  async crawlAll(): Promise<CrawlStats> {
-    const { results, uniqueServers } = await this._runCrawlers();
+  async crawlAll(options?: CrawlOptions): Promise<CrawlStats> {
+    const { results, uniqueServers } = await this._runCrawlers(options);
     return this._buildStats(results, uniqueServers);
   }
 
 
-  async crawlAndPersist(db: DatabaseQueries): Promise<CrawlPersistStats> {
+  async crawlAndPersist(db: DatabaseQueries, options?: CrawlOptions): Promise<CrawlPersistStats> {
     const runStart = new Date();
-    const { results, uniqueServers, allServers } = await this._runCrawlers();
+    const { results, uniqueServers, allServers } = await this._runCrawlers(options);
 
     let persisted = 0;
     let persist_errors = 0;
@@ -150,7 +150,7 @@ export class CrawlOrchestrator {
 
   // ─── Private helpers ────────────────────────────────────────────────────────
 
-  private async _runCrawlers(): Promise<{
+  private async _runCrawlers(options?: CrawlOptions): Promise<{
     results: CrawlResult[];
     uniqueServers: Map<string, DiscoveredServer>;
     allServers: DiscoveredServer[];
@@ -168,7 +168,7 @@ export class CrawlOrchestrator {
       logger.info({ source: source.name }, "Crawling source");
 
       try {
-        const result = await source.crawl();
+        const result = await source.crawl(options);
         results.push(result);
 
         let newUnique = 0;

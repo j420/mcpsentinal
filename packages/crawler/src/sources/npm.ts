@@ -1,6 +1,6 @@
 import type { DiscoveredServer } from "@mcp-sentinel/database";
 import pino from "pino";
-import type { CrawlerSource, CrawlResult } from "../types.js";
+import type { CrawlerSource, CrawlResult, CrawlOptions } from "../types.js";
 
 const logger = pino({ name: "crawler:npm" });
 
@@ -45,19 +45,21 @@ interface NpmSearchResult {
 export class NpmCrawler implements CrawlerSource {
   name = "npm" as const;
 
-  async crawl(): Promise<CrawlResult> {
+  async crawl(options?: CrawlOptions): Promise<CrawlResult> {
+    const limit = options?.limit;
     const start = Date.now();
     const servers: DiscoveredServer[] = [];
     const seen = new Set<string>();
     let errors = 0;
 
     for (const query of NPM_SEARCH_QUERIES) {
+      if (limit && servers.length >= limit) break;
       try {
         let from = 0;
         const size = 250;
         let hasMore = true;
 
-        while (hasMore) {
+        while (hasMore && (!limit || servers.length < limit)) {
           const url = `${NPM_SEARCH_URL}?text=${encodeURIComponent(query)}&size=${size}&from=${from}`;
           logger.info({ query, from }, "Fetching npm search results");
 

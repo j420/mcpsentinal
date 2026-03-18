@@ -2,17 +2,30 @@ import pino from "pino";
 import pg from "pg";
 import { CrawlOrchestrator } from "./orchestrator.js";
 import { DatabaseQueries } from "@mcp-sentinel/database";
-import type { CrawlStats, CrawlPersistStats } from "./types.js";
+import type { CrawlStats, CrawlPersistStats, CrawlOptions } from "./types.js";
 
 const logger = pino({ name: "crawler:cli" });
+
+function parseIntArg(args: string[], flag: string): number | undefined {
+  const arg = args.find((a) => a.startsWith(`${flag}=`));
+  if (!arg) return undefined;
+  const val = parseInt(arg.split("=")[1], 10);
+  return Number.isNaN(val) ? undefined : val;
+}
 
 async function main() {
   const args = process.argv.slice(2);
   const dryRun = args.includes("--dry-run");
   const sourceArg = args.find((a) => !a.startsWith("--"));
   const sources = sourceArg ? [sourceArg] : undefined;
+  const limit = parseIntArg(args, "--limit");
 
   const orchestrator = new CrawlOrchestrator(sources);
+  const crawlOptions: CrawlOptions = { limit };
+
+  if (limit) {
+    logger.info({ limit }, "Crawl batch size limit set");
+  }
 
   if (dryRun || !process.env.DATABASE_URL) {
     if (!process.env.DATABASE_URL) {
@@ -20,7 +33,7 @@ async function main() {
         "DATABASE_URL not set — running in dry-run mode (crawl only, no persistence)"
       );
     }
-    const stats = await orchestrator.crawlAll();
+    const stats = await orchestrator.crawlAll(crawlOptions);
     printSummary(stats);
     return;
 
@@ -30,7 +43,7 @@ async function main() {
   const db = new DatabaseQueries(pool);
 
   try {
-    const stats = await orchestrator.crawlAndPersist(db);
+    const stats = await orchestrator.crawlAndPersist(db, crawlOptions);
     printPersistSummary(stats);
   } finally {
     await pool.end();
