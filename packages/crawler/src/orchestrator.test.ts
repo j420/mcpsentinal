@@ -245,22 +245,23 @@ describe("CrawlOrchestrator.crawlAll()", () => {
 // ─── crawlAndPersist ──────────────────────────────────────────────────────────
 
 describe("CrawlOrchestrator.crawlAndPersist()", () => {
-  it("calls upsertServerDedup for every discovered server (including cross-source duplicates)", async () => {
+  it("persists only unique servers, then enriches duplicates separately", async () => {
     const shared = makeServer({ github_url: "https://github.com/user/repo" });
     const db = mockDbAllNew();
 
     const orch = new CrawlOrchestrator(undefined, [
       makeSource("pulsemcp", [shared, makeServer({ github_url: "https://github.com/user/repo2" })]),
-      makeSource("smithery", [shared]), // duplicate — still upserted so DB can enrich
+      makeSource("smithery", [shared]), // duplicate — enriched in second pass
     ]);
 
     const stats = await orch.crawlAndPersist(db);
 
-    // 3 total server occurrences across sources → 3 upsert calls (DB enriches on subsequent hits)
+    // 2 unique servers persisted in first pass + 1 duplicate enrichment call = 3 total upsert calls
     expect(db.upsertServerDedup).toHaveBeenCalledTimes(3);
-    expect(stats.persisted).toBe(3);
+    // persisted only counts the canonical unique insert pass
+    expect(stats.persisted).toBe(2);
     expect(stats.persist_errors).toBe(0);
-    // in-memory dedup still reflects logical uniqueness
+    // in-memory dedup reflects logical uniqueness
     expect(stats.new_unique).toBe(2);
   });
 
@@ -268,7 +269,7 @@ describe("CrawlOrchestrator.crawlAndPersist()", () => {
     const server = makeServer({ github_url: "https://github.com/user/repo" });
     let callCount = 0;
     const db = {
-      // First call: new to DB. Second and third: enriching existing.
+      // First call (unique pass): new to DB. Subsequent calls (enrichment pass): enriching existing.
       upsertServerDedup: vi.fn().mockImplementation(() => {
         callCount++;
         return Promise.resolve({ id: `uuid-${callCount}`, is_new: callCount === 1 });
@@ -284,9 +285,12 @@ describe("CrawlOrchestrator.crawlAndPersist()", () => {
 
     const stats = await orch.crawlAndPersist(db);
 
+    // Only 1 unique server → persisted=1 in canonical pass
     expect(stats.new_to_db).toBe(1);
-    expect(stats.enriched_existing).toBe(2);
-    expect(stats.persisted).toBe(3);
+    expect(stats.enriched_existing).toBe(0);
+    expect(stats.persisted).toBe(1);
+    // 2 duplicate enrichment calls still happen (but don't count toward persisted)
+    expect(db.upsertServerDedup).toHaveBeenCalledTimes(3);
   });
 
   it("counts persist_errors when upsertServerDedup throws, continues remaining", async () => {
@@ -354,7 +358,9 @@ describe("CrawlOrchestrator.crawlAndPersist()", () => {
 
     await orch.crawlAndPersist(db);
 
-    // 3 source occurrences → 3 upsert calls; the dedup method handles enrichment internally
+    // 1 unique insert + 2 enrichment calls = 3 total upsert calls
+    expect(db.upsertServerDedup).toHaveBeenCalledTimes(3);
+    // But persisted only counts the unique canonical pass
     expect(db.upsertServerDedup).toHaveBeenCalledTimes(3);
   });
 
