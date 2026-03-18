@@ -94,6 +94,8 @@ export class GitHubCrawler implements CrawlerSource {
           const data = (await response.json()) as GitHubSearchResult;
 
           for (const repo of data.items) {
+            if (limit && servers.length >= limit) break;
+
             if (repo.archived || repo.fork) continue;
             if (seen.has(repo.full_name)) continue;
             seen.add(repo.full_name);

@@ -71,6 +71,8 @@ export class SmitheryCrawler implements CrawlerSource {
         }
 
         for (const server of data.servers) {
+          if (limit && servers.length >= limit) break;
+
           const githubUrl = server.repository?.includes("github.com")
             ? server.repository
             : null;
