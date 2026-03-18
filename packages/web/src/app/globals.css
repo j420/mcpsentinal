@@ -2928,6 +2928,70 @@ code, pre, kbd {
   box-shadow: var(--shadow-card);
 }
 
+/* ── Server Table (columned layout on home page) ───────── */
+.server-table-wrap {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  background: var(--border);
+  box-shadow: var(--shadow-card);
+  gap: 1px;
+}
+.server-table-header {
+  display: grid;
+  grid-template-columns: 1fr 130px 100px 60px 80px 80px;
+  gap: 0;
+  padding: 10px 20px;
+  background: var(--surface-2);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-family: var(--font-body);
+}
+.server-table-row {
+  display: grid;
+  grid-template-columns: 1fr 130px 100px 60px 80px 80px;
+  gap: 0;
+  padding: 14px 20px;
+  background: var(--surface);
+  text-decoration: none;
+  color: inherit;
+  align-items: center;
+  transition: background var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+}
+.server-table-row:hover {
+  background: var(--surface-2);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.stcol { font-size: 13px; font-family: var(--font-body); color: var(--text-2); }
+.stcol-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.stcol-name .server-row-name { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stcol-name .server-row-author { font-size: 12px; color: var(--text-3); }
+.stcol-name .server-row-desc { font-size: 12px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; line-height: 1.4; }
+.stcol-score { text-align: right; }
+.stcol-tools { text-align: center; }
+.stcol-origin { text-align: center; }
+.stcol-category { text-align: center; }
+.stcol-lang { text-align: center; }
+.stcol-empty { color: var(--text-3); }
+
+@media (max-width: 768px) {
+  .server-table-header { display: none; }
+  .server-table-row {
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    gap: 4px;
+    padding: 12px 14px;
+  }
+  .stcol-name { grid-column: 1; grid-row: 1; }
+  .stcol-score { grid-column: 2; grid-row: 1; }
+  .stcol-category, .stcol-lang, .stcol-tools, .stcol-origin { display: none; }
+}
+
 .server-row {
   display: block;
   background: var(--surface);

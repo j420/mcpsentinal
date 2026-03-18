@@ -114,19 +114,10 @@ function fmtNum(n: number | null | undefined): string {
   return n.toLocaleString();
 }
 
-function connectionLabel(status: Server["connection_status"]): { text: string; cls: string } {
-  switch (status) {
-    case "success": return { text: "Online", cls: "conn-online" };
-    case "failed": return { text: "Offline", cls: "conn-offline" };
-    case "timeout": return { text: "Timeout", cls: "conn-offline" };
-    default: return { text: "Unknown", cls: "conn-unknown" };
-  }
-}
-
-function sourceOrigin(server: Server): { label: string; icon: string } | null {
-  if (server.npm_package) return { label: "npm", icon: "npm" };
-  if (server.pypi_package) return { label: "PyPI", icon: "pypi" };
-  if (server.github_url) return { label: "GitHub", icon: "github" };
+function sourceOrigin(server: Server): { label: string } | null {
+  if (server.npm_package) return { label: "npm" };
+  if (server.pypi_package) return { label: "PyPI" };
+  if (server.github_url) return { label: "GitHub" };
   return null;
 }
 
@@ -531,91 +522,58 @@ export default async function HomePage({
           <p>Try a different search term or remove filters.</p>
         </div>
       ) : (
-        <div className="server-list" aria-label="MCP server registry">
+        <div className="server-table-wrap" aria-label="MCP server registry">
+          <div className="server-table-header">
+            <span className="stcol stcol-name">Server</span>
+            <span className="stcol stcol-category">Category</span>
+            <span className="stcol stcol-lang">Language</span>
+            <span className="stcol stcol-tools">Tools</span>
+            <span className="stcol stcol-origin">Source</span>
+            <span className="stcol stcol-score">Score</span>
+          </div>
           {servers.map((server) => (
             <a
               key={server.id}
               href={`/server/${server.slug}`}
-              className="server-row"
+              className="server-table-row"
             >
-              <div className="server-row-main">
-                <div className="server-row-header">
-                  <span className="server-row-name">{server.name}</span>
-                  <ScoreBadge score={server.latest_score} />
-                </div>
+              <div className="stcol stcol-name">
+                <span className="server-row-name">{server.name}</span>
+                {server.author && (
+                  <span className="server-row-author">
+                    {server.author}
+                  </span>
+                )}
                 {server.description && (
                   <p className="server-row-desc">{server.description}</p>
                 )}
-                <div className="server-row-meta">
-                  {server.author && (
-                    <span className="server-meta-chip">
-                      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                        <circle cx="8" cy="5.5" r="2.5" />
-                        <path d="M3 13c0-2.76 2.24-5 5-5s5 2.24 5 5" />
-                      </svg>
-                      {server.author}
-                    </span>
-                  )}
-                  {/* Tool count */}
-                  {server.tool_count > 0 && (
-                    <span className="server-meta-chip">
-                      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M9.5 2.5L13 6l-7 7-4 1 1-4 7-7z" />
-                      </svg>
-                      {server.tool_count} tool{server.tool_count !== 1 ? "s" : ""}
-                    </span>
-                  )}
-                  {/* Connection status */}
-                  {(() => {
-                    const conn = connectionLabel(server.connection_status);
-                    return (
-                      <span className={`server-meta-chip ${conn.cls}`}>
-                        <span className="conn-dot" />
-                        {conn.text}
-                      </span>
-                    );
-                  })()}
-                  {/* Source origin */}
-                  {(() => {
-                    const origin = sourceOrigin(server);
-                    return origin ? (
-                      <span className="server-meta-chip server-meta-origin">
-                        {origin.label}
-                      </span>
-                    ) : null;
-                  })()}
-                  {/* Language */}
-                  {server.language && (
-                    <span className="server-meta-chip">
-                      <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor" opacity="0.5">
-                        <circle cx="8" cy="8" r="4" />
-                      </svg>
-                      {server.language}
-                    </span>
-                  )}
-                  {server.category && (
-                    <span className="server-meta-chip server-meta-cat">
-                      {server.category}
-                    </span>
-                  )}
-                  {server.github_stars != null && server.github_stars > 0 && (
-                    <span className="server-meta-chip">
-                      <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 12.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25z" />
-                      </svg>
-                      {fmtNum(server.github_stars)}
-                    </span>
-                  )}
-                  {server.npm_downloads != null && server.npm_downloads > 0 && (
-                    <span className="server-meta-chip">
-                      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                        <path d="M8 2v8M5 7l3 3 3-3M3 13h10" />
-                      </svg>
-                      {fmtNum(server.npm_downloads)}
-                    </span>
-                  )}
-                </div>
               </div>
+              <span className="stcol stcol-category">
+                {server.category ? (
+                  <span className="server-meta-chip server-meta-cat">{server.category}</span>
+                ) : (
+                  <span className="stcol-empty">{"\u2014"}</span>
+                )}
+              </span>
+              <span className="stcol stcol-lang">
+                {server.language || "\u2014"}
+              </span>
+              <span className="stcol stcol-tools">
+                {server.tool_count > 0 ? server.tool_count : "\u2014"}
+              </span>
+              <span className="stcol stcol-origin">
+                {(() => {
+                  const origin = sourceOrigin(server);
+                  return origin ? (
+                    <span className="server-meta-chip server-meta-origin">{origin.label}</span>
+                  ) : (
+                    <span className="stcol-empty">{"\u2014"}</span>
+                  );
+                })()}
+              </span>
+              <span className="stcol stcol-score">
+                <ScoreBadge score={server.latest_score} />
+              </span>
             </a>
           ))}
         </div>
