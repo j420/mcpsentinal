@@ -35,6 +35,7 @@ const CATEGORY_MAP: Record<string, keyof Pick<ScoreResult, "code_score" | "deps_
   "schema-analysis": "config_score",
   "ecosystem-context": "config_score",
   "adversarial-ai": "config_score",
+  "2026-attack-surface": "config_score",        // H2–H3 (currently use adversarial-ai, but enum exists)
   "auth-analysis": "config_score",
   "protocol-surface": "config_score",
   "threat-intelligence": "config_score",       // J1–J7 (CVE-backed)
@@ -101,8 +102,8 @@ export function computeScore(
     });
 
     // Apply to category sub-score
-    const ruleCategory = ruleCategories[finding.rule_id] || "config_score";
-    const scoreKey = CATEGORY_MAP[ruleCategory] || "config_score";
+    const ruleCategory = ruleCategories[finding.rule_id];
+    const scoreKey = (ruleCategory && CATEGORY_MAP[ruleCategory]) || "config_score";
     categoryScores[scoreKey] = Math.max(0, categoryScores[scoreKey] - penalty);
 
     // Track OWASP
