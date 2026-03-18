@@ -35,11 +35,11 @@ Five category sub-scores each start at 100 and are reduced independently:
 |---|---|
 | `code_score` | code-analysis (C1–C16) |
 | `deps_score` | dependency-analysis (D1–D7) |
-| `config_score` | schema-analysis (B1–B7) + ecosystem-context (F1–F7) + adversarial-ai (G1–G7) + auth-analysis (H1–H3) + protocol-surface (I1–I16) + threat-intelligence (J1–J7) + compliance-governance (K1–K20) |
+| `config_score` | schema-analysis (B1–B7) + ecosystem-context (F1–F7) + adversarial-ai (G1–G7) + auth-analysis (H1–H3) + protocol-surface (I1–I16) + threat-intelligence (J1–J7) + compliance-governance (K1–K20) + supply-chain-advanced (L1–L15) + ai-runtime-exploitation (M1–M9) + protocol-edge-cases (N1–N15) + data-privacy-attacks (O1–O10) + infrastructure-runtime (P1–P10) + cross-ecosystem-emergent (Q1–Q15) |
 | `description_score` | description-analysis (A1–A9) |
 | `behavior_score` | behavioral-analysis (E1–E4) |
 
-All G–K category rules are explicitly mapped to `config_score` in CATEGORY_MAP.
+All G–Q category rules are explicitly mapped to `config_score` in CATEGORY_MAP.
 
 ## OWASP Coverage Map
 `owasp_coverage` is a `Record<string, boolean>`:

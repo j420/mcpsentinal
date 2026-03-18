@@ -2,7 +2,7 @@ id: Q14
 name: Concurrent MCP Server Race Condition
 category: cross-ecosystem-emergent
 severity: high
-owasp: MCP07-insecure-configuration
+owasp: MCP07-insecure-config
 mitre: T1068
 
 # THREAT INTELLIGENCE (Senior Security Architect — Emergent Interactions):

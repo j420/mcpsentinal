@@ -2,7 +2,7 @@ id: Q8
 name: Cross-Protocol Authentication Confusion
 category: cross-ecosystem-emergent
 severity: critical
-owasp: MCP07-insecure-configuration
+owasp: MCP07-insecure-config
 mitre: T1550
 
 # THREAT INTELLIGENCE (Senior Security Architect — Cross-Ecosystem):

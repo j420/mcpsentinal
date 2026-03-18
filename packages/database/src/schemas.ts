@@ -74,6 +74,17 @@ export const OwaspCategory = z.enum([
   "MCP08-dependency-vuln",
   "MCP09-logging-monitoring",
   "MCP10-supply-chain",
+  // OWASP Agentic Applications Top 10 (December 2025)
+  "ASI01-agent-goal-hijack",
+  "ASI02-tool-misuse",
+  "ASI03-identity-privilege-abuse",
+  "ASI04-agentic-supply-chain",
+  "ASI05-unexpected-code-execution",
+  "ASI06-memory-context-poisoning",
+  "ASI07-insecure-inter-agent-comms",
+  "ASI08-agentic-dos",
+  "ASI09-human-oversight-bypass",
+  "ASI10-agentic-data-poisoning",
 ]);
 export type OwaspCategory = z.infer<typeof OwaspCategory>;
 
@@ -330,6 +341,12 @@ export const DetectionRuleSchema = z.object({
     "2026-attack-surface",
     "threat-intelligence",
     "compliance-governance",
+    "supply-chain-advanced",
+    "ai-runtime-exploitation",
+    "protocol-edge-cases",
+    "data-privacy-attacks",
+    "infrastructure-runtime",
+    "cross-ecosystem-emergent",
   ]),
   severity: Severity,
   owasp: OwaspCategory.nullable().default(null),

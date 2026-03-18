@@ -2,7 +2,7 @@ id: L11
 name: Environment Variable Injection via MCP Config
 category: supply-chain-advanced
 severity: critical
-owasp: MCP07-insecure-configuration
+owasp: MCP07-insecure-config
 mitre: AML.T0060
 
 # THREAT INTELLIGENCE (P1 Researcher — Supply Chain):
