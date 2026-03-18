@@ -3545,7 +3545,13 @@ code, pre, kbd {
 .cdd-wrap:has(#cdd-SC:checked)   label[for="cdd-SC"],
 .cdd-wrap:has(#cdd-AT:checked)   label[for="cdd-AT"],
 .cdd-wrap:has(#cdd-AI:checked)   label[for="cdd-AI"],
-.cdd-wrap:has(#cdd-CG:checked)   label[for="cdd-CG"] {
+.cdd-wrap:has(#cdd-CG:checked)   label[for="cdd-CG"],
+.cdd-wrap:has(#cdd-SA:checked)   label[for="cdd-SA"],
+.cdd-wrap:has(#cdd-MR:checked)   label[for="cdd-MR"],
+.cdd-wrap:has(#cdd-PE:checked)   label[for="cdd-PE"],
+.cdd-wrap:has(#cdd-DP:checked)   label[for="cdd-DP"],
+.cdd-wrap:has(#cdd-IR:checked)   label[for="cdd-IR"],
+.cdd-wrap:has(#cdd-CE:checked)   label[for="cdd-CE"] {
   border-color: var(--cc);
   color: var(--cc);
   background: color-mix(in srgb, var(--cc) 10%, transparent);
@@ -3555,18 +3561,8 @@ code, pre, kbd {
 
 .cdd-panel { display: none; padding: 1.25rem; }
 
-/* Show panel when the preceding input is checked */
-#cdd-PI:checked + .cdd-panel,
-#cdd-TP:checked + .cdd-panel,
-#cdd-CI:checked + .cdd-panel,
-#cdd-DE:checked + .cdd-panel,
-#cdd-PV:checked + .cdd-panel,
-#cdd-IC:checked + .cdd-panel,
-#cdd-DV:checked + .cdd-panel,
-#cdd-SC:checked + .cdd-panel,
-#cdd-AT:checked + .cdd-panel,
-#cdd-AI:checked + .cdd-panel,
-#cdd-CG:checked + .cdd-panel { display: block; }
+/* Show panel when the preceding radio input is checked — generic selector works for any category */
+.cdd-radio:checked + .cdd-panel { display: block; }
 
 /* ── Category header card ───────────────────────────────── */
 
