@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "About MCP Sentinel",
   description:
-    "How MCP Sentinel works: 103 deterministic detection rules across 11 categories, a 4-stage scan pipeline, and the scoring algorithm that produces every security score.",
+    "How MCP Sentinel works: 150+ deterministic detection rules across 17 categories, a 4-stage scan pipeline, and the scoring algorithm that produces every security score.",
 };
 
 // ── Rule categories ───────────────────────────────────────────────────────────
@@ -330,7 +330,7 @@ export default function AboutPage() {
 
       {/* ── 60 Detection rules ───────────────────────── */}
       <section className="about-section">
-        <h2 className="about-h2-sm">103 detection rules across 11 categories</h2>
+        <h2 className="about-h2-sm">150+ detection rules across 11 categories</h2>
         <p className="about-subtitle">
           All rules are YAML-defined. The engine is deterministic. Adding a
           rule never requires changing engine code. Every finding requires{" "}
@@ -475,7 +475,7 @@ Floor: 0  |  Ceiling: 100`}</pre>
           {[
             {
               title: "Rules are data, not code",
-              body: "All 103 detection rules are YAML definitions. The engine interprets them. Adding a rule never requires changing engine code.",
+              body: "All 150+ detection rules are YAML definitions. The engine interprets them. Adding a rule never requires changing engine code.",
             },
             {
               title: "No LLMs in v1",
