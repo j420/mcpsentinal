@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState, useCallback } from "react";
 import {
   CddFinding,
   RULE_NAMES,
@@ -16,6 +16,11 @@ export { THREAT_CATS };
 
 export default function CategoryDeepDivePanel({ findings }: { findings: CddFinding[] }) {
   const triggered = new Set(findings.map((f) => f.rule_id));
+  const [expandedRule, setExpandedRule] = useState<string | null>(null);
+
+  const toggleRule = useCallback((ruleId: string) => {
+    setExpandedRule((prev) => (prev === ruleId ? null : ruleId));
+  }, []);
 
   const defaultCat =
     THREAT_CATS.find((cat) =>
@@ -147,6 +152,7 @@ export default function CategoryDeepDivePanel({ findings }: { findings: CddFindi
                           <div className="cdd-rule-list">
                             {sc.rules.map((ruleId) => {
                               const isHit = triggered.has(ruleId);
+                              const isOpen = expandedRule === ruleId;
                               const sev = RULE_SEVERITIES[ruleId] ?? "medium";
                               const catPrefix = ruleId.replace(/\d+$/, "");
                               const vectors = CAT_VECTORS[catPrefix] ?? ["Tool metadata", "Server analysis"];
@@ -159,12 +165,16 @@ export default function CategoryDeepDivePanel({ findings }: { findings: CddFindi
                               ];
                               const fwBadges = getRuleFrameworks(ruleId);
                               return (
-                                <details
+                                <div
                                   key={ruleId}
-                                  className={`cdd-rule${isHit ? " cdd-rule-hit" : " cdd-rule-clean"}`}
-                                  open={isHit}
+                                  className={`cdd-rule${isHit ? " cdd-rule-hit" : " cdd-rule-clean"}${isOpen ? " cdd-rule-open" : ""}`}
                                 >
-                                  <summary className="cdd-rule-summary">
+                                  <button
+                                    type="button"
+                                    className="cdd-rule-summary"
+                                    onClick={() => toggleRule(ruleId)}
+                                    aria-expanded={isOpen}
+                                  >
                                     <span className="cdd-rule-id" style={{ color: cat.color }}>{ruleId}</span>
                                     <span className={`cdd-sev-dot cdd-sev-${sev}`} />
                                     <span className="cdd-rule-name">{RULE_NAMES[ruleId] ?? ruleId}</span>
@@ -175,60 +185,64 @@ export default function CategoryDeepDivePanel({ findings }: { findings: CddFindi
                                         <span className="cdd-badge cdd-badge-clean">clean</span>
                                       )}
                                       <span className="cdd-tests">{tests.length}✓</span>
-                                      <span className="cdd-expand-arrow">▼</span>
+                                      <span className={`cdd-expand-arrow${isOpen ? " cdd-expand-arrow-up" : ""}`}>▼</span>
                                     </div>
-                                  </summary>
-                                  <div className="cdd-rule-detail">
-                                    <div className="cdd-rule-detail-sections">
-                                      <div className="cdd-detail-section">
-                                        <div className="cdd-detail-heading">Tests</div>
-                                        <div className="cdd-detail-grid">
-                                          {tests.map((t, ti) => (
-                                            <div key={ti} className="cdd-detail-item cdd-detail-test">
-                                              <span className="cdd-detail-check">✓</span>
-                                              <span>{t}</span>
+                                  </button>
+                                  {isOpen && (
+                                    <div className="cdd-rule-detail">
+                                      <div className="cdd-rule-detail-sections">
+                                        <div className="cdd-detail-section cdd-detail-tests">
+                                          <div className="cdd-detail-heading">Tests</div>
+                                          <div className="cdd-detail-grid">
+                                            {tests.map((t, ti) => (
+                                              <div key={ti} className="cdd-detail-item cdd-detail-test">
+                                                <span className="cdd-detail-check">✓</span>
+                                                <span>{t}</span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                        <div className="cdd-detail-right-col">
+                                          <div className="cdd-detail-section">
+                                            <div className="cdd-detail-heading">Attack Vectors</div>
+                                            <div className="cdd-detail-grid">
+                                              {vectors.map((v, vi) => (
+                                                <div key={vi} className="cdd-detail-item cdd-detail-vector">
+                                                  <span className="cdd-detail-bar" style={{ background: cat.color }} />
+                                                  <span>{v}</span>
+                                                </div>
+                                              ))}
                                             </div>
-                                          ))}
+                                          </div>
+                                          <div className="cdd-detail-section">
+                                            <div className="cdd-detail-heading">Mitigations</div>
+                                            <div className="cdd-detail-grid">
+                                              {mitigations.map((m, mi) => (
+                                                <div key={mi} className="cdd-detail-item cdd-detail-mitigation">
+                                                  <span className="cdd-detail-arrow">→</span>
+                                                  <span>{m}</span>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
                                         </div>
                                       </div>
-                                      <div className="cdd-detail-section">
-                                        <div className="cdd-detail-heading">Attack Vectors</div>
-                                        <div className="cdd-detail-grid">
-                                          {vectors.map((v, vi) => (
-                                            <div key={vi} className="cdd-detail-item cdd-detail-vector">
-                                              <span className="cdd-detail-bar" style={{ background: cat.color }} />
-                                              <span>{v}</span>
-                                            </div>
+                                      {fwBadges.length > 0 && (
+                                        <div className="cdd-fw-badges">
+                                          {fwBadges.map((fw) => (
+                                            <span
+                                              key={fw.abbr}
+                                              className="cdd-fw-pill"
+                                              style={{ background: fw.color + "22", color: fw.color, borderColor: fw.color + "44" }}
+                                            >
+                                              {fw.abbr}
+                                            </span>
                                           ))}
                                         </div>
-                                      </div>
-                                      <div className="cdd-detail-section">
-                                        <div className="cdd-detail-heading">Mitigations</div>
-                                        <div className="cdd-detail-grid">
-                                          {mitigations.map((m, mi) => (
-                                            <div key={mi} className="cdd-detail-item cdd-detail-mitigation">
-                                              <span className="cdd-detail-arrow">→</span>
-                                              <span>{m}</span>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </div>
+                                      )}
                                     </div>
-                                    {fwBadges.length > 0 && (
-                                      <div className="cdd-fw-badges">
-                                        {fwBadges.map((fw) => (
-                                          <span
-                                            key={fw.abbr}
-                                            className="cdd-fw-pill"
-                                            style={{ background: fw.color + "22", color: fw.color, borderColor: fw.color + "44" }}
-                                          >
-                                            {fw.abbr}
-                                          </span>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                </details>
+                                  )}
+                                </div>
                               );
                             })}
                           </div>
