@@ -1,4 +1,5 @@
 import type { DiscoveredServer } from "@mcp-sentinel/database";
+import type { ServerCategory } from "@mcp-sentinel/database";
 import pino from "pino";
 import type { CrawlerSource, CrawlResult, CrawlOptions } from "../types.js";
 
@@ -73,6 +74,10 @@ export class PulseMCPCrawler implements CrawlerSource {
               ? server.package_name
               : null;
 
+          const language =
+            server.package_registry === "npm" ? "TypeScript" :
+            server.package_registry === "pypi" ? "Python" : null;
+
           servers.push({
             name: server.name,
             description: server.short_description || null,
@@ -80,8 +85,8 @@ export class PulseMCPCrawler implements CrawlerSource {
             github_url: githubUrl,
             npm_package: npmPackage,
             pypi_package: null,
-            category: null,
-            language: null,
+            category: this.inferCategory(server.name, server.short_description),
+            language,
             license: null,
             source_name: "pulsemcp",
             source_url: `https://pulsemcp.com/servers`,
@@ -116,4 +121,30 @@ export class PulseMCPCrawler implements CrawlerSource {
     };
   }
 
+  private inferCategory(
+    name: string,
+    description?: string
+  ): ServerCategory | null {
+    const text = `${name} ${description || ""}`.toLowerCase();
+
+    const categories: [ServerCategory, string[]][] = [
+      ["database", ["postgres", "mysql", "sqlite", "mongo", "redis", "database", "sql", "supabase", "prisma"]],
+      ["filesystem", ["filesystem", "file-system", "files", "directory", "storage", "drive"]],
+      ["api-integration", ["api", "slack", "github", "jira", "notion", "stripe", "twilio", "salesforce", "zapier", "webhook"]],
+      ["dev-tools", ["dev-tool", "linter", "formatter", "debug", "git", "code", "lint", "test"]],
+      ["ai-ml", ["openai", "anthropic", "llm", "embedding", "ml", "ai", "gpt", "claude", "gemini", "model"]],
+      ["communication", ["email", "chat", "sms", "slack", "discord", "teams", "telegram"]],
+      ["cloud-infra", ["aws", "gcp", "azure", "docker", "kubernetes", "terraform", "cloudflare"]],
+      ["security", ["security", "auth", "vault", "secrets", "encrypt", "compliance"]],
+      ["search", ["search", "elasticsearch", "algolia", "brave-search", "knowledge"]],
+      ["browser-web", ["browser", "puppeteer", "playwright", "scrape", "web", "crawl"]],
+      ["code-execution", ["execute", "sandbox", "eval", "shell", "terminal", "python sandbox"]],
+      ["monitoring", ["monitor", "logs", "metrics", "alert", "observ", "analytics"]],
+    ];
+
+    for (const [cat, keywords] of categories) {
+      if (keywords.some((k) => text.includes(k))) return cat;
+    }
+    return null;
+  }
 }

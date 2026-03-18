@@ -211,11 +211,6 @@ function ScoreBadge({ score }: { score: number | null }) {
   );
 }
 
-function CategoryChip({ cat }: { cat: string | null }) {
-  if (!cat) return <span className="text-muted">—</span>;
-  return <span className="category-chip">{cat}</span>;
-}
-
 function FeaturedOrgCard({ org }: { org: (typeof FEATURED_ORGS)[0] }) {
   return (
     <a href={`/server/${org.slug}`} className="featured-card" style={{ paddingTop: 0 }}>
@@ -508,60 +503,69 @@ export default async function HomePage({
         </div>
       </form>
 
-      {/* ── Server Table ──────────────────────────────── */}
+      {/* ── Server List ──────────────────────────────── */}
       {servers.length === 0 ? (
         <div className="empty-state">
           <h3>No servers found</h3>
           <p>Try a different search term or remove filters.</p>
         </div>
       ) : (
-        <table className="data-table" aria-label="MCP server registry">
-          <thead>
-            <tr>
-              <th>Server</th>
-              <th>Category</th>
-              <th>Language</th>
-              <th className="right">Stars</th>
-              <th className="right">Downloads</th>
-              <th className="right">Score</th>
-            </tr>
-          </thead>
-          <tbody>
-            {servers.map((server) => (
-              <tr key={server.id}>
-                <td>
-                  <a
-                    href={`/server/${server.slug}`}
-                    className="server-name-link"
-                  >
-                    {server.name}
-                  </a>
-                  {server.description && (
-                    <p className="server-desc">{server.description}</p>
-                  )}
-                  {server.author && (
-                    <p className="server-author">by {server.author}</p>
-                  )}
-                </td>
-                <td>
-                  <CategoryChip cat={server.category} />
-                </td>
-                <td className="server-lang">
-                  {server.language || "\u2014"}
-                </td>
-                <td className="right server-metric">
-                  {fmtNum(server.github_stars)}
-                </td>
-                <td className="right server-metric">
-                  {fmtNum(server.npm_downloads)}
-                </td>
-                <td className="right">
+        <div className="server-list" aria-label="MCP server registry">
+          {servers.map((server) => (
+            <a
+              key={server.id}
+              href={`/server/${server.slug}`}
+              className="server-row"
+            >
+              <div className="server-row-main">
+                <div className="server-row-header">
+                  <span className="server-row-name">{server.name}</span>
                   <ScoreBadge score={server.latest_score} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </div>
+                {server.description && (
+                  <p className="server-row-desc">{server.description}</p>
+                )}
+                <div className="server-row-meta">
+                  {server.author && (
+                    <span className="server-meta-chip">
+                      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                        <circle cx="8" cy="5.5" r="2.5" />
+                        <path d="M3 13c0-2.76 2.24-5 5-5s5 2.24 5 5" />
+                      </svg>
+                      {server.author}
+                    </span>
+                  )}
+                  {server.category && (
+                    <span className="server-meta-chip server-meta-cat">
+                      {server.category}
+                    </span>
+                  )}
+                  {server.language && (
+                    <span className="server-meta-chip">
+                      {server.language}
+                    </span>
+                  )}
+                  {server.github_stars != null && server.github_stars > 0 && (
+                    <span className="server-meta-chip">
+                      <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 12.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25z" />
+                      </svg>
+                      {fmtNum(server.github_stars)}
+                    </span>
+                  )}
+                  {server.npm_downloads != null && server.npm_downloads > 0 && (
+                    <span className="server-meta-chip">
+                      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                        <path d="M8 2v8M5 7l3 3 3-3M3 13h10" />
+                      </svg>
+                      {fmtNum(server.npm_downloads)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </a>
+          ))}
+        </div>
       )}
 
       {/* ── Pagination ────────────────────────────────── */}

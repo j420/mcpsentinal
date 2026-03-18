@@ -2917,6 +2917,99 @@ code, pre, kbd {
   font-size: 13px;
 }
 
+/* ── Server List (card rows) ─────────────────────────── */
+.server-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  background: var(--border);
+  box-shadow: var(--shadow-card);
+}
+
+.server-row {
+  display: block;
+  background: var(--surface);
+  padding: 16px 20px;
+  text-decoration: none;
+  color: inherit;
+  transition: background var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+}
+.server-row:hover {
+  background: var(--surface-2);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.server-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.server-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.server-row-name {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.server-row-desc {
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.45;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 680px;
+  margin: 0;
+}
+
+.server-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.server-meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  color: var(--text-2);
+  background: var(--surface-3);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-family: var(--font-body);
+  line-height: 1.5;
+}
+
+.server-meta-chip svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.server-meta-cat {
+  background: var(--accent-sub);
+  color: var(--accent-2);
+  font-weight: 600;
+}
+
 /* ── Featured card brand bar ──────────────────────────── */
 .featured-brand-bar {
   height: 3px;
@@ -3564,17 +3657,11 @@ code, pre, kbd {
   .stats-card-green .stats-card-big-num { font-size: 36px; }
   .author-filter { width: 100%; }
   .author-filter-input { flex: 1; width: auto; }
-  /* Stack table for mobile */
-  .data-table thead { display: none; }
-  .data-table tbody tr {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: var(--s1);
-    padding: var(--s3) var(--s4);
-    border-bottom: 1px solid var(--border);
-  }
-  .data-table td { padding: 0; border: none; }
-  .data-table td.right { text-align: left; }
+  /* Server list mobile */
+  .server-row { padding: 12px 14px; }
+  .server-row-name { font-size: 13px; }
+  .server-row-desc { font-size: 12px; max-width: 100%; }
+  .server-meta-chip { font-size: 10.5px; }
 }
 
 /* ═══════════════════════════════════════════════════════════
