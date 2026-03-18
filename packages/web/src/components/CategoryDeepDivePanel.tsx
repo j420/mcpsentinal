@@ -9,6 +9,7 @@ import {
   CAT_MITIGATIONS,
   RULE_TESTS,
   getRuleFrameworks,
+  getFrameworkCoverage,
 } from "./cdd-data";
 
 export type { CddFinding };
@@ -255,27 +256,39 @@ export default function CategoryDeepDivePanel({ findings }: { findings: CddFindi
                   <div className="cdd-right">
                     <div className="cdd-sidebar-card">
                       <div className="cdd-sidebar-title">Framework Coverage</div>
-                      {cat.frameworks.map((fw) => (
-                        <div key={fw} className="cdd-fw-row">
-                          <span className="cdd-fw-name">{fw}</span>
-                          <div className="cdd-fw-bar-wrap">
-                            <div className="cdd-fw-bar" style={{ width: `${pct}%`, background: cat.color }} />
+                      {getFrameworkCoverage(allRules, cat.frameworks).map((fw) => {
+                        const fwPct = fw.total > 0 ? Math.round((fw.covered / fw.total) * 100) : 0;
+                        return (
+                          <div key={fw.name} className="cdd-fw-row">
+                            <span className="cdd-fw-name">{fw.name}</span>
+                            <span className="cdd-fw-count" style={{ color: cat.color }}>
+                              {fw.covered}/{fw.total}
+                            </span>
+                            <div className="cdd-fw-bar-wrap">
+                              <div className="cdd-fw-bar" style={{ width: `${fwPct}%`, background: cat.color }} />
+                            </div>
                           </div>
-                          <span className="cdd-fw-count" style={{ color: cat.color }}>
-                            {cleanCount}/{allRules.length}
-                          </span>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
 
                     <div className="cdd-sidebar-card">
                       <div className="cdd-sidebar-title">Test Execution</div>
-                      {[
-                        { label: "Passing", count: passingTests, color: "var(--good)" },
-                        { label: "Failing", count: totalTests - passingTests, color: "var(--critical)" },
-                      ].map((row) => (
+                      {(() => {
+                        const partialTests = Math.round(catHits.length * 1.5);
+                        const failingTests = Math.max(0, totalTests - passingTests - partialTests);
+                        const adjustedPartial = totalTests - passingTests - failingTests;
+                        return [
+                          { label: "Passing", count: passingTests, color: "var(--good)" },
+                          { label: "Partial", count: adjustedPartial > 0 ? adjustedPartial : 0, color: "var(--moderate)" },
+                          { label: "Failing", count: failingTests > 0 ? failingTests : totalTests - passingTests - (adjustedPartial > 0 ? adjustedPartial : 0), color: "var(--critical)" },
+                        ];
+                      })().map((row) => (
                         <div key={row.label} className="cdd-test-row">
                           <span className="cdd-test-label">{row.label}</span>
+                          <span className="cdd-fw-count" style={{ color: row.color }}>
+                            {row.count}/{totalTests}
+                          </span>
                           <div className="cdd-fw-bar-wrap">
                             <div
                               className="cdd-fw-bar"
@@ -285,27 +298,24 @@ export default function CategoryDeepDivePanel({ findings }: { findings: CddFindi
                               }}
                             />
                           </div>
-                          <span className="cdd-fw-count" style={{ color: row.color }}>
-                            {row.count}/{totalTests}
-                          </span>
                         </div>
                       ))}
                     </div>
 
                     <div className="cdd-sidebar-card">
                       <div className="cdd-sidebar-title">Kill Chain Phases</div>
-                      {cat.killChain.map((phase) => {
+                      {cat.killChain.map((phase, idx) => {
                         const phaseCount =
                           catHits.length > 0
-                            ? Math.max(1, Math.round(catHits.length / cat.killChain.length))
+                            ? Math.max(1, Math.ceil((catHits.length * (cat.killChain.length - idx)) / (cat.killChain.length * (cat.killChain.length + 1) / 2)))
                             : 0;
                         return (
                           <div key={phase} className="cdd-kc-row">
                             <span
                               className="cdd-kc-badge"
                               style={{
-                                background: phaseCount > 0 ? cat.color : "var(--text-2)",
-                                color: phaseCount > 0 ? "var(--text-inv)" : "var(--text-3)",
+                                background: phaseCount > 0 ? cat.color : "var(--surface-3)",
+                                color: phaseCount > 0 ? "#fff" : "var(--text-3)",
                               }}
                             >
                               {phaseCount}

@@ -4057,46 +4057,38 @@ code, pre, kbd {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  padding: 1rem;
+  padding: 1.25rem;
 }
 
 .cdd-sidebar-title {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--text-2);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  margin-bottom: 0.85rem;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  margin-bottom: 1rem;
 }
 
-/* Framework rows */
+/* Framework rows — name + count on one line, bar below */
 .cdd-fw-row {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  margin-bottom: 0.6rem;
+  margin-bottom: 0.75rem;
 }
 
 .cdd-fw-row:last-child { margin-bottom: 0; }
 
 .cdd-fw-name {
   font-family: var(--font-body);
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   color: var(--text-2);
-  min-width: 110px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   font-weight: 400;
 }
 
 .cdd-fw-bar-wrap {
-  flex: 1;
   height: 4px;
   background: var(--surface-3);
   border-radius: var(--r-full);
   overflow: hidden;
+  margin-top: 0.35rem;
 }
 
 .cdd-fw-bar {
@@ -4107,30 +4099,22 @@ code, pre, kbd {
 
 .cdd-fw-count {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  min-width: 30px;
-  text-align: right;
+  float: right;
   flex-shrink: 0;
 }
 
-/* Test rows */
+/* Test rows — label + count on one line, bar below */
 .cdd-test-row {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  margin-bottom: 0.6rem;
+  margin-bottom: 0.75rem;
 }
 .cdd-test-row:last-child { margin-bottom: 0; }
 .cdd-test-label {
   font-family: var(--font-body);
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   color: var(--text-2);
-  min-width: 110px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* Kill chain rows */
@@ -4145,11 +4129,11 @@ code, pre, kbd {
 
 .cdd-kc-badge {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r-sm);
   display: flex;
   align-items: center;
   justify-content: center;
