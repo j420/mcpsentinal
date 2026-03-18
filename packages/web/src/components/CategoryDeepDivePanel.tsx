@@ -37,7 +37,7 @@ export default function CategoryDeepDivePanel({ findings }: { findings: CddFindi
       </div>
 
       <div className="cdd-wrap">
-        {/* Tab bar */}
+        {/* Tab bar — full names in two rows */}
         <div className="cdd-tabs">
           {THREAT_CATS.map((cat) => {
             const catRules = cat.subCats.flatMap((sc) => sc.rules);
@@ -50,7 +50,7 @@ export default function CategoryDeepDivePanel({ findings }: { findings: CddFindi
                 style={{ "--cc": cat.color } as React.CSSProperties}
               >
                 <span className="cdd-tab-icon">{cat.icon}</span>
-                <span className="cdd-tab-code">{cat.id}</span>
+                <span className="cdd-tab-name">{cat.name}</span>
                 {catFindings > 0 && <span className="cdd-tab-dot" />}
               </label>
             );
@@ -100,12 +100,12 @@ export default function CategoryDeepDivePanel({ findings }: { findings: CddFindi
                 {/* Stats row */}
                 <div className="cdd-stats">
                   {[
-                    { num: allRules.length, label: "RULES" },
-                    { num: cat.subCats.length, label: "SUB-CATS" },
-                    { num: catHits.length, label: "FINDINGS", color: catHits.length > 0 ? "var(--critical)" : "var(--good)" },
-                    { num: `${pct}%`, label: "CLEAN", color: pct >= 80 ? "var(--good)" : pct >= 50 ? "var(--moderate)" : "var(--critical)" },
-                    { num: totalTests, label: "TESTS" },
-                    { num: cat.frameworks.length, label: "FRAMEWORKS" },
+                    { num: allRules.length, label: "RULES", color: undefined },
+                    { num: cat.subCats.length, label: "SUB-CATS", color: undefined },
+                    { num: catHits.length, label: "GAPS", color: catHits.length > 0 ? "var(--critical)" : "var(--good)" },
+                    { num: `${pct}%`, label: "IMPL.", color: pct >= 80 ? "var(--good)" : pct >= 50 ? "var(--moderate)" : "var(--critical)" },
+                    { num: totalTests, label: "TESTS", color: undefined },
+                    { num: cat.frameworks.length, label: "STORIES", color: undefined },
                   ].map((s) => (
                     <div key={s.label} className="cdd-stat">
                       <div className="cdd-stat-num" style={s.color ? { color: s.color } : {}}>
