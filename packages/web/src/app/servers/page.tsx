@@ -105,15 +105,6 @@ function fmtNum(n: number | null | undefined): string {
   return n.toLocaleString();
 }
 
-function connectionLabel(status: Server["connection_status"]): { text: string; cls: string } {
-  switch (status) {
-    case "success": return { text: "Online", cls: "conn-online" };
-    case "failed": return { text: "Offline", cls: "conn-offline" };
-    case "timeout": return { text: "Timeout", cls: "conn-offline" };
-    default: return { text: "Unknown", cls: "conn-unknown" };
-  }
-}
-
 function sourceOrigin(server: Server): { label: string } | null {
   if (server.npm_package) return { label: "npm" };
   if (server.pypi_package) return { label: "PyPI" };
@@ -314,16 +305,6 @@ export default async function ServersPage({
                       {server.tool_count} tool{server.tool_count !== 1 ? "s" : ""}
                     </span>
                   )}
-                  {/* Connection status */}
-                  {(() => {
-                    const conn = connectionLabel(server.connection_status);
-                    return (
-                      <span className={`srv-card-meta-item ${conn.cls}`}>
-                        <span className="conn-dot" />
-                        {conn.text}
-                      </span>
-                    );
-                  })()}
                   {/* Source origin */}
                   {(() => {
                     const origin = sourceOrigin(server);
