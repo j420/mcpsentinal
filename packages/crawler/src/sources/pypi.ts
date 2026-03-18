@@ -1,4 +1,4 @@
-import type { DiscoveredServer } from "@mcp-sentinel/database";
+import type { DiscoveredServer, ServerCategory } from "@mcp-sentinel/database";
 import pino from "pino";
 import type { CrawlerSource, CrawlResult, CrawlOptions } from "../types.js";
 
@@ -78,7 +78,7 @@ export class PyPICrawler implements CrawlerSource {
               github_url: githubUrl,
               npm_package: null,
               pypi_package: pkg.name,
-              category: null,
+              category: this.inferCategory(pkg.name, pkgInfo.info.summary, pkgInfo.info.keywords),
               language: "Python",
               license: pkgInfo.info.license || null,
               source_name: "pypi",
@@ -116,6 +116,34 @@ export class PyPICrawler implements CrawlerSource {
       elapsed_ms: Date.now() - start,
       servers,
     };
+  }
+
+  private inferCategory(
+    name: string,
+    description?: string,
+    keywords?: string
+  ): ServerCategory | null {
+    const text = `${name} ${description || ""} ${keywords || ""}`.toLowerCase();
+
+    const categories: [ServerCategory, string[]][] = [
+      ["database", ["postgres", "mysql", "sqlite", "mongo", "redis", "database", "sql", "supabase", "prisma"]],
+      ["filesystem", ["filesystem", "file-system", "files", "directory", "storage", "drive"]],
+      ["api-integration", ["api", "slack", "github", "jira", "notion", "stripe", "twilio", "salesforce", "zapier", "webhook"]],
+      ["dev-tools", ["dev-tool", "linter", "formatter", "debug", "git", "code", "lint", "test"]],
+      ["ai-ml", ["openai", "anthropic", "llm", "embedding", "ml", "ai", "gpt", "claude", "gemini", "model"]],
+      ["communication", ["email", "chat", "sms", "slack", "discord", "teams", "telegram"]],
+      ["cloud-infra", ["aws", "gcp", "azure", "docker", "kubernetes", "terraform", "cloudflare"]],
+      ["security", ["security", "auth", "vault", "secrets", "encrypt", "compliance"]],
+      ["search", ["search", "elasticsearch", "algolia", "brave-search", "knowledge"]],
+      ["browser-web", ["browser", "puppeteer", "playwright", "scrape", "web", "crawl"]],
+      ["code-execution", ["execute", "sandbox", "eval", "shell", "terminal", "python sandbox"]],
+      ["monitoring", ["monitor", "logs", "metrics", "alert", "observ", "analytics"]],
+    ];
+
+    for (const [cat, kws] of categories) {
+      if (kws.some((k) => text.includes(k))) return cat;
+    }
+    return null;
   }
 
   private async fetchPackageInfo(

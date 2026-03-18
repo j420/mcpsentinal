@@ -14,9 +14,12 @@ export class DatabaseQueries {
   async upsertServer(discovered: DiscoveredServer): Promise<string> {
     const slug = this.slugify(discovered.name);
 
+    // Extract github_stars from raw_metadata if available
+    const githubStars = this._extractGithubStars(discovered.raw_metadata);
+
     const result = await this.pool.query(
-      `INSERT INTO servers (name, slug, description, author, github_url, npm_package, pypi_package, category, language, license)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `INSERT INTO servers (name, slug, description, author, github_url, npm_package, pypi_package, category, language, license, github_stars)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        ON CONFLICT (slug) DO UPDATE SET
          description = COALESCE(EXCLUDED.description, servers.description),
          author = COALESCE(EXCLUDED.author, servers.author),
@@ -26,6 +29,7 @@ export class DatabaseQueries {
          category = COALESCE(EXCLUDED.category, servers.category),
          language = COALESCE(EXCLUDED.language, servers.language),
          license = COALESCE(EXCLUDED.license, servers.license),
+         github_stars = COALESCE(EXCLUDED.github_stars, servers.github_stars),
          updated_at = NOW()
        RETURNING id`,
       [
@@ -39,6 +43,7 @@ export class DatabaseQueries {
         discovered.category,
         discovered.language,
         discovered.license,
+        githubStars,
       ]
     );
 
@@ -161,6 +166,8 @@ export class DatabaseQueries {
     serverId: string,
     discovered: DiscoveredServer
   ): Promise<void> {
+    const githubStars = this._extractGithubStars(discovered.raw_metadata);
+
     await this.pool.query(
       `UPDATE servers SET
          description  = COALESCE(servers.description,  $2),
@@ -171,6 +178,7 @@ export class DatabaseQueries {
          category     = COALESCE(servers.category,     $7),
          language     = COALESCE(servers.language,     $8),
          license      = COALESCE(servers.license,      $9),
+         github_stars = COALESCE($10, servers.github_stars),
          updated_at   = NOW()
        WHERE id = $1`,
       [
@@ -183,6 +191,7 @@ export class DatabaseQueries {
         discovered.category,
         discovered.language,
         discovered.license,
+        githubStars,
       ]
     );
 
@@ -1200,5 +1209,15 @@ export class DatabaseQueries {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "")
       .substring(0, 500);
+  }
+
+  /**
+   * Extract github_stars from raw_metadata.
+   * Different crawlers use different keys: "stars", "github_stars", "stargazers_count".
+   */
+  private _extractGithubStars(raw: Record<string, unknown>): number | null {
+    const val = raw.stars ?? raw.github_stars ?? raw.stargazers_count;
+    if (typeof val === "number" && Number.isFinite(val) && val >= 0) return val;
+    return null;
   }
 }
