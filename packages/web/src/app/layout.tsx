@@ -118,36 +118,31 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <a href="/" className="site-logo">
               <span className="logo-mark" aria-hidden="true">
                 <svg
-                  width="30"
-                  height="30"
-                  viewBox="0 0 32 32"
+                  width="34"
+                  height="34"
+                  viewBox="0 0 34 34"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
                 >
+                  <rect width="34" height="34" rx="8" fill="#111" />
                   <path
-                    d="M16 2L27 6.5V14C27 21.5 22 27 16 29C10 27 5 21.5 5 14V6.5L16 2Z"
-                    fill="var(--accent-sub)"
-                    stroke="var(--accent)"
-                    strokeWidth="1.4"
+                    d="M17 7L24.5 10.5V16C24.5 21 21.2 25.2 17 26.5C12.8 25.2 9.5 21 9.5 16V10.5L17 7Z"
+                    fill="none"
+                    stroke="#34D399"
+                    strokeWidth="1.6"
                     strokeLinejoin="round"
                   />
-                  <circle cx="16" cy="14.5" r="7" stroke="var(--accent-light)" strokeWidth="0.6" opacity="0.35" strokeDasharray="2.5 2" />
-                  <circle cx="16" cy="14.5" r="4.2" stroke="var(--accent-light)" strokeWidth="0.5" opacity="0.2" strokeDasharray="1.5 1.5" />
-                  <line x1="16" y1="14.5" x2="22" y2="10" stroke="var(--accent-light)" strokeWidth="0.8" opacity="0.5" strokeLinecap="round" />
-                  <circle cx="16" cy="14.5" r="2.8" fill="var(--accent)" opacity="0.15" />
-                  <circle cx="16" cy="14.5" r="1.8" fill="var(--accent)" opacity="0.35" />
-                  <circle cx="16" cy="14.5" r="1.1" fill="var(--accent-light)" />
-                  <circle cx="11" cy="11" r="1.2" fill="var(--accent-light)" opacity="0.6" />
-                  <circle cx="21" cy="11" r="1.2" fill="var(--accent-light)" opacity="0.6" />
-                  <circle cx="11.5" cy="19" r="1" fill="var(--accent-light)" opacity="0.4" />
-                  <circle cx="20.5" cy="19" r="1" fill="var(--accent-light)" opacity="0.4" />
-                  <line x1="11" y1="11" x2="16" y2="14.5" stroke="var(--accent-light)" strokeWidth="0.5" opacity="0.3" />
-                  <line x1="21" y1="11" x2="16" y2="14.5" stroke="var(--accent-light)" strokeWidth="0.5" opacity="0.3" />
+                  <path
+                    d="M13.5 17L15.8 19.3L20.5 14.5"
+                    stroke="#34D399"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               </span>
               <span className="logo-text">
-                <span className="logo-mcp">MCP</span>
-                <span className="logo-sentinel"> Sentinel</span>
+                <span className="logo-sentinel">Sentinel</span>
               </span>
             </a>
 
@@ -186,11 +181,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="footer-inner">
             <div className="footer-brand">
               <a href="/" className="footer-brand-link">
-                <svg width="20" height="20" viewBox="0 0 32 32" fill="none">
-                  <path d="M16 2L27 6.5V14C27 21.5 22 27 16 29C10 27 5 21.5 5 14V6.5L16 2Z" fill="var(--accent-sub)" stroke="var(--accent)" strokeWidth="1.2" strokeLinejoin="round"/>
-                  <circle cx="16" cy="14.5" r="1.1" fill="var(--accent-light)"/>
+                <svg width="22" height="22" viewBox="0 0 34 34" fill="none">
+                  <rect width="34" height="34" rx="8" fill="#111" />
+                  <path d="M17 7L24.5 10.5V16C24.5 21 21.2 25.2 17 26.5C12.8 25.2 9.5 21 9.5 16V10.5L17 7Z" fill="none" stroke="#34D399" strokeWidth="1.6" strokeLinejoin="round" />
+                  <path d="M13.5 17L15.8 19.3L20.5 14.5" stroke="#34D399" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                <span className="footer-brand-text">MCP Sentinel</span>
+                <span className="footer-brand-text">Sentinel</span>
               </a>
               <p className="footer-tagline">
                 Security intelligence for the MCP ecosystem.

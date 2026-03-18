@@ -307,8 +307,7 @@ code, pre, kbd {
 .site-logo:hover { color: var(--text); opacity: 0.75; }
 
 .logo-text { display: flex; align-items: baseline; gap: 0; line-height: 1; }
-.logo-mcp      { color: var(--accent); font-weight: 800; letter-spacing: -0.02em; }
-.logo-sentinel { color: var(--text);   font-weight: 600; letter-spacing: -0.03em; }
+.logo-sentinel { color: var(--text); font-weight: 700; font-size: 18px; letter-spacing: -0.03em; }
 
 .logo-mark {
   display: flex;
