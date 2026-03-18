@@ -4444,6 +4444,28 @@ code, pre, kbd {
 
 @media (max-width: 720px) { .srv-card-grid { grid-template-columns: 1fr; } }
 
+/* ── Connection status + source origin chips ─────────────── */
+.conn-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #999;
+  flex-shrink: 0;
+}
+.conn-online .conn-dot { background: #22c55e; }
+.conn-offline .conn-dot { background: #ef4444; }
+.conn-unknown .conn-dot { background: #9ca3af; }
+.conn-online { color: #16a34a; }
+.conn-offline { color: #dc2626; }
+
+.server-meta-origin,
+.srv-card-origin {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-size: 10px;
+}
+
 /* ═══════════════════════════════════════════════════════════
    SERVER DETAIL PAGE
    ═══════════════════════════════════════════════════════════ */

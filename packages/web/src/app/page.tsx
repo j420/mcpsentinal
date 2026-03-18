@@ -24,6 +24,11 @@ interface Server {
   npm_downloads: number | null;
   latest_score: number | null;
   last_commit: string | null;
+  tool_count: number;
+  connection_status: "success" | "failed" | "timeout" | "no_endpoint" | null;
+  github_url: string | null;
+  npm_package: string | null;
+  pypi_package: string | null;
 }
 
 interface Pagination {
@@ -107,6 +112,22 @@ function fmtNum(n: number | null | undefined): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
   return n.toLocaleString();
+}
+
+function connectionLabel(status: Server["connection_status"]): { text: string; cls: string } {
+  switch (status) {
+    case "success": return { text: "Online", cls: "conn-online" };
+    case "failed": return { text: "Offline", cls: "conn-offline" };
+    case "timeout": return { text: "Timeout", cls: "conn-offline" };
+    default: return { text: "Unknown", cls: "conn-unknown" };
+  }
+}
+
+function sourceOrigin(server: Server): { label: string; icon: string } | null {
+  if (server.npm_package) return { label: "npm", icon: "npm" };
+  if (server.pypi_package) return { label: "PyPI", icon: "pypi" };
+  if (server.github_url) return { label: "GitHub", icon: "github" };
+  return null;
 }
 
 const CATEGORIES = [
@@ -535,14 +556,46 @@ export default async function HomePage({
                       {server.author}
                     </span>
                   )}
+                  {/* Tool count */}
+                  {server.tool_count > 0 && (
+                    <span className="server-meta-chip">
+                      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M9.5 2.5L13 6l-7 7-4 1 1-4 7-7z" />
+                      </svg>
+                      {server.tool_count} tool{server.tool_count !== 1 ? "s" : ""}
+                    </span>
+                  )}
+                  {/* Connection status */}
+                  {(() => {
+                    const conn = connectionLabel(server.connection_status);
+                    return (
+                      <span className={`server-meta-chip ${conn.cls}`}>
+                        <span className="conn-dot" />
+                        {conn.text}
+                      </span>
+                    );
+                  })()}
+                  {/* Source origin */}
+                  {(() => {
+                    const origin = sourceOrigin(server);
+                    return origin ? (
+                      <span className="server-meta-chip server-meta-origin">
+                        {origin.label}
+                      </span>
+                    ) : null;
+                  })()}
+                  {/* Language */}
+                  {server.language && (
+                    <span className="server-meta-chip">
+                      <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor" opacity="0.5">
+                        <circle cx="8" cy="8" r="4" />
+                      </svg>
+                      {server.language}
+                    </span>
+                  )}
                   {server.category && (
                     <span className="server-meta-chip server-meta-cat">
                       {server.category}
-                    </span>
-                  )}
-                  {server.language && (
-                    <span className="server-meta-chip">
-                      {server.language}
                     </span>
                   )}
                   {server.github_stars != null && server.github_stars > 0 && (
