@@ -58,12 +58,17 @@ export class CrawlOrchestrator {
     let new_to_db = 0;
     let enriched_existing = 0;
 
+    // Persist only the deduplicated set — ensures crawled count == DB server count.
+    // allServers may contain the same server from multiple sources; uniqueServers
+    // has already been keyed by canonical identifier (github_url → npm → pypi → name:author).
+    const serversToInsert = Array.from(uniqueServers.values());
+
     logger.info(
-      { total: allServers.length, unique: uniqueServers.size },
-      "Persisting discovered servers — canonical dedup: github_url → npm → pypi → slug"
+      { total: allServers.length, unique: serversToInsert.length },
+      "Persisting deduplicated servers — canonical dedup: github_url → npm → pypi → slug"
     );
 
-    for (const server of allServers) {
+    for (const server of serversToInsert) {
       try {
         const { is_new } = await db.upsertServerDedup(server);
         persisted++;
@@ -72,13 +77,34 @@ export class CrawlOrchestrator {
 
         if (persisted % 100 === 0) {
           logger.info(
-            { persisted, total: allServers.length, new_to_db, enriched_existing },
+            { persisted, total: serversToInsert.length, new_to_db, enriched_existing },
             "Persist progress"
           );
         }
       } catch (err) {
         persist_errors++;
         logger.error({ server: server.name, err }, "Failed to persist server");
+      }
+    }
+
+    // Enrich existing servers with data from duplicate source records.
+    // The uniqueServers map keeps only the first occurrence per dedup key.
+    // Duplicates from other sources may carry fields (npm_package, description, etc.)
+    // that the first occurrence lacked — enrich those without creating new rows.
+    const uniqueKeys = new Set(
+      serversToInsert.map((s) => this._deduplicationKey(s))
+    );
+    for (const server of allServers) {
+      const key = this._deduplicationKey(server);
+      // Skip the canonical entry (already persisted above)
+      if (uniqueKeys.has(key)) {
+        uniqueKeys.delete(key); // delete so subsequent dupes go through enrichment
+        continue;
+      }
+      try {
+        await db.upsertServerDedup(server); // enriches existing row + records source
+      } catch {
+        // Non-fatal: enrichment failure doesn't affect server count
       }
     }
 

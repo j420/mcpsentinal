@@ -104,6 +104,22 @@ export class DatabaseQueries {
   async upsertServerDedup(
     discovered: DiscoveredServer
   ): Promise<{ id: string; is_new: boolean }> {
+    // Normalize canonical identifiers before any lookup or insert.
+    // This ensures "https://github.com/Foo/Bar.git" and "https://github.com/foo/bar"
+    // resolve to the same row — matching the in-memory dedup key logic.
+    if (discovered.github_url) {
+      discovered = {
+        ...discovered,
+        github_url: discovered.github_url.toLowerCase().replace(/\.git$/, "").replace(/\/$/, ""),
+      };
+    }
+    if (discovered.npm_package) {
+      discovered = { ...discovered, npm_package: discovered.npm_package.toLowerCase() };
+    }
+    if (discovered.pypi_package) {
+      discovered = { ...discovered, pypi_package: discovered.pypi_package.toLowerCase() };
+    }
+
     // Priority 1: canonical GitHub URL — most reliable cross-source identifier
     if (discovered.github_url) {
       const existing = await this.findServerByGithubUrl(discovered.github_url);

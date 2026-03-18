@@ -295,6 +295,23 @@ const MIGRATIONS = [
     `,
   },
   {
+    id: "008_unique_canonical_identifiers",
+    sql: `
+      -- Enforce uniqueness on canonical server identifiers at DB level.
+      -- Previously dedup was application-only (upsertServerDedup lookups).
+      -- Partial unique indexes: only enforced when the column is NOT NULL,
+      -- since multiple servers legitimately have NULL github_url/npm/pypi.
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_servers_github_url
+        ON servers(github_url) WHERE github_url IS NOT NULL;
+
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_servers_npm_package
+        ON servers(npm_package) WHERE npm_package IS NOT NULL;
+
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_servers_pypi_package
+        ON servers(pypi_package) WHERE pypi_package IS NOT NULL;
+    `,
+  },
+  {
     id: "006_dynamic_test_results",
     sql: `
       -- dynamic_test_results: one row per DynamicTester.test() execution.
