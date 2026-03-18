@@ -358,24 +358,26 @@ export default async function HomePage({
 
         {/* Card 2 — White: avg trust score ring */}
         <div className="stats-card stats-card-score">
-          <svg width="120" height="120" viewBox="0 0 120 120" className="stats-card-ring" aria-hidden="true">
-            <circle cx="60" cy="60" r="48" fill="none" stroke="#E5E7EB" strokeWidth="8" />
-            <circle
-              cx="60"
-              cy="60"
-              r="48"
-              fill="none"
-              stroke={avgScoreColor}
-              strokeWidth="8"
-              strokeLinecap="round"
-              strokeDasharray={2 * Math.PI * 48}
-              strokeDashoffset={2 * Math.PI * 48 * (1 - (stats?.average_score ?? 0) / 100)}
-              style={{ transform: "rotate(-90deg)", transformOrigin: "center" }}
-            />
-          </svg>
-          <span className="stats-card-ring-num" style={{ color: avgScoreColor }}>
-            {stats?.average_score ?? "\u2014"}
-          </span>
+          <div className="stats-card-ring-wrap">
+            <svg width="120" height="120" viewBox="0 0 120 120" className="stats-card-ring" aria-hidden="true">
+              <circle cx="60" cy="60" r="48" fill="none" stroke="#E5E7EB" strokeWidth="8" />
+              <circle
+                cx="60"
+                cy="60"
+                r="48"
+                fill="none"
+                stroke={avgScoreColor}
+                strokeWidth="8"
+                strokeLinecap="round"
+                strokeDasharray={2 * Math.PI * 48}
+                strokeDashoffset={2 * Math.PI * 48 * (1 - (stats?.average_score ?? 0) / 100)}
+                style={{ transform: "rotate(-90deg)", transformOrigin: "center" }}
+              />
+            </svg>
+            <span className="stats-card-ring-num" style={{ color: avgScoreColor }}>
+              {stats?.average_score ?? "\u2014"}
+            </span>
+          </div>
           <span className="stats-card-ring-label">Avg Trust Score</span>
         </div>
 
@@ -383,7 +385,7 @@ export default async function HomePage({
         <div className="stats-card stats-card-green">
           <span className="stats-card-big-num">103</span>
           <span className="stats-card-subtitle">Detection Rules</span>
-          <span className="stats-card-green-detail">Deterministic No LLMs No false positives</span>
+          <span className="stats-card-green-detail">Deterministic &middot; No LLMs &middot; No false positives</span>
         </div>
       </section>
 

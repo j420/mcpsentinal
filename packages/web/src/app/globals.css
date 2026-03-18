@@ -939,7 +939,7 @@ code, pre, kbd {
   font-size: 11px;
   font-weight: 500;
   background: var(--surface-2);
-  color: var(--text-2);
+  color: var(--text);
   border: 1px solid var(--border);
   white-space: nowrap;
   transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
@@ -2702,11 +2702,12 @@ code, pre, kbd {
 
 .stats-card {
   border-radius: var(--r-xl);
-  padding: var(--s6) var(--s7);
+  padding: 2rem 2rem;
   display: flex;
   flex-direction: column;
   position: relative;
   overflow: hidden;
+  min-height: 180px;
 }
 
 /* Card 1 — Dark */
@@ -2718,30 +2719,30 @@ code, pre, kbd {
   position: absolute;
   top: -40px;
   right: -40px;
-  width: 180px;
-  height: 180px;
-  background: radial-gradient(circle, rgba(16, 185, 129, 0.35) 0%, rgba(16, 185, 129, 0) 70%);
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.30) 0%, rgba(16, 185, 129, 0) 70%);
   pointer-events: none;
 }
 .stats-card-dark .stats-card-big-num {
   font-family: var(--font-body);
-  font-size: clamp(36px, 5vw, 52px);
+  font-size: clamp(40px, 5vw, 56px);
   font-weight: 800;
   letter-spacing: -0.04em;
   line-height: 1;
   color: #FFFFFF;
-  margin-bottom: var(--s2);
+  margin-bottom: 0.5rem;
 }
 .stats-card-dark .stats-card-subtitle {
   font-family: var(--font-body);
   font-size: 14px;
   font-weight: 400;
   color: rgba(255, 255, 255, 0.6);
-  margin-bottom: var(--s6);
+  margin-bottom: 1.5rem;
 }
 .stats-card-sub-row {
   display: flex;
-  gap: var(--s5);
+  gap: 2rem;
   margin-top: auto;
 }
 .stats-card-sub-item {
@@ -2751,7 +2752,7 @@ code, pre, kbd {
 }
 .stats-card-sub-num {
   font-family: var(--font-body);
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--accent-light);
   letter-spacing: -0.02em;
@@ -2763,6 +2764,7 @@ code, pre, kbd {
   font-weight: 500;
   color: rgba(255, 255, 255, 0.45);
   letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 /* Card 2 — Score ring */
@@ -2772,9 +2774,20 @@ code, pre, kbd {
   align-items: center;
   justify-content: center;
   box-shadow: var(--shadow-card);
+  padding: 1.5rem;
+}
+.stats-card-ring-wrap {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.75rem;
 }
 .stats-card-ring {
-  margin-bottom: var(--s2);
+  position: absolute;
+  inset: 0;
 }
 .stats-card-ring-num {
   font-family: var(--font-body);
@@ -2782,8 +2795,6 @@ code, pre, kbd {
   font-weight: 800;
   letter-spacing: -0.04em;
   line-height: 1;
-  margin-top: calc(-84px); /* overlap onto ring center */
-  margin-bottom: 52px;
   position: relative;
   z-index: 1;
 }
@@ -2801,26 +2812,27 @@ code, pre, kbd {
 }
 .stats-card-green .stats-card-big-num {
   font-family: var(--font-body);
-  font-size: clamp(36px, 5vw, 52px);
+  font-size: clamp(40px, 5vw, 56px);
   font-weight: 800;
   letter-spacing: -0.04em;
   line-height: 1;
   color: #FFFFFF;
-  margin-bottom: var(--s2);
+  margin-bottom: 0.5rem;
 }
 .stats-card-green .stats-card-subtitle {
   font-family: var(--font-body);
   font-size: 16px;
   font-weight: 600;
   color: #FFFFFF;
-  margin-bottom: var(--s5);
+  margin-bottom: 1rem;
 }
 .stats-card-green-detail {
   font-family: var(--font-mono);
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.7);
-  line-height: 1.5;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+  line-height: 1.6;
   margin-top: auto;
+  letter-spacing: 0.02em;
 }
 
 /* ── API warning alert ─────────────────────────────────── */
@@ -3633,7 +3645,7 @@ code, pre, kbd {
   font-family: var(--font-body);
   font-size: 0.72rem;
   font-weight: 600;
-  color: var(--text-3);
+  color: var(--text);
   letter-spacing: -0.01em;
   transition: all var(--t-fast) var(--ease);
   position: relative;

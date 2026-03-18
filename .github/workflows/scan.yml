@@ -148,7 +148,13 @@ jobs:
         if: ${{ github.event.inputs.server_id == '' }}
         run: |
           MODE="${{ github.event.inputs.mode || 'incremental' }}"
-          BATCH="${{ github.event.inputs.batch_size || '100' }}"
+          # When auto-triggered by crawl workflow_run, scan ALL unscanned servers
+          # (no artificial 100-server limit). Manual dispatch uses the provided batch_size.
+          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            BATCH="10000"
+          else
+            BATCH="${{ github.event.inputs.batch_size || '100' }}"
+          fi
           DYNAMIC_FLAG=""
           if [[ "${{ github.event.inputs.dynamic }}" == "true" ]]; then DYNAMIC_FLAG="--dynamic"; fi
           pnpm scan --mode=$MODE --batch-size=$BATCH $DYNAMIC_FLAG
@@ -234,7 +240,11 @@ jobs:
             echo "**Crawl conclusion:** \`${{ github.event.workflow_run.conclusion }}\`" >> $GITHUB_STEP_SUMMARY
           fi
           echo "**Mode:** \`${{ github.event.inputs.mode || 'incremental' }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Batch size:** \`${{ github.event.inputs.batch_size || '100' }}\`" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            echo "**Batch size:** \`10000\` (auto: scan all after crawl)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Batch size:** \`${{ github.event.inputs.batch_size || '100' }}\`" >> $GITHUB_STEP_SUMMARY
+          fi
           if [[ -n "${{ github.event.inputs.server_id }}" ]]; then
             echo "**Server ID:** \`${{ github.event.inputs.server_id }}\`" >> $GITHUB_STEP_SUMMARY
           fi
