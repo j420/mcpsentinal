@@ -278,7 +278,7 @@ code, pre, kbd {
   }
   @keyframes header-shadow {
     from { box-shadow: none; }
-    to { box-shadow: 0 1px 12px rgba(0, 0, 0, 0.30); }
+    to { box-shadow: 0 1px 12px rgba(0, 0, 0, 0.06); }
   }
 }
 
@@ -1271,7 +1271,7 @@ code, pre, kbd {
   font-size: 13px;
   font-weight: 600;
   color: var(--text);
-  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+  font-family: var(--font-mono);
   margin-bottom: var(--s1);
 }
 
@@ -1325,7 +1325,7 @@ code, pre, kbd {
 .finding-rule-id {
   font-size: 12px;
   font-weight: 700;
-  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+  font-family: var(--font-mono);
   color: var(--text-2);
   background: var(--surface-2);
   border: 1px solid var(--border);
@@ -1372,7 +1372,7 @@ code, pre, kbd {
   background: var(--surface-2);
   border-radius: var(--r-md);
   padding: var(--s4);
-  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
   color: var(--text-2);
   overflow-x: auto;
@@ -2026,7 +2026,7 @@ code, pre, kbd {
 .cat-risk {
   font-size: 11px;
   color: var(--text-3);
-  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+  font-family: var(--font-mono);
   padding: var(--s1) var(--s2);
   background: var(--surface-2);
   border-radius: var(--r-sm);
@@ -2112,7 +2112,7 @@ code, pre, kbd {
 .text-muted { color: var(--text-3); }
 .text-2     { color: var(--text-2); }
 
-.mono { font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace; }
+.mono { font-family: var(--font-mono); }
 
 /* ── Security Test Coverage table ──────────────────────── */
 .test-type-list {
@@ -2152,7 +2152,7 @@ code, pre, kbd {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.05em;
-  font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+  font-family: var(--font-mono);
   color: var(--text-3);
   white-space: nowrap;
 }
@@ -2361,7 +2361,7 @@ code, pre, kbd {
 }
 
 .hm-cat-prefix {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 700;
   color: var(--text-3);
@@ -2516,7 +2516,7 @@ code, pre, kbd {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 700;
   flex-shrink: 0;
@@ -2641,7 +2641,7 @@ code, pre, kbd {
 .intel-rule-clean     { background: transparent; }
 
 .intel-rule-id {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 600;
   color: var(--text-3);
@@ -2683,7 +2683,7 @@ code, pre, kbd {
   font-weight: 700;
   min-width: 28px;
   text-align: right;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
 }
 
 .intel-status-clean    { color: var(--good); }
@@ -2707,7 +2707,7 @@ code, pre, kbd {
 }
 
 .stats-strip-num {
-  font-family: 'Outfit Variable', 'Outfit', system-ui, sans-serif;
+  font-family: var(--font-body);
   font-size: 36px;
   font-weight: 700;
   letter-spacing: -0.04em;
@@ -2839,7 +2839,7 @@ code, pre, kbd {
   font-weight: 800;
   letter-spacing: 0.05em;
   flex-shrink: 0;
-  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+  font-family: var(--font-mono);
 }
 
 .featured-brand-label {
@@ -2955,7 +2955,7 @@ code, pre, kbd {
   font-size: 12px;
   font-weight: 700;
   color: var(--accent);
-  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+  font-family: var(--font-mono);
   flex-shrink: 0;
   width: 18px;
 }
@@ -2983,7 +2983,7 @@ code, pre, kbd {
   font-size: 11px;
   font-weight: 700;
   color: var(--accent);
-  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+  font-family: var(--font-mono);
   flex-shrink: 0;
 }
 
@@ -3135,7 +3135,7 @@ code, pre, kbd {
   font-size: 13px;
   font-weight: 800;
   color: var(--accent);
-  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+  font-family: var(--font-mono);
   background: var(--accent-sub);
   border: 1px solid var(--accent-ring);
   border-radius: var(--r-sm);
@@ -3192,7 +3192,7 @@ code, pre, kbd {
   font-size: 11px;
   font-weight: 700;
   color: var(--text-3);
-  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+  font-family: var(--font-mono);
   flex-shrink: 0;
 }
 
@@ -3219,7 +3219,7 @@ code, pre, kbd {
 /* ── About: Pipeline package name ─────────────────────── */
 .pipeline-pkg {
   font-size: 10px;
-  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+  font-family: var(--font-mono);
   color: var(--accent);
   margin-bottom: var(--s2);
   opacity: 0.8;
@@ -3227,7 +3227,7 @@ code, pre, kbd {
 
 /* ── About: OWASP table helpers ───────────────────────── */
 .owasp-id-cell {
-  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-weight: 700;
   color: var(--accent);
   font-size: 12px;
@@ -3239,7 +3239,7 @@ code, pre, kbd {
 }
 
 .owasp-rules-cell {
-  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
   color: var(--text-3);
 }
@@ -4236,7 +4236,7 @@ code, pre, kbd {
 .srv-card:hover .srv-card-score { transform: scale(1.06); }
 
 .srv-card-desc {
-  font-family: 'Lora Variable', 'Lora', Georgia, serif;
+  font-family: var(--font-body);
   font-size: 13px; color: var(--text-2); line-height: 1.55;
   overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   flex: 1; margin: 0;
@@ -4279,7 +4279,7 @@ code, pre, kbd {
 .sd-status-connected { background: var(--good); box-shadow: 0 0 0 3px rgba(13, 124, 95, 0.18); }
 .sd-status-error { background: var(--critical); box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.18); }
 
-.sd-hero-desc { font-family: 'Lora Variable', 'Lora', Georgia, serif; font-size: 15px; color: var(--text-2); line-height: 1.65; margin: 0 0 var(--s4); max-width: 600px; }
+.sd-hero-desc { font-family: var(--font-body); font-size: 15px; color: var(--text-2); line-height: 1.65; margin: 0 0 var(--s4); max-width: 600px; }
 
 .sd-meta-row { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; margin-bottom: var(--s4); }
 .sd-meta-chip {
@@ -4364,7 +4364,7 @@ code, pre, kbd {
 .sd-owasp-indicator { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .sd-owasp-clean .sd-owasp-indicator { background: var(--good); }
 .sd-owasp-dirty .sd-owasp-indicator { background: var(--critical); }
-.sd-owasp-id { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--text-3); flex-shrink: 0; width: 48px; }
+.sd-owasp-id { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--text-3); flex-shrink: 0; width: 48px; }
 .sd-owasp-name { font-size: 12px; color: var(--text-2); flex: 1; }
 .sd-owasp-status { font-size: 11px; font-weight: 700; flex-shrink: 0; }
 .sd-owasp-clean .sd-owasp-status { color: var(--good); }
@@ -4386,12 +4386,12 @@ code, pre, kbd {
 .sd-finding { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: var(--s5); border-left-width: 4px; box-shadow: var(--shadow-card); transition: box-shadow var(--t-base) var(--ease), transform var(--t-base) var(--ease); }
 .sd-finding:hover { box-shadow: var(--shadow-md); transform: translateX(2px); }
 .sd-finding-header { display: flex; align-items: center; gap: var(--s2); margin-bottom: var(--s2); flex-wrap: wrap; }
-.sd-finding-rule { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--text-2); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 1px 6px; }
+.sd-finding-rule { font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--text-2); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 1px 6px; }
 .sd-finding-name { font-family: var(--font-body); font-size: 13px; font-weight: 600; color: var(--text); flex: 1; }
 .sd-finding-owasp, .sd-finding-mitre { font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: var(--r-full); letter-spacing: 0.02em; font-family: var(--font-body); }
 .sd-finding-owasp { background: rgba(29, 78, 216, 0.06); color: var(--sev-info); border: 1px solid rgba(29, 78, 216, 0.14); }
 .sd-finding-mitre { background: rgba(109, 40, 217, 0.06); color: #6D28D9; border: 1px solid rgba(109, 40, 217, 0.14); }
-.sd-finding-evidence { font-family: 'Lora Variable', 'Lora', Georgia, serif; font-size: 13px; color: var(--text-2); line-height: 1.6; margin-bottom: var(--s2); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; word-break: break-word; }
+.sd-finding-evidence { font-family: var(--font-body); font-size: 13px; color: var(--text-2); line-height: 1.6; margin-bottom: var(--s2); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; word-break: break-word; }
 .sd-finding-fix { font-family: var(--font-body); font-size: 12px; color: var(--text-2); line-height: 1.55; padding: var(--s2) var(--s3); background: var(--surface-2); border-radius: var(--r-sm); border-left: 2px solid var(--good); }
 .sd-finding-fix::before { content: 'Fix: '; font-weight: 700; color: var(--good); }
 
@@ -4399,7 +4399,7 @@ code, pre, kbd {
 .sd-tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--s3); }
 .sd-tool { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--s4); box-shadow: var(--shadow-card); transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease); }
 .sd-tool:hover { border-color: var(--border-md); box-shadow: var(--shadow-md); }
-.sd-tool-name { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: var(--s1); }
+.sd-tool-name { font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: var(--s1); }
 .sd-tool-desc { font-size: 12px; color: var(--text-3); line-height: 1.5; margin-bottom: var(--s2); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .sd-tool-caps { display: flex; flex-wrap: wrap; gap: var(--s1); }
 
@@ -4443,7 +4443,7 @@ code, pre, kbd {
 .tax-nav-card:hover { border-color: var(--tax-cc); box-shadow: var(--shadow-md); transform: translateY(-2px); color: inherit; }
 .tax-nav-icon { font-size: 18px; flex-shrink: 0; }
 .tax-nav-info { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
-.tax-nav-code { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 800; letter-spacing: 0.05em; color: var(--tax-cc); }
+.tax-nav-code { font-family: var(--font-mono); font-size: 11px; font-weight: 800; letter-spacing: 0.05em; color: var(--tax-cc); }
 .tax-nav-name { font-family: var(--font-body); font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tax-nav-count { font-family: var(--font-body); font-size: 11px; font-weight: 700; color: var(--text-3); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-full); padding: 1px 7px; flex-shrink: 0; }
 

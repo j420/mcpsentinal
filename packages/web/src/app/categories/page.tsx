@@ -340,7 +340,7 @@ export default async function CategoriesPage() {
         <div style={{ display: "flex", alignItems: "baseline", gap: "var(--s3)", flexWrap: "wrap", marginBottom: "var(--s3)" }}>
           <h1
             style={{
-              fontFamily: "'Outfit Variable', 'Outfit', system-ui, sans-serif",
+              fontFamily: "var(--font-body)",
               fontSize: "clamp(28px, 5vw, 42px)",
               fontWeight: 800,
               letterSpacing: "-0.04em",

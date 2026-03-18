@@ -452,7 +452,7 @@ export default async function CategoryPage({
         <div>
           <h1 className="cat-detail-title">{meta.label}</h1>
           <p className="cat-detail-meta">{meta.description}</p>
-          <div className="rule-count-badge" style={{ marginTop: "var(--s3)", display: "inline-flex", gap: "6px", fontFamily: "'JetBrains Mono', monospace" }}>
+          <div className="rule-count-badge" style={{ marginTop: "var(--s3)", display: "inline-flex", gap: "6px", fontFamily: "var(--font-mono)" }}>
             &#x26A0; {meta.riskNote}
           </div>
         </div>
