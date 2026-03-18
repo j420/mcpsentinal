@@ -32,7 +32,7 @@
 
 import type { DiscoveredServer, ServerCategory } from "@mcp-sentinel/database";
 import pino from "pino";
-import type { CrawlerSource, CrawlResult } from "../types.js";
+import type { CrawlerSource, CrawlResult, CrawlOptions } from "../types.js";
 
 const logger = pino({ name: "crawler:modelcontextprotocol-repo" });
 
@@ -94,7 +94,8 @@ export class ModelcontextprotocolRepoCrawler implements CrawlerSource {
     this.token = token ?? process.env.GITHUB_TOKEN;
   }
 
-  async crawl(): Promise<CrawlResult> {
+  async crawl(options?: CrawlOptions): Promise<CrawlResult> {
+    const limit = options?.limit;
     const start = Date.now();
     const servers: DiscoveredServer[] = [];
     let errors = 0;
@@ -121,8 +122,9 @@ export class ModelcontextprotocolRepoCrawler implements CrawlerSource {
       );
 
       // Step 2: process each directory in bounded-concurrency batches
-      for (let i = 0; i < serverDirs.length; i += BATCH_SIZE) {
-        const batch = serverDirs.slice(i, i + BATCH_SIZE);
+      const maxDirs = limit ? serverDirs.slice(0, limit) : serverDirs;
+      for (let i = 0; i < maxDirs.length; i += BATCH_SIZE) {
+        const batch = maxDirs.slice(i, i + BATCH_SIZE);
 
         const results = await Promise.allSettled(
           batch.map((dir) => this.processServerDir(dir))
@@ -148,7 +150,7 @@ export class ModelcontextprotocolRepoCrawler implements CrawlerSource {
         }
 
         // Pause between batches to respect rate limits
-        if (i + BATCH_SIZE < serverDirs.length) {
+        if (i + BATCH_SIZE < maxDirs.length) {
           await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
         }
       }

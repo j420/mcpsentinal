@@ -1,6 +1,6 @@
 import type { DiscoveredServer, ServerCategory } from "@mcp-sentinel/database";
 import pino from "pino";
-import type { CrawlerSource, CrawlResult } from "../types.js";
+import type { CrawlerSource, CrawlResult, CrawlOptions } from "../types.js";
 
 const logger = pino({ name: "crawler:github" });
 
@@ -43,7 +43,8 @@ export class GitHubCrawler implements CrawlerSource {
     this.token = process.env.GITHUB_TOKEN;
   }
 
-  async crawl(): Promise<CrawlResult> {
+  async crawl(options?: CrawlOptions): Promise<CrawlResult> {
+    const limit = options?.limit;
     const start = Date.now();
     const servers: DiscoveredServer[] = [];
     const seen = new Set<string>();
@@ -56,11 +57,12 @@ export class GitHubCrawler implements CrawlerSource {
     }
 
     for (const query of GITHUB_SEARCH_QUERIES) {
+      if (limit && servers.length >= limit) break;
       try {
         let page = 1;
         let hasMore = true;
 
-        while (hasMore && page <= 10) {
+        while (hasMore && page <= 10 && (!limit || servers.length < limit)) {
           const url = `${GITHUB_API}/search/repositories?q=${encodeURIComponent(query)}&per_page=100&page=${page}&sort=stars&order=desc`;
           logger.info({ query, page }, "Fetching GitHub search");
 

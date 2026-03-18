@@ -1,6 +1,6 @@
 import type { DiscoveredServer } from "@mcp-sentinel/database";
 import pino from "pino";
-import type { CrawlerSource, CrawlResult } from "../types.js";
+import type { CrawlerSource, CrawlResult, CrawlOptions } from "../types.js";
 
 const logger = pino({ name: "crawler:smithery" });
 
@@ -31,7 +31,8 @@ interface SmitheryResponse {
 export class SmitheryCrawler implements CrawlerSource {
   name = "smithery" as const;
 
-  async crawl(): Promise<CrawlResult> {
+  async crawl(options?: CrawlOptions): Promise<CrawlResult> {
+    const limit = options?.limit;
     const start = Date.now();
     const servers: DiscoveredServer[] = [];
     let errors = 0;
@@ -41,7 +42,7 @@ export class SmitheryCrawler implements CrawlerSource {
       let page = 1;
       let totalPages = 1;
 
-      while (page <= totalPages) {
+      while (page <= totalPages && (!limit || servers.length < limit)) {
         const params = new URLSearchParams({
           pageSize: String(PAGE_SIZE),
           page: String(page),
