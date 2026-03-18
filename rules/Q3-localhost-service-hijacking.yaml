@@ -2,7 +2,7 @@ id: Q3
 name: Localhost MCP Service Hijacking
 category: cross-ecosystem-emergent
 severity: critical
-owasp: MCP07-insecure-configuration
+owasp: MCP07-insecure-config
 mitre: T1557
 
 # THREAT INTELLIGENCE (Senior Security Architect — Desktop/IPC):

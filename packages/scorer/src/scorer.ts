@@ -37,8 +37,14 @@ const CATEGORY_MAP: Record<string, keyof Pick<ScoreResult, "code_score" | "deps_
   "adversarial-ai": "config_score",
   "auth-analysis": "config_score",
   "protocol-surface": "config_score",
-  "threat-intelligence": "config_score",    // J1–J7 (CVE-backed)
-  "compliance-governance": "config_score",  // K1–K20 (framework-mapped)
+  "threat-intelligence": "config_score",       // J1–J7 (CVE-backed)
+  "compliance-governance": "config_score",     // K1–K20 (framework-mapped)
+  "supply-chain-advanced": "config_score",     // L1–L15 (CI/CD, build, config)
+  "ai-runtime-exploitation": "config_score",   // M1–M9 (token injection, reasoning)
+  "protocol-edge-cases": "config_score",       // N1–N15 (JSON-RPC, transport)
+  "data-privacy-attacks": "config_score",      // O1–O10 (steganography, covert channels)
+  "infrastructure-runtime": "config_score",    // P1–P10 (containers, cloud metadata)
+  "cross-ecosystem-emergent": "config_score",  // Q1–Q15 (protocol bridges, IDE)
 };
 
 const OWASP_CATEGORIES = [
