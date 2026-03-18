@@ -323,7 +323,7 @@ export default async function HomePage({
           {stats?.total_servers
             ? `${stats.total_servers.toLocaleString()} MCP servers discovered across ${Object.keys(stats.category_breakdown || {}).length} categories.`
             : "22,000+ MCP servers discovered across the ecosystem."}{" "}
-          103 detection rules. Zero guesswork.
+          150+ detection rules. Zero guesswork.
         </p>
       </section>
 
@@ -344,7 +344,7 @@ export default async function HomePage({
               <span className="stats-card-sub-label">Scanned</span>
             </div>
             <div className="stats-card-sub-item">
-              <span className="stats-card-sub-num">103</span>
+              <span className="stats-card-sub-num">150+</span>
               <span className="stats-card-sub-label">Rules</span>
             </div>
             <div className="stats-card-sub-item">
@@ -383,7 +383,7 @@ export default async function HomePage({
 
         {/* Card 3 — Green: detection rules */}
         <div className="stats-card stats-card-green">
-          <span className="stats-card-big-num">103</span>
+          <span className="stats-card-big-num">150+</span>
           <span className="stats-card-subtitle">Detection Rules</span>
           <span className="stats-card-green-detail">Deterministic &middot; No LLMs &middot; No false positives</span>
         </div>

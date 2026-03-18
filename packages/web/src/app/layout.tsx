@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     template: "%s — MCP Sentinel",
   },
   description:
-    "The world's most comprehensive security intelligence registry for MCP servers. 22,000+ servers scanned across 103 detection rules covering prompt injection, supply chain attacks, dependency vulnerabilities, and more.",
+    "The world's most comprehensive security intelligence registry for MCP servers. 22,000+ servers scanned across 150+ detection rules covering prompt injection, supply chain attacks, dependency vulnerabilities, and more.",
   keywords: [
     "MCP",
     "Model Context Protocol",
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     url: SITE_URL,
     title: "MCP Sentinel — MCP Server Security Intelligence",
     description:
-      "22,000+ MCP servers scanned. 103 detection rules. Know which servers are safe before they touch your agent.",
+      "22,000+ MCP servers scanned. 150+ detection rules. Know which servers are safe before they touch your agent.",
     images: [
       {
         url: `${SITE_URL}/og.png`,
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "MCP Sentinel — MCP Server Security Intelligence",
     description:
-      "22,000+ MCP servers scanned. 103 detection rules. Know which servers are safe before they touch your agent.",
+      "22,000+ MCP servers scanned. 150+ detection rules. Know which servers are safe before they touch your agent.",
     images: [`${SITE_URL}/og.png`],
   },
   robots: {
@@ -92,7 +92,7 @@ const organizationJsonLd = {
   url: SITE_URL,
   logo: `${SITE_URL}/logo.png`,
   description:
-    "The world's most comprehensive MCP server security intelligence registry. 22,000+ servers scanned, 103 detection rules, zero guesswork.",
+    "The world's most comprehensive MCP server security intelligence registry. 22,000+ servers scanned, 150+ detection rules, zero guesswork.",
   sameAs: ["https://github.com/mcp-sentinel"],
 };
 
@@ -195,7 +195,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <p className="footer-tagline">
                 Security intelligence for the MCP ecosystem.
                 <br />
-                103 detection rules. Zero guesswork. No LLMs.
+                150+ detection rules. Zero guesswork. No LLMs.
               </p>
             </div>
             <div className="footer-columns">

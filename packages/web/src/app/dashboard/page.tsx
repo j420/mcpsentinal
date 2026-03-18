@@ -432,7 +432,7 @@ export default async function DashboardPage() {
           <span className="count">103</span>
         </h2>
         <p className="section-desc">
-          103 rules across 11 categories &mdash; every server is evaluated against all applicable rules.
+          150+ rules across 11 categories &mdash; every server is evaluated against all applicable rules.
         </p>
         <div className="dash-auto-grid-sm">
           {RULE_CATEGORIES.map((cat) => (

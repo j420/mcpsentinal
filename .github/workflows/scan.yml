@@ -23,9 +23,9 @@ on:
           - rescan-failed # Retry servers that errored on last scan
           - full          # Rescan all servers (slow — weekly use only)
       batch_size:
-        description: "Servers per batch (default 100)"
+        description: "Servers per batch (match your crawl --limit, default 10000)"
         required: false
-        default: "100"
+        default: "10000"
         type: string
       server_id:
         description: "Scan a single server by ID (leave blank for batch)"
@@ -153,7 +153,7 @@ jobs:
           if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
             BATCH="10000"
           else
-            BATCH="${{ github.event.inputs.batch_size || '100' }}"
+            BATCH="${{ github.event.inputs.batch_size || '10000' }}"
           fi
           DYNAMIC_FLAG=""
           if [[ "${{ github.event.inputs.dynamic }}" == "true" ]]; then DYNAMIC_FLAG="--dynamic"; fi
@@ -243,7 +243,7 @@ jobs:
           if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
             echo "**Batch size:** \`10000\` (auto: scan all after crawl)" >> $GITHUB_STEP_SUMMARY
           else
-            echo "**Batch size:** \`${{ github.event.inputs.batch_size || '100' }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "**Batch size:** \`${{ github.event.inputs.batch_size || '10000' }}\`" >> $GITHUB_STEP_SUMMARY
           fi
           if [[ -n "${{ github.event.inputs.server_id }}" ]]; then
             echo "**Server ID:** \`${{ github.event.inputs.server_id }}\`" >> $GITHUB_STEP_SUMMARY
