@@ -174,23 +174,6 @@ function ScoreRing({ score }: { score: number | null }) {
   );
 }
 
-// ── Sub-Score Bar ─────────────────────────────────────────────────────────────
-
-function SubScoreBar({ label, value }: { label: string; value: number | undefined }) {
-  const v = value ?? 100;
-  const color =
-    v >= 80 ? "var(--good)" : v >= 60 ? "var(--moderate)" : v >= 40 ? "var(--poor)" : "var(--critical)";
-  return (
-    <div className="subscore-row">
-      <span className="subscore-label">{label}</span>
-      <div className="subscore-bar-bg">
-        <div className="subscore-bar-fill" style={{ width: `${v}%`, background: color }} />
-      </div>
-      <span className="subscore-val">{v}</span>
-    </div>
-  );
-}
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function ServerDetailPage({
@@ -203,7 +186,6 @@ export default async function ServerDetailPage({
 
   if (!server) return notFound();
 
-  const sd = server.score_detail;
   const findings = server.findings ?? [];
   const cddFindings: CddFinding[] = findings.map((f) => ({
     rule_id: f.rule_id,
@@ -259,25 +241,6 @@ export default async function ServerDetailPage({
           </div>
         </div>
       </section>
-
-      {/* ── Score Summary ─────────────────────────────────────────────── */}
-      {sd ? (
-        <section className="score-summary-section">
-          <h2 className="section-title">Score Breakdown</h2>
-          <div className="subscore-list">
-            <SubScoreBar label="Code" value={sd.code_score} />
-            <SubScoreBar label="Dependencies" value={sd.deps_score} />
-            <SubScoreBar label="Config" value={sd.config_score} />
-            <SubScoreBar label="Description" value={sd.description_score} />
-            <SubScoreBar label="Behavior" value={sd.behavior_score} />
-          </div>
-        </section>
-      ) : (
-        <section className="score-summary-section">
-          <h2 className="section-title">Score Breakdown</h2>
-          <p className="empty-state">Not yet scanned. Score will appear after the first scan.</p>
-        </section>
-      )}
 
       {/* ── Category Deep Dive ────────────────────────────────────────── */}
       <CategoryDeepDivePanel findings={cddFindings} />
