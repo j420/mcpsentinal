@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3100";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -151,11 +153,6 @@ const CATEGORY_META: Record<
   },
 };
 
-// ── Static generation ──────────────────────────────────────────────────────────
-
-export async function generateStaticParams() {
-  return CATEGORIES.map((category) => ({ category }));
-}
 
 export async function generateMetadata({
   params,
