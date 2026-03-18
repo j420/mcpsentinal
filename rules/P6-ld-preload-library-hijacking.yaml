@@ -1,0 +1,45 @@
+id: P6
+name: LD_PRELOAD and Shared Library Hijacking
+category: infrastructure-runtime
+severity: critical
+owasp: MCP05-privilege-escalation
+mitre: T1574.006
+# CVE-2025-23266 (NVIDIAScape, CVSS 9.0): 3-line Dockerfile exploit using LD_PRELOAD
+# to escape NVIDIA container toolkit. Hook inherits env vars from container, loads
+# attacker-controlled .so file with root privileges on host.
+# CVE-2024-0132 (NVIDIA Container Toolkit prior escape via same LD_PRELOAD vector).
+# MITRE ATT&CK T1574.006: Hijack Execution Flow: Dynamic Linker Hijacking.
+
+detect:
+  type: regex
+  patterns:
+    # LD_PRELOAD in Dockerfiles or source code
+    - "(?i)LD_PRELOAD\\s*[=:]"
+    - "(?i)ENV\\s+LD_PRELOAD\\s"
+    # LD_LIBRARY_PATH manipulation (library search path hijacking)
+    - "(?i)LD_LIBRARY_PATH\\s*[=:]\\s*[\"']?(?:/tmp|/var/tmp|/dev/shm|\\./)"
+    - "(?i)ENV\\s+LD_LIBRARY_PATH\\s"
+    # dlopen with user-controlled paths
+    - "(?i)dlopen\\s*\\(.*(?:user|input|param|arg|req|env)"
+    - "(?i)ctypes\\.(?:cdll|CDLL|LoadLibrary)\\s*\\(.*(?:user|input|param|arg|req)"
+    # Process injection via /proc/pid/mem or ptrace
+    - "(?i)/proc/(?:self|\\d+)/(?:mem|maps|environ|cmdline)"
+    - "(?i)ptrace\\s*\\(\\s*(?:PTRACE_ATTACH|PTRACE_POKETEXT|PTRACE_POKEDATA)"
+    - "(?i)process_vm_(?:readv|writev)"
+    # Signal injection
+    - "(?i)kill\\s*\\(.*(?:user|input|param|arg).*,.*SIG"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)#.*LD_PRELOAD|//.*LD_PRELOAD"
+    - "(?i)/proc/self/(?:status|stat$|cgroup|mountinfo)"
+remediation: "Never set LD_PRELOAD or LD_LIBRARY_PATH in MCP server containers. These environment variables allow loading arbitrary shared libraries into every process, enabling privilege escalation and container escape (demonstrated in CVE-2025-23266). Drop the SYS_PTRACE capability to prevent process injection. Set read-only root filesystem to prevent .so file creation. Use seccomp profiles to block ptrace, process_vm_readv, and process_vm_writev syscalls."
+test_cases:
+  true_positive:
+    - { description: "Dockerfile sets ENV LD_PRELOAD=/app/custom.so to inject a shared library into all processes", expected: true }
+    - { description: "MCP server code reads /proc/self/mem to inspect or modify another process's memory", expected: true }
+  true_negative:
+    - { description: "Code reads /proc/self/status to check memory usage for monitoring", expected: false }
+    - { description: "Test fixture references LD_PRELOAD in a comment explaining the NVIDIAScape attack", expected: false }
+intelligence_source: "CVE-2025-23266 (NVIDIAScape, CVSS 9.0), CVE-2024-0132 (NVIDIA Container Toolkit), MITRE ATT&CK T1574.006, Wiz Research NVIDIAScape blog (July 2025)"
+enabled: true

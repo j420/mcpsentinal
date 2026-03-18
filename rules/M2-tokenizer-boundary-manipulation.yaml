@@ -1,0 +1,73 @@
+id: M2
+name: TokenBreak Boundary Manipulation
+category: ai-runtime-exploitation
+severity: high
+owasp: ASI01-agent-goal-hijack
+mitre: AML.T0054
+
+# THREAT INTELLIGENCE (P1 Researcher):
+# Source: HiddenLayer — TokenBreak attack (arXiv 2506.07948, June 2025)
+# Source: Security Boulevard — "Novel TokenBreak Attack Method Can Bypass LLM Security Features"
+#
+# THE ATTACK: Tool descriptions contain character sequences specifically crafted
+# to exploit BPE (Byte Pair Encoding) tokenization. By prepending or inserting
+# specific characters, attackers cause safety-critical words to split across
+# token boundaries. A content moderation system checking for "injection" as a
+# single token will miss "inj" + "ection" split across two tokens, but the
+# target LLM still understands the full word semantically.
+#
+# Techniques detected:
+#   1. Deliberate word-splitting via inserted characters (e.g., "fin-struction"
+#      splits "instruction" across tokens in BPE)
+#   2. Homoglyph-adjacent: mixing scripts to force different tokenization paths
+#   3. Excessive use of rare Unicode that forces byte-level fallback tokenization
+#   4. Soft hyphen insertion within safety-critical keywords
+#   5. Strategic whitespace within compound words
+#
+# This differs from A6 (homoglyph — visual deception) and A7 (zero-width —
+# invisible characters). M2 targets the TOKENIZATION PROCESS specifically,
+# exploiting how BPE merges affect safety filter detection. The manipulated
+# text remains fully understandable by humans and the target LLM.
+
+detect:
+  type: regex
+  patterns:
+    # Soft hyphens inserted within words to break tokenization
+    - "\\w+\\u00AD\\w+"
+    # Word joiner (U+2060) used to prevent merging at specific points
+    - "\\w+\\u2060\\w+"
+    # Combining characters inserted mid-word to disrupt token boundaries
+    - "\\w+[\\u0300-\\u036F]\\w+"
+    # Non-breaking spaces within compound safety keywords
+    - "(?i)(ig|ign)\\u00A0(nore|ore)"
+    - "(?i)(ins|in)\\u00A0(truct|struct)"
+    - "(?i)(sys|sy)\\u00A0(tem|stem)"
+    - "(?i)(ex|exe)\\u00A0(ec|cute)"
+    # Excessive combining diacritical marks (token count inflation)
+    - "[\\u0300-\\u036F]{3,}"
+    # Mixed-script word fragments targeting BPE boundaries
+    - "[a-zA-Z]+[\\u0400-\\u04FF][a-zA-Z]+"
+    - "[a-zA-Z]+[\\u0370-\\u03FF][a-zA-Z]+"
+    # Excessive use of rare combining marks that force byte-level fallback
+    - "[\\u0E00-\\u0E7F][a-zA-Z]"
+    - "[a-zA-Z][\\u0E00-\\u0E7F]"
+  context: tool_description
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)i18n|internationalization|locale|translate"
+remediation: >
+  Normalize all tool description text to NFC Unicode form and strip combining
+  characters that are not part of legitimate natural language content. The
+  TokenBreak attack (HiddenLayer, 2025) demonstrated that BPE-based tokenizers
+  can be exploited by inserting characters that split safety-critical keywords
+  across token boundaries, bypassing content moderation while remaining
+  semantically readable. Ensure descriptions use only standard ASCII or
+  properly-formed Unicode without inserted control or combining characters.
+test_cases:
+  true_positive:
+    - { description: "Tool description contains 'ins\u00ACtruct\u00ADions' with soft hyphens splitting the word 'instructions'", expected: true }
+    - { description: "Tool description contains Latin-Cyrillic mixed fragments within words to alter tokenization", expected: true }
+  true_negative:
+    - { description: "Tool description in plain English with no special characters", expected: false }
+    - { description: "Tool description with legitimate diacritical marks in French: 'resume' with accent", expected: false }
+enabled: true

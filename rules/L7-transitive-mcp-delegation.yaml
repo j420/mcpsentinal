@@ -1,0 +1,59 @@
+id: L7
+name: Transitive MCP Server Delegation
+category: supply-chain-advanced
+severity: critical
+owasp: MCP06-excessive-permissions
+mitre: AML.T0054
+
+# THREAT INTELLIGENCE (P1 Researcher — Supply Chain):
+# Source: arXiv 2509.24272 "When MCP Servers Attack" (taxonomy of MCP attacks),
+#         Praetorian "MCP Server Security: The Hidden AI Attack Surface" (Feb 2026),
+#         FlowHunt "MCP Authentication: Confused Deputy Problem" (2025)
+#
+# THE ATTACK: An MCP server internally creates a CLIENT connection to ANOTHER
+# MCP server, creating a transitive delegation chain. The user approves Server A,
+# but Server A secretly delegates operations to Server B (which the user never
+# approved). This breaks the trust model because:
+#   1. User has no visibility into Server B's capabilities or security posture
+#   2. Server B may have capabilities that Server A does not declare
+#   3. Credential forwarding: Server A may pass the user's credentials to Server B
+#   4. The user's consent for Server A does not extend to Server B
+#
+# This is the "confused deputy" problem applied to MCP delegation chains.
+# Real-world pattern: MCP gateway servers that proxy to multiple backends,
+# MCP aggregator tools, and MCP-over-MCP bridge servers.
+#
+# DIFFERENCE FROM H3 (multi-agent propagation): H3 detects agent-to-agent
+# injection via tool descriptions. L7 detects MCP server code that creates
+# CLIENT connections to other MCP servers (transitive delegation).
+
+detect:
+  type: regex
+  patterns:
+    # MCP SDK client creation inside a server implementation
+    - "(?i)(?:new\\s+Client|createClient|MCPClient|StdioClientTransport|SSEClientTransport|StreamableHTTPClientTransport).*(?:server|handler|tool)"
+    - "(?i)(?:import|require).*(?:@modelcontextprotocol/sdk.*client|mcp.*client)"
+    # Server-side code that connects to another MCP endpoint
+    - "(?i)(?:connect|initialize).*(?:mcp|modelcontextprotocol).*(?:server|endpoint|url)"
+    # Tool handler that calls tools on a remote server
+    - "(?i)(?:tools/call|callTool|invokeTool|executeTool).*(?:client|remote|upstream|backend|proxy)"
+    # Proxy/gateway patterns for MCP-over-MCP
+    - "(?i)(?:proxy|forward|delegate|relay|bridge).*(?:mcp|tool|request).*(?:server|client|upstream)"
+    # Dynamic MCP server discovery and connection
+    - "(?i)(?:discover|enumerate|list).*(?:mcp.*servers|servers.*mcp).*(?:connect|initialize)"
+    # Credential forwarding to sub-servers
+    - "(?i)(?:auth|token|credential|apiKey).*(?:forward|pass|proxy|delegate|propagate).*(?:server|upstream|backend)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)(?:import|require).*(?:@modelcontextprotocol/sdk.*server)"
+remediation: "MCP servers MUST NOT create client connections to other MCP servers without explicit user disclosure. If delegation is required, declare all downstream servers in the server's capabilities and tool descriptions. Never forward user credentials to sub-servers. Implement a trust boundary between the approved server and any delegated servers. Log all transitive delegations for audit."
+test_cases:
+  true_positive:
+    - { description: "MCP server tool handler creates a new MCPClient to connect to a remote server and forward requests", expected: true }
+    - { description: "Server imports @modelcontextprotocol/sdk client module alongside server module", expected: true }
+    - { description: "Tool implementation proxies callTool requests to an upstream MCP backend", expected: true }
+  true_negative:
+    - { description: "MCP server implementation that only uses the server SDK without any client imports", expected: false }
+    - { description: "Test that creates both client and server for integration testing", expected: false }
+enabled: true

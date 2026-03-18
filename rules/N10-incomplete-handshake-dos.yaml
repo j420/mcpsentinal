@@ -1,0 +1,31 @@
+id: N10
+name: Incomplete Handshake Denial of Service
+category: protocol-edge-cases
+severity: high
+owasp: MCP07-insecure-config
+mitre: AML.T0054
+detect:
+  type: regex
+  patterns:
+    # Accept connection without handshake timeout
+    - "(?i)(?:onConnect|on_connect|handleConnection|connectionHandler)\\s*(?:=>|=|\\()(?!.*(?:timeout|setTimeout|deadline|handshakeTimeout|HANDSHAKE_TIMEOUT))"
+    # WebSocket/HTTP connection accepted without initialize deadline
+    - "(?i)(?:wss?\\.on|ws\\.on|socket\\.on)\\s*\\(\\s*['\"](?:connection|open|connect)(?!.*(?:setTimeout|handshake[_\\s-]?timeout|initTimeout))"
+    # Server waiting for initialize without max wait time
+    - "(?i)(?:await|then)\\s+(?:initialize|waitForInit|waitForHandshake|handleInitialize)\\s*\\((?!.*(?:timeout|deadline|AbortSignal\\.timeout|Promise\\.race))"
+    # No connection limit — accepts unlimited pending connections
+    - "(?i)(?:createServer|listen)\\s*\\((?!.*(?:maxConnections|maxClients|connectionLimit|MAX_CONN))"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)(?:handshakeTimeout|initTimeout|connectionTimeout|maxConnections|connection[_\\s-]?limit)"
+remediation: "Enforce a handshake timeout (recommended: 30 seconds) — terminate connections that do not complete the initialize handshake within the deadline. Limit maximum concurrent pending connections. An attacker can exhaust server connection slots by initiating MCP connections without completing the handshake (Slowloris-style attack). Reference: MCP spec 2025-03-26 lifecycle — initialize MUST complete before functional requests."
+test_cases:
+  true_positive:
+    - { description: "Server accepts WebSocket connections and waits for initialize indefinitely without timeout", expected: true }
+    - { description: "HTTP server createServer() with no maxConnections limit and no handshake deadline", expected: true }
+  true_negative:
+    - { description: "Server sets 30-second handshake timeout and terminates uninitialized connections", expected: false }
+    - { description: "Connection handler uses Promise.race with AbortSignal.timeout for initialize deadline", expected: false }
+intelligence_source: "Network Intelligence MCP Security Checklist (2026), Slowloris DoS attack class (CWE-400), MCP spec 2025-03-26 lifecycle"
+enabled: true

@@ -1,0 +1,45 @@
+id: N5
+name: Capability Downgrade Deception
+category: protocol-edge-cases
+severity: critical
+owasp: MCP05-privilege-escalation
+mitre: AML.T0054
+detect:
+  type: composite
+  conditions:
+    check: capability_downgrade_deception
+    description: "Detects servers that declare minimal capabilities during initialize but have tools/code that exercise undeclared capabilities. A server advertising only 'tools' capability but accessing resources, sampling, or logging avoids capability-based security screening while operating beyond its declared scope."
+    # Tools that reference capabilities not declared
+    undeclared_capability_indicators:
+      resources:
+        - "resources/"
+        - "resource_read"
+        - "list_resources"
+        - "subscribe"
+        - "ResourceTemplate"
+      sampling:
+        - "sampling"
+        - "createMessage"
+        - "generate"
+        - "completion"
+        - "llm_call"
+      prompts:
+        - "prompts/"
+        - "get_prompt"
+        - "list_prompts"
+        - "PromptMessage"
+      logging:
+        - "log_"
+        - "set_level"
+        - "LoggingLevel"
+  context: metadata
+remediation: "Declare all capabilities your server actually uses during the initialize handshake. Clients should enforce capability boundaries — if a server declares only 'tools' but its tool descriptions reference resources, prompts, or sampling, flag the mismatch. Unlike I12 (post-init escalation detected at runtime), N5 detects intentional under-declaration at static analysis time."
+test_cases:
+  true_positive:
+    - { description: "Server declares only {tools: {}} in capabilities but has tools named 'list_resources' and 'subscribe_resource' referencing resource operations", expected: true }
+    - { description: "Server declares no sampling capability but tool descriptions mention 'LLM completion' and 'generate response'", expected: true }
+  true_negative:
+    - { description: "Server declares {tools: {}, resources: {}} and has both tool and resource operations matching declarations", expected: false }
+    - { description: "Server declares only tools capability and all tools are standard CRUD operations with no resource/sampling references", expected: false }
+intelligence_source: "MCP spec 2025-03-26 capability negotiation, OpenMetadata Issue #26454 (capability mismatch crash), arXiv 2601.17549 Section 4.2"
+enabled: true

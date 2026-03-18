@@ -1,0 +1,63 @@
+id: Q9
+name: Agentic Workflow DAG Manipulation
+category: cross-ecosystem-emergent
+severity: critical
+owasp: MCP05-privilege-escalation
+mitre: AML.T0058
+
+# THREAT INTELLIGENCE (Senior Security Architect — Agentic Workflows):
+#
+# Agentic AI systems model execution as directed graphs (LangGraph StateGraph,
+# AutoGen GroupChat, CrewAI Task DAG). MCP tools that can modify the execution
+# graph — add nodes, change edges, skip steps, or alter execution order —
+# enable WORKFLOW MANIPULATION attacks.
+#
+# ATTACK MODEL:
+#   1. MCP tool is called during agent workflow execution
+#   2. Tool modifies the workflow state/graph (adds a node, changes routing)
+#   3. Next execution step follows the attacker's modified path
+#   4. Safety checks, approval gates, or validation steps are bypassed
+#
+# This is distinct from agent impersonation (Q6) — here the attacker modifies
+# the WORKFLOW STRUCTURE, not the agent identity.
+#
+# EVIDENCE:
+# - Trend Micro: "An attacker with access could replace a running subgraph
+#   with a malicious one ('subgraph impersonation')" (2026)
+# - arXiv 2602.19555: "Agentic Supply Chain forms a cyclic graph... invocation
+#   side effects may re-enter the system as discoverable inputs"
+# - arXiv 2510.23883: "flow disruption via carefully crafted prompt injection
+#   silently alters the running state toward a malicious goal"
+#
+# Intelligence: Trend Micro (2026), arXiv 2602.19555 (Feb 2026),
+# arXiv 2510.23883 (Oct 2025), OWASP ASI01 Agent Goal Hijack
+
+detect:
+  type: regex
+  patterns:
+    # MCP tools that modify workflow/graph state
+    - "(?i)(?:add|remove|modify|update|insert|delete)[_\\s]?(?:node|edge|step|task|stage)"
+    - "(?i)(?:graph|workflow|pipeline|dag).*(?:modify|update|mutate|alter|change)"
+    - "(?i)(?:modify|update|alter|change).*(?:graph|workflow|pipeline|dag|execution[_\\s]?order)"
+    # LangGraph-specific state manipulation
+    - "(?i)(?:StateGraph|CompiledGraph|MessageGraph).*(?:add_node|add_edge|add_conditional)"
+    - "(?i)(?:state|graph)[_\\s]?(?:update|modify|patch|mutation).*(?:tool|mcp)"
+    # Execution routing manipulation
+    - "(?i)(?:next[_\\s]?(?:step|node|agent)|route[_\\s]?to|redirect[_\\s]?to|skip[_\\s]?(?:step|node|validation))"
+    - "(?i)(?:bypass|skip|disable).*(?:approval|validation|safety|check|gate|guard)"
+    # AutoGen/CrewAI execution order manipulation
+    - "(?i)(?:GroupChat|TaskDAG|crew).*(?:modify|update|reorder|alter)"
+    - "(?i)(?:execution[_\\s]?order|task[_\\s]?priority|agent[_\\s]?order).*(?:set|change|override)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example|readme"
+    - "(?i)(?:define|create|build|construct)[_\\s]?(?:graph|workflow|pipeline)"
+remediation: "MCP tools must NOT modify agentic workflow graphs, execution order, or routing during runtime. Workflow structure should be immutable once execution begins. If dynamic workflow modification is required, implement: (1) approval gates that require human confirmation before graph mutations, (2) integrity checks that validate the workflow graph against a known-good baseline after each step, (3) audit logging of all graph modifications with rollback capability. Reference: arXiv 2602.19555, Trend Micro subgraph impersonation attack (2026)."
+test_cases:
+  true_positive:
+    - { description: "MCP tool modifies LangGraph StateGraph by adding new nodes during execution", expected: true }
+    - { description: "Source code allows MCP tool to skip validation steps in workflow pipeline", expected: true }
+  true_negative:
+    - { description: "Source code defines a static LangGraph workflow at initialization time", expected: false }
+    - { description: "MCP tool that reads workflow state without modifying it", expected: false }
+enabled: true

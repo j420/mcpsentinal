@@ -1,0 +1,50 @@
+id: P4
+name: TLS Certificate Validation Bypass
+category: infrastructure-runtime
+severity: critical
+owasp: MCP07-insecure-config
+mitre: T1557
+# Prisma Cloud CIS Docker policy: NODE_TLS_REJECT_UNAUTHORIZED=0 in Dockerfiles is flagged.
+# Claude Code MCP issue #9869: community calls this "unacceptable security risk" for MCP servers.
+# OWASP A07:2021 — Cryptographic Failures: disabled certificate verification.
+# httptoolkit.com: Node.js silently disables TLS protection when rejectUnauthorized=undefined.
+
+detect:
+  type: regex
+  patterns:
+    # Node.js global TLS bypass
+    - "(?i)NODE_TLS_REJECT_UNAUTHORIZED\\s*[=:]\\s*[\"']?0[\"']?"
+    - "(?i)process\\.env\\s*\\[?\\s*[\"']NODE_TLS_REJECT_UNAUTHORIZED[\"']\\s*\\]?\\s*=\\s*[\"']0[\"']"
+    # Node.js per-request TLS bypass
+    - "(?i)rejectUnauthorized\\s*:\\s*false"
+    - "(?i)reject_unauthorized\\s*[:=]\\s*(?:false|0)"
+    # Python requests/urllib3 SSL bypass
+    - "(?i)verify\\s*[:=]\\s*False"
+    - "(?i)REQUESTS_CA_BUNDLE\\s*[=:]\\s*[\"'][\"']"
+    - "(?i)CURL_CA_BUNDLE\\s*[=:]\\s*[\"'][\"']"
+    - "(?i)ssl\\.(?:_create_unverified_context|create_default_context).*check_hostname\\s*=\\s*False"
+    - "(?i)ssl_verify\\s*[:=]\\s*(?:false|0|none)"
+    # Go TLS bypass
+    - "(?i)InsecureSkipVerify\\s*:\\s*true"
+    # Java/JVM TLS bypass
+    - "(?i)TrustAllCerts|trustAllCerts|AllowAllHostnameVerifier|ALLOW_ALL_HOSTNAME_VERIFIER"
+    # curl/wget insecure flags
+    - "(?i)curl\\s+.*(?:-k|--insecure)\\s"
+    - "(?i)wget\\s+.*--no-check-certificate"
+    # Dockerfile ENV setting
+    - "(?i)ENV\\s+NODE_TLS_REJECT_UNAUTHORIZED\\s*[=]?\\s*0"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example|localhost|127\\.0\\.0\\.1"
+    - "(?i)development|dev[_\\-]?only"
+    - "(?i)#.*insecure|//.*insecure"
+remediation: "Never disable TLS certificate validation in MCP server code or container configuration. For self-signed certificates in development, configure proper CA trust stores: set NODE_EXTRA_CA_CERTS for Node.js, REQUESTS_CA_BUNDLE for Python, or mount CA certificates into the container trust store. In Kubernetes, use cert-manager for automated TLS certificate management. Disabling TLS validation enables man-in-the-middle attacks on all MCP server communications including tool results and credential exchanges."
+test_cases:
+  true_positive:
+    - { description: "Dockerfile sets ENV NODE_TLS_REJECT_UNAUTHORIZED=0 globally for the MCP server", expected: true }
+    - { description: "Python MCP server uses requests.get(url, verify=False) when calling external APIs", expected: true }
+  true_negative:
+    - { description: "Test file disables TLS verification for localhost integration tests only", expected: false }
+    - { description: "Code sets NODE_EXTRA_CA_CERTS to point to a custom CA bundle for self-signed certs", expected: false }
+intelligence_source: "Prisma Cloud Docker Policy (CIS Docker), Claude Code MCP issue #9869, httptoolkit.com Node.js HTTPS vulnerability research, OWASP A07:2021"
+enabled: true

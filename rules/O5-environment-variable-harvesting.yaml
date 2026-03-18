@@ -1,0 +1,74 @@
+id: O5
+name: Environment Variable Harvesting
+category: data-privacy-attacks
+severity: critical
+owasp: MCP04-data-exfiltration
+mitre: AML.T0057
+
+# THREAT INTELLIGENCE NOTE (P1 Threat Researcher):
+# MCP servers run in the user's environment and have access to the full process environment.
+# Environment variables commonly contain: DATABASE_URL, AWS credentials (AWS_ACCESS_KEY_ID,
+# AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN), API keys (OPENAI_API_KEY, ANTHROPIC_API_KEY,
+# GITHUB_TOKEN), cloud provider tokens, and database connection strings.
+#
+# THE ATTACK:
+# A malicious MCP server reads process.env / os.environ and either:
+# 1. Returns the values in tool responses (visible exfiltration)
+# 2. Encodes them in outbound HTTP requests (covert exfiltration)
+# 3. Writes them to files that are later retrieved
+#
+# Research backing:
+# - CVE-2025-67511: AI agent exfiltrated AWS credentials via curl to attacker server
+# - OWASP MCP01 (2025): Token Mismanagement — "contextual secret leakage where the model
+#   or protocol layer itself becomes an unintentional secret repository"
+# - Trend Micro (2025): 82% of MCP implementations use file operations vulnerable to
+#   credential harvesting
+# - CVE-2025-6514 (mcp-remote): RCE enabling theft of API keys, cloud credentials,
+#   SSH keys, and Git repo contents from 437,000+ environments
+# - AuthZed MCP breach timeline: multiple incidents of env var theft via MCP tools
+#
+# This rule detects bulk enumeration of environment variables — legitimate tools read
+# specific env vars by name, not the entire environment.
+
+detect:
+  type: regex
+  patterns:
+    # Bulk environment enumeration (reading ALL env vars, not specific ones)
+    - "(?i)(?:process\\.env(?!\\.|\\[)|Object\\.(?:keys|entries|values)\\s*\\(\\s*process\\.env)"
+    - "(?i)(?:JSON\\.stringify|console\\.log|return|res\\.(?:send|json))\\s*\\([^)]*process\\.env\\s*\\)"
+    - "(?i)os\\.environ(?:\\.copy\\(\\)|(?!\\[|\\.))"
+    - "(?i)(?:dict|json\\.dumps|print|return)\\s*\\([^)]*os\\.environ\\s*\\)"
+    # Iterating over environment variables
+    - "(?i)for\\s+[^)]*\\s+(?:in|of)\\s+(?:Object\\.(?:keys|entries)\\s*\\(\\s*)?process\\.env"
+    - "(?i)for\\s+\\w+\\s*,\\s*\\w+\\s+in\\s+os\\.environ\\.items\\(\\)"
+    # Reading multiple sensitive env vars in sequence (credential harvesting pattern)
+    - "(?i)(?:process\\.env|os\\.environ)\\[?['\"]?(?:AWS_(?:ACCESS_KEY|SECRET|SESSION)|DATABASE_URL|GITHUB_TOKEN|OPENAI_API_KEY|ANTHROPIC_API_KEY)[^;]*\\n[^;]*(?:process\\.env|os\\.environ)\\[?['\"]?(?:AWS_|DATABASE|GITHUB|OPENAI|ANTHROPIC|STRIPE|SLACK)"
+    # Sending env vars to external endpoints
+    - "(?i)(?:fetch|axios|request|http|https|got|superagent|urllib|httpx).*(?:process\\.env|os\\.environ|getenv)"
+    # Writing env vars to files
+    - "(?i)(?:writeFile|write|appendFile|open).*(?:process\\.env|os\\.environ)(?!\\[|\\.|\\s*===)"
+  context: source_code
+  exclude_patterns:
+    - "// safe: single env var lookup"
+    - "process.env.NODE_ENV"
+    - "process.env.PORT"
+    - "process.env.HOME"
+    - "process.env.PATH"
+    - "os.environ.get('HOME')"
+    - "test"
+    - "mock"
+remediation: >
+  Never enumerate the entire process environment. Read only the specific environment
+  variables your tool needs by name (e.g., process.env.DATABASE_URL, not process.env).
+  Never return environment variable values in tool responses. Never send environment
+  variable values in outbound HTTP requests. Use a secret management system
+  (HashiCorp Vault, AWS Secrets Manager) instead of environment variables for credentials.
+test_cases:
+  true_positive:
+    - { description: "Source code calls JSON.stringify(process.env) and sends it via fetch to an external URL", expected: true }
+    - { description: "Source code iterates over os.environ.items() and writes all values to a file", expected: true }
+  true_negative:
+    - { description: "Source code reads process.env.PORT to configure the server listening port", expected: false }
+    - { description: "Source code reads process.env.NODE_ENV to determine development vs production mode", expected: false }
+intelligence_source: "CVE-2025-67511, OWASP MCP01 (2025), CVE-2025-6514 (mcp-remote), Trend Micro MCP credential analysis"
+enabled: true

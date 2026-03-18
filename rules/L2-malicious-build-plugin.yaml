@@ -1,0 +1,57 @@
+id: L2
+name: Malicious Build Plugin Injection
+category: supply-chain-advanced
+severity: critical
+owasp: MCP10-supply-chain
+mitre: AML.T0017
+
+# THREAT INTELLIGENCE (P1 Researcher — Supply Chain):
+# Source: CVE-2026-27606 (Rollup path traversal, arbitrary file write),
+#         September 2025 npm supply chain attack (chalk/debug compromise),
+#         Shai-Hulud worm (November 2025 — self-replicating npm payload)
+#
+# THE ATTACK: MCP servers are built with bundlers (esbuild, Rollup, webpack,
+# Vite). Attackers publish malicious build plugins that execute during the
+# build step — AFTER dependency install but BEFORE the package is published.
+# Build plugins have full filesystem and network access. They can:
+#   1. Inject backdoor code into the bundled output
+#   2. Exfiltrate source code, env vars, and credentials during build
+#   3. Write arbitrary files via path traversal (CVE-2026-27606)
+#   4. Modify the output to include supply chain propagation code
+#
+# This is different from K9 (postinstall hooks) because build plugins execute
+# during the BUILD phase, not the INSTALL phase. --ignore-scripts does not
+# protect against build plugin execution.
+
+detect:
+  type: regex
+  patterns:
+    # Rollup plugins with filesystem write capabilities
+    - "(?i)(?:rollup|vite)[_-]?plugin.*(?:writeFile|fs\\.write|appendFile|createWriteStream)"
+    # esbuild plugins with network or exec capabilities
+    - "(?i)(?:esbuild|build)[_-]?plugin.*(?:execSync|spawn|child_process|fetch|http\\.request|axios)"
+    # Webpack plugins with dangerous capabilities
+    - "(?i)(?:webpack|compiler)\\.(?:hooks|plugin).*(?:exec|spawn|child_process|writeFile)"
+    # Build config loading remote code
+    - "(?i)(?:rollup|vite|webpack|esbuild)\\.config.*(?:import|require)\\s*\\(.*(?:http|https|ftp)"
+    # Plugins writing outside the build output directory (path traversal)
+    - "(?i)(?:plugin|hook).*(?:outputFile|emitFile|generateBundle).*\\.\\./\\.\\."
+    # Build-time environment variable exfiltration
+    - "(?i)(?:plugin|hook|transform).*process\\.env.*(?:fetch|http|axios|request|post)"
+    # Dynamic import of build plugins from URLs
+    - "(?i)(?:plugins|presets).*(?:import|require)\\s*\\([\"']https?://"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)@rollup/plugin-|rollup-plugin-(?:terser|commonjs|node-resolve|typescript|json|babel)"
+    - "(?i)esbuild-plugin-(?:clean|copy|glob)"
+remediation: "Audit all build plugins before adding them to your toolchain. Pin build plugin versions in lockfiles. Use Rollup >= 4.59.0 to mitigate CVE-2026-27606 path traversal. Isolate build steps in sandboxed containers with no network access. Never load build plugins from URLs. Review plugin source code for filesystem writes outside the output directory."
+test_cases:
+  true_positive:
+    - { description: "Rollup plugin calls writeFileSync with '../../../' path traversal in generateBundle hook", expected: true }
+    - { description: "esbuild plugin fetches process.env.NPM_TOKEN and sends it via HTTP POST during build", expected: true }
+    - { description: "Webpack compiler hook spawns child_process to execute arbitrary commands", expected: true }
+  true_negative:
+    - { description: "Standard @rollup/plugin-commonjs used in build configuration", expected: false }
+    - { description: "Test file verifies build plugin output directory is correct", expected: false }
+enabled: true

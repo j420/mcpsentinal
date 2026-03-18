@@ -1,0 +1,32 @@
+id: N4
+name: JSON-RPC Error Object Injection
+category: protocol-edge-cases
+severity: critical
+owasp: MCP01-prompt-injection
+mitre: AML.T0054
+detect:
+  type: regex
+  patterns:
+    # Error message constructed from user/external input without sanitization
+    - "(?i)(?:error|err)\\s*[:=]\\s*\\{[^}]*message\\s*[:=]\\s*(?:(?:req|params|body|input|data|result|response)\\.)"
+    - "(?i)(?:JsonRpcError|RpcError|McpError)\\s*\\(\\s*(?:-?\\d+\\s*,\\s*)?(?:(?:req|params|body|input|data|error|e)\\.(?:message|msg|detail))"
+    # Error data field containing unsanitized content
+    - "(?i)(?:error|err)\\.data\\s*=\\s*(?:(?:req|params|body|input|result|response|e)\\.)"
+    # Template literals in error messages with external data
+    - "(?i)(?:error|err)\\s*[:=]\\s*\\{[^}]*message\\s*[:=]\\s*`[^`]*\\$\\{(?:req|params|body|input|data|result)\\."
+    # Python: error from external data
+    - "(?i)(?:McpError|JsonRpcError|RpcError)\\s*\\(\\s*(?:code\\s*=\\s*-?\\d+\\s*,\\s*)?message\\s*=\\s*(?:f\"|f'|str\\()"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)sanitize|escape|encode|strip|clean"
+remediation: "Never include unsanitized external input in JSON-RPC error message or data fields. Error messages are processed by AI clients as context — a malicious server can embed prompt injection payloads in error responses that the LLM treats as instructions. Use predefined error messages with error codes. Sanitize any dynamic content in error.data."
+test_cases:
+  true_positive:
+    - { description: "Server constructs JSON-RPC error with message from request parameter: {code: -32600, message: req.body.input}", expected: true }
+    - { description: "Error data field set directly from tool execution result without sanitization", expected: true }
+  true_negative:
+    - { description: "Server returns predefined error messages: {code: -32601, message: 'Method not found'}", expected: false }
+    - { description: "Error message is sanitized before inclusion: {message: sanitize(input)}", expected: false }
+intelligence_source: "CyberArk ATPA research (2025) — tool output poisoning patterns, arXiv 2601.17549 — error response as injection vector"
+enabled: true

@@ -1,0 +1,57 @@
+id: L8
+name: Version Rollback / Downgrade Attack
+category: supply-chain-advanced
+severity: high
+owasp: MCP10-supply-chain
+mitre: AML.T0017
+
+# THREAT INTELLIGENCE (P1 Researcher — Supply Chain):
+# Source: npm audit signature bypass research (2024),
+#         Snyk "version pinning attacks" advisory (2025),
+#         PyPI rollback vulnerability disclosure (2024),
+#         SLSA framework — provenance verification for version integrity
+#
+# THE ATTACK: Forcing installation of an older, vulnerable version of an MCP
+# server or its dependencies. Attack vectors:
+#   1. Lockfile manipulation: modifying package-lock.json to pin old versions
+#   2. Version constraint manipulation: changing ^1.2.3 to ^1.0.0 in package.json
+#   3. Registry cache poisoning: serving stale/old versions from CDN cache
+#   4. Override/resolutions fields: forcing dependency resolution to old versions
+#   5. .npmrc overrides: setting prefer-offline=true after caching old versions
+#
+# Real-world impact: An attacker with write access to a repo can downgrade
+# @anthropics/mcp-server-filesystem to a version before CVE-2025-53109/53110
+# patches, re-enabling the symlink bypass and root boundary escape.
+
+detect:
+  type: regex
+  patterns:
+    # Overrides/resolutions forcing specific old versions
+    - "(?i)[\"'](?:overrides|resolutions|pnpm\\.overrides)[\"']\\s*:\\s*\\{[^}]*[\"'][\\w@/-]+[\"']\\s*:\\s*[\"'](?:0\\.|1\\.0|<=|<\\d)"
+    # Lockfile modification scripts
+    - "(?i)(?:sed|awk|perl|jq|node).*(?:package-lock|yarn\\.lock|pnpm-lock).*(?:version|resolved|integrity)"
+    # Force installing without lockfile integrity
+    - "(?i)(?:npm\\s+install|npm\\s+ci).*(?:--no-package-lock|--ignore-scripts|--force|--legacy-peer-deps).*(?:&&|;).*(?:npm\\s+install|npm\\s+ci)"
+    # Programmatic lockfile manipulation
+    - "(?i)(?:readFileSync|readFile).*(?:package-lock|yarn\\.lock).*(?:writeFile|replace|JSON\\.parse).*version"
+    # prefer-offline with stale cache exploitation
+    - "(?i)prefer-offline\\s*=\\s*true.*(?:cache|registry)"
+    # npm shrinkwrap manipulation (overrides package-lock.json)
+    - "(?i)npm\\s+shrinkwrap.*(?:sed|awk|modify|replace)"
+    # Downgrade indicators in CI scripts
+    - "(?i)(?:npm\\s+install|pip\\s+install|pnpm\\s+add).*(?:@0\\.|@1\\.0|==0\\.|==1\\.0|<=\\d\\.\\d\\.\\d).*(?:mcp|server|sdk)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)npm\\s+ci(?!.*--force)"
+    - "(?i)renovate|dependabot|greenkeeper"
+remediation: "Use 'npm ci' (not 'npm install') in CI to enforce lockfile integrity. Enable npm audit signatures to verify package provenance. Pin all direct dependencies to exact versions. Use SLSA provenance verification for critical dependencies. Monitor lockfile changes in pull requests with automated diff review. Never use --force or --legacy-peer-deps in production CI."
+test_cases:
+  true_positive:
+    - { description: "CI script uses sed to modify package-lock.json version fields before npm install", expected: true }
+    - { description: "package.json overrides field forces @anthropics/mcp-server-filesystem to version 0.1.0", expected: true }
+    - { description: "Script installs MCP SDK at version @0.1.0 explicitly downgrading from current", expected: true }
+  true_negative:
+    - { description: "Standard 'npm ci' without any flag overrides", expected: false }
+    - { description: "Dependabot PR updating lockfile to newer version", expected: false }
+enabled: true

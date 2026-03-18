@@ -1,0 +1,62 @@
+id: Q6
+name: Agent Identity Impersonation via MCP
+category: cross-ecosystem-emergent
+severity: critical
+owasp: MCP05-privilege-escalation
+mitre: AML.T0054
+
+# THREAT INTELLIGENCE (Senior Security Architect — Agentic Workflows):
+#
+# In multi-agent systems (LangGraph, AutoGen, CrewAI), agents are identified
+# by names, roles, or session tokens. MCP tools that accept agent identity
+# as a parameter — or return responses that claim to be from a specific agent —
+# enable AGENT IMPERSONATION.
+#
+# ATTACK MODEL:
+#   1. MCP tool accepts `agent_id` or `agent_role` parameter
+#   2. Compromised agent calls tool with stolen/spoofed agent identity
+#   3. Downstream agents trust the response because it carries the
+#      impersonated agent's identity/role
+#   4. Attacker gains privileges of the impersonated agent
+#
+# REAL-WORLD EVIDENCE:
+# - ServiceNow "BodySnatcher": unauthenticated attacker impersonates admin
+#   using only an email address via hardcoded auth secret (2025)
+# - Stellar Cyber: "Agent-to-agent communication has introduced identity risks.
+#   Impersonation, session smuggling, and unauthorized capability escalation"
+# - arXiv 2602.19555: "Spoofing an agent's identity gives entry to restricted
+#   workflows. Malicious agents can collude to form a hidden consensus."
+#
+# This differs from H3 (multi-agent propagation) which detects shared memory.
+# Q6 detects the absence of cryptographic agent identity verification.
+#
+# Intelligence: arXiv 2602.19555 (Feb 2026), Stellar Cyber (2026),
+# OWASP ASI03 Identity & Privilege Abuse
+
+detect:
+  type: regex
+  patterns:
+    # Tools accepting agent identity as unchecked parameters
+    - "(?i)(?:agent[_\\s-]?id|agent[_\\s-]?name|agent[_\\s-]?role|caller[_\\s-]?agent|source[_\\s-]?agent).*(?:param|arg|input|string)"
+    - "(?i)(?:param|input|arg).*(?:agent[_\\s-]?id|agent[_\\s-]?name|agent[_\\s-]?role|caller[_\\s-]?id)"
+    # Agent identity in request/response without verification
+    - "(?i)(?:from[_\\s-]?agent|sent[_\\s-]?by|authored[_\\s-]?by|delegated[_\\s-]?by).*(?:=|:).*(?:req|param|input|body)"
+    - "(?i)(?:req|param|input|body).*(?:from[_\\s-]?agent|agent[_\\s-]?identity|agent[_\\s-]?token)"
+    # Missing cryptographic verification of agent identity
+    - "(?i)(?:trust|accept|allow).*agent.*(?:without|no|skip|bypass).*(?:verify|auth|sign|check)"
+    # Agent role/privilege claims in tool descriptions
+    - "(?i)(?:execute|run|perform).*(?:as|on[_\\s]?behalf[_\\s]?of|with[_\\s]?privileges[_\\s]?of).*(?:agent|role)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)(?:verify|validate|authenticate|check)[_\\s]?agent[_\\s]?(?:id|identity|signature)"
+    - "(?i)crypto.*(?:sign|verify)|jwt.*verify"
+remediation: "MCP tools in multi-agent systems must verify agent identity cryptographically — never accept agent_id/agent_role as plain string parameters. Use cryptographic attestation (signed tokens, mTLS certificates, or capability tokens) for inter-agent communication. Implement the principle of least privilege: each agent should only be able to claim its own identity. Reference: OWASP ASI03, arXiv 2602.19555."
+test_cases:
+  true_positive:
+    - { description: "MCP tool accepts 'agent_id' as a string parameter and uses it for authorization decisions", expected: true }
+    - { description: "Source code trusts agent identity from request body without cryptographic verification", expected: true }
+  true_negative:
+    - { description: "MCP tool verifies agent identity via JWT signature before processing", expected: false }
+    - { description: "Test fixture that mocks agent identity for unit tests", expected: false }
+enabled: true

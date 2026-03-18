@@ -1,0 +1,68 @@
+id: O6
+name: Server Fingerprinting via Error Responses
+category: data-privacy-attacks
+severity: high
+owasp: MCP04-data-exfiltration
+mitre: AML.T0057
+
+# THREAT INTELLIGENCE NOTE (P1 Threat Researcher):
+# Detailed error messages leak infrastructure information: OS version, runtime version,
+# database type and version, file paths, internal IP addresses, stack traces with package
+# versions, and installed dependency information. This enables targeted attacks.
+#
+# THE ATTACK:
+# An MCP tool intentionally triggers errors to expose infrastructure details:
+# 1. Force a database connection error → reveals DB type, host, port
+# 2. Force a file not found error → reveals filesystem paths and OS
+# 3. Return unfiltered stack traces → reveals dependency versions (CVE targeting)
+# 4. Expose process information → reveals Node.js/Python version, architecture
+#
+# Research backing:
+# - CVE-2026-29787 (mcp-memory-service): /health/detailed endpoint leaking OS version,
+#   CPU cores, memory, disk paths, database info, environment variables
+# - C6 (Error Leakage) covers basic stack trace exposure, but this rule detects
+#   INTENTIONAL infrastructure reconnaissance via error response construction
+# - OWASP A05:2021: Security Misconfiguration (verbose error messages)
+# - CWE-209: Generation of Error Message Containing Sensitive Information
+#
+# Distinction from C6:
+# C6 detects accidental error leakage (stack traces in responses).
+# O6 detects code that CONSTRUCTS detailed error responses including system info,
+# or code that intentionally exposes process/OS/runtime metadata.
+
+detect:
+  type: regex
+  patterns:
+    # Exposing process/runtime information in responses
+    - "(?i)(?:res\\.(?:send|json)|return|response).*(?:process\\.(?:version|arch|platform|pid|uptime|memoryUsage|cpuUsage)|os\\.(?:type|release|platform|arch|hostname|cpus|totalmem|freemem|networkInterfaces|userInfo))"
+    # Exposing Python system information
+    - "(?i)(?:return|response|json\\.dumps|print).*(?:sys\\.(?:version|platform|executable|path)|platform\\.(?:system|release|machine|processor|node|version))"
+    # Constructing diagnostic/debug responses with system details
+    - "(?i)(?:diagnostics?|debug|system_?info|server_?info|health_?detailed|status_?detail)\\s*[:=]\\s*\\{[^}]*(?:version|os|arch|platform|uptime|memory|cpu|disk|hostname|pid)"
+    # Exposing database connection details in error handlers
+    - "(?i)catch\\s*\\([^)]*\\)\\s*\\{[^}]*(?:res\\.(?:send|json)|return).*(?:err(?:or)?\\.(?:message|stack|code)|connection|host|port|database)"
+    # Exposing file paths in error responses
+    - "(?i)(?:res\\.(?:send|json)|return|response).*(?:__dirname|__filename|process\\.cwd\\(\\)|path\\.resolve|path\\.join)"
+    # Health/debug endpoints exposing infrastructure
+    - "(?i)(?:app|router|server)\\.(?:get|all)\\s*\\(\\s*['\"]/?(?:debug|diagnostics|system-info|server-info|health/detailed|status/detail|_internal)"
+  context: source_code
+  exclude_patterns:
+    - "// safe: sanitized error"
+    - "NODE_ENV === 'development'"
+    - "NODE_ENV === 'test'"
+    - "process.env.DEBUG"
+remediation: >
+  Never expose process, OS, runtime, or database metadata in tool responses or error
+  messages. Use generic error messages ("An error occurred") for production responses.
+  Remove or disable debug/diagnostic endpoints. If health endpoints are needed, limit
+  them to simple "ok"/"error" status without infrastructure details.
+  Wrap all error handlers with a sanitization layer that strips system information.
+test_cases:
+  true_positive:
+    - { description: "Source code returns JSON response containing os.hostname(), process.version, and os.cpus() for a /health/detailed endpoint", expected: true }
+    - { description: "Source code catch block sends err.stack with full file paths and dependency versions in HTTP response", expected: true }
+  true_negative:
+    - { description: "Source code returns generic 'Internal server error' message in catch block without stack trace details", expected: false }
+    - { description: "Source code logs os.platform() to internal structured logger (pino) but never returns it in responses", expected: false }
+intelligence_source: "CVE-2026-29787 (mcp-memory-service), OWASP A05:2021, CWE-209"
+enabled: true

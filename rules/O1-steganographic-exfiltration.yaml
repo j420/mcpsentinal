@@ -1,0 +1,70 @@
+id: O1
+name: Steganographic Data Exfiltration
+category: data-privacy-attacks
+severity: critical
+owasp: MCP04-data-exfiltration
+mitre: AML.T0057
+
+# THREAT INTELLIGENCE NOTE (P1 Threat Researcher):
+# Steganography hides stolen data in seemingly innocent outputs — images, PDFs, audio files.
+# In MCP context, a malicious tool can encode secrets into EXIF metadata, image pixel LSBs,
+# PDF metadata fields, or audio watermarks before returning them as "processed" outputs.
+#
+# THE ATTACK:
+# 1. Tool reads sensitive data (env vars, files, credentials)
+# 2. Encodes data into EXIF Comment/UserComment/ImageDescription fields of an image
+# 3. Returns the image as a "thumbnail" or "preview" — user sees a normal image
+# 4. Attacker retrieves the image and extracts hidden data with ExifTool
+#
+# Research backing:
+# - MITRE ATT&CK T1001.002: Data Obfuscation via Steganography
+# - APT29/Hammertoss: Commands embedded in images on Twitter/GitHub (2015-2024)
+# - Turla group: Payloads in PNG images on compromised websites
+# - ZeusVM banking trojan: Config data hidden in images
+# - 2025 MDPI paper: AI-based steganography with multi-stage encoders
+# - TechManiacs 2025: "Steganography with AI — Hiding Payloads in Text, Images, and Prompts"
+#
+# Why this matters for MCP:
+# Traditional DLP won't inspect pixel-level structures or metadata anomalies.
+# A marketing graphic may contain hundreds of kilobytes of encoded financial records.
+
+detect:
+  type: regex
+  patterns:
+    # EXIF/metadata manipulation libraries
+    - "(?i)(?:exif|piexif|Exif(?:Tool|Read|Write)|ExifImage|sharp\\.metadata|gm\\.identify)"
+    - "(?i)(?:exif_read_data|exif_imagetype|iptc_parse)"
+    # Writing data into image metadata fields
+    - "(?i)(?:UserComment|ImageDescription|XPComment|Copyright|Artist|DocumentName)\\s*[:=]\\s*(?:[^'\"\\s]*(?:\\$\\{|\\+|`|req|input|param|secret|env|key|token|password|credential))"
+    # PDF metadata manipulation for data hiding
+    - "(?i)(?:PDFDocument|jsPDF|pdf-lib|PyPDF|reportlab)\\.(?:setProperties|setMetadata|setInfo|set_metadata)"
+    - "(?i)(?:setAuthor|setSubject|setKeywords|setProducer|setCreator)\\s*\\([^)]*(?:\\$\\{|\\+|env|secret|key|token|password)"
+    # LSB steganography libraries
+    - "(?i)(?:steg(?:ano)?(?:hide|encode|embed)|lsb\\.(?:hide|embed|encode)|steganography\\.(?:encode|hide))"
+    - "(?i)(?:stepic|stegano|openstego|steghide|stegsolve|steg_lsb)"
+    # Generic pattern: reading secrets then writing to image/media files
+    - "(?i)(?:process\\.env|os\\.environ|getenv).*(?:writeFile|write|save|pipe).*\\.(?:png|jpg|jpeg|gif|bmp|tiff|pdf|wav|mp3)"
+    # Audio steganography
+    - "(?i)(?:audiosteg|wavsteg|mp3steg|audio_stego|spectro_steg)"
+  context: source_code
+  exclude_patterns:
+    - "// safe: metadata stripping"
+    - "// safe: exif removal"
+    - "exif.remove"
+    - "stripMetadata"
+    - "removeExif"
+remediation: >
+  Remove all code that writes application data, user input, or secrets into image/PDF/audio
+  metadata fields. If file processing is required, strip all metadata before returning files
+  to clients (use exif-stripper, sharp.withMetadata(false), or equivalent).
+  Never allow dynamic data to flow into EXIF fields, PDF properties, or audio watermarks.
+  Implement output scanning for unexpectedly large metadata payloads.
+test_cases:
+  true_positive:
+    - { description: "Source code uses piexif to write process.env.SECRET into EXIF UserComment field before returning image", expected: true }
+    - { description: "Source code imports steganography library and calls lsb.hide() with credential data", expected: true }
+  true_negative:
+    - { description: "Source code uses sharp to strip EXIF metadata from uploaded images for privacy", expected: false }
+    - { description: "Source code reads EXIF GPS data from photos for a mapping application", expected: false }
+intelligence_source: "MITRE ATT&CK T1001.002, APT29 Hammertoss, Turla PNG payloads, MDPI 2025 AI steganography paper"
+enabled: true

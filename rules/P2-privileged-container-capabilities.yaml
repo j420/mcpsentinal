@@ -1,0 +1,46 @@
+id: P2
+name: Dangerous Container Capabilities
+category: infrastructure-runtime
+severity: critical
+owasp: MCP07-insecure-config
+mitre: T1611
+# CVE-2025-23266 (NVIDIAScape, CVSS 9.0): container escape via LD_PRELOAD in OCI hook,
+# enabled by inherited environment variables in privileged container context.
+# CVE-2025-31133/52565/52881 (runc trilogy, Nov 2025): mount race conditions in privileged containers.
+# CIS Docker Benchmark v1.7.0 §5.3: "Do not use privileged containers"
+# CIS Docker Benchmark v1.7.0 §5.25: "Restrict container from acquiring additional privileges"
+
+detect:
+  type: regex
+  patterns:
+    # Docker --privileged flag
+    - "(?i)privileged\\s*[:=]\\s*(?:true|yes|1)"
+    - "(?i)--privileged(?:\\s|$)"
+    # Dangerous Linux capabilities (beyond K19 which checks SYS_ADMIN/SYS_PTRACE/NET_RAW/ALL)
+    - "(?i)cap[_\\s-]?add\\s*[:=]?\\s*(?:\\[\\s*)?[\"']?(?:SYS_RAWIO|SYS_MODULE|DAC_OVERRIDE|DAC_READ_SEARCH|FOWNER|MKNOD|SETUID|SETGID|SYS_CHROOT|AUDIT_WRITE|NET_ADMIN|SYS_RESOURCE|IPC_LOCK)"
+    # Kubernetes securityContext.privileged
+    - "(?i)securityContext\\s*:\\s*\\n?\\s*privileged\\s*:\\s*true"
+    # Kubernetes allowPrivilegeEscalation (should be false)
+    - "(?i)allowPrivilegeEscalation\\s*:\\s*true"
+    # Host PID namespace (enables ptrace of host processes)
+    - "(?i)(?:pid[_\\s-]?mode|hostPID)\\s*[:=]\\s*[\"']?(?:host|true)[\"']?"
+    # Host IPC namespace
+    - "(?i)(?:ipc[_\\s-]?mode|hostIPC)\\s*[:=]\\s*[\"']?(?:host|true)[\"']?"
+    # Host UTS namespace
+    - "(?i)(?:uts[_\\s-]?mode|hostUTS)\\s*[:=]\\s*[\"']?(?:host|true)[\"']?"
+    # no-new-privileges disabled
+    - "(?i)no[_\\-]?new[_\\-]?privileges\\s*[:=]\\s*(?:false|0|no)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)cap[_\\s-]?drop\\s*[:=]?\\s*(?:\\[\\s*)?[\"']?ALL"
+remediation: "Run MCP server containers with minimal capabilities: drop ALL capabilities, add back only what is strictly needed (typically none, or NET_BIND_SERVICE for port 80/443). Set allowPrivilegeEscalation: false, hostPID: false, hostIPC: false. Never use --privileged. Apply Kubernetes Pod Security Standards 'restricted' profile. CVE-2025-23266 demonstrated that even OCI hooks can be exploited when container capabilities are too broad."
+test_cases:
+  true_positive:
+    - { description: "docker-compose.yml sets privileged: true on MCP server container", expected: true }
+    - { description: "Kubernetes deployment spec sets hostPID: true and SYS_MODULE capability", expected: true }
+  true_negative:
+    - { description: "Kubernetes deployment drops ALL capabilities and sets allowPrivilegeEscalation: false", expected: false }
+    - { description: "Test Dockerfile uses privileged mode for integration testing only", expected: false }
+intelligence_source: "CVE-2025-23266 (NVIDIAScape, CVSS 9.0), CVE-2025-31133/52565/52881 (runc Nov 2025), CIS Docker Benchmark v1.7.0 Sections 5.3/5.25"
+enabled: true

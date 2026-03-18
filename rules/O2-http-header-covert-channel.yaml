@@ -1,0 +1,67 @@
+id: O2
+name: HTTP Header Covert Channel
+category: data-privacy-attacks
+severity: critical
+owasp: MCP04-data-exfiltration
+mitre: AML.T0057
+
+# THREAT INTELLIGENCE NOTE (P1 Threat Researcher):
+# HTTP custom headers are an undermonitored exfiltration channel. Most WAFs, DLP tools,
+# and SIEM rules inspect request bodies and URLs but ignore custom X-* headers entirely.
+#
+# THE ATTACK:
+# A malicious MCP tool makes outbound HTTP requests where stolen data is encoded in:
+# - Custom X-* headers (X-Debug-Data, X-Correlation-ID, X-Request-Meta)
+# - Cookie headers with encoded payloads
+# - Authorization headers with data-carrying bearer tokens
+# - User-Agent strings with encoded data appended
+# - Referer headers pointing to data-encoding URLs
+#
+# Research backing:
+# - Praetorian (Feb 2026): MCP server exfiltrating via Slack bot with crafted headers
+# - BlackFog (Jan 2026): "exfiltration doesn't have to look malicious — it can look like
+#   normal tool use" — custom headers blend into normal HTTP traffic
+# - MITRE ATT&CK T1071.001: Application Layer Protocol for C2
+# - StealthTech365 (2025): HTTP header covert channels bypass most DLP tools
+#
+# In MCP context:
+# Tools that make outbound HTTP requests can smuggle data in headers.
+# The AI has no visibility into HTTP headers — it only sees the response body.
+# Network monitoring typically whitelists known API endpoints, ignoring header content.
+
+detect:
+  type: regex
+  patterns:
+    # Setting custom headers with dynamic/sensitive data
+    - "(?i)(?:setHeader|set-header|headers\\[)\\s*[('\"](X-[A-Za-z-]+)['\"]\\s*[,:]\\s*(?:[^'\"\\s]*(?:\\$\\{|\\+|env|secret|key|token|password|credential|process\\.env|os\\.environ))"
+    - "(?i)headers\\s*[:=]\\s*\\{[^}]*(?:secret|token|password|credential|api_?key|env|process\\.env)"
+    # Encoding data into User-Agent string
+    - "(?i)(?:User-Agent|user_agent)\\s*[:=]\\s*(?:[^'\"\\s]*(?:\\$\\{|\\+|Buffer|encode|btoa|base64|secret|token|env))"
+    # Encoding data into Cookie header for outbound requests
+    - "(?i)(?:Cookie|cookie)\\s*[:=]\\s*(?:[^'\"\\s]*(?:\\$\\{|\\+|Buffer|encode|btoa|base64|secret|token|env))"
+    # Encoding data into Referer header
+    - "(?i)(?:Referer|referer)\\s*[:=]\\s*(?:[^'\"\\s]*(?:\\$\\{|\\+|Buffer|encode|btoa|base64|secret|env))"
+    # Python: requests library with dynamic headers containing secrets
+    - "(?i)requests\\.(?:get|post|put|patch|delete)\\([^)]*headers\\s*=\\s*\\{[^}]*(?:environ|getenv|secret|token|password|credential)"
+    # Generic: any HTTP request with headers built from environment/secrets
+    - "(?i)(?:fetch|axios|got|superagent|urllib|httpx)\\([^)]*headers[^}]*(?:process\\.env|os\\.environ|getenv|secret|token|password)"
+  context: source_code
+  exclude_patterns:
+    - "// safe: standard auth header"
+    - "Authorization: Bearer"
+    - "Content-Type"
+    - "Accept"
+remediation: >
+  Never include application secrets, environment variables, or user data in HTTP headers
+  of outbound requests. Use a strict allowlist of headers for outbound HTTP calls.
+  Log all outbound HTTP requests including full headers for audit purposes.
+  Implement egress filtering that inspects both request bodies AND headers.
+test_cases:
+  true_positive:
+    - { description: "Source code sets X-Debug-Data header to base64-encoded process.env.DATABASE_URL in outbound fetch call", expected: true }
+    - { description: "Source code uses requests.post() with headers containing os.environ['SECRET_KEY']", expected: true }
+  true_negative:
+    - { description: "Source code sets standard Content-Type and Accept headers for API calls", expected: false }
+    - { description: "Source code sets Authorization: Bearer with a properly scoped API token from a vault", expected: false }
+intelligence_source: "Praetorian MCP PoC (Feb 2026), BlackFog MCP covert channels (Jan 2026), MITRE ATT&CK T1071.001"
+enabled: true

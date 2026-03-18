@@ -1,0 +1,61 @@
+id: L14
+name: Hidden Entry Point Mismatch
+category: supply-chain-advanced
+severity: high
+owasp: MCP10-supply-chain
+mitre: AML.T0017
+
+# THREAT INTELLIGENCE (P1 Researcher — Supply Chain):
+# Source: Darcy Clarke "npm manifest confusion" (July 2023, still unpatched),
+#         JFrog "npm Manifest Confusion: Six Months Later" (2024),
+#         Socket.dev "exports map abuse" research (2025),
+#         npm bin field hijacking incidents (2024-2025)
+#
+# THE ATTACK: npm packages declare entry points via multiple fields:
+#   "main", "module", "exports", "bin", "types", "browser"
+# These fields determine WHAT CODE runs when the package is imported or
+# when a CLI command is executed. Attackers exploit inconsistencies:
+#   1. "main" points to benign code, "exports" map overrides to malicious
+#   2. "bin" field registers CLI commands that shadow system utilities
+#   3. "exports"."./package.json" remapped to prevent audit tools from
+#      reading the actual package.json
+#   4. Conditional exports: "import" resolves to clean code, "require"
+#      resolves to malicious variant (audit tools typically use import)
+#   5. "browser" field overrides to inject malicious code in web contexts
+#
+# DIFFERENCE FROM L5 (manifest confusion): L5 detects manifest/tarball
+# divergence. L14 detects suspicious patterns WITHIN the declared manifest
+# where multiple entry points contradict each other.
+
+detect:
+  type: regex
+  patterns:
+    # Bin field registering commands that shadow common system utilities
+    - "(?i)[\"']bin[\"']\\s*:\\s*\\{[^}]*[\"'](?:ls|cat|grep|curl|wget|ssh|sudo|su|chmod|chown|rm|mv|cp|node|npm|npx|python|pip|git|docker)[\"']"
+    # Exports map blocking access to package.json
+    - "(?i)[\"']exports[\"'].*[\"']\\./package\\.json[\"']\\s*:\\s*(?:null|false|[\"'][\"'])"
+    # Conditional exports with different files for import vs require
+    - "(?i)[\"']exports[\"'].*[\"']\\.[\"'].*(?:[\"']import[\"']\\s*:\\s*[\"'][^\"']+[\"'].*[\"']require[\"']\\s*:\\s*[\"'](?!\\1)[^\"']+[\"'])"
+    # Main/module pointing to different files (potential bait-and-switch)
+    - "(?i)[\"']main[\"']\\s*:\\s*[\"']([^\"']+)[\"'].*[\"']module[\"']\\s*:\\s*[\"'](?!\\1)[^\"']+[\"'].*(?:eval|exec|spawn|fetch)"
+    # Hidden files in bin field
+    - "(?i)[\"']bin[\"']\\s*:\\s*\\{[^}]*[\"']\\w+[\"']\\s*:\\s*[\"'](?:\\./)?(?:\\.(?:hidden|tmp|cache)|__)"
+    # Exports with node condition pointing to different file than default
+    - "(?i)[\"']exports[\"'].*[\"']node[\"']\\s*:\\s*[\"']([^\"']+)[\"'].*[\"']default[\"']\\s*:\\s*[\"'](?!\\1)"
+    # Browser field overriding server-side modules
+    - "(?i)[\"']browser[\"']\\s*:\\s*\\{[^}]*[\"'](?:fs|child_process|crypto|net|http|os|path)[\"']\\s*:\\s*[\"'](?!false)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)[\"']bin[\"']\\s*:\\s*\\{[^}]*[\"'](?:mcp-sentinel|mcp-server)[\"']"
+    - "(?i)[\"']browser[\"']\\s*:\\s*\\{[^}]*[\"']\\w+[\"']\\s*:\\s*false"
+remediation: "Ensure all entry point fields (main, module, exports, bin, browser) reference the same code paths. Do not block access to ./package.json in the exports map. Audit bin fields for commands that shadow system utilities. Use consistent entry points across import/require conditions. Verify that conditional exports don't serve different code to different contexts."
+test_cases:
+  true_positive:
+    - { description: "package.json bin field registers 'node' command shadowing the system Node.js binary", expected: true }
+    - { description: "Exports map sets './package.json' to null, blocking audit tool access", expected: true }
+    - { description: "Conditional exports serve different files for import vs require conditions", expected: true }
+  true_negative:
+    - { description: "Standard package with bin field 'mcp-server' pointing to ./dist/cli.js", expected: false }
+    - { description: "Browser field correctly disables Node.js builtins with 'false' value", expected: false }
+enabled: true

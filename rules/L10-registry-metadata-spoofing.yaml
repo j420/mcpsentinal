@@ -1,0 +1,57 @@
+id: L10
+name: Registry Metadata Spoofing
+category: supply-chain-advanced
+severity: high
+owasp: MCP10-supply-chain
+mitre: AML.T0017
+
+# THREAT INTELLIGENCE (P1 Researcher — Supply Chain):
+# Source: JFrog npm Manifest Confusion research (2024),
+#         Astrix "State of MCP Server Security 2025" report,
+#         Smithery/PulseMCP registry enumeration (no verification),
+#         npm star/download count manipulation (documented 2024)
+#
+# THE ATTACK: MCP server registries (Smithery, PulseMCP, npm, PyPI) display
+# metadata that influences developer trust decisions: star counts, download
+# numbers, author names, descriptions, and categories. Attackers manipulate
+# this metadata to boost visibility and perceived legitimacy:
+#   1. Star inflation bots on GitHub to appear popular
+#   2. Download count manipulation via automated installs
+#   3. False author attribution ("by Anthropic", "by OpenAI")
+#   4. Category squatting in MCP registries (claiming "official" status)
+#   5. README content mimicking official documentation
+#   6. Fake security badges/certifications in descriptions
+#
+# DIFFERENCE FROM G2 (trust assertion injection): G2 detects trust claims
+# in TOOL DESCRIPTIONS seen by the LLM. L10 detects trust claims in PACKAGE
+# METADATA seen by the DEVELOPER making install decisions.
+
+detect:
+  type: regex
+  patterns:
+    # False author/org claims in package metadata
+    - "(?i)[\"'](?:author|publisher|organization|maintainer)[\"']\\s*:\\s*[\"'](?:Anthropic|OpenAI|Google DeepMind|Microsoft|Meta AI|AWS|GitHub)[\"']"
+    # Fake official status claims in descriptions or README
+    - "(?i)(?:official|verified|certified|endorsed|approved)\\s+(?:by|from)\\s+(?:Anthropic|OpenAI|Google|Microsoft|Meta|AWS|GitHub)"
+    # Fake security badge URLs in README
+    - "(?i)!\\[.*(?:security|verified|certified|trusted).*\\]\\(https?://(?!shields\\.io|badgen\\.net|img\\.shields)[^)]+\\)"
+    # Programmatic star/download inflation
+    - "(?i)(?:star|unstar|follow|download).*(?:loop|setInterval|while|for\\s*\\(|cron|schedule).*(?:github|npm|pypi)"
+    # Registry API manipulation for metadata
+    - "(?i)(?:PUT|POST|PATCH).*(?:registry\\.npmjs\\.org|pypi\\.org|smithery|pulsemcp).*(?:metadata|description|keywords|author)"
+    # Impersonating known MCP server names in package.json
+    - "(?i)[\"'](?:name|displayName)[\"']\\s*:\\s*[\"'](?:official|anthropic|openai|google|microsoft)[_-]?(?:mcp|server|tool)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)github\\.com/anthropics/|github\\.com/openai/|github\\.com/google/"
+remediation: "Verify MCP server author claims by checking the GitHub org URL against the claimed publisher. Do not trust star counts or download numbers as security indicators. Use npm provenance (--provenance flag) to verify publisher identity. Check the MCP Sentinel registry for independent security scoring. Report false metadata claims to the registry operator."
+test_cases:
+  true_positive:
+    - { description: "package.json claims author is 'Anthropic' but GitHub repo is under personal account", expected: true }
+    - { description: "README displays fake 'Verified by Anthropic' badge from attacker-controlled image URL", expected: true }
+    - { description: "Source code contains loop that programmatically stars the repo on GitHub", expected: true }
+  true_negative:
+    - { description: "Package from github.com/anthropics/ org with correct author metadata", expected: false }
+    - { description: "Test fixture referencing Anthropic as example data", expected: false }
+enabled: true

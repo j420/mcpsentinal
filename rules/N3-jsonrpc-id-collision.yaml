@@ -1,0 +1,32 @@
+id: N3
+name: JSON-RPC Request ID Collision
+category: protocol-edge-cases
+severity: high
+owasp: MCP07-insecure-config
+mitre: AML.T0054
+detect:
+  type: regex
+  patterns:
+    # Sequential/predictable request IDs
+    - "(?i)(?:requestId|request_id|reqId|id)\\s*[:=]\\s*(?:(?:\\+\\+|\\-\\-)|(?:count|counter|sequence|seq|next))"
+    - "(?i)(?:requestId|request_id|reqId)\\s*[:=]\\s*(?:0|1)\\s*[;,]"
+    # Auto-incrementing ID without collision guard
+    - "(?i)(?:let|var|const)\\s+(?:requestId|nextId|messageId)\\s*=\\s*\\d+\\s*;"
+    # ID from user/server input without validation
+    - "(?i)(?:request|msg|message)\\.(id|requestId)\\s*(?:=\\s*(?:req|params|body|data|input)\\.)"
+    # Python auto-incrementing
+    - "(?i)(?:self\\._?(?:request_id|next_id|message_id))\\s*(?:\\+=\\s*1|=\\s*self\\._?(?:request_id|next_id)\\s*\\+)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)(?:uuid|crypto\\.random|randomUUID|nanoid|cuid|ulid)"
+remediation: "Use cryptographically random or UUID-based request IDs to prevent collision attacks. Do not use sequential integers — an attacker can predict the next ID and inject a response before the legitimate server responds (response spoofing). Validate that response IDs match pending request IDs. Reference: JSON-RPC 2.0 Section 4.1 — 'id' must be unique within a session."
+test_cases:
+  true_positive:
+    - { description: "Source code uses auto-incrementing integer counter for JSON-RPC request IDs (let requestId = 0; requestId++)", expected: true }
+    - { description: "Python MCP client uses self._request_id += 1 for sequential message IDs", expected: true }
+  true_negative:
+    - { description: "Source code generates request IDs using crypto.randomUUID() for each message", expected: false }
+    - { description: "Client uses nanoid() for generating unpredictable request identifiers", expected: false }
+intelligence_source: "CVE-2025-6515 (session ID prediction in oatpp-mcp), JSON-RPC 2.0 spec Section 4.1"
+enabled: true

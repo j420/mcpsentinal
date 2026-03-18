@@ -1,0 +1,57 @@
+id: L11
+name: Environment Variable Injection via MCP Config
+category: supply-chain-advanced
+severity: critical
+owasp: MCP07-insecure-configuration
+mitre: AML.T0060
+
+# THREAT INTELLIGENCE (P1 Researcher — Supply Chain):
+# Source: CVE-2026-21852 (Claude Code API key theft via config env override),
+#         Check Point Research "RCE and API Token Exfiltration" (Feb 2026),
+#         LayerX "Claude Desktop Extensions RCE" (2026)
+#
+# THE ATTACK: MCP configuration files allow specifying environment variables
+# that are passed to MCP server processes. Attackers exploit this to:
+#   1. Override API base URLs to redirect traffic to attacker servers
+#      (CVE-2026-21852: ANTHROPIC_API_URL override exfiltrates API keys)
+#   2. Inject LD_PRELOAD/DYLD_INSERT_LIBRARIES for library injection
+#   3. Set NODE_OPTIONS to load malicious modules (--require=./payload.js)
+#   4. Override PATH to execute attacker-controlled binaries
+#   5. Set proxy env vars (HTTP_PROXY, HTTPS_PROXY) for MITM
+#   6. Inject PYTHONPATH/NODE_PATH to load malicious modules
+#
+# This exploits the fact that MCP configs are often treated as "data" but
+# the env section is actually a code execution primitive.
+
+detect:
+  type: regex
+  patterns:
+    # Dangerous environment variable overrides in MCP config
+    - "(?i)[\"']env[\"']\\s*:\\s*\\{[^}]*[\"'](?:LD_PRELOAD|DYLD_INSERT_LIBRARIES|DYLD_LIBRARY_PATH)[\"']"
+    - "(?i)[\"']env[\"']\\s*:\\s*\\{[^}]*[\"']NODE_OPTIONS[\"']\\s*:\\s*[\"'][^\"']*(?:--require|--import|--loader|--experimental)"
+    - "(?i)[\"']env[\"']\\s*:\\s*\\{[^}]*[\"'](?:PYTHONPATH|PYTHONSTARTUP|PYTHONHOME)[\"']\\s*:\\s*[\"'](?!/usr)"
+    - "(?i)[\"']env[\"']\\s*:\\s*\\{[^}]*[\"'](?:NODE_PATH|NODE_EXTRA_CA_CERTS)[\"']\\s*:\\s*[\"'](?!/usr)"
+    # PATH override to hijack binary resolution
+    - "(?i)[\"']env[\"']\\s*:\\s*\\{[^}]*[\"']PATH[\"']\\s*:\\s*[\"'](?!/usr/(?:local/)?bin)(?!\\.)"
+    # Proxy injection for MITM
+    - "(?i)[\"']env[\"']\\s*:\\s*\\{[^}]*[\"'](?:HTTP_PROXY|HTTPS_PROXY|ALL_PROXY|NO_PROXY)[\"']\\s*:\\s*[\"']https?://(?!localhost|127\\.0\\.0\\.1)"
+    # API URL override for credential theft (CVE-2026-21852 pattern)
+    - "(?i)[\"']env[\"']\\s*:\\s*\\{[^}]*[\"'](?:ANTHROPIC_API_URL|OPENAI_API_BASE|OPENAI_BASE_URL|API_BASE_URL|AZURE_OPENAI_ENDPOINT)[\"']\\s*:\\s*[\"']https?://(?!api\\.anthropic\\.com|api\\.openai\\.com)"
+    # Source code that reads and applies env from config without validation
+    - "(?i)(?:Object\\.assign|spread).*process\\.env.*(?:config|mcp|settings).*env"
+    # Env vars with shell expansion characters
+    - "(?i)[\"']env[\"']\\s*:\\s*\\{[^}]*[\"']\\w+[\"']\\s*:\\s*[\"'][^\"']*(?:\\$\\(|`|&&|\\|\\||;)[^\"']*[\"']"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example|template"
+    - "(?i)[\"']env[\"']\\s*:\\s*\\{[^}]*[\"'](?:PORT|HOST|LOG_LEVEL|DEBUG|NODE_ENV)[\"']"
+remediation: "Validate all environment variables from MCP config against a strict allowlist. Never allow overriding PATH, LD_PRELOAD, NODE_OPTIONS, PYTHONPATH, or API base URLs from config files. Apply CVE-2026-21852 patches. Treat the env section of MCP configs as a security boundary, not just configuration data. Log all environment variable overrides for audit."
+test_cases:
+  true_positive:
+    - { description: "MCP config sets LD_PRELOAD to load a malicious shared library", expected: true }
+    - { description: "Config overrides ANTHROPIC_API_URL to point to attacker-controlled endpoint", expected: true }
+    - { description: "NODE_OPTIONS set to --require=./malicious-payload.js in MCP config env", expected: true }
+  true_negative:
+    - { description: "MCP config sets PORT=3000 and LOG_LEVEL=info as standard environment", expected: false }
+    - { description: "Test config uses environment variables for test isolation", expected: false }
+enabled: true

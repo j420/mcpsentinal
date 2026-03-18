@@ -1,0 +1,58 @@
+id: Q3
+name: Localhost MCP Service Hijacking
+category: cross-ecosystem-emergent
+severity: critical
+owasp: MCP07-insecure-configuration
+mitre: T1557
+
+# THREAT INTELLIGENCE (Senior Security Architect — Desktop/IPC):
+#
+# CVE-2025-49596 (CVSS 9.4): MCP Inspector exposes localhost web service
+# accepting connections from ANY origin. DNS rebinding attack achieves full
+# MCP control, credential harvesting, and persistent backdoor — zero clicks.
+#
+# MCP servers using stdio transport spawn local processes. MCP servers using
+# HTTP transport bind to localhost ports, often on predictable port numbers
+# (6274/6277 for MCP Inspector, 3000 for dev servers). These are vulnerable to:
+#   1. DNS rebinding (malicious website resolves to 127.0.0.1)
+#   2. Cross-origin requests from browser tabs
+#   3. Other local processes connecting to the same port
+#   4. Symlink/TOCTOU attacks on stdio pipes
+#
+# Additional evidence:
+# - Docker blog: "Drive-By Localhost Breach" (2025) — MCP Inspector RCE
+# - Bitsight: hundreds of MCP servers bound to 0.0.0.0 without firewall
+# - MITRE ATT&CK T1557: Adversary-in-the-Middle
+#
+# Intelligence: CVE-2025-49596 (Oligo Security, 2025), Docker MCP Gateway blog,
+# Bitsight exposed MCP servers research (2025)
+
+detect:
+  type: regex
+  patterns:
+    # Predictable/well-known MCP port bindings without origin validation
+    - "(?i)(?:listen|bind|serve).*(?:6274|6277|3100|8080|3000).*(?:localhost|127\\.0\\.0\\.1|0\\.0\\.0\\.0)"
+    - "(?i)(?:localhost|127\\.0\\.0\\.1|0\\.0\\.0\\.0).*(?:6274|6277)"
+    # Missing CORS/origin validation on localhost services
+    - "(?i)Access-Control-Allow-Origin.*\\*.*(?:localhost|127\\.0\\.0\\.1)"
+    - "(?i)cors\\s*\\(\\s*\\)(?!.*origin)"
+    - "(?i)cors.*origin\\s*:\\s*(?:true|\\*|[\"']\\*[\"'])"
+    # Stdio transport without input validation
+    - "(?i)(?:StdioServerTransport|stdio[_\\s]?transport).*(?:new|create)(?!.*(?:auth|validate|verify))"
+    # Localhost HTTP without authentication
+    - "(?i)createServer.*(?:localhost|127\\.0\\.0\\.1)(?!.*(?:auth|token|apiKey|bearer))"
+    # DNS rebinding vulnerability — no host header validation
+    - "(?i)(?:express|fastify|koa|hono).*(?:listen|server)(?!.*(?:host[_\\s]?(?:check|valid|verify)|helmet))"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)helmet|host[_\\s]?validation|dns[_\\s]?rebind"
+remediation: "MCP servers binding to localhost must: (1) validate the Host header to prevent DNS rebinding attacks (CVE-2025-49596), (2) set strict CORS origins instead of wildcard '*', (3) require authentication tokens even for local connections, (4) use random high ports instead of predictable defaults. For stdio transport, validate all input at the JSON-RPC level before processing. Consider using Docker MCP Gateway or similar container isolation."
+test_cases:
+  true_positive:
+    - { description: "Source code creates HTTP server on localhost:6274 with CORS origin='*' and no authentication", expected: true }
+    - { description: "Source code uses StdioServerTransport with no input validation layer", expected: true }
+  true_negative:
+    - { description: "MCP server with helmet middleware, strict CORS origin, and token auth on localhost", expected: false }
+    - { description: "Test server in test/ directory binding to localhost", expected: false }
+enabled: true

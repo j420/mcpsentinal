@@ -1,0 +1,71 @@
+id: M7
+name: Tool Response Structure Bomb
+category: ai-runtime-exploitation
+severity: high
+owasp: ASI08-agentic-dos
+mitre: AML.T0054
+
+# THREAT INTELLIGENCE (P1 Researcher):
+# Source: CVE-2025-52999 — Jackson-core Stack Overflow DoS via nested JSON
+# Source: CVE-2026-25048 — xgrammar EBNF parser stack exhaustion (LLM-specific)
+# Source: OWASP LLM10:2025 — Unbounded Consumption
+# Source: Wikipedia — Billion Laughs attack (adapted to JSON/LLM context)
+#
+# THE ATTACK: Source code patterns that construct tool responses with
+# deeply nested JSON structures, exponentially expanding payloads, or
+# deliberately malformed data designed to crash or exhaust the AI client's
+# parser. Unlike traditional JSON bombs that target web servers, these
+# target the LLM's context processing pipeline:
+#
+#   1. Depth bombs: JSON nested 1000+ levels deep, exhausting parser stack
+#   2. Width bombs: arrays with millions of elements consuming memory
+#   3. Exponential expansion: self-referential structures that expand on parsing
+#   4. Mixed-type confusion: responses that switch between JSON, markdown,
+#      and code blocks to confuse the output parser
+#   5. Oversized string values: single string fields containing megabytes of
+#      data that consume the entire context window
+#
+# CVE-2026-25048 is directly relevant: xgrammar (used in LLM structured
+# generation) was vulnerable to stack exhaustion via nested EBNF structures.
+# The same principle applies to MCP tool responses processed by AI clients.
+
+detect:
+  type: regex
+  patterns:
+    # Programmatic deep nesting construction
+    - "(?i)(for|while)\\s*\\(.{0,50}(nest|depth|level).*\\{[^}]*JSON\\.stringify"
+    - "(?i)\\.repeat\\s*\\(\\s*\\d{3,}\\s*\\)"
+    - "(?i)(nest|depth)\\s*[=>:]+\\s*\\d{3,}"
+    # Exponential string/array construction
+    - "(?i)(\\+\\=|concat|push|append).*\\1.*\\1"
+    - "(?i)Array\\s*\\(\\s*\\d{5,}\\s*\\)"
+    - "(?i)new\\s+Array\\s*\\(\\s*\\d{5,}\\s*\\)"
+    - "'\\s*\\{\\s*'\\s*\\.repeat"
+    - "'\\s*\\[\\s*'\\s*\\.repeat"
+    # Deliberately large response construction
+    - "(?i)(response|result|output)\\s*[=:]\\s*.{0,30}\\.repeat\\s*\\(\\s*\\d{4,}"
+    - "(?i)(Buffer|buffer)\\s*\\.alloc\\s*\\(\\s*\\d{7,}"
+    - "(?i)\\*\\s*\\d{6,}\\s*(byte|char|element|item)"
+    # Python equivalents
+    - "(?i)'\\s*\\{\\s*'\\s*\\*\\s*\\d{3,}"
+    - "(?i)'\\s*\\[\\s*'\\s*\\*\\s*\\d{3,}"
+    - "(?i)json\\.dumps\\s*\\(.{0,30}range\\s*\\(\\s*\\d{5,}"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|__test__|_test\\.py"
+    - "(?i)benchmark|perf|stress|load.test"
+remediation: >
+  Implement response size limits and nesting depth caps for all tool responses.
+  Never construct responses with programmatic deep nesting or exponential expansion.
+  CVE-2026-25048 demonstrated that nested structures can exhaust parser stacks in
+  LLM pipelines. Set maximum response size (e.g., 100KB), maximum JSON nesting
+  depth (e.g., 20 levels), and maximum array length. Use streaming for large
+  responses rather than constructing them in memory.
+test_cases:
+  true_positive:
+    - { description: "Source code constructs JSON with '{'.repeat(5000) creating deeply nested structure", expected: true }
+    - { description: "Source code creates Array(1000000) as part of tool response", expected: true }
+  true_negative:
+    - { description: "Source code returns a flat JSON object with 10 fields", expected: false }
+    - { description: "Test file uses .repeat(1000) for benchmark purposes", expected: false }
+enabled: true

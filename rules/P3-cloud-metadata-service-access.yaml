@@ -1,0 +1,53 @@
+id: P3
+name: Cloud Metadata Service Access
+category: infrastructure-runtime
+severity: critical
+owasp: MCP04-data-exfiltration
+mitre: T1552.005
+# CVE-2025-53767 (Azure OpenAI SSRF, CVSS 10.0): metadata service exploitation for lateral movement.
+# CVE-2026-27730 (esm.sh SSRF): IAM credential theft via 169.254.169.254 with nip.io bypass.
+# F5 Labs March 2025: 452% surge in SSRF attacks targeting EC2 metadata, 2023-2024.
+# CIS AWS Foundations Benchmark v3.0 §5.6: "Ensure IMDSv2 is required on all instances."
+
+detect:
+  type: regex
+  patterns:
+    # AWS/Azure/GCP metadata endpoints (direct access)
+    - "169\\.254\\.169\\.254"
+    - "(?i)metadata\\.google\\.internal"
+    - "(?i)metadata\\.azure\\.com"
+    # AWS metadata paths
+    - "(?i)/latest/meta-data/iam/security-credentials"
+    - "(?i)/latest/meta-data/identity-credentials"
+    - "(?i)/latest/api/token"
+    # DNS rebinding / bypass techniques
+    - "(?i)169\\.254\\.169\\.254\\.(?:nip\\.io|sslip\\.io|xip\\.io)"
+    - "(?i)0xa9fea9fe"
+    - "(?i)2852039166"
+    - "(?i)0251\\.0376\\.0251\\.0376"
+    # Hex/octal IP representations of 169.254.169.254
+    - "(?i)0x(?:a9)\\.0x(?:fe)\\.0x(?:a9)\\.0x(?:fe)"
+    # IMDSv1 usage patterns (no token header = insecure)
+    - "(?i)curl\\s+.*169\\.254\\.169\\.254(?!.*X-aws-ec2-metadata-token)"
+    - "(?i)http\\.get.*169\\.254\\.169\\.254"
+    - "(?i)fetch.*169\\.254\\.169\\.254"
+    - "(?i)requests?\\.get.*169\\.254\\.169\\.254"
+    # GCP metadata header bypass attempts
+    - "(?i)Metadata-Flavor:\\s*Google"
+    # Azure IMDS header
+    - "(?i)Metadata:\\s*true"
+  context: source_code
+  exclude_patterns:
+    - "(?i)IMDSv2|X-aws-ec2-metadata-token-ttl"
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)block.*metadata|disable.*metadata|deny.*metadata"
+remediation: "MCP servers should never directly access cloud metadata services. If cloud credentials are needed, use IAM Roles for Service Accounts (IRSA on EKS), Workload Identity (GKE), or Managed Identity (AKS) which provide credentials via projected service account tokens — not the metadata endpoint. Enforce IMDSv2 with hop limit 1 on all EC2 instances. Set HttpPutResponseHopLimit=1 to prevent container-level metadata access. Block 169.254.169.254 in container network policies."
+test_cases:
+  true_positive:
+    - { description: "MCP server source code fetches http://169.254.169.254/latest/meta-data/iam/security-credentials/ to obtain AWS credentials", expected: true }
+    - { description: "Code uses DNS rebinding via 169.254.169.254.nip.io to bypass metadata service restrictions", expected: true }
+  true_negative:
+    - { description: "Code uses IMDSv2 with proper token headers (X-aws-ec2-metadata-token-ttl-seconds)", expected: false }
+    - { description: "Test fixture mocks metadata service responses for unit testing", expected: false }
+intelligence_source: "CVE-2025-53767 (Azure OpenAI SSRF, CVSS 10.0), CVE-2026-27730 (esm.sh SSRF), F5 Labs March 2025 SSRF campaign, CIS AWS Foundations Benchmark v3.0 Section 5.6"
+enabled: true

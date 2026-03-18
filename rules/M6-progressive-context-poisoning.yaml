@@ -1,0 +1,75 @@
+id: M6
+name: Progressive Context Poisoning Enablers
+category: ai-runtime-exploitation
+severity: critical
+owasp: ASI06-memory-context-poisoning
+mitre: AML.T0058
+
+# THREAT INTELLIGENCE (P1 Researcher):
+# Source: arXiv 2503.15560 — "Temporal Context Awareness: Multi-turn Manipulation"
+#         (March 2025) — 76% safety filter bypass via turn reordering
+# Source: ACL REALM 2025 — "Safe in Isolation, Dangerous Together: Multi-Turn
+#         Decomposition Jailbreaks" — 90%+ success rate
+# Source: arXiv 2601.05504 — "MINJA: Memory Injection Attack" (January 2026)
+#         — 95%+ injection success rate via query-only interactions
+# Source: Unit 42 — "Agent Session Smuggling" (2025)
+#
+# THE ATTACK: MCP tools that enable progressive context poisoning across
+# conversation turns. Unlike F6 (circular data loop via persistent storage),
+# M6 detects tools designed to inject state that accumulates across turns:
+#
+#   1. Conversation history writers: tools that append to conversation context
+#      or inject "previous assistant responses" that bias future turns
+#   2. State accumulation sinks: tools that write to session/conversation
+#      state read by the AI in subsequent turns
+#   3. Memory injection surfaces: tools accepting free-text that gets stored
+#      and recalled in future interactions (MINJA attack vector)
+#   4. Turn-boundary manipulation: tools whose responses contain instructions
+#      targeting FUTURE tool calls, not the current one
+#
+# MINJA demonstrated 95%+ success in poisoning agent memory through
+# normal query interactions. Multi-turn decomposition jailbreaks achieve
+# 90%+ success because each individual turn appears benign.
+
+detect:
+  type: composite
+  conditions:
+    check: progressive_context_poisoning
+    signals:
+      # Tools that write to conversation/session state
+      state_writer_patterns:
+        - "(?i)(append|add|write|inject|insert|store|save|update|set)\\s+(to\\s+)?(conversation|context|session|memory|history|state|chat)"
+        - "(?i)(conversation|context|session|memory|state|chat)\\s*[._](append|add|write|push|update|set)"
+        - "(?i)(modify|alter|change|update)\\s+(the\\s+)?(system|assistant|user)\\s+(message|prompt|context)"
+      # Tools that read and write to same state (accumulation)
+      state_read_write_patterns:
+        - "(?i)(get|read|fetch|retrieve|load).{5,40}(set|write|store|save|update|append)"
+        - "(?i)(load|read)\\s+(from\\s+)?memory.{5,40}(save|write|store)\\s+(to\\s+)?memory"
+      # Future-turn targeting in descriptions
+      future_turn_patterns:
+        - "(?i)(in\\s+(the\\s+)?next|subsequent|future|following|later)\\s+(turn|call|invocation|request|interaction)"
+        - "(?i)(remember|recall|persist|carry over)\\s+(this|these|the)\\s+(for|across|between)\\s+(future|next|subsequent)"
+        - "(?i)(this\\s+(will|should|must)\\s+(be|remain|persist|stay)\\s+(in|across|between))"
+      # Memory injection keywords
+      memory_injection_patterns:
+        - "(?i)(long[\\s-]?term|persistent|permanent)\\s+(memory|storage|state|context)"
+        - "(?i)(inject|insert|embed|plant)\\s+(into|in)\\s+(memory|context|state|history)"
+  context: tool_description
+remediation: >
+  Tools that write to conversation state, session memory, or persistent context
+  must implement strict input sanitization and should never accept free-text
+  that gets stored and replayed to the AI in future turns. Progressive context
+  poisoning (MINJA 2026, 95%+ success rate) exploits tools that accumulate
+  state across turns — each individual write appears benign, but the accumulated
+  context biases the model's future behavior. Implement: (1) content validation
+  on all state writes, (2) expiration/TTL on stored context, (3) explicit
+  separation between user-provided content and system state.
+test_cases:
+  true_positive:
+    - { description: "Tool description says 'Appends the given text to the conversation history for future reference'", expected: true }
+    - { description: "Tool description says 'Stores data in long-term memory that persists across sessions'", expected: true }
+    - { description: "Tool description says 'In the next turn, this tool's output will be used as context'", expected: true }
+  true_negative:
+    - { description: "Tool description says 'Writes data to a PostgreSQL database table'", expected: false }
+    - { description: "Tool description says 'Saves the file to disk at the specified path'", expected: false }
+enabled: true

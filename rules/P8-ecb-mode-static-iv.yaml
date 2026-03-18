@@ -1,0 +1,51 @@
+id: P8
+name: Insecure Cryptographic Mode or Static IV/Nonce
+category: infrastructure-runtime
+severity: high
+owasp: MCP07-insecure-config
+mitre: T1600
+# OWASP Top 10:2025 A04 — Cryptographic Failures: "Is an insecure mode of operation
+# such as ECB in use? Is encryption used instead of authenticated encryption?"
+# OWASP A04: "Are initialization vectors ignored, reused, or not generated sufficiently secure?"
+# NIST SP 800-38A: ECB mode not recommended for confidentiality of multi-block messages.
+# SlowMist: ECDSA nonce reuse enables private key extraction.
+
+detect:
+  type: regex
+  patterns:
+    # ECB mode usage
+    - "(?i)(?:AES|DES|Blowfish|RC4)[/_\\-]?ECB"
+    - "(?i)mode\\s*[:=]\\s*[\"']?(?:ECB|ecb)[\"']?"
+    - "(?i)CipherMode\\.ECB"
+    - "(?i)createCipher(?:iv)?\\s*\\(\\s*[\"']aes-(?:128|192|256)-ecb[\"']"
+    - "(?i)AES\\.new\\s*\\([^)]*AES\\.MODE_ECB"
+    - "(?i)Cipher\\.getInstance\\s*\\([\"']AES/ECB"
+    # Static IV / hardcoded IV
+    - "(?i)(?:iv|initialization[_\\s-]?vector|nonce)\\s*[:=]\\s*(?:b?[\"'][0-9a-fA-F]{16,}[\"']|Buffer\\.from\\s*\\([\"'][0-9a-fA-F]+[\"']|bytes\\s*\\([\"'][^\"']+[\"']|\\[(?:\\s*0x[0-9a-f]{2}\\s*,?\\s*){4,}\\])"
+    - "(?i)(?:iv|nonce)\\s*[:=]\\s*b?[\"']\\x00{4,}"
+    - "(?i)(?:iv|nonce)\\s*[:=]\\s*(?:new\\s+)?(?:Uint8Array|Buffer)\\s*\\(\\s*(?:16|12|8)\\s*\\)"
+    # Zero IV / null IV
+    - "(?i)(?:iv|nonce)\\s*[:=]\\s*(?:null|None|nil|0|[\"'][\"']|b[\"'][\"'])"
+    # PRNG used for crypto (not CSPRNG)
+    - "(?i)Math\\.random\\s*\\(\\s*\\).*(?:iv|nonce|key|salt|seed|token|secret)"
+    - "(?i)random\\.random\\s*\\(\\s*\\).*(?:iv|nonce|key|salt|seed|token|secret)"
+    # Custom crypto implementation markers
+    - "(?i)(?:my|custom|own)[_\\s-]?(?:encrypt|decrypt|cipher|hash|hmac)"
+    # Key derivation without salt
+    - "(?i)pbkdf2\\s*\\(.*(?:salt\\s*[:=]\\s*[\"'][\"']|,\\s*[\"'][\"']\\s*,)"
+    - "(?i)scrypt\\s*\\(.*salt\\s*[:=]\\s*[\"'][\"']"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)crypto\\.randomBytes|os\\.urandom|secrets\\."
+    - "(?i)GCM|CCM|SIV|Poly1305|AEAD|chacha20"
+remediation: "Use authenticated encryption modes (AES-256-GCM, ChaCha20-Poly1305) instead of ECB or unauthenticated modes. Always generate IVs/nonces using a CSPRNG (crypto.randomBytes in Node.js, os.urandom in Python, crypto/rand in Go). Never reuse nonces with the same key. Use established KDF functions (Argon2id, scrypt, PBKDF2 with >=100,000 iterations) with random salts. Never implement custom cryptography — use audited libraries."
+test_cases:
+  true_positive:
+    - { description: "Code uses createCipheriv('aes-256-ecb') for encrypting MCP server tokens", expected: true }
+    - { description: "Code sets iv = Buffer.from('0000000000000000') as a static initialization vector", expected: true }
+  true_negative:
+    - { description: "Code uses AES-256-GCM with crypto.randomBytes(12) for nonce generation", expected: false }
+    - { description: "Test fixture uses ECB mode to test encryption error handling", expected: false }
+intelligence_source: "OWASP Top 10:2025 A04 Cryptographic Failures, NIST SP 800-38A, SlowMist Common Cryptographic Risks, CWE-327/CWE-329"
+enabled: true

@@ -1,0 +1,31 @@
+id: N2
+name: JSON-RPC Notification Flooding
+category: protocol-edge-cases
+severity: high
+owasp: MCP07-insecure-config
+mitre: AML.T0054
+detect:
+  type: regex
+  patterns:
+    # Sending notifications without backpressure or queue bounds
+    - "(?i)(?:sendNotification|send_notification|notify|emit)\\s*\\((?!.*(?:queue|throttle|rateLimit|backpressure|bounded))"
+    # Notification loop without rate limiting
+    - "(?i)(?:while|for|setInterval)\\s*\\(.*(?:notification|notify|emit)\\s*\\("
+    # SSE event stream without bounded queue
+    - "(?i)(?:res\\.write|response\\.write|write_event|send_event)\\s*\\(.*(?:event|data|notification)(?!.*(?:queue\\.length|buffer\\.length|highWaterMark|MAX_))"
+    # Python: unbounded notification sending
+    - "(?i)(?:send_notification|emit_event|push_notification)\\s*\\(.*(?:for\\s|while\\s|async\\sfor)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)rate[_\\s-]?limit|throttle|backpressure|bounded[_\\s-]?queue"
+remediation: "Implement bounded notification queues (recommended max size: 100 per subscription). Apply backpressure — when the queue is full, drop oldest notifications or pause the producer. Enforce per-client notification rate limits. JSON-RPC notifications have no response, so there is no natural flow control — servers MUST implement it explicitly."
+test_cases:
+  true_positive:
+    - { description: "Server sends notifications in a loop without queue size checks or rate limiting", expected: true }
+    - { description: "SSE event stream writes events without checking buffer capacity or applying backpressure", expected: true }
+  true_negative:
+    - { description: "Notification sender checks queue.length < MAX_QUEUE before sending", expected: false }
+    - { description: "Rate-limited notification system using token bucket algorithm", expected: false }
+intelligence_source: "Parity JSON-RPC DoS resilience spec (bounded notification queues), MCP spec 2025-03-26 (progress notifications)"
+enabled: true

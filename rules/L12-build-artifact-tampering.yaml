@@ -1,0 +1,59 @@
+id: L12
+name: Build Artifact Tampering
+category: supply-chain-advanced
+severity: critical
+owasp: MCP10-supply-chain
+mitre: AML.T0017
+
+# THREAT INTELLIGENCE (P1 Researcher — Supply Chain):
+# Source: SLSA framework (Supply chain Levels for Software Artifacts),
+#         Sigstore/npm provenance attestation (2024-2025),
+#         Shai-Hulud worm (Sept 2025 — injected malicious Actions into repos),
+#         CVE-2026-27606 (Rollup path traversal writing to arbitrary files)
+#
+# THE ATTACK: MCP server packages are built, then published. Attackers tamper
+# with the build artifact between the build step and the publish step:
+#   1. Post-build scripts that modify the dist/ output before npm publish
+#   2. CI steps that inject code into the built package after tests pass
+#   3. Build cache poisoning: modify cached build artifacts
+#   4. Artifact upload/download interception in multi-job CI pipelines
+#   5. GitHub Actions artifact poisoning between workflow jobs
+#
+# The September 2025 npm attack (Shai-Hulud) demonstrated this by injecting
+# malicious GitHub Actions workflows that modify build outputs before publish.
+#
+# DIFFERENCE FROM L1 (Actions tag poisoning): L1 detects unpinned Actions.
+# L12 detects code that modifies build artifacts after the build completes.
+
+detect:
+  type: regex
+  patterns:
+    # Post-build file modification before publish
+    - "(?i)[\"'](?:prepublishOnly|prepack|postbuild)[\"']\\s*:\\s*[\"'][^\"']*(?:sed|awk|perl|patch|cat\\s*>>|echo\\s*>>).*(?:dist|build|out|lib)/"
+    # Appending code to built JavaScript files
+    - "(?i)(?:appendFileSync|appendFile|fs\\.writeFileSync|>>).*(?:dist/|build/|out/|lib/).*\\.(?:js|mjs|cjs)"
+    # Modifying built files between test and publish steps
+    - "(?i)(?:npm\\s+test|jest|vitest|mocha).*(?:&&|;).*(?:sed|awk|cat\\s*>>|echo\\s*>>).*(?:dist|build|lib).*(?:&&|;).*(?:npm\\s+publish|npm\\s+pack)"
+    # CI artifact download followed by modification
+    - "(?i)(?:download-artifact|actions/download).*(?:sed|awk|node|python|bash).*(?:dist|build|out)"
+    # Build cache manipulation
+    - "(?i)(?:cache|artifact).*(?:restore|download).*(?:modify|patch|inject|append|write).*(?:dist|build|out)"
+    # Checksum bypass: regenerating integrity hashes after tampering
+    - "(?i)(?:shasum|sha256sum|sha512|integrity|hash).*(?:dist|build|out).*(?:write|update|replace|generate)"
+    # Source map manipulation to hide injected code
+    - "(?i)(?:sourceMap|sourceMappingURL).*(?:delete|remove|strip|disable).*(?:dist|build|out)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)(?:prepublishOnly|postbuild).*(?:tsc|esbuild|rollup|webpack|vite|babel|swc)"
+    - "(?i)(?:minify|terser|uglify|compress)"
+remediation: "Use SLSA provenance attestation to verify build artifact integrity. Publish with 'npm publish --provenance' for Sigstore attestation. Never modify files in dist/ after the build step. Use reproducible builds so artifacts can be independently verified. Separate build and publish into different CI jobs with artifact integrity checks. Enable npm audit signatures."
+test_cases:
+  true_positive:
+    - { description: "prepublishOnly script uses sed to inject code into dist/index.js after build", expected: true }
+    - { description: "CI pipeline appends base64-encoded payload to built JavaScript files before npm publish", expected: true }
+    - { description: "Post-build step strips source maps and modifies integrity hashes", expected: true }
+  true_negative:
+    - { description: "prepublishOnly runs 'tsc && esbuild' for standard TypeScript compilation", expected: false }
+    - { description: "Build step runs terser for minification of output files", expected: false }
+enabled: true

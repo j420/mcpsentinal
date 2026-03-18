@@ -1,0 +1,58 @@
+id: L6
+name: Config Directory Symlink Attack
+category: supply-chain-advanced
+severity: critical
+owasp: MCP05-privilege-escalation
+mitre: AML.T0054
+
+# THREAT INTELLIGENCE (P1 Researcher — Supply Chain):
+# Source: CVE-2025-53109 (Anthropic filesystem MCP server symlink bypass),
+#         CVE-2025-53110 (filesystem MCP server root boundary bypass),
+#         Cymulate EscapeRoute research (2025)
+#
+# THE ATTACK: MCP servers interact with the filesystem. If a server creates
+# or follows symlinks in config directories, an attacker can:
+#   1. Symlink .claude/ or .cursor/mcp.json to /etc/sudoers (read sensitive files)
+#   2. Symlink output directories to overwrite system files
+#   3. Create symlinks in MCP config dirs pointing to attacker-controlled content
+#   4. Race condition: replace a config file with a symlink between check and use
+#
+# CVE-2025-53109: Anthropic's own filesystem MCP server failed to detect symlinks
+# that escaped the declared root boundary. A crafted symlink bypassed all access
+# enforcement, enabling read/write to ANY file on the system.
+#
+# DIFFERENCE FROM C2 (path traversal): C2 detects ../ patterns in source code.
+# L6 detects symlink creation/following patterns and TOCTOU race conditions
+# specific to config file handling.
+
+detect:
+  type: regex
+  patterns:
+    # Creating symlinks to sensitive paths
+    - "(?i)(?:symlink|symlinkSync|os\\.symlink|ln\\s+-s).*(?:/etc/|/root/|~/.ssh|/var/|/usr/|/proc/|/sys/)"
+    # Following symlinks without checking (TOCTOU)
+    - "(?i)(?:readFileSync|readFile|open|fopen).*(?:followLinks|resolveSymlinks|dereference)\\s*:\\s*true"
+    # Symlink to MCP config paths
+    - "(?i)(?:symlink|symlinkSync|os\\.symlink).*(?:\\.claude|\\.cursor|\\.mcp\\.json|mcp_config|claude_desktop)"
+    # Reading file without lstat check (symlink-following by default)
+    - "(?i)(?:fs\\.readFileSync|fs\\.readFile|fs\\.writeFile)\\s*\\([^)]*(?:\\.claude|\\.cursor|mcp\\.json)(?!.*lstat)"
+    # Missing symlink resolution before path validation
+    - "(?i)(?:startsWith|includes|match).*(?:allowedPath|rootDir|baseDir)(?!.*(?:realpath|realpathSync|resolve))"
+    # Race condition: stat then open without O_NOFOLLOW
+    - "(?i)(?:fs\\.stat|fs\\.statSync|os\\.stat).*(?:fs\\.readFile|fs\\.open|open)(?!.*O_NOFOLLOW|NOFOLLOW)"
+    # macOS Launch Agent injection via symlink (CVE-2025-53109 exploit path)
+    - "(?i)(?:symlink|link).*(?:LaunchAgents|LaunchDaemons|plist)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)(?:lstat|realpathSync|realpath).*(?:isSymbolicLink|symlink)"
+remediation: "Always resolve symlinks with realpath() before path validation. Use O_NOFOLLOW flag when opening files. Check with lstat() that paths are not symlinks before reading/writing. Apply CVE-2025-53109/53110 patches for Anthropic filesystem server. Implement TOCTOU-safe file operations using fstat() on the opened file descriptor rather than stat() on the path."
+test_cases:
+  true_positive:
+    - { description: "Source code creates symlink from .claude/ directory to /etc/passwd", expected: true }
+    - { description: "File read on mcp.json without lstat check allows symlink following", expected: true }
+    - { description: "Path validation uses startsWith without realpath resolution first", expected: true }
+  true_negative:
+    - { description: "Source code uses realpathSync to resolve symlinks before path validation", expected: false }
+    - { description: "Test fixture creates temporary symlinks for test isolation", expected: false }
+enabled: true

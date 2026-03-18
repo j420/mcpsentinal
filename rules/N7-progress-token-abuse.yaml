@@ -1,0 +1,31 @@
+id: N7
+name: Progress Token Prediction and Injection
+category: protocol-edge-cases
+severity: high
+owasp: MCP07-insecure-config
+mitre: AML.T0054
+detect:
+  type: regex
+  patterns:
+    # Sequential/predictable progress tokens
+    - "(?i)(?:progressToken|progress_token|_meta\\.progressToken)\\s*[:=]\\s*(?:(?:\\+\\+|counter|sequence|seq|\\d+))"
+    # Progress notification sent without verifying token ownership
+    - "(?i)(?:sendProgress|send_progress|notifications/progress|progress\\.notify)\\s*\\(\\s*(?:(?:req|params|body|token|id)\\.)"
+    # Progress token from client input accepted without validation
+    - "(?i)(?:_meta|meta)\\s*(?:\\.|\\[)\\s*(?:['\"])?progressToken(?:['\"])?\\s*(?:\\])?\\s*(?:&&|\\|\\||\\?|!==\\s*(?:null|undefined))"
+    # Python: progress token handling
+    - "(?i)progress_token\\s*=\\s*(?:request|params|kwargs)\\s*(?:\\.get|\\.pop|\\[)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)(?:validateToken|verifyProgress|crypto\\.random|uuid)"
+remediation: "Use unpredictable progress tokens (UUIDs or cryptographic random values). Validate that progress notification recipients match the original request sender. Do not accept progress tokens from untrusted input — a malicious server could inject fake progress notifications to manipulate client UI state or create timing side channels. Reference: MCP spec 2025-03-26 Section 5.1 (Progress)."
+test_cases:
+  true_positive:
+    - { description: "Server uses sequential integer progress tokens (progressToken = ++counter)", expected: true }
+    - { description: "Progress notifications sent using token from client request params without ownership validation", expected: true }
+  true_negative:
+    - { description: "Progress tokens generated with crypto.randomUUID() and mapped to authenticated sessions", expected: false }
+    - { description: "Server validates progress token against active request map before sending notification", expected: false }
+intelligence_source: "MCP spec 2025-03-26 (progress notifications), CVE-2025-6515 (predictable ID pattern applied to progress tokens)"
+enabled: true

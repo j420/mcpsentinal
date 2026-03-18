@@ -1,0 +1,58 @@
+id: Q13
+name: MCP Bridge Package Supply Chain Attack
+category: cross-ecosystem-emergent
+severity: critical
+owasp: MCP10-supply-chain
+mitre: AML.T0054
+
+# THREAT INTELLIGENCE (Senior Security Architect — Supply Chain):
+#
+# CVE-2025-6514 (CVSS 9.6): mcp-remote, the npm package used to add OAuth
+# support and remote transport to MCP servers, contained a critical RCE
+# vulnerability. With 437,000+ downloads and adoption by Cloudflare, Hugging
+# Face, and Auth0, it was a supply chain bomb.
+#
+# The pattern: MCP BRIDGE PACKAGES — npm/PyPI packages that connect MCP to
+# other ecosystems — are high-value supply chain targets because:
+#   1. They run with MCP server privileges (full tool access)
+#   2. They're installed as dependencies, not as standalone servers
+#   3. They're often added via `npx` or `uvx` without version pinning
+#   4. A single compromised bridge infects all downstream MCP servers using it
+#
+# HIGH-RISK BRIDGE PACKAGES (as of March 2026):
+#   npm: mcp-remote, @modelcontextprotocol/sdk, mcp-proxy, mcp-gateway
+#   PyPI: mcp, fastmcp, langchain-mcp, llama-index-mcp
+#
+# Intelligence: CVE-2025-6514 (JFrog, 2025), Wiz MCP supply chain analysis,
+# OWASP ASI04 Agentic Supply Chain
+
+detect:
+  type: regex
+  patterns:
+    # Running MCP bridge packages without version pinning
+    - "(?i)npx\\s+(?:mcp-remote|mcp-proxy|mcp-gateway|@modelcontextprotocol)(?!@\\d)"
+    - "(?i)uvx\\s+(?:mcp|fastmcp|mcp-server)(?!==\\d)"
+    # Dependencies on known high-risk bridge packages without pinned versions
+    - "(?i)[\"'](?:mcp-remote|mcp-proxy|mcp-gateway)[\"']\\s*:\\s*[\"'](?:\\^|~|\\*|latest)"
+    - "(?i)[\"']@modelcontextprotocol/sdk[\"']\\s*:\\s*[\"'](?:\\^|~|\\*|latest)"
+    # Using MCP bridge in spawn/exec (common in IDE configs)
+    - "(?i)(?:spawn|exec|fork).*(?:npx|node).*(?:mcp-remote|mcp-proxy|mcp-gateway)"
+    # PyPI bridge packages without version constraints
+    - "(?i)(?:mcp|fastmcp|langchain-mcp|llama-index-mcp)(?:>=|~=|==)?(?!\\d)"
+    # Fetching MCP bridge packages from untrusted registries
+    - "(?i)(?:registry|index[_\\s-]?url).*(?:http://|(?!npmjs|pypi|registry\\.npmjs))"
+    # Dynamic/runtime MCP bridge package installation
+    - "(?i)(?:pip\\s+install|npm\\s+install|npx).*(?:mcp|fastmcp).*(?:--no-cache|--force)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)(?:lock|lockfile|shrinkwrap|frozen)"
+remediation: "MCP bridge packages (mcp-remote, mcp-proxy, @modelcontextprotocol/sdk, fastmcp) are high-value supply chain targets — CVE-2025-6514 (CVSS 9.6) in mcp-remote affected 437,000+ installs. Always pin exact versions (no ^ or ~ ranges). Use lockfiles (package-lock.json, pnpm-lock.yaml, uv.lock). Never run `npx mcp-remote` without version pinning. Verify package integrity with `npm audit` or `pip-audit` before deployment. Reference: CVE-2025-6514, OWASP ASI04."
+test_cases:
+  true_positive:
+    - { description: "Package.json depends on mcp-remote with ^0.1.0 version range (not pinned)", expected: true }
+    - { description: "IDE config spawns 'npx mcp-remote' without version specification", expected: true }
+  true_negative:
+    - { description: "Package.json depends on mcp-remote@0.1.16 (exact pinned version)", expected: false }
+    - { description: "Lockfile present with integrity hashes for all MCP dependencies", expected: false }
+enabled: true

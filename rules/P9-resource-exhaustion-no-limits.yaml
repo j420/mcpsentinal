@@ -1,0 +1,45 @@
+id: P9
+name: Missing Container Resource Limits
+category: infrastructure-runtime
+severity: high
+owasp: MCP07-insecure-config
+mitre: T1499.001
+# CIS Docker Benchmark v1.7.0 §5.10-5.14: Set memory/CPU/restart/PID limits.
+# CIS Kubernetes Benchmark §5.2.7: "Minimize container resource requests and limits"
+# CVE-2025-26449: Permanent DoS via resource exhaustion when limits not set.
+# Kubernetes LimitRange/ResourceQuota: enforce namespace-level limits.
+
+detect:
+  type: regex
+  patterns:
+    # Docker run without resource limits (long-form detection)
+    - "(?i)docker\\s+run(?!.*(?:--memory|--cpus|-m\\s|--pids-limit|--ulimit)).*(?:mcp|server|app)"
+    # docker-compose without resource limits (deploy.resources absent)
+    - "(?i)(?:image|build)\\s*:[\\s\\S]{0,300}(?:ports|volumes)(?!.*(?:mem_limit|cpus|deploy|resources))"
+    # Fork bomb patterns in source
+    - "(?i)while\\s*\\(?\\s*(?:true|1)\\s*\\)?\\s*(?:do|\\{)\\s*(?:fork|spawn|exec|child_process)"
+    - "(?i)for\\s*\\(\\s*;\\s*;\\s*\\)\\s*(?:fork|spawn|new\\s+Thread)"
+    # Unbounded file creation (inode/disk exhaustion)
+    - "(?i)(?:for|while)\\s*[^}]*(?:fs\\.writeFile|open\\s*\\([^)]*[\"']w|createWriteStream)(?!.*(?:limit|max|count|quota))"
+    # Kubernetes container without resource limits
+    - "(?i)containers\\s*:\\s*\\n(?:(?!resources\\s*:)[\\s\\S]){0,500}(?:image|name)\\s*:"
+    # No PID limits (fork bomb protection)
+    - "(?i)--pids-limit\\s*[=:]?\\s*(?:-1|0|unlimited)"
+    # Unlimited ulimit settings
+    - "(?i)ulimit\\s+.*(?:nofile|nproc|fsize).*unlimited"
+    - "(?i)--ulimit\\s+(?:nofile|nproc)\\s*=\\s*(?:-1|unlimited)"
+  context: source_code
+  exclude_patterns:
+    - "(?i)test|spec|mock|fixture|example"
+    - "(?i)resources\\s*:\\s*\\n\\s*(?:limits|requests)"
+    - "(?i)mem_limit|cpus|memory|cpu"
+remediation: "Always set resource limits for MCP server containers: memory (--memory), CPU (--cpus), PIDs (--pids-limit), file descriptors (--ulimit nofile), and open files. In Kubernetes, set both requests and limits in the container spec. Use LimitRange and ResourceQuota at the namespace level as a safety net. Set pids.max in cgroups to prevent fork bombs. A missing PID limit allows a single tool invocation to fork-bomb the host (CVE-2025-26449 class)."
+test_cases:
+  true_positive:
+    - { description: "docker-compose.yml defines MCP server container with image and ports but no memory or CPU limits", expected: true }
+    - { description: "Kubernetes container spec has image and command but no resources.limits section", expected: true }
+  true_negative:
+    - { description: "docker-compose.yml sets deploy.resources.limits.memory: 512M and cpus: '0.5'", expected: false }
+    - { description: "Kubernetes pod spec includes resources.limits.memory: 256Mi and cpu: 500m", expected: false }
+intelligence_source: "CIS Docker Benchmark v1.7.0 Sections 5.10-5.14, CIS Kubernetes Benchmark 5.2.7, CVE-2025-26449 (resource exhaustion DoS)"
+enabled: true
