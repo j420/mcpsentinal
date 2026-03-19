@@ -29,6 +29,7 @@ interface Server {
   github_url: string | null;
   npm_package: string | null;
   pypi_package: string | null;
+  source_names: string[];
 }
 
 interface Pagination {
@@ -76,7 +77,10 @@ async function getServers(params: {
     if (!res.ok) return { servers: [], pagination: { total: 0, page: 1, limit: 25, pages: 0 } };
     const data = await res.json();
     return {
-      servers: data.data || [],
+      servers: (data.data || []).map((s: Record<string, unknown>) => ({
+        ...s,
+        source_names: Array.isArray(s.source_names) ? s.source_names : [],
+      })),
       pagination: data.pagination || { total: 0, page: 1, limit: 25, pages: 0 },
     };
   } catch {
@@ -114,12 +118,20 @@ function fmtNum(n: number | null | undefined): string {
   return n.toLocaleString();
 }
 
-function sourceOrigin(server: Server): { label: string } | null {
-  if (server.npm_package) return { label: "npm" };
-  if (server.pypi_package) return { label: "PyPI" };
-  if (server.github_url) return { label: "GitHub" };
-  return null;
-}
+const SOURCE_DISPLAY: Record<string, string> = {
+  pulsemcp: "PulseMCP",
+  smithery: "Smithery",
+  npm: "npm",
+  pypi: "PyPI",
+  github: "GitHub",
+  "official-registry": "Official",
+  glama: "Glama",
+  "awesome-mcp-servers": "Awesome",
+  "docker-hub": "Docker",
+  zarq: "Zarq",
+  manual: "Manual",
+  other: "Other",
+};
 
 const CATEGORIES = [
   "database",
@@ -562,14 +574,15 @@ export default async function HomePage({
                 {server.tool_count > 0 ? server.tool_count : "\u2014"}
               </span>
               <span className="stcol stcol-origin">
-                {(() => {
-                  const origin = sourceOrigin(server);
-                  return origin ? (
-                    <span className="server-meta-chip server-meta-origin">{origin.label}</span>
-                  ) : (
-                    <span className="stcol-empty">{"\u2014"}</span>
-                  );
-                })()}
+                {server.source_names.length > 0 ? (
+                  server.source_names.map((s) => (
+                    <span key={s} className="server-meta-chip server-meta-origin">
+                      {SOURCE_DISPLAY[s] || s}
+                    </span>
+                  ))
+                ) : (
+                  <span className="stcol-empty">{"\u2014"}</span>
+                )}
               </span>
               <span className="stcol stcol-score">
                 <ScoreBadge score={server.latest_score} />
