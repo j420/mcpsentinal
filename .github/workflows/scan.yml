@@ -37,9 +37,9 @@ on:
         default: false
         type: boolean
 
-  # Daily safety net: catches servers added outside the weekly crawl
-  schedule:
-    - cron: "0 4 * * *"   # 04:00 UTC daily — 2h after crawl.yml at 02:00
+  # Daily schedule disabled — re-enable when scan volume justifies it
+  # schedule:
+  #   - cron: "0 4 * * *"   # 04:00 UTC daily — 2h after crawl.yml at 02:00
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Concurrency: queue — never cancel a running scan, never run two in parallel.
