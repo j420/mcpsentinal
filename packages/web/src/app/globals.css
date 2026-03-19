@@ -637,6 +637,10 @@ code, pre, kbd {
   transform: translateY(-3px);
   color: inherit;
 }
+.featured-card-branded:hover {
+  border-color: rgba(255,255,255,0.3);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+}
 .featured-card:active {
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
@@ -652,6 +656,7 @@ code, pre, kbd {
   transition: color var(--t-fast) var(--ease);
 }
 .featured-card:hover .featured-card-name { color: var(--accent); }
+.featured-card-branded:hover .featured-card-name { color: #fff; }
 
 .featured-card-desc {
   font-family: var(--font-body);
@@ -3076,13 +3081,6 @@ code, pre, kbd {
 }
 
 /* ── Featured card brand bar ──────────────────────────── */
-.featured-brand-bar {
-  height: 3px;
-  margin: 0 calc(-1 * var(--s5)) var(--s4);
-  margin-top: 0;
-  border-radius: 0;
-}
-
 .featured-brand-row {
   display: flex;
   align-items: center;
@@ -3114,12 +3112,6 @@ code, pre, kbd {
 
 /* ── Featured carousel ──────────────────────────────── */
 .featured-carousel { position: relative; }
-
-.featured-count {
-  font-size: 12px;
-  color: var(--text-3);
-  font-weight: 500;
-}
 
 .featured-grid-animated {
   animation: carouselFadeIn 0.4s ease;

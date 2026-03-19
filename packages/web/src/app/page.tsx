@@ -388,7 +388,6 @@ export default async function HomePage({
         <section className="featured-section" aria-label="Official server integrations">
           <div className="featured-header">
             <h2 className="featured-heading">Official Integrations</h2>
-            <span className="featured-count">{FEATURED_ORGS.length} verified orgs</span>
             <a href="/?sort=score&order=desc" className="featured-view-all">
               Browse all →
             </a>
