@@ -80,6 +80,13 @@ async function main(): Promise<void> {
 
   // ── Initialize DB + pipeline ───────────────────────────────────────────────
   const pool = new pg.Pool({ connectionString: databaseUrl });
+
+  // Handle idle connection resets from Railway proxy — without this handler,
+  // ECONNRESET on an idle pooled connection crashes the entire process.
+  pool.on("error", (err) => {
+    logger.warn({ err: err.message }, "Idle pool connection error — pool will reconnect");
+  });
+
   const db = new DatabaseQueries(pool);
 
   try {
