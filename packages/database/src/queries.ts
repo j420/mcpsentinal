@@ -319,14 +319,20 @@ export class DatabaseQueries {
     );
 
     const dataResult = await this.pool.query(
-      `SELECT * FROM servers ${where}
+      `SELECT s.*,
+              COALESCE(
+                (SELECT array_agg(DISTINCT src.source_name ORDER BY src.source_name)
+                 FROM sources src WHERE src.server_id = s.id),
+                '{}'
+              ) AS source_names
+       FROM servers s ${where}
        ORDER BY ${sort} ${order} NULLS LAST
        LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
       [...params, query.limit, offset]
     );
 
     return {
-      servers: dataResult.rows as Server[],
+      servers: dataResult.rows as (Server & { source_names: string[] })[],
       total: parseInt(countResult.rows[0].total, 10),
       page: query.page,
       limit: query.limit,
