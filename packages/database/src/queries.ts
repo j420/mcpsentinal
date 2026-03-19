@@ -393,6 +393,12 @@ export class DatabaseQueries {
         }
       }
     }
+
+    // Denormalize tool_count on the servers table
+    await this.pool.query(
+      "UPDATE servers SET tool_count = $1 WHERE id = $2",
+      [tools.length, serverId]
+    );
   }
 
   async getToolsForServer(serverId: string) {
