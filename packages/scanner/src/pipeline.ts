@@ -628,14 +628,14 @@ export class ScanPipeline {
         for (const field of [
           "endpoint",
           "server_url",
-          "url",
           "endpoint_url",
           "baseUrl",
           "base_url",
           "serverUrl",
+          "url",
         ]) {
           const value = meta[field];
-          if (typeof value === "string" && this.isHttpUrl(value)) {
+          if (typeof value === "string" && this.isHttpUrl(value) && this.isMcpEndpoint(value)) {
             return value;
           }
         }
@@ -660,6 +660,36 @@ export class ScanPipeline {
     try {
       const u = new URL(url);
       return u.protocol === "http:" || u.protocol === "https:";
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Filter out known non-MCP URLs that appear in raw_metadata.
+   * Registry listing pages (PulseMCP, Smithery web, GitHub, npm, PyPI)
+   * are NOT MCP endpoints — they return HTML, not MCP protocol responses.
+   */
+  private isMcpEndpoint(url: string): boolean {
+    try {
+      const host = new URL(url).hostname.toLowerCase();
+      const nonMcpHosts = [
+        "pulsemcp.com",
+        "www.pulsemcp.com",
+        "smithery.ai",
+        "www.smithery.ai",
+        "registry.smithery.ai",
+        "github.com",
+        "www.github.com",
+        "npmjs.com",
+        "www.npmjs.com",
+        "pypi.org",
+        "www.pypi.org",
+        "registry.modelcontextprotocol.io",
+        "glama.ai",
+        "www.glama.ai",
+      ];
+      return !nonMcpHosts.includes(host);
     } catch {
       return false;
     }

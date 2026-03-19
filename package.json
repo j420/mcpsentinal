@@ -13,6 +13,7 @@
     "db:reset": "pnpm --filter=@mcp-sentinel/database run reset",
     "crawl": "pnpm --filter=@mcp-sentinel/crawler run crawl",
     "scan": "pnpm --filter=@mcp-sentinel/scanner run scan",
+    "enumerate": "pnpm --filter=@mcp-sentinel/scanner run enumerate",
     "score": "pnpm --filter=@mcp-sentinel/scorer run score",
     "risk-matrix": "pnpm --filter=@mcp-sentinel/risk-matrix run risk-matrix",
     "cli": "pnpm --filter=@mcp-sentinel/cli run cli"

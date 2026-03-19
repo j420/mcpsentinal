@@ -10,7 +10,8 @@
     "dev": "tsc --watch",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "scan": "tsx src/cli.ts"
+    "scan": "tsx src/cli.ts",
+    "enumerate": "tsx src/enumerate.ts"
   },
   "dependencies": {
     "@mcp-sentinel/analyzer": "workspace:*",

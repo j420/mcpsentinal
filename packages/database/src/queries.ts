@@ -771,6 +771,18 @@ export class DatabaseQueries {
     ).rows as Server[];
   }
 
+  async getServersNeedingEnumeration(limit: number = 100) {
+    return (
+      await this.pool.query(
+        `SELECT * FROM servers
+         WHERE connection_status IS NULL
+         ORDER BY github_stars DESC NULLS LAST
+         LIMIT $1`,
+        [limit]
+      )
+    ).rows as Server[];
+  }
+
   async getAllServers(limit: number = 100) {
     return (
       await this.pool.query(
