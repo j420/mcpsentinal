@@ -112,6 +112,12 @@ export class McpRegistryCrawler implements CrawlerSource {
             s.packages?.find((p) => p.registryType === "pypi")?.identifier ||
             null;
 
+          const language = npmPackage
+            ? "TypeScript"
+            : pypiPackage
+              ? "Python"
+              : null;
+
           servers.push({
             name: s.title || s.name,
             description: s.description || null,
@@ -120,7 +126,7 @@ export class McpRegistryCrawler implements CrawlerSource {
             npm_package: npmPackage,
             pypi_package: pypiPackage,
             category: this.inferCategory(s.name, s.description),
-            language: null,
+            language,
             license: null,
             source_name: "official-registry",
             source_url: `https://registry.modelcontextprotocol.io/servers/${encodeURIComponent(s.name)}`,

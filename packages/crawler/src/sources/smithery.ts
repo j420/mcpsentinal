@@ -77,6 +77,11 @@ export class SmitheryCrawler implements CrawlerSource {
             ? server.repository
             : null;
 
+          // Infer language from scoped npm package names (e.g. "@org/pkg" → TypeScript)
+          const language = server.qualifiedName?.startsWith("@")
+            ? "TypeScript"
+            : null;
+
           servers.push({
             name: server.displayName || server.qualifiedName,
             description: server.description || null,
@@ -85,7 +90,7 @@ export class SmitheryCrawler implements CrawlerSource {
             npm_package: null,
             pypi_package: null,
             category: this.inferCategory(server.displayName || server.qualifiedName, server.description),
-            language: null,
+            language,
             license: null,
             source_name: "smithery",
             source_url: `https://smithery.ai/server/${server.qualifiedName}`,
