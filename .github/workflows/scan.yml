@@ -4,11 +4,11 @@ name: Scan & Score MCP Servers
 # Triggers
 # ─────────────────────────────────────────────────────────────────────────────
 on:
-  # Auto-chain disabled — re-enable when pipeline is production-ready
-  # workflow_run:
-  #   workflows: ["Crawl MCP Registry"]
-  #   types: [completed]
-  #   branches: [main]
+  # Auto-chain: scan runs automatically after crawl completes
+  workflow_run:
+    workflows: ["Crawl MCP Registry"]
+    types: [completed]
+    branches: [main]
 
   # Manual trigger with full control
   workflow_dispatch:
@@ -37,9 +37,9 @@ on:
         default: false
         type: boolean
 
-  # Daily schedule disabled — re-enable when pipeline is production-ready
-  # schedule:
-  #   - cron: "0 4 * * *"   # 04:00 UTC daily — 2h after crawl.yml at 02:00
+  # Daily safety net: catches servers added outside the weekly crawl
+  schedule:
+    - cron: "0 4 * * *"   # 04:00 UTC daily — 2h after crawl.yml at 02:00
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Concurrency: queue — never cancel a running scan, never run two in parallel.
