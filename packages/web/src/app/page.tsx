@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import FeaturedCarousel from "../components/FeaturedCarousel";
 
 export const dynamic = "force-dynamic";
 
@@ -158,70 +159,67 @@ const SORT_OPTIONS = [
   { value: "updated", label: "Last Updated" },
 ];
 
-// ── Official org featured servers ────────────────────────────────────────────
-const FEATURED_ORGS: Array<{
+// ── Official org featured servers (50 top tech orgs) ────────────────────────
+interface FeaturedOrg {
   name: string;
   org: string;
   slug: string;
   desc: string;
   color: string;
-  textColor: string;
   initials: string;
-}> = [
-  {
-    name: "GitHub MCP Server",
-    org: "GitHub",
-    slug: "github-mcp-server",
-    desc: "Official GitHub server — repos, issues, PRs, code search, Actions.",
-    color: "#0969da",
-    textColor: "#0969da",
-    initials: "GH",
-  },
-  {
-    name: "Stripe Agent Toolkit",
-    org: "Stripe",
-    slug: "stripe-agent-toolkit",
-    desc: "Official Stripe server — payments, customers, invoices, subscriptions.",
-    color: "#635BFF",
-    textColor: "#635BFF",
-    initials: "ST",
-  },
-  {
-    name: "Cloudflare MCP Server",
-    org: "Cloudflare",
-    slug: "mcp-server-cloudflare",
-    desc: "Official Cloudflare server — Workers, R2, KV, D1, Durable Objects.",
-    color: "#F6821F",
-    textColor: "#e06a0a",
-    initials: "CF",
-  },
-  {
-    name: "Linear MCP",
-    org: "Linear",
-    slug: "linear-mcp",
-    desc: "Official Linear server — issues, projects, cycles, teams.",
-    color: "#5E6AD2",
-    textColor: "#5E6AD2",
-    initials: "LN",
-  },
-  {
-    name: "Notion MCP",
-    org: "Notion",
-    slug: "notion-mcp",
-    desc: "Official Notion server — pages, databases, blocks, search.",
-    color: "#9CA3AF",
-    textColor: "#9CA3AF",
-    initials: "NT",
-  },
-  {
-    name: "Atlassian Remote MCP",
-    org: "Atlassian",
-    slug: "atlassian-remote-mcp-server",
-    desc: "Official Atlassian server — Jira issues, Confluence pages, Bitbucket.",
-    color: "#0052CC",
-    textColor: "#0052CC",
-    initials: "AT",
-  },
+}
+
+const FEATURED_ORGS: FeaturedOrg[] = [
+  { name: "GitHub MCP Server", org: "GitHub", slug: "github-mcp-server", desc: "Repos, issues, PRs, code search, Actions.", color: "#0969da", initials: "GH" },
+  { name: "Stripe Agent Toolkit", org: "Stripe", slug: "stripe-agent-toolkit", desc: "Payments, customers, invoices, subscriptions.", color: "#635BFF", initials: "ST" },
+  { name: "Cloudflare MCP Server", org: "Cloudflare", slug: "mcp-server-cloudflare", desc: "Workers, R2, KV, D1, Durable Objects.", color: "#F6821F", initials: "CF" },
+  { name: "Linear MCP", org: "Linear", slug: "linear-mcp", desc: "Issues, projects, cycles, teams.", color: "#5E6AD2", initials: "LN" },
+  { name: "Notion MCP", org: "Notion", slug: "notion-mcp", desc: "Pages, databases, blocks, search.", color: "#000000", initials: "NT" },
+  { name: "Atlassian Remote MCP", org: "Atlassian", slug: "atlassian-remote-mcp-server", desc: "Jira issues, Confluence pages, Bitbucket.", color: "#0052CC", initials: "AT" },
+  { name: "Slack MCP Server", org: "Slack", slug: "slack-mcp-server", desc: "Channels, messages, users, reactions.", color: "#4A154B", initials: "SL" },
+  { name: "Google Drive MCP", org: "Google", slug: "google-drive-mcp", desc: "Drive files, Docs, Sheets, permissions.", color: "#4285F4", initials: "GG" },
+  { name: "Microsoft Graph MCP", org: "Microsoft", slug: "microsoft-graph-mcp", desc: "Office 365, Teams, OneDrive, Outlook.", color: "#00A4EF", initials: "MS" },
+  { name: "AWS MCP Server", org: "AWS", slug: "aws-mcp-server", desc: "S3, Lambda, DynamoDB, CloudFormation.", color: "#FF9900", initials: "AW" },
+  { name: "Vercel MCP Server", org: "Vercel", slug: "vercel-mcp-server", desc: "Deployments, domains, edge functions.", color: "#000000", initials: "VC" },
+  { name: "Supabase MCP Server", org: "Supabase", slug: "supabase-mcp-server", desc: "Database, auth, storage, edge functions.", color: "#3ECF8E", initials: "SB" },
+  { name: "Datadog MCP Server", org: "Datadog", slug: "datadog-mcp-server", desc: "Metrics, logs, traces, monitors.", color: "#632CA6", initials: "DD" },
+  { name: "PagerDuty MCP Server", org: "PagerDuty", slug: "pagerduty-mcp-server", desc: "Incidents, services, escalation policies.", color: "#06AC38", initials: "PD" },
+  { name: "Sentry MCP Server", org: "Sentry", slug: "sentry-mcp-server", desc: "Errors, performance, releases, alerts.", color: "#362D59", initials: "SN" },
+  { name: "MongoDB MCP Server", org: "MongoDB", slug: "mongodb-mcp-server", desc: "Atlas clusters, collections, aggregation.", color: "#00ED64", initials: "MG" },
+  { name: "Redis MCP Server", org: "Redis", slug: "redis-mcp-server", desc: "Key-value ops, streams, pub/sub.", color: "#DC382D", initials: "RD" },
+  { name: "Twilio MCP Server", org: "Twilio", slug: "twilio-mcp-server", desc: "SMS, voice, video, authentication.", color: "#F22F46", initials: "TW" },
+  { name: "SendGrid MCP Server", org: "SendGrid", slug: "sendgrid-mcp-server", desc: "Email delivery, templates, analytics.", color: "#1A82E2", initials: "SG" },
+  { name: "Figma MCP Server", org: "Figma", slug: "figma-mcp-server", desc: "Design files, components, variables.", color: "#F24E1E", initials: "FG" },
+  { name: "Shopify MCP Server", org: "Shopify", slug: "shopify-mcp-server", desc: "Products, orders, customers, inventory.", color: "#96BF48", initials: "SH" },
+  { name: "Salesforce MCP Server", org: "Salesforce", slug: "salesforce-mcp-server", desc: "CRM objects, SOQL queries, workflows.", color: "#00A1E0", initials: "SF" },
+  { name: "HubSpot MCP Server", org: "HubSpot", slug: "hubspot-mcp-server", desc: "Contacts, deals, tickets, marketing.", color: "#FF7A59", initials: "HS" },
+  { name: "Zendesk MCP Server", org: "Zendesk", slug: "zendesk-mcp-server", desc: "Tickets, users, organizations, search.", color: "#03363D", initials: "ZD" },
+  { name: "Jira MCP Server", org: "Jira", slug: "jira-mcp-server", desc: "Issues, sprints, boards, epics.", color: "#0052CC", initials: "JR" },
+  { name: "Confluence MCP Server", org: "Confluence", slug: "confluence-mcp-server", desc: "Pages, spaces, comments, search.", color: "#172B4D", initials: "CN" },
+  { name: "GitLab MCP Server", org: "GitLab", slug: "gitlab-mcp-server", desc: "Repos, CI/CD pipelines, merge requests.", color: "#FC6D26", initials: "GL" },
+  { name: "Bitbucket MCP Server", org: "Bitbucket", slug: "bitbucket-mcp-server", desc: "Repos, pull requests, pipelines.", color: "#0052CC", initials: "BB" },
+  { name: "Docker MCP Server", org: "Docker", slug: "docker-mcp-server", desc: "Containers, images, volumes, networks.", color: "#2496ED", initials: "DK" },
+  { name: "Kubernetes MCP Server", org: "Kubernetes", slug: "kubernetes-mcp-server", desc: "Pods, deployments, services, config.", color: "#326CE5", initials: "K8" },
+  { name: "Terraform MCP Server", org: "HashiCorp", slug: "terraform-mcp-server", desc: "Infrastructure as code, state, plans.", color: "#7B42BC", initials: "TF" },
+  { name: "Snowflake MCP Server", org: "Snowflake", slug: "snowflake-mcp-server", desc: "Warehouses, queries, stages, pipes.", color: "#29B5E8", initials: "SF" },
+  { name: "Databricks MCP Server", org: "Databricks", slug: "databricks-mcp-server", desc: "Notebooks, jobs, clusters, Unity Catalog.", color: "#FF3621", initials: "DB" },
+  { name: "Elastic MCP Server", org: "Elastic", slug: "elastic-mcp-server", desc: "Search, observability, security analytics.", color: "#FEC514", initials: "EL" },
+  { name: "Grafana MCP Server", org: "Grafana", slug: "grafana-mcp-server", desc: "Dashboards, alerts, data sources.", color: "#F46800", initials: "GF" },
+  { name: "New Relic MCP Server", org: "New Relic", slug: "new-relic-mcp-server", desc: "APM, infrastructure, logs, NRQL.", color: "#008C99", initials: "NR" },
+  { name: "Splunk MCP Server", org: "Splunk", slug: "splunk-mcp-server", desc: "Search, dashboards, alerts, SPL queries.", color: "#65A637", initials: "SP" },
+  { name: "Airtable MCP Server", org: "Airtable", slug: "airtable-mcp-server", desc: "Bases, tables, records, views.", color: "#18BFFF", initials: "AT" },
+  { name: "Asana MCP Server", org: "Asana", slug: "asana-mcp-server", desc: "Tasks, projects, portfolios, goals.", color: "#F06A6A", initials: "AS" },
+  { name: "Monday.com MCP Server", org: "Monday", slug: "monday-mcp-server", desc: "Boards, items, updates, automations.", color: "#FF3D57", initials: "MN" },
+  { name: "Okta MCP Server", org: "Okta", slug: "okta-mcp-server", desc: "Users, groups, apps, auth policies.", color: "#007DC1", initials: "OK" },
+  { name: "Auth0 MCP Server", org: "Auth0", slug: "auth0-mcp-server", desc: "Tenants, users, rules, connections.", color: "#EB5424", initials: "A0" },
+  { name: "Postman MCP Server", org: "Postman", slug: "postman-mcp-server", desc: "Collections, environments, monitors.", color: "#FF6C37", initials: "PM" },
+  { name: "CircleCI MCP Server", org: "CircleCI", slug: "circleci-mcp-server", desc: "Pipelines, workflows, jobs, orbs.", color: "#343434", initials: "CI" },
+  { name: "LaunchDarkly MCP Server", org: "LaunchDarkly", slug: "launchdarkly-mcp-server", desc: "Feature flags, segments, experiments.", color: "#405BFF", initials: "LD" },
+  { name: "Prisma MCP Server", org: "Prisma", slug: "prisma-mcp-server", desc: "Schema management, migrations, queries.", color: "#2D3748", initials: "PR" },
+  { name: "Planetscale MCP Server", org: "PlanetScale", slug: "planetscale-mcp-server", desc: "Databases, branches, deploy requests.", color: "#000000", initials: "PS" },
+  { name: "Neon MCP Server", org: "Neon", slug: "neon-mcp-server", desc: "Serverless Postgres, branches, endpoints.", color: "#00E599", initials: "NE" },
+  { name: "Render MCP Server", org: "Render", slug: "render-mcp-server", desc: "Services, deploys, databases, cron jobs.", color: "#46E3B7", initials: "RN" },
+  { name: "Fly.io MCP Server", org: "Fly.io", slug: "fly-mcp-server", desc: "Apps, machines, volumes, secrets.", color: "#7B3FE4", initials: "FY" },
 ];
 
 // ── Components ────────────────────────────────────────────────────────────────
@@ -232,29 +230,6 @@ function ScoreBadge({ score }: { score: number | null }) {
     <span className={`score-badge ${cls}`}>
       {score === null ? "Unscanned" : score}
     </span>
-  );
-}
-
-function FeaturedOrgCard({ org }: { org: (typeof FEATURED_ORGS)[0] }) {
-  return (
-    <a href={`/server/${org.slug}`} className="featured-card" style={{ paddingTop: 0 }}>
-      <div className="featured-brand-bar" style={{ background: org.color }} />
-      <div className="featured-brand-row">
-        <div
-          className="featured-brand-icon"
-          style={{
-            background: `${org.color}18`,
-            border: `1px solid ${org.color}30`,
-            color: org.textColor,
-          }}
-        >
-          {org.initials}
-        </div>
-        <span className="featured-brand-label">{org.org}</span>
-      </div>
-      <div className="featured-card-name">{org.name}</div>
-      <div className="featured-card-desc">{org.desc}</div>
-    </a>
   );
 }
 
@@ -408,20 +383,17 @@ export default async function HomePage({
         </div>
       </section>
 
-      {/* ── Featured Official Servers ─────────────────── */}
+      {/* ── Featured Official Servers (rotating carousel) ── */}
       {!isFiltered && (
         <section className="featured-section" aria-label="Official server integrations">
           <div className="featured-header">
             <h2 className="featured-heading">Official Integrations</h2>
+            <span className="featured-count">{FEATURED_ORGS.length} verified orgs</span>
             <a href="/?sort=score&order=desc" className="featured-view-all">
               Browse all →
             </a>
           </div>
-          <div className="featured-grid">
-            {FEATURED_ORGS.map((org) => (
-              <FeaturedOrgCard key={org.slug} org={org} />
-            ))}
-          </div>
+          <FeaturedCarousel orgs={FEATURED_ORGS} />
         </section>
       )}
 
@@ -537,6 +509,7 @@ export default async function HomePage({
         <div className="server-table-wrap" aria-label="MCP server registry">
           <div className="server-table-header">
             <span className="stcol stcol-name">Server</span>
+            <span className="stcol stcol-owner">Owner</span>
             <span className="stcol stcol-category">Category</span>
             <span className="stcol stcol-lang">Language</span>
             <span className="stcol stcol-tools">Tools</span>
@@ -551,15 +524,13 @@ export default async function HomePage({
             >
               <div className="stcol stcol-name">
                 <span className="server-row-name">{server.name}</span>
-                {server.author && (
-                  <span className="server-row-author">
-                    {server.author}
-                  </span>
-                )}
                 {server.description && (
                   <p className="server-row-desc">{server.description}</p>
                 )}
               </div>
+              <span className="stcol stcol-owner">
+                {server.author || "\u2014"}
+              </span>
               <span className="stcol stcol-category">
                 {server.category ? (
                   <span className="server-meta-chip server-meta-cat">{server.category}</span>
