@@ -52,25 +52,31 @@ export default function FeaturedCarousel({ orgs }: { orgs: FeaturedOrg[] }) {
           <a
             key={org.slug}
             href={`/server/${org.slug}`}
-            className="featured-card"
-            style={{ paddingTop: 0 }}
+            className="featured-card featured-card-branded"
+            style={{
+              background: org.color,
+              borderColor: org.color,
+            }}
           >
-            <div className="featured-brand-bar" style={{ background: org.color }} />
             <div className="featured-brand-row">
               <div
                 className="featured-brand-icon"
                 style={{
-                  background: `${org.color}18`,
-                  border: `1px solid ${org.color}30`,
-                  color: org.color,
+                  background: "rgba(255,255,255,0.2)",
+                  border: "1px solid rgba(255,255,255,0.3)",
+                  color: "#fff",
                 }}
               >
                 {org.initials}
               </div>
-              <span className="featured-brand-label">{org.org}</span>
+              <span className="featured-brand-label" style={{ color: "rgba(255,255,255,0.8)" }}>
+                {org.org}
+              </span>
             </div>
-            <div className="featured-card-name">{org.name}</div>
-            <div className="featured-card-desc">{org.desc}</div>
+            <div className="featured-card-name" style={{ color: "#fff" }}>{org.name}</div>
+            <div className="featured-card-desc" style={{ color: "rgba(255,255,255,0.75)" }}>
+              {org.desc}
+            </div>
           </a>
         ))}
       </div>
