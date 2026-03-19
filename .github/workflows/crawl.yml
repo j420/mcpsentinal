@@ -22,9 +22,9 @@ on:
         type: string
         default: ""
 
-  # Re-crawl every Sunday at 02:00 UTC
-  schedule:
-    - cron: "0 2 * * 0"
+  # Scheduled runs disabled — re-enable when pipeline is production-ready
+  # schedule:
+  #   - cron: "0 2 * * 0"
 
 env:
   NODE_VERSION: "20"
