@@ -15,8 +15,9 @@ name: Rule Accuracy Audit
 #                   P18 (Trust & Accuracy Auditor), P9 (Scanner Engine Engineer)
 
 on:
-  schedule:
-    - cron: "0 3 * * 0"  # Sundays 03:00 UTC
+  # Schedule disabled — re-enable when pipeline is production-ready
+  # schedule:
+  #   - cron: "0 3 * * 0"  # Sundays 03:00 UTC
   workflow_dispatch:
     inputs:
       category:
