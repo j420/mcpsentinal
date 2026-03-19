@@ -61,8 +61,6 @@ export default function CategoryDeepDivePanel({ findings }: { findings: CddFindi
           const catHits = allRules.filter((r) => triggered.has(r));
           const cleanCount = allRules.length - catHits.length;
           const pct = allRules.length > 0 ? Math.round((cleanCount / allRules.length) * 100) : 100;
-          const totalTests = allRules.length * 4;
-          const passingTests = cleanCount * 4;
           const maturity = pct;
 
           return (
@@ -99,11 +97,8 @@ export default function CategoryDeepDivePanel({ findings }: { findings: CddFindi
                 <div className="cdd-stats">
                   {[
                     { num: allRules.length, label: "RULES", color: undefined },
-                    { num: cat.subCats.length, label: "SUB-CATS", color: undefined },
-                    { num: catHits.length, label: "GAPS", color: catHits.length > 0 ? "var(--critical)" : "var(--good)" },
-                    { num: `${pct}%`, label: "IMPL.", color: pct >= 80 ? "var(--good)" : pct >= 50 ? "var(--moderate)" : "var(--critical)" },
-                    { num: totalTests, label: "TESTS", color: undefined },
-                    { num: cat.frameworks.length, label: "STORIES", color: undefined },
+                    { num: catHits.length, label: "FINDINGS", color: catHits.length > 0 ? "var(--critical)" : "var(--good)" },
+                    { num: cat.frameworks.length, label: "FRAMEWORKS", color: undefined },
                   ].map((s) => (
                     <div key={s.label} className="cdd-stat">
                       <div className="cdd-stat-num" style={s.color ? { color: s.color } : {}}>
@@ -267,36 +262,6 @@ export default function CategoryDeepDivePanel({ findings }: { findings: CddFindi
                           </div>
                         );
                       })}
-                    </div>
-
-                    <div className="cdd-sidebar-card">
-                      <div className="cdd-sidebar-title">Test Execution</div>
-                      {(() => {
-                        const partialTests = Math.round(catHits.length * 1.5);
-                        const failingTests = Math.max(0, totalTests - passingTests - partialTests);
-                        const adjustedPartial = totalTests - passingTests - failingTests;
-                        return [
-                          { label: "Passing", count: passingTests, color: "var(--good)" },
-                          { label: "Partial", count: adjustedPartial > 0 ? adjustedPartial : 0, color: "var(--moderate)" },
-                          { label: "Failing", count: failingTests > 0 ? failingTests : totalTests - passingTests - (adjustedPartial > 0 ? adjustedPartial : 0), color: "var(--critical)" },
-                        ];
-                      })().map((row) => (
-                        <div key={row.label} className="cdd-test-row">
-                          <span className="cdd-test-label">{row.label}</span>
-                          <span className="cdd-fw-count" style={{ color: row.color }}>
-                            {row.count}/{totalTests}
-                          </span>
-                          <div className="cdd-fw-bar-wrap">
-                            <div
-                              className="cdd-fw-bar"
-                              style={{
-                                width: `${Math.round((row.count / (totalTests || 1)) * 100)}%`,
-                                background: row.color,
-                              }}
-                            />
-                          </div>
-                        </div>
-                      ))}
                     </div>
 
                     <div className="cdd-sidebar-card">
