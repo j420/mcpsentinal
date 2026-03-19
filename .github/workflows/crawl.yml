@@ -22,9 +22,9 @@ on:
         type: string
         default: ""
 
-  # Scheduled runs disabled — re-enable when pipeline is production-ready
-  # schedule:
-  #   - cron: "0 2 * * 0"
+  # Weekly crawl: Sundays 02:00 UTC — scan.yml auto-chains after completion
+  schedule:
+    - cron: "0 2 * * 0"
 
 env:
   NODE_VERSION: "20"
