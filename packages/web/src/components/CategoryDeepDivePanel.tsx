@@ -59,9 +59,6 @@ export default function CategoryDeepDivePanel({ findings }: { findings: CddFindi
         {THREAT_CATS.map((cat) => {
           const allRules = cat.subCats.flatMap((sc) => sc.rules);
           const catHits = allRules.filter((r) => triggered.has(r));
-          const cleanCount = allRules.length - catHits.length;
-          const pct = allRules.length > 0 ? Math.round((cleanCount / allRules.length) * 100) : 100;
-          const maturity = pct;
 
           return (
             <React.Fragment key={cat.id}>
@@ -81,15 +78,6 @@ export default function CategoryDeepDivePanel({ findings }: { findings: CddFindi
                       <div className="cdd-cat-name">{cat.name}</div>
                       <div className="cdd-cat-tagline">{cat.tagline}</div>
                     </div>
-                  </div>
-                  <div className="cdd-maturity">
-                    <div
-                      className="cdd-maturity-num"
-                      style={{ color: maturity >= 80 ? "var(--good)" : maturity >= 50 ? "var(--moderate)" : "var(--critical)" }}
-                    >
-                      {maturity}
-                    </div>
-                    <div className="cdd-maturity-label">MATURITY</div>
                   </div>
                 </div>
 
