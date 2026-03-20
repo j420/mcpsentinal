@@ -933,7 +933,8 @@ code, pre, kbd {
 .sev-high     { background: var(--sev-high-sub);      color: var(--sev-high); }
 .sev-medium   { background: var(--sev-medium-sub);    color: var(--sev-medium); }
 .sev-low      { background: var(--sev-low-sub);       color: var(--sev-low); }
-.sev-info     { background: var(--sev-info-sub);      color: var(--sev-info); }
+.sev-info,
+.sev-informational { background: var(--sev-info-sub);      color: var(--sev-info); }
 
 /* ── Category chip ──────────────────────────────────────── */
 .category-chip {
@@ -5719,7 +5720,13 @@ code, pre, kbd {
 
 /* Findings list */
 .sd-findings-list { display: flex; flex-direction: column; gap: var(--s3); }
-.sd-finding { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: var(--s5); border-left-width: 4px; box-shadow: var(--shadow-card); transition: box-shadow var(--t-base) var(--ease), transform var(--t-base) var(--ease); }
+.sd-finding { border: 1px solid var(--border); border-radius: var(--r-lg); padding: var(--s5); border-left-width: 4px; box-shadow: var(--shadow-card); transition: box-shadow var(--t-base) var(--ease), transform var(--t-base) var(--ease); }
+/* Severity-specific backgrounds and border colors for sd-finding cards */
+.sd-finding.finding-critical { border-left-color: var(--sev-critical); background: var(--finding-critical-bg); }
+.sd-finding.finding-high     { border-left-color: var(--sev-high);     background: var(--finding-high-bg); }
+.sd-finding.finding-medium   { border-left-color: var(--sev-medium);   background: var(--finding-medium-bg); }
+.sd-finding.finding-low      { border-left-color: var(--sev-low);      background: var(--finding-low-bg); }
+.sd-finding.finding-informational { border-left-color: var(--sev-info); background: var(--finding-info-bg); }
 .sd-finding:hover { box-shadow: var(--shadow-md); transform: translateX(2px); }
 .sd-finding-header { display: flex; align-items: center; gap: var(--s2); margin-bottom: var(--s2); flex-wrap: wrap; }
 .sd-finding-rule { font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--text-2); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 1px 6px; }

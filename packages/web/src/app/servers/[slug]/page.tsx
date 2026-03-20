@@ -96,7 +96,7 @@ export async function generateMetadata({
   const findCount = server.findings?.length ?? 0;
   return {
     title: `${server.name} Security Report`,
-    description: `Security analysis of ${server.name} MCP server. ${scoreStr} ${findCount} finding${findCount !== 1 ? "s" : ""} detected across 150+ security rules.`,
+    description: `Security analysis of ${server.name} MCP server. ${scoreStr} ${findCount} finding${findCount !== 1 ? "s" : ""} detected across 103 security rules.`,
   };
 }
 
@@ -168,7 +168,7 @@ function ScoreHero({ score, label }: { score: number | null; label: string }) {
   const color = scoreColor(score);
 
   return (
-    <div className="sd-score-hero">
+    <div className="sd-score-hero" role="meter" aria-label={`Security score: ${score !== null ? `${score} out of 100, rated ${label}` : "Not yet scanned"}`} aria-valuenow={score ?? undefined} aria-valuemin={0} aria-valuemax={100}>
       <div className="sd-score-ring-wrap">
         <svg width="140" height="140" viewBox="0 0 140 140" className="sd-score-ring-svg" aria-hidden="true">
           <circle cx="70" cy="70" r={r} fill="none" stroke="var(--surface-3)" strokeWidth="10" />
@@ -361,9 +361,9 @@ export default async function ServerDetailPage({
           <div className="sd-subscores-card">
             <SubScoreRow label="Code" value={sd.code_score} icon="&lt;/&gt;" />
             <SubScoreRow label="Dependencies" value={sd.deps_score} icon="&#9881;" />
-            <SubScoreRow label="Config" value={sd.config_score} icon="&#9881;" />
+            <SubScoreRow label="Config" value={sd.config_score} icon="&#9776;" />
             <SubScoreRow label="Description" value={sd.description_score} icon="&#9998;" />
-            <SubScoreRow label="Behavior" value={sd.behavior_score} icon="&#9752;" />
+            <SubScoreRow label="Behavior" value={sd.behavior_score} icon="&#9673;" />
           </div>
         </section>
       )}
