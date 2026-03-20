@@ -242,6 +242,35 @@ export default async function ServerDetailPage({
         </div>
       </section>
 
+      {/* ── Tools ──────────────────────────────────────────────────────── */}
+      {server.tools && server.tools.length > 0 && (
+        <section className="tools-section">
+          <h2 className="tools-heading">
+            Tools
+            <span className="tools-count">{server.tools.length}</span>
+          </h2>
+          <div className="tools-grid">
+            {server.tools.map((tool) => (
+              <div key={tool.name} className="tool-card">
+                <div className="tool-card-header">
+                  <span className="tool-name">{tool.name}</span>
+                  {tool.capability_tags && tool.capability_tags.length > 0 && (
+                    <div className="tool-tags">
+                      {tool.capability_tags.map((tag) => (
+                        <span key={tag} className="tool-tag">{tag}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {tool.description && (
+                  <p className="tool-desc">{tool.description}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* ── Category Deep Dive ────────────────────────────────────────── */}
       <CategoryDeepDivePanel findings={cddFindings} />
     </main>
