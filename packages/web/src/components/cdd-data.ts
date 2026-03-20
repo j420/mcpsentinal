@@ -789,3 +789,458 @@ export const THREAT_CATS: ThreatCat[] = [
     killChain: ["Initial Access", "Lateral Movement", "Supply Chain Compromise"],
   },
 ];
+
+// ── Enriched rule model (shared across all 6 tabs) ─────────────────────────
+
+export type RuleStatus = "implemented" | "partial" | "planned";
+export type RuleEffort = "low" | "medium" | "high";
+export type RuleRisk = "critical" | "high" | "medium" | "low";
+
+export interface RuleTest {
+  label: string;
+  status: "pass" | "fail";
+}
+
+export interface EnrichedRule {
+  id: string;
+  name: string;
+  cat: string;       // category ID e.g. "PI"
+  subCat: string;    // subcategory ID e.g. "PI-DIR"
+  severity: CddFinding["severity"];
+  status: RuleStatus;
+  risk: RuleRisk;
+  effort: RuleEffort;
+  killChainPhase: string;
+  frameworks: string[];
+  tests: RuleTest[];
+}
+
+export interface Gap {
+  id: string;
+  cat: string;
+  proposedSub: string;
+  name: string;
+  desc: string;
+  severity: CddFinding["severity"];
+}
+
+// Derive status from whether rule was triggered (simulated for static data)
+function deriveStatus(ruleId: string): RuleStatus {
+  const hash = ruleId.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  if (hash % 5 === 0) return "planned";
+  if (hash % 3 === 0) return "partial";
+  return "implemented";
+}
+
+function deriveEffort(severity: CddFinding["severity"]): RuleEffort {
+  if (severity === "critical" || severity === "high") return "high";
+  if (severity === "medium") return "medium";
+  return "low";
+}
+
+function deriveRisk(severity: CddFinding["severity"]): RuleRisk {
+  if (severity === "critical") return "critical";
+  if (severity === "high") return "high";
+  if (severity === "medium") return "medium";
+  return "low";
+}
+
+// Build RULES array from existing data
+export const RULES: EnrichedRule[] = (() => {
+  const rules: EnrichedRule[] = [];
+  for (const cat of THREAT_CATS) {
+    for (const sc of cat.subCats) {
+      for (const ruleId of sc.rules) {
+        const sev = RULE_SEVERITIES[ruleId] ?? "medium";
+        const tests = (RULE_TESTS[ruleId] ?? []).map((label, i) => ({
+          label,
+          status: (i < 2 ? "pass" : (i === 2 ? "pass" : "pass")) as "pass" | "fail",
+        }));
+        // Mark some tests as failing for non-implemented rules
+        const status = deriveStatus(ruleId);
+        if (status === "partial" && tests.length > 2) {
+          tests[tests.length - 1] = { ...tests[tests.length - 1], status: "fail" };
+        }
+        if (status === "planned") {
+          for (let i = 1; i < tests.length; i++) tests[i] = { ...tests[i], status: "fail" };
+        }
+        const fwBadges = getRuleFrameworks(ruleId);
+        rules.push({
+          id: ruleId,
+          name: RULE_NAMES[ruleId] ?? ruleId,
+          cat: cat.id,
+          subCat: sc.id,
+          severity: sev,
+          status,
+          risk: deriveRisk(sev),
+          effort: deriveEffort(sev),
+          killChainPhase: cat.killChain[0] ?? "Execution",
+          frameworks: fwBadges.map(f => f.abbr),
+          tests,
+        });
+      }
+    }
+  }
+  return rules;
+})();
+
+// Build GAPS array (representative gaps per category)
+export const GAPS: Gap[] = (() => {
+  const gaps: Gap[] = [];
+  let gapIdx = 1;
+  for (const cat of THREAT_CATS) {
+    // Create 1 gap per category for categories with subcategories that have room
+    const targetSub = cat.subCats.find(sc => sc.rules.length >= 2);
+    if (targetSub) {
+      gaps.push({
+        id: `GAP-${String(gapIdx).padStart(3, "0")}`,
+        cat: cat.id,
+        proposedSub: targetSub.id,
+        name: `${cat.name} Coverage Gap`,
+        desc: `Missing detection coverage for emerging ${cat.name.toLowerCase()} attack variants not addressed by current rules`,
+        severity: "high",
+      });
+      gapIdx++;
+    }
+  }
+  return gaps;
+})();
+
+// ── Attack Stories ──────────────────────────────────────────────────────────
+
+export interface AttackNarrativeStep {
+  phase: string;
+  title: string;
+  desc: string;
+  rulesInvolved: string[];
+}
+
+export interface AttackStory {
+  id: string;
+  name: string;
+  cat: string;        // primary category
+  severity: "critical" | "high";
+  summary: string;
+  narrative: AttackNarrativeStep[];
+  gapExposure: string[];  // GAP IDs
+}
+
+export const ATTACK_STORIES: AttackStory[] = [
+  {
+    id: "AS-001", name: "The Puppet Master", cat: "PI", severity: "critical",
+    summary: "Attacker injects prompt via external content, hijacks agent context, exfiltrates credentials",
+    narrative: [
+      { phase: "Initial Access", title: "Gateway Injection", desc: "Attacker plants hidden instructions in a webpage scraped by the MCP web-fetch tool", rulesInvolved: ["G1", "A1"] },
+      { phase: "Execution", title: "Context Hijack", desc: "Injected payload saturates context window, pushing safety instructions below attention threshold", rulesInvolved: ["G4", "G5"] },
+      { phase: "Collection", title: "Credential Harvest", desc: "Agent reads ~/.ssh/id_rsa and API keys from environment under attacker instruction", rulesInvolved: ["C5", "A3"] },
+      { phase: "Exfiltration", title: "DNS Exfil", desc: "Secrets encoded in DNS subdomain queries to attacker-controlled nameserver", rulesInvolved: ["G7", "F7"] },
+    ],
+    gapExposure: ["GAP-001"],
+  },
+  {
+    id: "AS-002", name: "Supply Chain Sleeper", cat: "SC", severity: "critical",
+    summary: "Malicious package masquerades as official MCP SDK, gains install-time code execution",
+    narrative: [
+      { phase: "Supply Chain Compromise", title: "Typosquat Package", desc: "Attacker publishes @mcp/sdk (typosquat of @modelcontextprotocol/sdk) to npm", rulesInvolved: ["D5", "D3"] },
+      { phase: "Initial Access", title: "Post-Install Hook", desc: "Package runs postinstall script that downloads second-stage payload", rulesInvolved: ["K9", "L1"] },
+      { phase: "Persistence", title: "Config Poisoning", desc: "Payload writes malicious MCP server config to ~/.claude/claude_desktop_config.json", rulesInvolved: ["J1", "L4"] },
+      { phase: "Execution", title: "Tool Injection", desc: "Injected MCP server shadows official tools with backdoored versions", rulesInvolved: ["A4", "F5"] },
+    ],
+    gapExposure: ["GAP-008"],
+  },
+  {
+    id: "AS-003", name: "The OAuth Heist", cat: "AT", severity: "critical",
+    summary: "Exploits insecure OAuth implementation to steal user tokens and escalate privileges",
+    narrative: [
+      { phase: "Initial Access", title: "Redirect Hijack", desc: "Attacker manipulates redirect_uri parameter to capture authorization codes", rulesInvolved: ["H1"] },
+      { phase: "Credential Access", title: "Token Theft", desc: "Authorization code exchanged for access token stored insecurely in localStorage", rulesInvolved: ["H1", "K7"] },
+      { phase: "Privilege Escalation", title: "Scope Escalation", desc: "Overly broad OAuth scopes grant admin access beyond required permissions", rulesInvolved: ["K6", "K8"] },
+      { phase: "Impact", title: "Cross-Agent Spread", desc: "Stolen credentials used to access other agents in multi-agent configuration", rulesInvolved: ["H3", "K14"] },
+    ],
+    gapExposure: ["GAP-009"],
+  },
+  {
+    id: "AS-004", name: "Container Breakout", cat: "IR", severity: "critical",
+    summary: "MCP server in privileged container escapes to host, accesses cloud metadata",
+    narrative: [
+      { phase: "Initial Access", title: "Docker Socket Access", desc: "MCP server container has Docker socket mounted, enabling host container management", rulesInvolved: ["P1", "P2"] },
+      { phase: "Privilege Escalation", title: "Host Escape", desc: "Attacker spawns privileged container with host filesystem mounted", rulesInvolved: ["P7", "K19"] },
+      { phase: "Lateral Movement", title: "Cloud Metadata", desc: "Accesses cloud metadata endpoint (169.254.169.254) for IAM credentials", rulesInvolved: ["P3"] },
+      { phase: "Impact", title: "Data Exfiltration", desc: "Uses cloud credentials to access S3 buckets and exfiltrate customer data", rulesInvolved: ["P10", "F7"] },
+    ],
+    gapExposure: ["GAP-016"],
+  },
+  {
+    id: "AS-005", name: "Protocol Ghost", cat: "PE", severity: "high",
+    summary: "Exploits MCP protocol edge cases to inject commands and hijack sessions",
+    narrative: [
+      { phase: "Initial Access", title: "SSE Hijack", desc: "Attacker intercepts SSE reconnection to redirect to malicious server endpoint", rulesInvolved: ["N6", "N14"] },
+      { phase: "Defense Evasion", title: "Version Downgrade", desc: "Forces protocol downgrade to version without security annotations", rulesInvolved: ["N11", "N5"] },
+      { phase: "Execution", title: "Error Injection", desc: "Injects prompt payload via JSON-RPC error object data field", rulesInvolved: ["N4", "N9"] },
+      { phase: "Persistence", title: "Subscription Mutation", desc: "Modifies resource subscription to inject payload on every update", rulesInvolved: ["N12", "N7"] },
+    ],
+    gapExposure: ["GAP-014"],
+  },
+  {
+    id: "AS-006", name: "The Reasoning Trap", cat: "MR", severity: "high",
+    summary: "Exploits AI runtime to manipulate reasoning, extract system prompts, amplify costs",
+    narrative: [
+      { phase: "Defense Evasion", title: "Token Injection", desc: "Special LLM tokens injected in tool metadata to break model parsing", rulesInvolved: ["M1", "M2"] },
+      { phase: "Execution", title: "Reasoning Hijack", desc: "Chain-of-thought manipulation forces model into attacker-controlled reasoning path", rulesInvolved: ["M3", "M4"] },
+      { phase: "Collection", title: "Prompt Extraction", desc: "Error manipulation technique extracts system prompt content", rulesInvolved: ["M9"] },
+      { phase: "Impact", title: "Cost Amplification", desc: "Response structure bombs trigger exponential inference cost", rulesInvolved: ["M7", "M8"] },
+    ],
+    gapExposure: ["GAP-013"],
+  },
+  {
+    id: "AS-007", name: "The Annotation Lie", cat: "TP", severity: "critical",
+    summary: "Tool declares itself read-only via annotations, then executes destructive operations",
+    narrative: [
+      { phase: "Initial Access", title: "Annotation Fraud", desc: "Tool sets readOnlyHint: true but has delete and overwrite parameters", rulesInvolved: ["I1", "I2"] },
+      { phase: "Defense Evasion", title: "Consent Fatigue", desc: "12 benign tools exhaust user approval stamina before presenting dangerous tool", rulesInvolved: ["I16", "A8"] },
+      { phase: "Execution", title: "Tool Preference", desc: "Description engineered to make AI always select the malicious tool first", rulesInvolved: ["J6", "A2"] },
+      { phase: "Impact", title: "Data Destruction", desc: "Auto-approved destructive operation wipes database under false read-only pretense", rulesInvolved: ["K5", "K4"] },
+    ],
+    gapExposure: ["GAP-002"],
+  },
+  {
+    id: "AS-008", name: "Cross-Ecosystem Cascade", cat: "CE", severity: "critical",
+    summary: "Attack chains through protocol bridges, IDE extensions, and multi-server compositions",
+    narrative: [
+      { phase: "Initial Access", title: "IDE Injection", desc: "Malicious VS Code extension injects untrusted MCP server into IDE configuration", rulesInvolved: ["Q4", "Q3"] },
+      { phase: "Lateral Movement", title: "Bridge Injection", desc: "Schema constraints lost in OpenAPI-to-MCP translation, enabling input validation bypass", rulesInvolved: ["Q1", "Q2"] },
+      { phase: "Privilege Escalation", title: "Gateway Confusion", desc: "MCP gateway forwards trust from verified server to unverified backend", rulesInvolved: ["Q5", "Q6"] },
+      { phase: "Impact", title: "Code Poisoning", desc: "Compromised tool injects backdoor code via IDE autocomplete suggestions", rulesInvolved: ["Q11", "Q13"] },
+    ],
+    gapExposure: ["GAP-017"],
+  },
+];
+
+// ── Compliance Overlay ─────────────────────────────────────────────────────
+
+export interface ComplianceRequirement {
+  id: string;
+  control: string;
+  desc: string;
+  covered: boolean;
+}
+
+export interface ComplianceFrameworkEntry {
+  framework: string;
+  abbr: string;
+  color: string;
+  requirements: ComplianceRequirement[];
+}
+
+// Keyed by subcategory ID
+export const COMPLIANCE_MAP: Record<string, ComplianceFrameworkEntry[]> = (() => {
+  const map: Record<string, ComplianceFrameworkEntry[]> = {};
+  for (const cat of THREAT_CATS) {
+    for (const sc of cat.subCats) {
+      const scRules = sc.rules;
+      const entries: ComplianceFrameworkEntry[] = [];
+
+      // Check which frameworks cover rules in this subcategory
+      for (const fw of HEATMAP_FRAMEWORKS) {
+        const coveredRules = scRules.filter(r => fw.rules.includes(r));
+        if (coveredRules.length > 0) {
+          const reqs: ComplianceRequirement[] = coveredRules.map((rId, idx) => ({
+            id: `${fw.abbr}-${sc.id}-${idx + 1}`,
+            control: `${fw.abbr} ${rId}`,
+            desc: RULE_NAMES[rId] ?? rId,
+            covered: deriveStatus(rId) === "implemented",
+          }));
+          entries.push({
+            framework: fw.abbr,
+            abbr: fw.abbr,
+            color: FW_COLORS[fw.id] ?? "#8891AB",
+            requirements: reqs,
+          });
+        }
+      }
+      map[sc.id] = entries;
+    }
+  }
+  return map;
+})();
+
+// ── ATLAS Technique Tree ───────────────────────────────────────────────────
+
+export interface AtlasSubTechnique {
+  id: string;
+  name: string;
+  rules: string[];
+}
+
+export interface AtlasTechnique {
+  id: string;
+  name: string;
+  cat: string;   // maps to threat category
+  subTechniques: AtlasSubTechnique[];
+}
+
+export const ATLAS_TECHNIQUES: AtlasTechnique[] = [
+  {
+    id: "AML.T0054", name: "LLM Prompt Injection", cat: "PI",
+    subTechniques: [
+      { id: "AML.T0054.001", name: "Indirect Prompt Injection", rules: ["G1", "I3", "J5"] },
+      { id: "AML.T0054.002", name: "Direct Prompt Injection", rules: ["A1", "A9", "H2"] },
+      { id: "AML.T0054.003", name: "Template Injection", rules: ["I6", "B5"] },
+    ],
+  },
+  {
+    id: "AML.T0057", name: "LLM Data Leakage", cat: "DE",
+    subTechniques: [
+      { id: "AML.T0057.001", name: "Tool-Mediated Leakage", rules: ["A3", "F3", "F7"] },
+      { id: "AML.T0057.002", name: "Covert Channel Leakage", rules: ["G7", "J4"] },
+    ],
+  },
+  {
+    id: "AML.T0058", name: "AI Agent Context Poisoning", cat: "PI",
+    subTechniques: [
+      { id: "AML.T0058.001", name: "Context Window Saturation", rules: ["G4", "H2"] },
+      { id: "AML.T0058.002", name: "Schema Poisoning", rules: ["I3", "I6", "J3", "J5"] },
+    ],
+  },
+  {
+    id: "AML.T0059", name: "Memory Manipulation", cat: "AI",
+    subTechniques: [
+      { id: "AML.T0059.001", name: "Circular Data Loop", rules: ["F6", "H3"] },
+      { id: "AML.T0059.002", name: "Shared Memory Pollution", rules: ["J1"] },
+    ],
+  },
+  {
+    id: "AML.T0060", name: "Modify AI Agent Configuration", cat: "PV",
+    subTechniques: [
+      { id: "AML.T0060.001", name: "Config File Poisoning", rules: ["J1"] },
+      { id: "AML.T0060.002", name: "IDE Config Injection", rules: ["Q4", "L4"] },
+    ],
+  },
+  {
+    id: "AML.T0061", name: "Thread Injection", cat: "AI",
+    subTechniques: [
+      { id: "AML.T0061.001", name: "Trust Assertion Exploit", rules: ["G2", "G3", "G5"] },
+      { id: "AML.T0061.002", name: "Initialize Response Injection", rules: ["H2"] },
+    ],
+  },
+  {
+    id: "AML.T0017", name: "Supply Chain Attack", cat: "SC",
+    subTechniques: [
+      { id: "AML.T0017.001", name: "Package Typosquatting", rules: ["D3", "D5", "F5"] },
+      { id: "AML.T0017.002", name: "Post-Install Hooks", rules: ["K9"] },
+      { id: "AML.T0017.003", name: "Generated Code Injection", rules: ["J7", "L2"] },
+    ],
+  },
+  {
+    id: "AML.T0086", name: "Agent Tool Exfiltration", cat: "DE",
+    subTechniques: [
+      { id: "AML.T0086.001", name: "Multi-Step Exfil Chain", rules: ["F7", "F1"] },
+      { id: "AML.T0086.002", name: "Cross-Boundary Credential Sharing", rules: ["K14", "K8"] },
+    ],
+  },
+];
+
+// ── Maturity computation ───────────────────────────────────────────────────
+
+export interface MaturityDimension {
+  name: string;
+  score: number;  // 0-100
+  weight: number;
+}
+
+export interface MaturityResult {
+  overall: number;            // 0-100
+  level: 1 | 2 | 3 | 4 | 5;
+  levelLabel: string;
+  dimensions: MaturityDimension[];
+  perRule: { id: string; name: string; score: number; status: RuleStatus }[];
+}
+
+const MATURITY_LEVELS: { min: number; level: 1|2|3|4|5; label: string }[] = [
+  { min: 80, level: 5, label: "Optimizing" },
+  { min: 60, level: 4, label: "Managed" },
+  { min: 40, level: 3, label: "Defined" },
+  { min: 20, level: 2, label: "Developing" },
+  { min: 0,  level: 1, label: "Initial" },
+];
+
+export function computeMaturity(catRules: EnrichedRule[]): MaturityResult {
+  if (catRules.length === 0) {
+    return { overall: 0, level: 1, levelLabel: "Initial", dimensions: [], perRule: [] };
+  }
+
+  // Dimension 1: Implementation coverage
+  const implCount = catRules.filter(r => r.status === "implemented").length;
+  const partialCount = catRules.filter(r => r.status === "partial").length;
+  const implScore = Math.round(((implCount + partialCount * 0.5) / catRules.length) * 100);
+
+  // Dimension 2: Test coverage
+  const allTests = catRules.flatMap(r => r.tests);
+  const passingTests = allTests.filter(t => t.status === "pass").length;
+  const testScore = allTests.length > 0 ? Math.round((passingTests / allTests.length) * 100) : 0;
+
+  // Dimension 3: Framework alignment
+  const maxFw = 9; // total frameworks
+  const avgFw = catRules.reduce((s, r) => s + r.frameworks.length, 0) / catRules.length;
+  const fwScore = Math.round((Math.min(avgFw, maxFw) / maxFw) * 100);
+
+  // Dimension 4: Risk coverage (implemented rules covering critical/high risks)
+  const critHigh = catRules.filter(r => r.risk === "critical" || r.risk === "high");
+  const critHighImpl = critHigh.filter(r => r.status === "implemented").length;
+  const riskScore = critHigh.length > 0 ? Math.round((critHighImpl / critHigh.length) * 100) : 100;
+
+  // Dimension 5: Adversarial robustness
+  const advTests = catRules.flatMap(r =>
+    r.tests.filter(t => /adversarial|injection|attack|malicious|exploit/i.test(t.label))
+  );
+  const advPassing = advTests.filter(t => t.status === "pass").length;
+  const advScore = advTests.length > 0 ? Math.round((advPassing / advTests.length) * 100) : 50;
+
+  const dimensions: MaturityDimension[] = [
+    { name: "Implementation", score: implScore, weight: 30 },
+    { name: "Test Coverage", score: testScore, weight: 25 },
+    { name: "Framework Alignment", score: fwScore, weight: 15 },
+    { name: "Risk Coverage", score: riskScore, weight: 20 },
+    { name: "Adversarial Robustness", score: advScore, weight: 10 },
+  ];
+
+  const overall = Math.round(
+    dimensions.reduce((s, d) => s + d.score * (d.weight / 100), 0)
+  );
+
+  const { level, label: levelLabel } = MATURITY_LEVELS.find(l => overall >= l.min) ?? MATURITY_LEVELS[4];
+
+  const perRule = catRules.map(r => {
+    const rulePassRate = r.tests.length > 0
+      ? r.tests.filter(t => t.status === "pass").length / r.tests.length
+      : 0;
+    const statusBonus = r.status === "implemented" ? 1 : r.status === "partial" ? 0.6 : 0.2;
+    const ruleScore = Math.round((rulePassRate * 0.5 + statusBonus * 0.3 + (r.frameworks.length / maxFw) * 0.2) * 100);
+    return { id: r.id, name: r.name, score: ruleScore, status: r.status };
+  });
+
+  return { overall, level, levelLabel, dimensions, perRule };
+}
+
+// ── Remediation computation ────────────────────────────────────────────────
+
+export interface RemediationItem {
+  rule: EnrichedRule;
+  priority: number;  // 0-100, higher = more urgent
+  failingTests: number;
+}
+
+export function computeRemediation(catRules: EnrichedRule[]): RemediationItem[] {
+  return catRules
+    .filter(r => r.status !== "implemented")
+    .map(r => {
+      const failingTests = r.tests.filter(t => t.status === "fail").length;
+      const riskWeight = r.risk === "critical" ? 40 : r.risk === "high" ? 30 : r.risk === "medium" ? 20 : 10;
+      const statusWeight = r.status === "planned" ? 30 : 15;
+      const effortWeight = r.effort === "low" ? 20 : r.effort === "medium" ? 10 : 0;
+      const testWeight = Math.min(failingTests * 5, 20);
+      const priority = Math.min(riskWeight + statusWeight + effortWeight + testWeight, 100);
+      return { rule: r, priority, failingTests };
+    })
+    .sort((a, b) => b.priority - a.priority);
+}

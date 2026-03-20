@@ -3983,10 +3983,7 @@ code, pre, kbd {
 
 /* ── Panels ─────────────────────────────────────────────── */
 
-.cdd-panel { display: none; padding: 1.5rem; }
-
-/* Show panel when the preceding radio input is checked */
-.cdd-radio:checked + .cdd-panel { display: block; }
+.cdd-panel { display: block; padding: 1.5rem; }
 
 /* ── Category header card ───────────────────────────────── */
 
@@ -4558,6 +4555,931 @@ code, pre, kbd {
   .cdd-tab-icon { font-size: 0.75rem; }
   .cdd-right { flex-direction: column; }
   .cdd-bar-wrap { width: 50px; }
+}
+
+/* ── Active tab (JS-controlled via class) ─────────────────── */
+
+.cdd-tab-active {
+  background: var(--accent);
+  color: #fff !important;
+  border-color: var(--accent) !important;
+}
+.cdd-tab-active .cdd-tab-dot {
+  background: #fff;
+}
+
+/* ── View tabs (6 inner tabs) ─────────────────────────────── */
+
+.cdd-view-tabs {
+  display: flex;
+  gap: 0.3rem;
+  padding: 0.75rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  background: var(--surface-2);
+}
+
+.cdd-view-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-2);
+  background: var(--surface);
+  transition: all var(--t-fast) var(--ease);
+  white-space: nowrap;
+}
+
+.cdd-view-tab:hover {
+  border-color: var(--accent-ring);
+  color: var(--text);
+  background: var(--accent-sub);
+}
+
+.cdd-view-tab-active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.cdd-view-tab-active:hover {
+  background: var(--accent-hover);
+  color: #fff;
+  border-color: var(--accent-hover);
+}
+
+.cdd-view-tab-icon { font-size: 0.82rem; }
+
+/* ── Maturity badge in category header ────────────────────── */
+
+.cdd-maturity {
+  text-align: center;
+  padding: 0.5rem 0.8rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  min-width: 60px;
+}
+
+.cdd-maturity-num {
+  font-family: var(--font-mono);
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.cdd-maturity-label {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+/* ── Status badges ────────────────────────────────────────── */
+
+.cdd-status-impl {
+  background: var(--clean-bg-badge);
+  color: var(--good);
+  border: 1px solid var(--clean-border);
+}
+
+.cdd-status-partial {
+  background: var(--moderate-sub);
+  color: var(--moderate);
+  border: 1px solid var(--moderate-border);
+}
+
+.cdd-status-planned {
+  background: var(--critical-sub);
+  color: var(--critical);
+  border: 1px solid var(--critical-border);
+}
+
+/* ── Gap cards (dashed border, cross-cutting) ─────────────── */
+
+.cdd-gap-card {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  margin: 0.3rem 0;
+  border: 1.5px dashed var(--moderate-border);
+  border-radius: var(--r-sm);
+  background: var(--moderate-sub);
+}
+
+.cdd-gap-id {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--moderate);
+  flex-shrink: 0;
+}
+
+.cdd-gap-name {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.cdd-gap-desc {
+  font-size: 0.7rem;
+  color: var(--text-2);
+  display: none;
+}
+
+/* ── Empty state ──────────────────────────────────────────── */
+
+.cdd-empty-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  text-align: center;
+  color: var(--text-2);
+}
+
+.cdd-empty-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  opacity: 0.6;
+}
+
+.cdd-empty-tab p {
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TAB 2: REMEDIATION ROADMAP
+   ══════════════════════════════════════════════════════════════ */
+
+.cdd-rem-list {
+  padding: 0.5rem 0;
+}
+
+.cdd-rem-header {
+  display: grid;
+  grid-template-columns: 2fr 1fr 0.8fr 0.6fr 0.6fr 0.8fr 1fr;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.cdd-rem-header-label {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.cdd-rem-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 0.8fr 0.6fr 0.6fr 0.8fr 1fr;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  transition: background var(--t-fast) var(--ease);
+}
+
+.cdd-rem-row:hover {
+  background: var(--accent-sub);
+}
+
+.cdd-rem-row:last-child {
+  border-bottom: none;
+}
+
+.cdd-rem-rule {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.cdd-rem-name {
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cdd-rem-prio {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.cdd-rem-prio-bar-wrap {
+  flex: 1;
+  height: 5px;
+  background: var(--surface-3);
+  border-radius: 3px;
+  overflow: hidden;
+  min-width: 40px;
+}
+
+.cdd-rem-prio-bar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width var(--t-slow) var(--ease);
+}
+
+.cdd-rem-prio-val {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  min-width: 20px;
+  text-align: right;
+}
+
+.cdd-rem-tests-fail {
+  font-size: 0.72rem;
+  color: var(--text-2);
+}
+
+.cdd-rem-fail-num {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--critical);
+}
+
+.cdd-rem-pass {
+  color: var(--good);
+}
+
+.cdd-rem-phase {
+  font-size: 0.68rem;
+  color: var(--text-3);
+  font-style: italic;
+}
+
+/* Risk + effort badges */
+
+.cdd-risk-critical { background: var(--sev-critical-sub); color: var(--sev-critical); border: 1px solid var(--sev-critical-border); }
+.cdd-risk-high     { background: var(--sev-high-sub);     color: var(--sev-high);     border: 1px solid var(--sev-high-border); }
+.cdd-risk-medium   { background: var(--sev-medium-sub);   color: var(--sev-medium);   border: 1px solid var(--sev-medium-border); }
+.cdd-risk-low      { background: var(--sev-low-sub);      color: var(--sev-low);       border: 1px solid var(--sev-low-border); }
+
+.cdd-effort-high   { background: var(--sev-high-sub);     color: var(--sev-high);     border: 1px solid var(--sev-high-border); }
+.cdd-effort-medium { background: var(--sev-medium-sub);   color: var(--sev-medium);   border: 1px solid var(--sev-medium-border); }
+.cdd-effort-low    { background: var(--sev-low-sub);      color: var(--sev-low);       border: 1px solid var(--sev-low-border); }
+
+@media (max-width: 900px) {
+  .cdd-rem-header,
+  .cdd-rem-row {
+    grid-template-columns: 1.5fr 1fr 0.7fr;
+  }
+  .cdd-rem-header-label:nth-child(n+4),
+  .cdd-rem-row > *:nth-child(n+4) {
+    display: none;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TAB 3: ATTACK STORIES
+   ══════════════════════════════════════════════════════════════ */
+
+.cdd-stories-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+}
+
+.cdd-story {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  transition: border-color var(--t-fast) var(--ease);
+}
+
+.cdd-story:hover {
+  border-color: var(--border-md);
+}
+
+.cdd-story-open {
+  border-color: var(--border-strong);
+}
+
+.cdd-story-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  background: var(--surface);
+  border: none;
+  text-align: left;
+  font-family: inherit;
+  transition: background var(--t-fast) var(--ease);
+}
+
+.cdd-story-header:hover {
+  background: var(--surface-2);
+}
+
+.cdd-story-left {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.cdd-story-sev {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #fff;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--r-sm);
+  flex-shrink: 0;
+}
+
+.cdd-story-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.cdd-story-summary {
+  font-size: 0.72rem;
+  color: var(--text-2);
+  margin-top: 2px;
+}
+
+.cdd-story-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.cdd-story-grade {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: 900;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid;
+  border-radius: var(--r-sm);
+}
+
+.cdd-story-body {
+  padding: 1rem 1.2rem;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+/* Timeline */
+
+.cdd-story-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.cdd-story-step {
+  display: flex;
+  gap: 0.75rem;
+  min-height: 60px;
+}
+
+.cdd-story-step-connector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 20px;
+}
+
+.cdd-story-step-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.cdd-story-step-line {
+  width: 2px;
+  flex: 1;
+  min-height: 20px;
+}
+
+.cdd-story-step-content {
+  padding-bottom: 1rem;
+  flex: 1;
+}
+
+.cdd-story-step-phase {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 2px;
+}
+
+.cdd-story-step-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+
+.cdd-story-step-desc {
+  font-size: 0.72rem;
+  color: var(--text-2);
+  line-height: 1.5;
+  margin-bottom: 0.4rem;
+}
+
+.cdd-story-step-rules {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.cdd-story-gaps {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TAB 4: COMPLIANCE OVERLAY
+   ══════════════════════════════════════════════════════════════ */
+
+.cdd-compliance {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+}
+
+.cdd-comp-subcat {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 0.85rem 1rem;
+  background: var(--surface);
+}
+
+.cdd-comp-subcat-hdr {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+.cdd-comp-pct {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.cdd-comp-fw {
+  margin-bottom: 0.5rem;
+}
+
+.cdd-comp-fw:last-child {
+  margin-bottom: 0;
+}
+
+.cdd-comp-fw-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.3rem;
+}
+
+.cdd-comp-fw-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.cdd-comp-fw-name {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.cdd-comp-fw-count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--text-3);
+}
+
+.cdd-comp-reqs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding-left: 1.1rem;
+}
+
+.cdd-comp-req {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: var(--r-sm);
+  font-size: 0.72rem;
+  transition: background var(--t-fast) var(--ease);
+}
+
+.cdd-comp-req:hover {
+  background: var(--surface-3);
+}
+
+.cdd-comp-req-icon {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  width: 14px;
+  text-align: center;
+}
+
+.cdd-comp-req-covered .cdd-comp-req-icon {
+  color: var(--good);
+}
+
+.cdd-comp-req:not(.cdd-comp-req-covered) .cdd-comp-req-icon {
+  color: var(--critical);
+}
+
+.cdd-comp-req-ctrl {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: var(--text-2);
+  flex-shrink: 0;
+}
+
+.cdd-comp-req-desc {
+  font-size: 0.72rem;
+  color: var(--text);
+}
+
+.cdd-comp-gaps {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--border);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TAB 5: ATLAS TECHNIQUE TREE
+   ══════════════════════════════════════════════════════════════ */
+
+.cdd-atlas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+}
+
+.cdd-atlas-tech {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+
+.cdd-atlas-tech-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  background: var(--surface);
+  border: none;
+  font-family: inherit;
+  text-align: left;
+  transition: background var(--t-fast) var(--ease);
+}
+
+.cdd-atlas-tech-header:hover {
+  background: var(--surface-2);
+}
+
+.cdd-atlas-tech-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cdd-atlas-tech-id {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--tag-mitre-text);
+  background: var(--tag-mitre);
+  padding: 0.15rem 0.4rem;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--tag-mitre-border);
+}
+
+.cdd-atlas-tech-name {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.cdd-atlas-tech-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.cdd-atlas-cov-bar-wrap {
+  width: 60px;
+  height: 5px;
+  background: var(--surface-3);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.cdd-atlas-cov-bar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width var(--t-slow) var(--ease);
+}
+
+.cdd-atlas-cov-pct {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-2);
+  min-width: 30px;
+  text-align: right;
+}
+
+.cdd-atlas-subs {
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.cdd-atlas-sub {
+  border-left: 3px solid;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: var(--surface);
+}
+
+.cdd-atlas-sub-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+
+.cdd-atlas-sub-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.cdd-atlas-sub-id {
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  font-weight: 700;
+  color: var(--tag-mitre-text);
+}
+
+.cdd-atlas-sub-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.cdd-atlas-sub-rules {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TAB 6: MATURITY MODEL
+   ══════════════════════════════════════════════════════════════ */
+
+.cdd-maturity-tab {
+  padding: 0.5rem 0;
+}
+
+.cdd-mat-hero {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  padding: 1.2rem 1.5rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  margin-bottom: 1.2rem;
+}
+
+.cdd-mat-hero-score {
+  font-family: var(--font-mono);
+  font-size: 3rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+
+.cdd-mat-hero-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.cdd-mat-hero-level {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.cdd-mat-hero-scale {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.cdd-mat-level-dot {
+  width: 18px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-3);
+  transition: background var(--t-fast) var(--ease);
+}
+
+.cdd-mat-level-active {
+  /* background set inline */
+}
+
+.cdd-mat-dims {
+  margin-bottom: 1.2rem;
+}
+
+.cdd-mat-dim {
+  margin-bottom: 0.6rem;
+}
+
+.cdd-mat-dim:last-child {
+  margin-bottom: 0;
+}
+
+.cdd-mat-dim-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.2rem;
+}
+
+.cdd-mat-dim-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+}
+
+.cdd-mat-dim-weight {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--text-3);
+}
+
+.cdd-mat-dim-score {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 800;
+  min-width: 24px;
+  text-align: right;
+}
+
+.cdd-mat-dim-bar-wrap {
+  height: 6px;
+  background: var(--surface-3);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.cdd-mat-dim-bar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width var(--t-slow) var(--ease);
+}
+
+.cdd-mat-rules {
+  margin-top: 0.5rem;
+}
+
+.cdd-mat-rules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.cdd-mat-rule-card {
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  transition: border-color var(--t-fast) var(--ease);
+}
+
+.cdd-mat-rule-card:hover {
+  border-color: var(--border-md);
+}
+
+.cdd-mat-rule-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.3rem;
+  margin-bottom: 0.25rem;
+}
+
+.cdd-mat-rule-name {
+  font-size: 0.72rem;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 0.3rem;
+}
+
+.cdd-mat-rule-bar-wrap {
+  height: 4px;
+  background: var(--surface-3);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 0.15rem;
+}
+
+.cdd-mat-rule-bar {
+  height: 100%;
+  border-radius: 2px;
+  transition: width var(--t-slow) var(--ease);
+}
+
+.cdd-mat-rule-score {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-align: right;
+}
+
+@media (max-width: 600px) {
+  .cdd-view-tabs {
+    gap: 0.2rem;
+    padding: 0.5rem 0.6rem;
+  }
+  .cdd-view-tab {
+    padding: 0.35rem 0.55rem;
+    font-size: 0.65rem;
+  }
+  .cdd-mat-hero-score {
+    font-size: 2rem;
+  }
+  .cdd-mat-rules-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════
