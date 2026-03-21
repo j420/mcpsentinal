@@ -389,6 +389,7 @@ export class ScanPipeline {
             name: t.name,
             description: t.description ?? "",
             input_schema: t.input_schema ?? {},
+            output_schema: null, // Stored tools don't have output_schema data yet
             annotations: null, // Stored tools don't have annotation data
           }));
           log.info(

@@ -1,0 +1,158 @@
+name: "MCP Sentinel Security Scan"
+description: "Scan MCP server configurations for security vulnerabilities"
+branding:
+  icon: "shield"
+  color: "blue"
+
+inputs:
+  config-path:
+    description: "Path to MCP configuration file (auto-discovers if not specified)"
+    required: false
+    default: ""
+  min-score:
+    description: "Minimum security score (0-100). Fails if any server scores below this."
+    required: false
+    default: "60"
+  fail-on:
+    description: "Fail if any finding at this severity or higher (critical, high, medium, low)"
+    required: false
+    default: ""
+  scan-all:
+    description: "Scan all discovered MCP configs (not just the first found)"
+    required: false
+    default: "false"
+
+outputs:
+  score:
+    description: "Lowest security score across all scanned servers"
+    value: ${{ steps.scan.outputs.score }}
+  findings-count:
+    description: "Total number of security findings"
+    value: ${{ steps.scan.outputs.findings_count }}
+  report:
+    description: "JSON scan report"
+    value: ${{ steps.scan.outputs.report }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: "20"
+
+    - name: Run MCP Sentinel scan
+      id: scan
+      shell: bash
+      run: |
+        # Install and run mcp-sentinel
+        npx --yes mcp-sentinel@latest check --json --ci \
+          ${{ inputs.config-path && format('--config {0}', inputs.config-path) || '' }} \
+          ${{ inputs.min-score && format('--min-score {0}', inputs.min-score) || '' }} \
+          ${{ inputs.fail-on && format('--fail-on {0}', inputs.fail-on) || '' }} \
+          ${{ inputs.scan-all == 'true' && '--scan-all' || '' }} \
+          > /tmp/mcp-sentinel-report.json 2>/tmp/mcp-sentinel-stderr.log || EXIT_CODE=$?
+
+        EXIT_CODE=${EXIT_CODE:-0}
+
+        # Parse report for outputs
+        if [ -f /tmp/mcp-sentinel-report.json ] && [ -s /tmp/mcp-sentinel-report.json ]; then
+          REPORT=$(cat /tmp/mcp-sentinel-report.json)
+
+          # Extract lowest score
+          SCORE=$(echo "$REPORT" | node -e "
+            const data = JSON.parse(require('fs').readFileSync('/dev/stdin', 'utf8'));
+            const servers = data.servers || [];
+            const scores = servers.map(s => s.score);
+            console.log(scores.length ? Math.min(...scores) : 100);
+          ")
+
+          # Extract total findings
+          FINDINGS=$(echo "$REPORT" | node -e "
+            const data = JSON.parse(require('fs').readFileSync('/dev/stdin', 'utf8'));
+            const servers = data.servers || [];
+            console.log(servers.reduce((sum, s) => sum + s.findings_count, 0));
+          ")
+
+          echo "score=$SCORE" >> $GITHUB_OUTPUT
+          echo "findings_count=$FINDINGS" >> $GITHUB_OUTPUT
+          echo "report<<EOF" >> $GITHUB_OUTPUT
+          echo "$REPORT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        else
+          echo "score=0" >> $GITHUB_OUTPUT
+          echo "findings_count=0" >> $GITHUB_OUTPUT
+          echo "report={}" >> $GITHUB_OUTPUT
+        fi
+
+        exit $EXIT_CODE
+
+    - name: Add PR Comment
+      if: github.event_name == 'pull_request' && always()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          let report = {};
+          try {
+            const raw = fs.readFileSync('/tmp/mcp-sentinel-report.json', 'utf8');
+            report = JSON.parse(raw);
+          } catch { return; }
+
+          const servers = report.servers || [];
+          if (servers.length === 0) return;
+
+          const badge = (score) => {
+            if (score >= 80) return '🟢';
+            if (score >= 60) return '🟡';
+            if (score >= 40) return '🟠';
+            return '🔴';
+          };
+
+          let body = '## MCP Sentinel Security Report\n\n';
+          body += '| Server | Score | Critical | High | Medium | Low |\n';
+          body += '|--------|-------|----------|------|--------|-----|\n';
+
+          for (const s of servers) {
+            body += `| ${badge(s.score)} ${s.server_name} | ${s.score}/100 | ${s.critical} | ${s.high} | ${s.medium} | ${s.low} |\n`;
+          }
+
+          if (servers.some(s => s.top_findings?.length > 0)) {
+            body += '\n### Top Findings\n\n';
+            for (const s of servers) {
+              if (s.top_findings?.length > 0) {
+                body += `**${s.server_name}:**\n`;
+                for (const f of s.top_findings.slice(0, 5)) {
+                  body += `- ${f}\n`;
+                }
+                body += '\n';
+              }
+            }
+          }
+
+          body += '\n---\n*Scanned by [MCP Sentinel](https://mcp-sentinel.com)*';
+
+          // Find and update existing comment or create new one
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+
+          const existing = comments.find(c => c.body?.includes('MCP Sentinel Security Report'));
+
+          if (existing) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existing.id,
+              body,
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+          }

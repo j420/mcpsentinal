@@ -66,6 +66,10 @@ interface CLIArgs {
   dynamicAllowlist: string[];
   /** Path to write the dynamic test audit log */
   dynamicAuditLog: string | null;
+  /** List all discovered MCP configs across all tools */
+  discover: boolean;
+  /** Scan ALL discovered configs (not just the first one found) */
+  scanAll: boolean;
 }
 
 // ─── Scan Result ─────────────────────────────────────────────────────────────
@@ -263,10 +267,258 @@ function parseArgs(argv: string[]): CLIArgs {
     dynamicAuditLog = raw;
   }
 
+  // --discover: list all found MCP configs across all tools
+  const discover = args.includes("--discover");
+
+  // --scan-all: scan ALL discovered configs (cross-config analysis)
+  const scanAll = args.includes("--scan-all");
+
   return {
     command, jsonOutput, ciMode, minScore, failOn, configPath,
     showVersion, showHelp, dynamic, dynamicAllowlist, dynamicAuditLog,
+    discover, scanAll,
   };
+}
+
+// ─── Config Source Types ──────────────────────────────────────────────────────
+
+type ConfigSource =
+  | "claude-desktop"
+  | "claude-code"
+  | "cursor"
+  | "vscode-copilot"
+  | "windsurf"
+  | "gemini-cli"
+  | "kiro"
+  | "openclaw"
+  | "project-mcp"   // mcp.json or .mcp.json in CWD
+  | "explicit";     // --config flag
+
+interface DiscoveredConfig {
+  source: ConfigSource;
+  filePath: string;
+  config: MCPConfig;
+  serverCount: number;
+}
+
+// Human-readable labels for each config source
+const CONFIG_SOURCE_LABELS: Record<ConfigSource, string> = {
+  "claude-desktop": "Claude Desktop",
+  "claude-code": "Claude Code",
+  "cursor": "Cursor",
+  "vscode-copilot": "VS Code (Copilot)",
+  "windsurf": "Windsurf (Codeium)",
+  "gemini-cli": "Gemini CLI",
+  "kiro": "Kiro (AWS)",
+  "openclaw": "OpenClaw / ClawHub",
+  "project-mcp": "Project MCP Config",
+  "explicit": "Explicit (--config)",
+};
+
+// ─── Config Discovery ────────────────────────────────────────────────────────
+
+interface ConfigCandidate {
+  source: ConfigSource;
+  path: string;
+}
+
+/**
+ * Returns the platform-specific home directory.
+ */
+function getHomeDir(): string {
+  return process.env["HOME"] ?? process.env["USERPROFILE"] ?? "";
+}
+
+/**
+ * Returns the platform-specific app data directory.
+ * macOS: ~/Library/Application Support
+ * Linux: ~/.config
+ * Windows: %APPDATA%
+ */
+function getAppDataDir(): string {
+  const platform = process.platform;
+  const home = getHomeDir();
+  if (platform === "win32") {
+    return process.env["APPDATA"] ?? join(home, "AppData", "Roaming");
+  }
+  if (platform === "darwin") {
+    return join(home, "Library", "Application Support");
+  }
+  // linux and others
+  return join(home, ".config");
+}
+
+/**
+ * Generates all config candidate paths for the current platform.
+ * Returns them in priority order: project-local first, then per-tool globals.
+ */
+function getConfigCandidates(): ConfigCandidate[] {
+  const home = getHomeDir();
+  const appData = getAppDataDir();
+  const platform = process.platform;
+  const cwd = process.cwd();
+
+  const candidates: ConfigCandidate[] = [];
+
+  // ── Project-local configs (highest priority) ──────────────────────────────
+
+  // Generic project MCP configs
+  candidates.push({ source: "project-mcp", path: join(cwd, "claude_desktop_config.json") });
+  candidates.push({ source: "project-mcp", path: join(cwd, "mcp.json") });
+  candidates.push({ source: "project-mcp", path: join(cwd, ".mcp.json") });
+
+  // Cursor project
+  candidates.push({ source: "cursor", path: join(cwd, ".cursor", "mcp.json") });
+
+  // VS Code project
+  candidates.push({ source: "vscode-copilot", path: join(cwd, ".vscode", "mcp.json") });
+
+  // Windsurf project
+  candidates.push({ source: "windsurf", path: join(cwd, ".windsurf", "mcp.json") });
+
+  // Kiro project
+  candidates.push({ source: "kiro", path: join(cwd, ".kiro", "mcp.json") });
+
+  // ── Claude Desktop (per-platform) ────────────────────────────────────────
+  if (platform === "darwin") {
+    candidates.push({ source: "claude-desktop", path: join(appData, "Claude", "claude_desktop_config.json") });
+  } else if (platform === "win32") {
+    candidates.push({ source: "claude-desktop", path: join(appData, "Claude", "claude_desktop_config.json") });
+  } else {
+    // Linux
+    candidates.push({ source: "claude-desktop", path: join(appData, "claude", "claude_desktop_config.json") });
+  }
+
+  // ── Claude Code ──────────────────────────────────────────────────────────
+  candidates.push({ source: "claude-code", path: join(home, ".claude.json") });
+
+  // ── Cursor (per-platform) ────────────────────────────────────────────────
+  if (platform === "darwin") {
+    candidates.push({ source: "cursor", path: join(appData, "Cursor", "User", "globalStorage", "cursor.mcp", "mcp.json") });
+  } else if (platform === "win32") {
+    candidates.push({ source: "cursor", path: join(appData, "Cursor", "User", "globalStorage", "cursor.mcp", "mcp.json") });
+  } else {
+    candidates.push({ source: "cursor", path: join(appData, "Cursor", "User", "globalStorage", "cursor.mcp", "mcp.json") });
+  }
+
+  // ── VS Code Copilot (per-platform) ───────────────────────────────────────
+  if (platform === "darwin") {
+    candidates.push({ source: "vscode-copilot", path: join(appData, "Code", "User", "globalStorage", "github.copilot", "mcp.json") });
+  } else if (platform === "win32") {
+    candidates.push({ source: "vscode-copilot", path: join(appData, "Code", "User", "globalStorage", "github.copilot", "mcp.json") });
+  } else {
+    candidates.push({ source: "vscode-copilot", path: join(appData, "Code", "User", "globalStorage", "github.copilot", "mcp.json") });
+  }
+
+  // ── Windsurf (per-platform) ──────────────────────────────────────────────
+  if (platform === "darwin") {
+    candidates.push({ source: "windsurf", path: join(appData, "Windsurf", "User", "globalStorage", "codeium.windsurf", "mcp.json") });
+  } else if (platform === "win32") {
+    candidates.push({ source: "windsurf", path: join(appData, "Windsurf", "User", "globalStorage", "codeium.windsurf", "mcp.json") });
+  } else {
+    candidates.push({ source: "windsurf", path: join(appData, "Windsurf", "User", "globalStorage", "codeium.windsurf", "mcp.json") });
+  }
+
+  // ── Gemini CLI ───────────────────────────────────────────────────────────
+  candidates.push({ source: "gemini-cli", path: join(home, ".gemini", "settings.json") });
+
+  // ── OpenClaw / ClawHub ───────────────────────────────────────────────────
+  candidates.push({ source: "openclaw", path: join(home, ".openclaw", "config.json") });
+
+  return candidates;
+}
+
+/**
+ * Attempts to parse a config file, normalizing different config shapes
+ * (mcpServers, servers, nested structures) into our standard MCPConfig shape.
+ */
+function normalizeConfig(raw: unknown): MCPConfig | null {
+  if (typeof raw !== "object" || raw === null) return null;
+
+  const obj = raw as Record<string, unknown>;
+
+  // Standard shape: { mcpServers: { ... } }
+  if (obj["mcpServers"] && typeof obj["mcpServers"] === "object") {
+    const result = MCPConfigSchema.safeParse(raw);
+    return result.success ? result.data : null;
+  }
+
+  // Alternate shape: { servers: { ... } } — used by some tools
+  if (obj["servers"] && typeof obj["servers"] === "object") {
+    const rewritten = { ...obj, mcpServers: obj["servers"] };
+    const result = MCPConfigSchema.safeParse(rewritten);
+    return result.success ? result.data : null;
+  }
+
+  // Gemini CLI / Claude Code: mcpServers may be nested inside the config
+  // e.g. ~/.claude.json has { mcpServers: { ... } } alongside other keys
+  // e.g. ~/.gemini/settings.json has { mcpServers: { ... } } inside
+  // These are already handled by the mcpServers check above.
+
+  // Last resort: try parsing as-is (passthrough schema allows extra keys)
+  const result = MCPConfigSchema.safeParse(raw);
+  return result.success ? result.data : null;
+}
+
+/**
+ * Discovers ALL MCP config files across all supported AI coding tools.
+ * Returns every valid config found, with source attribution.
+ * Used by --discover and --scan-all flags.
+ */
+function discoverAllConfigs(): DiscoveredConfig[] {
+  const candidates = getConfigCandidates();
+  const discovered: DiscoveredConfig[] = [];
+  const seenPaths = new Set<string>();
+
+  for (const candidate of candidates) {
+    // Deduplicate by resolved path (e.g. symlinks, same file via different routes)
+    const resolvedPath = resolve(candidate.path);
+    if (seenPaths.has(resolvedPath)) continue;
+    seenPaths.add(resolvedPath);
+
+    if (!existsSync(resolvedPath)) continue;
+
+    let stat;
+    try {
+      stat = statSync(resolvedPath);
+    } catch {
+      continue;
+    }
+
+    if (!stat.isFile()) continue;
+    if (stat.size > MAX_CONFIG_BYTES) continue;
+
+    let content: string;
+    try {
+      content = readFileSync(resolvedPath, "utf-8");
+    } catch {
+      continue;
+    }
+
+    let raw: unknown;
+    try {
+      raw = JSON.parse(content);
+    } catch {
+      continue;
+    }
+
+    const config = normalizeConfig(raw);
+    if (!config) continue;
+
+    const serverCount = Object.keys(config.mcpServers ?? {}).length;
+
+    // Only include configs that actually have servers defined
+    if (serverCount === 0) continue;
+
+    discovered.push({
+      source: candidate.source,
+      filePath: resolvedPath,
+      config,
+      serverCount,
+    });
+  }
+
+  return discovered;
 }
 
 // ─── Config Loading ───────────────────────────────────────────────────────────
@@ -285,21 +537,16 @@ function loadMCPConfig(explicitPath: string | null): ConfigLoadResult {
     return parseConfigFile(validation.resolved);
   }
 
-  // Auto-discovery: search well-known locations in priority order
-  const homeDir = process.env["HOME"] ?? process.env["USERPROFILE"] ?? "";
-  const candidates = [
-    resolve("claude_desktop_config.json"),
-    resolve("mcp.json"),
-    resolve(".mcp.json"),
-    join(homeDir, ".config", "claude", "claude_desktop_config.json"),
-  ];
+  // Auto-discovery: search all known config locations in priority order
+  const candidates = getConfigCandidates();
 
   for (const candidate of candidates) {
-    if (!existsSync(candidate)) continue;
+    const resolvedPath = resolve(candidate.path);
+    if (!existsSync(resolvedPath)) continue;
 
     let stat;
     try {
-      stat = statSync(candidate);
+      stat = statSync(resolvedPath);
     } catch {
       continue;
     }
@@ -309,22 +556,51 @@ function loadMCPConfig(explicitPath: string | null): ConfigLoadResult {
     if (stat.size > MAX_CONFIG_BYTES) {
       return {
         ok: false,
-        error: `Config file too large: ${candidate} (${stat.size.toLocaleString()} bytes; max ${MAX_CONFIG_BYTES.toLocaleString()})`,
+        error: `Config file too large: ${resolvedPath} (${stat.size.toLocaleString()} bytes; max ${MAX_CONFIG_BYTES.toLocaleString()})`,
       };
     }
 
-    return parseConfigFile(candidate);
+    // Try to parse and normalize the config
+    let content: string;
+    try {
+      content = readFileSync(resolvedPath, "utf-8");
+    } catch (err) {
+      continue;
+    }
+
+    let raw: unknown;
+    try {
+      raw = JSON.parse(content);
+    } catch {
+      continue;
+    }
+
+    const config = normalizeConfig(raw);
+    if (!config) continue;
+
+    // Only accept configs that have at least one server
+    const serverCount = Object.keys(config.mcpServers ?? {}).length;
+    if (serverCount === 0) continue;
+
+    return { ok: true, config, filePath: resolvedPath };
   }
 
+  const homeDir = getHomeDir();
   return {
     ok: false,
     error:
-      "No MCP configuration found. Looked for:\n" +
-      "  - claude_desktop_config.json\n" +
-      "  - mcp.json\n" +
-      "  - .mcp.json\n" +
-      `  - ${join(homeDir, ".config", "claude", "claude_desktop_config.json")}\n\n` +
-      "Run this command in a directory with MCP configuration, or use --config <path>.",
+      "No MCP configuration found. Searched locations for:\n" +
+      "  Claude Desktop, Claude Code, Cursor, VS Code (Copilot),\n" +
+      "  Windsurf, Gemini CLI, Kiro, OpenClaw\n\n" +
+      "Checked project configs:\n" +
+      "  - ./claude_desktop_config.json, ./mcp.json, ./.mcp.json\n" +
+      "  - .cursor/mcp.json, .vscode/mcp.json, .windsurf/mcp.json, .kiro/mcp.json\n\n" +
+      "Checked global configs:\n" +
+      `  - ${join(homeDir, ".claude.json")} (Claude Code)\n` +
+      `  - ${join(homeDir, ".gemini", "settings.json")} (Gemini CLI)\n` +
+      `  - ${getAppDataDir()}/<tool>/... (Claude Desktop, Cursor, VS Code, Windsurf)\n\n` +
+      "Run this command in a directory with MCP configuration, or use --config <path>.\n" +
+      "Use --discover to list all found MCP configs across all tools.",
   };
 }
 
@@ -705,6 +981,63 @@ async function runScan(args: string[]): Promise<never> {
   process.exit(findings.length > 0 ? EXIT.FINDINGS : EXIT.CLEAN);
 }
 
+// ─── Discover Command ────────────────────────────────────────────────────────
+
+function runDiscover(jsonOutput: boolean): never {
+  const discovered = discoverAllConfigs();
+
+  if (jsonOutput) {
+    const output = {
+      discovered: discovered.map((d) => ({
+        source: d.source,
+        source_label: CONFIG_SOURCE_LABELS[d.source],
+        file_path: d.filePath,
+        server_count: d.serverCount,
+        server_names: Object.keys(d.config.mcpServers ?? {}),
+      })),
+      total_configs: discovered.length,
+      total_servers: discovered.reduce((sum, d) => sum + d.serverCount, 0),
+    };
+    console.log(JSON.stringify(output, null, 2));
+    process.exit(EXIT.CLEAN);
+  }
+
+  // Human-readable output
+  console.log(`\nMCP Sentinel — Config Discovery\n`);
+
+  if (discovered.length === 0) {
+    console.log("  No MCP configurations found on this system.\n");
+    console.log("  Searched locations for:");
+    console.log("    Claude Desktop, Claude Code, Cursor, VS Code (Copilot),");
+    console.log("    Windsurf, Gemini CLI, Kiro, OpenClaw\n");
+    console.log("  Use --config <path> to specify a config file explicitly.");
+    process.exit(EXIT.CLEAN);
+  }
+
+  const divider = "─".repeat(72);
+  let totalServers = 0;
+
+  for (const d of discovered) {
+    const label = CONFIG_SOURCE_LABELS[d.source];
+    totalServers += d.serverCount;
+    console.log(divider);
+    console.log(`  ${label}`);
+    console.log(`  File: ${d.filePath}`);
+    console.log(`  Servers: ${d.serverCount}`);
+    const serverNames = Object.keys(d.config.mcpServers ?? {});
+    for (const name of serverNames) {
+      console.log(`    - ${sanitizeForTerminal(name, 60)}`);
+    }
+  }
+
+  console.log(divider);
+  console.log(`\n  Total: ${discovered.length} config(s), ${totalServers} server(s)\n`);
+  console.log("  Use --scan-all to scan all discovered configs.");
+  console.log("  Use --config <path> to scan a specific config file.\n");
+
+  process.exit(EXIT.CLEAN);
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -718,6 +1051,11 @@ async function main() {
   if (cliArgs.showHelp) {
     printHelp();
     process.exit(EXIT.CLEAN);
+  }
+
+  // --discover flag or "discover" command: list all found configs
+  if (cliArgs.discover || cliArgs.command === "discover") {
+    runDiscover(cliArgs.jsonOutput);
   }
 
   if (cliArgs.command === "check") {
@@ -742,14 +1080,42 @@ async function main() {
 
 async function runCheck(cliArgs: CLIArgs): Promise<never> {
   // ── 1. Load and validate config ────────────────────────────────────────────
-  const configResult = loadMCPConfig(cliArgs.configPath);
-  if (!configResult.ok) {
-    console.error(`Error: ${configResult.error}`);
-    process.exit(EXIT.INPUT_ERROR);
+  let servers: Record<string, MCPServerEntry> = {};
+  let configFilePath: string;
+  let discoveredConfigs: DiscoveredConfig[] | null = null;
+
+  if (cliArgs.scanAll) {
+    // --scan-all: discover and merge ALL configs across all tools
+    discoveredConfigs = discoverAllConfigs();
+    if (discoveredConfigs.length === 0) {
+      console.error("Error: --scan-all found no MCP configurations. Use --discover to see search locations.");
+      process.exit(EXIT.INPUT_ERROR);
+    }
+
+    configFilePath = `${discoveredConfigs.length} config(s) via --scan-all`;
+
+    // Merge all servers from all configs, prefixing server names with source
+    // to avoid collisions (e.g. two tools both have a "filesystem" server)
+    for (const dc of discoveredConfigs) {
+      const dcServers = dc.config.mcpServers ?? {};
+      for (const [name, entry] of Object.entries(dcServers)) {
+        // Prefix with source label if scanning multiple configs to avoid name collisions
+        const prefixedName = discoveredConfigs.length > 1
+          ? `[${CONFIG_SOURCE_LABELS[dc.source]}] ${name}`
+          : name;
+        servers[prefixedName] = entry;
+      }
+    }
+  } else {
+    const configResult = loadMCPConfig(cliArgs.configPath);
+    if (!configResult.ok) {
+      console.error(`Error: ${configResult.error}`);
+      process.exit(EXIT.INPUT_ERROR);
+    }
+    configFilePath = configResult.filePath;
+    servers = configResult.config.mcpServers ?? {};
   }
 
-  const { config, filePath: configFilePath } = configResult;
-  const servers = config.mcpServers ?? {};
   const serverNames = Object.keys(servers);
 
   if (serverNames.length === 0) {
@@ -1115,8 +1481,11 @@ Usage:
   npx mcp-sentinel check --min-score 80         Custom CI score threshold (0-100)
   npx mcp-sentinel check --fail-on high         Exit 1 if any high or critical finding
   npx mcp-sentinel check --config <path>        Specify config file explicitly
+  npx mcp-sentinel check --scan-all             Scan ALL discovered configs across all tools
   npx mcp-sentinel check --dynamic              Enable dynamic tool invocation (consent-gated)
   npx mcp-sentinel check --dynamic-allowlist <ids>  Pre-approve server IDs (comma-separated)
+  npx mcp-sentinel discover                     List all found MCP configs across all tools
+  npx mcp-sentinel discover --json              JSON output of discovered configs
   npx mcp-sentinel --version                    Print version
 
 Options:
@@ -1125,6 +1494,8 @@ Options:
   --min-score <n>              CI failure threshold, integer 0-100 (default: 60)
   --fail-on <sev>              Fail on findings at or above severity: critical|high|medium|low
   --config <path>              Path to MCP JSON config file (must be a .json file)
+  --discover                   List all MCP configs found across all supported tools
+  --scan-all                   Scan ALL discovered configs (enables cross-config analysis)
   --dynamic                    Enable consent-gated dynamic tool invocation testing.
                                Only servers that opt in via allowlist, tool_declaration,
                                or .well-known/mcp-sentinel.json are tested. Requires
@@ -1142,11 +1513,41 @@ Exit Codes:
   2  Config file error or invalid arguments — fix the input
   3  Internal scanner error — please report this as a bug
 
-Config File Discovery (when --config is not specified):
-  1. ./claude_desktop_config.json
-  2. ./mcp.json
-  3. ./.mcp.json
-  4. ~/.config/claude/claude_desktop_config.json
+Config File Auto-Discovery:
+  The CLI searches for MCP configs from all major AI coding tools:
+
+  Project-local (checked first):
+    ./claude_desktop_config.json, ./mcp.json, ./.mcp.json
+    .cursor/mcp.json, .vscode/mcp.json, .windsurf/mcp.json, .kiro/mcp.json
+
+  Claude Desktop:
+    macOS:   ~/Library/Application Support/Claude/claude_desktop_config.json
+    Linux:   ~/.config/claude/claude_desktop_config.json
+    Windows: %APPDATA%/Claude/claude_desktop_config.json
+
+  Claude Code:
+    ~/.claude.json
+
+  Cursor:
+    macOS:   ~/Library/Application Support/Cursor/User/globalStorage/cursor.mcp/mcp.json
+    Linux:   ~/.config/Cursor/User/globalStorage/cursor.mcp/mcp.json
+    Windows: %APPDATA%/Cursor/User/globalStorage/cursor.mcp/mcp.json
+
+  VS Code (Copilot):
+    macOS:   ~/Library/Application Support/Code/User/globalStorage/github.copilot/mcp.json
+    Linux:   ~/.config/Code/User/globalStorage/github.copilot/mcp.json
+    Windows: %APPDATA%/Code/User/globalStorage/github.copilot/mcp.json
+
+  Windsurf (Codeium):
+    macOS:   ~/Library/Application Support/Windsurf/User/globalStorage/codeium.windsurf/mcp.json
+    Linux:   ~/.config/Windsurf/User/globalStorage/codeium.windsurf/mcp.json
+    Windows: %APPDATA%/Windsurf/User/globalStorage/codeium.windsurf/mcp.json
+
+  Gemini CLI:  ~/.gemini/settings.json
+  Kiro (AWS):  .kiro/mcp.json (project-local)
+  OpenClaw:    ~/.openclaw/config.json
+
+  Use --discover to see which configs are found on your system.
 
 JSON Output (stable public contract — v0.1.0):
   {
@@ -1173,8 +1574,8 @@ JSON Output (stable public contract — v0.1.0):
 // Pure functions and types are exported so tests can validate security logic
 // directly without spawning subprocesses. The main() entry point is NOT
 // exported — use subprocess tests to validate full CLI behaviour and exit codes.
-export { sanitizeForTerminal, validateConfigPath, parseArgs, parseConfigFile, EXIT };
-export type { CLIArgs };
+export { sanitizeForTerminal, validateConfigPath, parseArgs, parseConfigFile, discoverAllConfigs, normalizeConfig, getConfigCandidates, EXIT };
+export type { CLIArgs, ConfigSource, DiscoveredConfig };
 
 // ─── Entry Point ──────────────────────────────────────────────────────────────
 // Guard: only execute main() when this file is run directly as a script.
