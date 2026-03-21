@@ -266,6 +266,8 @@ export const ToolEnumerationSchema = z.object({
       name: z.string(),
       description: z.string().nullable(),
       input_schema: z.record(z.unknown()).nullable(),
+      // MCP 2025-11-25 spec: structured output schema for tool results
+      output_schema: z.record(z.unknown()).nullable().optional(),
       annotations: z.object({
         readOnlyHint: z.boolean().optional(),
         destructiveHint: z.boolean().optional(),

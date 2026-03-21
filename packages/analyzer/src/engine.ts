@@ -1,5 +1,7 @@
 import type { DetectionRule, FindingInput } from "@mcp-sentinel/database";
 import pino from "pino";
+import type { ServerToolPin } from "./tool-fingerprint.js";
+import { pinServerTools, diffToolPins } from "./tool-fingerprint.js";
 
 // Log to stderr so that stdout is clean for callers that parse it (e.g. CLI --json mode)
 const logger = pino({ name: "analyzer:engine" }, process.stderr);
@@ -15,6 +17,8 @@ export interface AnalysisContext {
     name: string;
     description: string | null;
     input_schema: Record<string, unknown> | null;
+    /** MCP 2025-11-25 spec: structured output schema for tool results — J3 injection surface */
+    output_schema?: Record<string, unknown> | null;
     /** MCP 2025-03-26 spec: tool behaviour hints used by I1/I2 annotation rules */
     annotations?: {
       readOnlyHint?: boolean;
@@ -68,6 +72,8 @@ export interface AnalysisContext {
     sampling?: boolean;
     logging?: boolean;
   } | null;
+  /** Tool pin from previous scan for drift detection (G6 enhancement) */
+  previous_tool_pin?: ServerToolPin | null;
 }
 
 export class AnalysisEngine {
@@ -421,64 +427,161 @@ export class AnalysisEngine {
       }
 
       case "tool_behavior_drift": {
-        // G6: Rug pull detection — requires historical context stored in connection_metadata.
-        // The scanner pipeline is expected to embed prior_tool_count and prior_tool_names
-        // into connection_metadata when historical data is available.
-        const metaExt = meta as typeof meta & {
-          prior_tool_count?: number;
-          prior_tool_names?: string[];
-          prior_description_hashes?: Record<string, string>;
-        };
+        // G6: Rug pull detection — two modes:
+        // 1. Pin-based (preferred): uses cryptographic tool fingerprints from previous_tool_pin
+        // 2. Count-based (fallback): uses prior_tool_count/prior_tool_names from connection_metadata
 
         const increaseThreshold = (conditions.tool_count_increase_threshold as number) || 5;
         const decreaseThreshold = (conditions.tool_count_decrease_threshold as number) || 3;
         const criticalPatterns = (conditions.critical_capability_patterns as string[]) || [];
 
-        if (metaExt.prior_tool_count !== undefined) {
-          const currentCount = context.tools.length;
-          const delta = currentCount - metaExt.prior_tool_count;
+        // --- Pin-based detection (G1 enhancement) ---
+        if (context.previous_tool_pin) {
+          const currentPin = pinServerTools(context.tools);
+          const diff = diffToolPins(context.previous_tool_pin, currentPin);
 
-          if (delta > increaseThreshold) {
-            findings.push({
-              rule_id: rule.id,
-              severity: rule.severity,
-              evidence: `Server tool count increased by ${delta} tools since last scan (${metaExt.prior_tool_count} → ${currentCount}) — rug pull signal`,
-              remediation: rule.remediation,
-              owasp_category: rule.owasp,
-              mitre_technique: rule.mitre,
-            });
-          } else if (-delta > decreaseThreshold) {
-            findings.push({
-              rule_id: rule.id,
-              severity: rule.severity,
-              evidence: `Server tool count decreased by ${-delta} tools since last scan (${metaExt.prior_tool_count} → ${currentCount}) — tool removal after trust established`,
-              remediation: rule.remediation,
-              owasp_category: rule.owasp,
-              mitre_technique: rule.mitre,
-            });
-          }
-        }
+          if (diff.changed) {
+            // Report added tools
+            for (const added of diff.added) {
+              const addedTool = context.tools.find((t) => t.name === added.name);
+              const toolText = `${added.name} ${addedTool?.description || ""}`.toLowerCase();
+              const isDangerous = criticalPatterns.some((p) => {
+                try { return new RegExp(p, "i").test(toolText); } catch { return false; }
+              });
 
-        // Check if any new tools have dangerous capability profiles
-        if (metaExt.prior_tool_names) {
-          const priorNames = new Set(metaExt.prior_tool_names);
-          const newTools = context.tools.filter((t) => !priorNames.has(t.name));
-
-          for (const newTool of newTools) {
-            const toolText = `${newTool.name} ${newTool.description || ""}`.toLowerCase();
-            const isDangerous = criticalPatterns.some((p) => {
-              try { return new RegExp(p, "i").test(toolText); } catch { return false; }
-            });
-
-            if (isDangerous) {
               findings.push({
                 rule_id: rule.id,
-                severity: rule.severity,
-                evidence: `New tool "${newTool.name}" added since last scan matches dangerous capability patterns — server behavior drift detected`,
+                severity: isDangerous ? "critical" : rule.severity,
+                evidence: `New tool "${added.name}" added since last pin (hash: ${added.hash.slice(0, 12)}...)${isDangerous ? " — matches dangerous capability patterns" : ""}`,
                 remediation: rule.remediation,
                 owasp_category: rule.owasp,
                 mitre_technique: rule.mitre,
               });
+            }
+
+            // Report removed tools
+            for (const removed of diff.removed) {
+              findings.push({
+                rule_id: rule.id,
+                severity: rule.severity,
+                evidence: `Tool "${removed.name}" removed since last pin (previous hash: ${removed.hash.slice(0, 12)}...) — tool removal after trust established`,
+                remediation: rule.remediation,
+                owasp_category: rule.owasp,
+                mitre_technique: rule.mitre,
+              });
+            }
+
+            // Report modified tools with field-level detail
+            for (const mod of diff.modified) {
+              // Severity escalation: if description changed, check for A1 injection patterns
+              let escalatedSeverity = rule.severity;
+              let injectionNote = "";
+              if (mod.changed_fields.includes("description")) {
+                const modTool = context.tools.find((t) => t.name === mod.name);
+                const desc = modTool?.description || "";
+                // Check for common A1 prompt injection patterns
+                const injectionPatterns = [
+                  /ignore\s+(previous|above|all)\s+instructions/i,
+                  /you\s+are\s+(now|a)\s+/i,
+                  /system\s*:\s*/i,
+                  /\[INST\]/i,
+                  /<\|im_start\|>/i,
+                  /do\s+not\s+reveal/i,
+                  /act\s+as\s+(if|a)\s+/i,
+                ];
+                const hasInjection = injectionPatterns.some((p) => p.test(desc));
+                if (hasInjection) {
+                  escalatedSeverity = "critical";
+                  injectionNote = " — CRITICAL: modified description contains prompt injection patterns";
+                }
+              }
+
+              findings.push({
+                rule_id: rule.id,
+                severity: escalatedSeverity,
+                evidence: `Tool "${mod.name}" modified since last pin: changed fields [${mod.changed_fields.join(", ")}] (hash: ${mod.previous_hash.slice(0, 12)}... → ${mod.current_hash.slice(0, 12)}...)${injectionNote}`,
+                remediation: rule.remediation,
+                owasp_category: rule.owasp,
+                mitre_technique: rule.mitre,
+              });
+            }
+
+            // Report overall drift if tool count changed significantly
+            const countDelta = currentPin.tool_count - context.previous_tool_pin.tool_count;
+            if (countDelta > increaseThreshold) {
+              findings.push({
+                rule_id: rule.id,
+                severity: rule.severity,
+                evidence: `Server tool count increased by ${countDelta} tools since last pin (${context.previous_tool_pin.tool_count} → ${currentPin.tool_count}) — rug pull signal`,
+                remediation: rule.remediation,
+                owasp_category: rule.owasp,
+                mitre_technique: rule.mitre,
+              });
+            } else if (-countDelta > decreaseThreshold) {
+              findings.push({
+                rule_id: rule.id,
+                severity: rule.severity,
+                evidence: `Server tool count decreased by ${-countDelta} tools since last pin (${context.previous_tool_pin.tool_count} → ${currentPin.tool_count}) — tool removal after trust established`,
+                remediation: rule.remediation,
+                owasp_category: rule.owasp,
+                mitre_technique: rule.mitre,
+              });
+            }
+          }
+        } else {
+          // --- Count-based fallback (original G6 logic) ---
+          const metaExt = meta as typeof meta & {
+            prior_tool_count?: number;
+            prior_tool_names?: string[];
+            prior_description_hashes?: Record<string, string>;
+          };
+
+          if (metaExt.prior_tool_count !== undefined) {
+            const currentCount = context.tools.length;
+            const delta = currentCount - metaExt.prior_tool_count;
+
+            if (delta > increaseThreshold) {
+              findings.push({
+                rule_id: rule.id,
+                severity: rule.severity,
+                evidence: `Server tool count increased by ${delta} tools since last scan (${metaExt.prior_tool_count} → ${currentCount}) — rug pull signal`,
+                remediation: rule.remediation,
+                owasp_category: rule.owasp,
+                mitre_technique: rule.mitre,
+              });
+            } else if (-delta > decreaseThreshold) {
+              findings.push({
+                rule_id: rule.id,
+                severity: rule.severity,
+                evidence: `Server tool count decreased by ${-delta} tools since last scan (${metaExt.prior_tool_count} → ${currentCount}) — tool removal after trust established`,
+                remediation: rule.remediation,
+                owasp_category: rule.owasp,
+                mitre_technique: rule.mitre,
+              });
+            }
+          }
+
+          // Check if any new tools have dangerous capability profiles
+          if (metaExt.prior_tool_names) {
+            const priorNames = new Set(metaExt.prior_tool_names);
+            const newTools = context.tools.filter((t) => !priorNames.has(t.name));
+
+            for (const newTool of newTools) {
+              const toolText = `${newTool.name} ${newTool.description || ""}`.toLowerCase();
+              const isDangerous = criticalPatterns.some((p) => {
+                try { return new RegExp(p, "i").test(toolText); } catch { return false; }
+              });
+
+              if (isDangerous) {
+                findings.push({
+                  rule_id: rule.id,
+                  severity: rule.severity,
+                  evidence: `New tool "${newTool.name}" added since last scan matches dangerous capability patterns — server behavior drift detected`,
+                  remediation: rule.remediation,
+                  owasp_category: rule.owasp,
+                  mitre_technique: rule.mitre,
+                });
+              }
             }
           }
         }
@@ -1506,12 +1609,34 @@ export class AnalysisEngine {
 
       case "parameter_schema":
         return context.tools.flatMap((t) => {
-          const props = t.input_schema?.properties as Record<string, unknown> | undefined;
-          if (!props) return [];
-          return Object.entries(props).map(([name, def]) => ({
-            text: `${name} ${JSON.stringify(def)}`,
-            location: `tool:${t.name}/param:${name}`,
-          }));
+          const results: Array<{ text: string; location: string }> = [];
+          // Scan input_schema properties
+          const inputProps = t.input_schema?.properties as Record<string, unknown> | undefined;
+          if (inputProps) {
+            for (const [name, def] of Object.entries(inputProps)) {
+              results.push({
+                text: `${name} ${JSON.stringify(def)}`,
+                location: `tool:${t.name}/param:${name}`,
+              });
+            }
+          }
+          // MCP 2025-11-25: Also scan output_schema properties — identical injection surface
+          const outputProps = t.output_schema?.properties as Record<string, unknown> | undefined;
+          if (outputProps) {
+            for (const [name, def] of Object.entries(outputProps)) {
+              results.push({
+                text: `${name} ${JSON.stringify(def)}`,
+                location: `tool:${t.name}/output_schema/${name}`,
+              });
+            }
+          } else if (t.output_schema) {
+            // No properties key — scan the whole output_schema as a single text block
+            results.push({
+              text: JSON.stringify(t.output_schema),
+              location: `tool:${t.name}/output_schema`,
+            });
+          }
+          return results;
         });
 
       case "source_code":

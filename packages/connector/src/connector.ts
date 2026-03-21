@@ -77,6 +77,10 @@ export class MCPConnector {
         name: tool.name,
         description: tool.description || null,
         input_schema: (tool.inputSchema as Record<string, unknown>) || null,
+        // MCP 2025-11-25 spec: structured output schema for tool results
+        output_schema: (tool as Record<string, unknown>).outputSchema
+          ? ((tool as Record<string, unknown>).outputSchema as Record<string, unknown>)
+          : null,
         annotations: (tool as Record<string, unknown>).annotations
           ? ((tool as Record<string, unknown>).annotations as Record<string, unknown>)
           : null,

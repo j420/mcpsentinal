@@ -16,7 +16,13 @@
 | **Protocol Surface** | **I** | **No (protocol metadata + annotations)** | **16** | **P1 Threat Researcher (March 2026)** |
 | **2026 Threat Intelligence** | **J** | **Yes (source code + tool metadata)** | **7** | **P1 Threat Researcher (CVE-backed, March 2026)** |
 | **Compliance & Governance** | **K** | **Yes (source code + config)** | **20** | **P11 Compliance Mapper (8-framework mapped, March 2026)** |
-| **Total** | | | **103** | |
+| **Supply Chain Advanced** | **L** | **Yes (source code + CI config)** | **15** | **P1 Threat Researcher (CVE-backed, March 2026)** |
+| **AI Runtime Exploitation** | **M** | **Mixed (tool metadata + source)** | **9** | **P1 Threat Researcher (LLM attack research, March 2026)** |
+| **Protocol Edge Cases** | **N** | **Yes (source code)** | **15** | **P1 Threat Researcher (JSON-RPC + transport, March 2026)** |
+| **Data Privacy Attacks** | **O** | **Yes (source code)** | **10** | **P1 Threat Researcher (exfiltration research, March 2026)** |
+| **Infrastructure Runtime** | **P** | **Yes (source code + Dockerfiles)** | **10** | **P7 Infrastructure Engineer (container security, March 2026)** |
+| **Cross-Ecosystem Emergent** | **Q** | **Mixed (source + metadata)** | **15** | **P1 Threat Researcher (multi-protocol, March 2026)** |
+| **Total** | | | **177** | |
 
 ### The G-Category: What a Threat Researcher Adds
 

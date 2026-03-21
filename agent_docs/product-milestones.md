@@ -11,7 +11,7 @@
 | 2 | Security Intelligence | Pending | Layer 1 |
 | 3 | Public Interface | Pending | Layer 2 |
 | 4 | Developer Tools | Pending | Layer 3 |
-| 5 | Advanced Detection | Pending | Layer 4 |
+| 5 | Advanced Detection | **COMPLETE** | Layer 4 |
 | 6 | Compliance & Enterprise | Pending | Layer 5 |
 
 ---
@@ -97,10 +97,12 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 **Goal:** Dynamic tool invocation testing, cross-server analysis.
 
 **Deliverables:**
-- [ ] Gated dynamic testing capability
-- [ ] Cross-server risk matrix
-- [ ] Red team validation of rules
-- [ ] Rule accuracy auditing
+- [x] Gated dynamic testing capability (packages/dynamic-tester — 3 consent mechanisms, canary inputs, audit trail, 112 tests)
+- [x] Cross-server risk matrix (packages/risk-matrix — 12 patterns P01–P12, capability graph, score caps, 120 tests)
+- [x] Red team validation of rules (packages/red-team — 900+ fixtures across 17 categories, 49 tests)
+- [x] Rule accuracy auditing (AccuracyRunner with precision/recall metrics, text/JSON/HTML reporting)
+- [x] Pipeline integration (Stage 5b in scanner, --dynamic flag, scan.yml risk-matrix job, accuracy.yml workflow)
+- [x] CLAUDE.md documentation for all three Layer 5 packages
 
 **Success Criteria:** Detection precision >80% across all rule categories.
 
