@@ -15,17 +15,24 @@ MCP Sentinel's unique position: **ecosystem-wide security intelligence registry*
 
 | Tool | Org | Rules/Checks | Approach | Traction |
 |------|-----|---|---|---|
-| **snyk-agent-scan** | Snyk (acquired Invariant Labs, June 2025) | ~15+ risk types | Metadata + tool pinning (hash-based rug pull) + Toxic Flow Analysis | 1,700 GitHub stars, Snyk enterprise distribution |
-| **Cisco MCP Scanner** | Cisco | YARA + LLM-as-judge + CFG builder + taint tracking | Behavioral code analysis v4.2, cross-file dataflow, supply chain subcommand | Enterprise backing |
+| **Tencent AI-Infra-Guard** | Tencent Zhuque Lab | 14 risk categories, 589+ CVEs | **ReAct AI-agent-driven scanning**, 43+ AI framework components | **3,300 GitHub stars** (most starred) |
+| **snyk-agent-scan** | Snyk (acquired Invariant Labs, June 2025) | ~15+ risk types | Metadata + tool pinning (hash-based rug pull) + Toxic Flow Analysis | **2,000 GitHub stars**, Snyk enterprise distribution |
+| **Cisco MCP Scanner** | Cisco | YARA + LLM-as-judge + CFG builder + taint tracking | Behavioral code analysis v4.2, cross-file dataflow, supply chain subcommand | 853 GitHub stars, enterprise backing |
 | **Enkrypt AI MCP Scan** | Enkrypt AI | Agentic static analysis | Source code scanning + **public MCP Hub (1,000+ servers scored)** | Found 33% critical vulns |
+| **Stacklok ToolHive** | Stacklok ($17.5M) | Container isolation + verified registry | Runtime governance, OAuth 2.1 gateway (vMCP) | 1,700 GitHub stars |
 | **MCPAmpel** | Independent | 16 independent security engines | Multi-engine aggregation | Free, no account |
-| **NeuralTrust Scanner** | NeuralTrust | OWASP/MITRE/CWE mapped | Compliance-mapped scanning | Free scanner, paid platform |
+| **NeuralTrust Scanner** | NeuralTrust | OWASP/MITRE/CWE mapped | Compliance-mapped scanning + GAF (Generative App Firewall) | Free scanner, Gartner recognized |
 | **MCPGuard** | Virtue AI | AI semantic analysis | LLM-powered code understanding | Found vulns in 78% of 700 servers |
+| **Ant Group MCPScan** | Ant Group | Semgrep taint + LLM description monitoring | Multi-stage: Semgrep → E5 embedding → LLM arbitration | 213 GitHub stars |
+| **Pipelock** | Independent | 11-layer scanner pipeline | Agent firewall: DLP, SSRF, bidirectional scanning | 273 GitHub stars (Go) |
 | **MCP-Shield** | Independent | Tool poisoning + exfil + cross-origin | Optional Claude API for enhanced analysis | Open source, MIT |
-| **MCPScan.ai** | Independent | LLM classifier | Tool description poisoning | Free web tool |
-| **Proximity** | Thomas Roccia / Nova-Hunting | NOVA rule engine | Pattern-based + multiple LLM backends | Open source |
+| **MCPScan.ai** | Invariant Labs / Snyk | LLM classifier | Web portal for tool metadata scanning | Free web tool |
+| **Proximity** | Thomas Roccia / Nova-Hunting | NOVA rule engine | Pattern-based + multiple LLM backends | 287 GitHub stars |
 | **Knostic Scanner** | Knostic | Discovery-focused | Shodan filters, exposed server recon | Found 1,862 exposed servers |
-| **MCP Sentinel** | Us | **177 rules, 17 categories (A-Q)** | Regex + schema + behavioral + composite, deterministic | **Not yet launched** |
+| **mcp-audit** | APIsec | 25+ secret patterns | OWASP LLM Top 10 + **CycloneDX AI-BOM export** + SARIF output | 144 GitHub stars |
+| **GenTelLab MCP-Guard** | Academic (arXiv) | 3-stage pipeline | Pattern → E5 embedding → LLM, **70K+ attack benchmark** | 96.01% accuracy (paper) |
+| **Ramparts** | Javelin | YARA + LLM analysis | Fast Rust scanner, multi-transport | 85 GitHub stars |
+| **MCP Sentinel** | Us | **177 rules, 17 categories (A-Q)** | Regex + schema + behavioral + composite, **fully deterministic** | **Not yet launched** |
 
 #### Category 2: Runtime Gateways/Proxies
 
@@ -107,6 +114,25 @@ MCP Sentinel's unique position: **ecosystem-wide security intelligence registry*
 
 ---
 
+### GitHub Star Leaderboard (MCP Security Tools)
+
+| Tool | Stars | Language | Maintained |
+|------|-------|----------|------------|
+| Tencent AI-Infra-Guard | 3,300 | Go | Active |
+| Snyk agent-scan (mcp-scan) | 2,000 | Python | Active (corporate) |
+| Stacklok ToolHive | 1,700 | Go | Active (corporate) |
+| Cisco MCP Scanner | 853 | Python | Active (corporate) |
+| Lasso MCP Gateway | 360 | Python | Active |
+| Proximity | 287 | Python | Active |
+| Pipelock | 273 | Go | Active |
+| Ant Group MCPScan | 213 | Python+TS | Active |
+| MCP Guardian (eqtylab) | 193 | Rust+TS | Active |
+| mcp-audit (APIsec) | 144 | Python | Active |
+| Ramparts (Javelin) | 85 | Rust | Active |
+| MCP Guard (General Analysis) | 53 | TypeScript | Active |
+| GenTelLab MCP-Guard | 21 | Python | Academic |
+| MCP Sentinel | **0** | TypeScript | **Not launched** |
+
 ### Market Statistics
 
 - **$6.34B** total AI security funding in 2025 (3x from $2.16B in 2024)
@@ -117,9 +143,23 @@ MCP Sentinel's unique position: **ecosystem-wide security intelligence registry*
 - **17,000+** MCP server listings across directories
 - **1,862** exposed MCP servers with zero auth found by Knostic
 - **492** exposed MCP servers with zero auth found by Trend Micro
-- First confirmed malicious MCP server: **postmark-mcp** (BCC'd emails to attacker)
+- First confirmed malicious MCP server: **postmark-mcp** (BCC'd emails to attacker, 15 npm versions before payload)
 - PitchBook: AI-centric companies > 50% of global cybersecurity VC deals by late 2025
 - LLM firewall market: ~$30M currently, projected 100% growth in 2026
+- FastMCP: 1M+ daily PyPI downloads (MCP ecosystem scale indicator)
+
+### MCP Ecosystem Vulnerability Statistics (from published research)
+
+| Stat | Source |
+|------|--------|
+| **82%** of 2,614 MCP implementations vulnerable to path traversal | Equixly (Feb 2026) |
+| **43%** vulnerable to command injection | Equixly (Feb 2026) |
+| **33%** of top 1,000 MCP servers had critical vulnerabilities | Enkrypt AI |
+| **78%** of 700 scanned servers had vulnerabilities | MCPGuard / Virtue AI |
+| **7.2%** general vulns, **5.5%** tool poisoning, **66%** code smells (1,899 servers) | arXiv 2506.13538 |
+| **30%** had SSRF vulnerabilities | Equixly (Feb 2026) |
+| **22%** had path traversal (of tested subset) | Equixly (Feb 2026) |
+| mcp-remote: 437,000+ downloads before CVE-2025-6514 (CVSS 9.6) | CVE database |
 
 ---
 
