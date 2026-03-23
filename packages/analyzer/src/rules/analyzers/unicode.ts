@@ -174,7 +174,7 @@ const INVISIBLE_RANGES: Array<
 
   // Tag characters (U+E0001–U+E007F) — used in emoji tag sequences
   // but can hide entire ASCII messages in invisible tag codepoints
-  [0xe0001, 0xe007f, "Tag Character", "tag_character"],
+  [0xe0000, 0xe007f, "Tag Character", "tag_character"],
 
   // Variation selectors
   [0xfe00, 0xfe0f, "Variation Selector", "variation_selector"],

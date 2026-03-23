@@ -87,27 +87,39 @@ export class AnalysisEngine {
 
     for (const rule of this.rules) {
       try {
-        // Prefer typed (TypeScript) rule implementation over YAML-interpreted rule.
-        // Typed rules use real analysis algorithms (taint tracking, entropy,
-        // graph algorithms) instead of regex pattern matching.
+        // Run YAML rule first (baseline — broad regex coverage)
+        const yamlFindings = this.runRule(rule, context);
+        yamlRulesRun++;
+
+        // If a typed (TypeScript) rule exists, also run it and merge.
+        // Typed rules use real analysis (taint tracking, entropy, graph algorithms)
+        // that catches things regex misses. We keep YAML for breadth (known patterns)
+        // and add typed for depth (novel attacks, reduced false positives).
         if (hasTypedRule(rule.id)) {
           const typedRule = getTypedRule(rule.id)!;
           const typedFindings = typedRule.analyze(context);
-          findings.push(
-            ...typedFindings.map((tf: TypedFinding) => ({
+          typedRulesRun++;
+
+          // Merge: keep all YAML findings, add typed findings that aren't duplicates.
+          // A typed finding is a duplicate if YAML already found the same rule_id + severity.
+          const yamlKeys = new Set(
+            yamlFindings.map((f) => `${f.rule_id}:${f.severity}`)
+          );
+
+          const newTypedFindings = typedFindings
+            .filter((tf) => !yamlKeys.has(`${tf.rule_id}:${tf.severity}`))
+            .map((tf: TypedFinding) => ({
               rule_id: tf.rule_id,
               severity: tf.severity,
               evidence: tf.evidence,
               remediation: tf.remediation,
               owasp_category: tf.owasp_category,
               mitre_technique: tf.mitre_technique,
-            }))
-          );
-          typedRulesRun++;
+            }));
+
+          findings.push(...yamlFindings, ...newTypedFindings);
         } else {
-          const ruleFindings = this.runRule(rule, context);
-          findings.push(...ruleFindings);
-          yamlRulesRun++;
+          findings.push(...yamlFindings);
         }
       } catch (err) {
         logger.error(
@@ -121,7 +133,7 @@ export class AnalysisEngine {
       {
         server: context.server.id,
         rules_run: this.rules.length,
-        typed_rules: typedRulesRun,
+        typed_augmented: typedRulesRun,
         yaml_rules: yamlRulesRun,
         findings: findings.length,
       },

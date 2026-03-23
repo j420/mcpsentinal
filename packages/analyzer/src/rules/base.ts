@@ -9,15 +9,16 @@
  */
 
 import type { AnalysisContext } from "../engine.js";
+import type { Severity, OwaspCategory } from "@mcp-sentinel/database";
 
 /** A single finding produced by a typed rule */
 export interface TypedFinding {
   rule_id: string;
-  severity: string;
+  severity: Severity;
   evidence: string;
   remediation: string;
-  owasp_category: string;
-  mitre_technique: string;
+  owasp_category: OwaspCategory | null;
+  mitre_technique: string | null;
   /** Confidence score 0.0–1.0 for Bayesian aggregation */
   confidence: number;
   /** Structured metadata for downstream analysis */

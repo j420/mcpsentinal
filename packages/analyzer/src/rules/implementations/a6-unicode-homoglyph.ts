@@ -166,7 +166,8 @@ class ZeroWidthInjectionRule implements TypedRule {
       confusable_whole_script: "confusable",
     };
 
-    const relevantTypes: UnicodeIssueType[] = [
+    // Types relevant for tool names (variation selectors always suspicious in identifiers)
+    const nameRelevantTypes: UnicodeIssueType[] = [
       "zero_width",
       "bidi_override",
       "tag_character",
@@ -174,11 +175,19 @@ class ZeroWidthInjectionRule implements TypedRule {
       "invisible_operator",
     ];
 
+    // Types relevant for descriptions (variation selectors after emoji are normal)
+    const descRelevantTypes: UnicodeIssueType[] = [
+      "zero_width",
+      "bidi_override",
+      "tag_character",
+      "invisible_operator",
+    ];
+
     for (const tool of context.tools) {
       // Check tool name for invisible characters
       const nameResult = analyzeUnicode(tool.name);
       const nameInvisible = nameResult.issues.filter((i) =>
-        relevantTypes.includes(i.type)
+        nameRelevantTypes.includes(i.type)
       );
 
       if (nameInvisible.length > 0) {
@@ -213,7 +222,7 @@ class ZeroWidthInjectionRule implements TypedRule {
       if (tool.description) {
         const descResult = analyzeUnicode(tool.description);
         const descInvisible = descResult.issues.filter((i) =>
-          relevantTypes.includes(i.type)
+          descRelevantTypes.includes(i.type)
         );
 
         if (descInvisible.length > 0) {
@@ -280,7 +289,7 @@ class ZeroWidthInjectionRule implements TypedRule {
 
           const paramResult = analyzeUnicode(paramDesc);
           const paramInvisible = paramResult.issues.filter((i) =>
-            relevantTypes.includes(i.type)
+            descRelevantTypes.includes(i.type)
           );
 
           if (paramInvisible.length > 0) {

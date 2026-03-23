@@ -22,6 +22,7 @@
 import type { TypedRule, TypedFinding } from "../base.js";
 import { registerTypedRule } from "../base.js";
 import type { AnalysisContext } from "../../engine.js";
+import type { Severity } from "@mcp-sentinel/database";
 import {
   classifyContent,
   slidingWindowEntropy,
@@ -30,7 +31,7 @@ import {
   type EntropyClassification,
 } from "../analyzers/entropy.js";
 
-const CLASSIFICATION_SEVERITY: Record<EntropyClassification, string> = {
+const CLASSIFICATION_SEVERITY: Record<EntropyClassification, Severity> = {
   base64: "critical",
   hex_encoded: "high",
   url_encoded: "high",

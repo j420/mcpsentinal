@@ -40,10 +40,16 @@ const FALLBACK_PATTERNS = [
   { regex: /exec(?:Sync)?\s*\(`[^`]*\$\{/g, desc: "template literal in exec()", confidence: 0.8 },
   // exec with variable (not string literal)
   { regex: /exec(?:Sync)?\s*\(\s*(?!['"`])(\w+)/g, desc: "variable passed to exec()", confidence: 0.6 },
+  // spawnSync with shell: true
+  { regex: /spawn(?:Sync)?\s*\([^)]*shell\s*:\s*true/g, desc: "spawnSync with shell: true", confidence: 0.75 },
+  // vm module (sandbox escape risk)
+  { regex: /vm\.run(?:InNewContext|InThisContext|InContext)\s*\(/g, desc: "vm.runInNewContext with potential user input", confidence: 0.65 },
   // Python subprocess with shell=True and variable
-  { regex: /subprocess\.(?:call|run|Popen)\s*\([^)]*shell\s*=\s*True/g, desc: "subprocess with shell=True", confidence: 0.7 },
+  { regex: /subprocess\.(?:call|run|Popen|check_output)\s*\([^)]*shell\s*=\s*True/g, desc: "subprocess with shell=True", confidence: 0.7 },
   // os.system with variable
   { regex: /os\.system\s*\(\s*(?!['"`])(\w+)/g, desc: "variable passed to os.system()", confidence: 0.65 },
+  // shelljs
+  { regex: /shell\.exec\s*\(/g, desc: "shelljs exec()", confidence: 0.6 },
 ];
 
 /** Patterns that indicate a safe usage (not injection) */
