@@ -2,6 +2,7 @@ import type { DetectionRule, FindingInput } from "@mcp-sentinel/database";
 import pino from "pino";
 import type { ServerToolPin } from "./tool-fingerprint.js";
 import { pinServerTools, diffToolPins } from "./tool-fingerprint.js";
+import { hasTypedRule, getTypedRule, type TypedFinding } from "./rules/base.js";
 
 // Log to stderr so that stdout is clean for callers that parse it (e.g. CLI --json mode)
 const logger = pino({ name: "analyzer:engine" }, process.stderr);
@@ -81,11 +82,33 @@ export class AnalysisEngine {
 
   analyze(context: AnalysisContext): FindingInput[] {
     const findings: FindingInput[] = [];
+    let typedRulesRun = 0;
+    let yamlRulesRun = 0;
 
     for (const rule of this.rules) {
       try {
-        const ruleFindings = this.runRule(rule, context);
-        findings.push(...ruleFindings);
+        // Prefer typed (TypeScript) rule implementation over YAML-interpreted rule.
+        // Typed rules use real analysis algorithms (taint tracking, entropy,
+        // graph algorithms) instead of regex pattern matching.
+        if (hasTypedRule(rule.id)) {
+          const typedRule = getTypedRule(rule.id)!;
+          const typedFindings = typedRule.analyze(context);
+          findings.push(
+            ...typedFindings.map((tf: TypedFinding) => ({
+              rule_id: tf.rule_id,
+              severity: tf.severity,
+              evidence: tf.evidence,
+              remediation: tf.remediation,
+              owasp_category: tf.owasp_category,
+              mitre_technique: tf.mitre_technique,
+            }))
+          );
+          typedRulesRun++;
+        } else {
+          const ruleFindings = this.runRule(rule, context);
+          findings.push(...ruleFindings);
+          yamlRulesRun++;
+        }
       } catch (err) {
         logger.error(
           { rule: rule.id, server: context.server.id, err },
@@ -98,6 +121,8 @@ export class AnalysisEngine {
       {
         server: context.server.id,
         rules_run: this.rules.length,
+        typed_rules: typedRulesRun,
+        yaml_rules: yamlRulesRun,
         findings: findings.length,
       },
       "Analysis complete"
