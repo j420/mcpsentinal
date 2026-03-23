@@ -1,0 +1,33 @@
+/**
+ * TypedRule Registry — Auto-registers all typed rule implementations.
+ *
+ * Import this module to register all typed rules with the engine.
+ * Each implementation file calls registerTypedRule() on import.
+ */
+
+// Core framework
+export {
+  type TypedRule,
+  type TypedFinding,
+  registerTypedRule,
+  getTypedRule,
+  getAllTypedRules,
+  hasTypedRule,
+} from "./base.js";
+
+// Analyzers (shared analysis toolkits)
+export * as entropy from "./analyzers/entropy.js";
+export * as unicode from "./analyzers/unicode.js";
+export * as similarity from "./analyzers/similarity.js";
+export * as taint from "./analyzers/taint.js";
+export * as taintAST from "./analyzers/taint-ast.js";
+export * as capabilityGraph from "./analyzers/capability-graph.js";
+export * as schemaInference from "./analyzers/schema-inference.js";
+
+// Rule implementations (self-registering on import)
+import "./implementations/c1-command-injection.js";
+import "./implementations/a6-unicode-homoglyph.js";
+import "./implementations/a9-encoded-instructions.js";
+import "./implementations/d3-typosquatting.js";
+import "./implementations/f1-lethal-trifecta.js";
+import "./implementations/g4-context-saturation.js";

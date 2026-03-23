@@ -2,6 +2,12 @@ import type { DetectionRule, FindingInput } from "@mcp-sentinel/database";
 import pino from "pino";
 import type { ServerToolPin } from "./tool-fingerprint.js";
 import { pinServerTools, diffToolPins } from "./tool-fingerprint.js";
+import { hasTypedRule, getTypedRule, type TypedFinding } from "./rules/base.js";
+import { CodeAnalyzer } from "./engines/code-analyzer.js";
+import { DescriptionAnalyzer } from "./engines/description-analyzer.js";
+import { SchemaAnalyzer } from "./engines/schema-analyzer.js";
+import { DependencyAnalyzer } from "./engines/dependency-analyzer.js";
+import { ProtocolAnalyzer } from "./engines/protocol-analyzer.js";
 
 // Log to stderr so that stdout is clean for callers that parse it (e.g. CLI --json mode)
 const logger = pino({ name: "analyzer:engine" }, process.stderr);
@@ -77,15 +83,75 @@ export interface AnalysisContext {
 }
 
 export class AnalysisEngine {
+  private codeAnalyzer = new CodeAnalyzer();
+  private descriptionAnalyzer = new DescriptionAnalyzer();
+  private schemaAnalyzer = new SchemaAnalyzer();
+  private dependencyAnalyzer = new DependencyAnalyzer();
+  private protocolAnalyzer = new ProtocolAnalyzer();
+
   constructor(private rules: DetectionRule[]) {}
 
   analyze(context: AnalysisContext): FindingInput[] {
     const findings: FindingInput[] = [];
 
+    // ── Phase 1: Specialized engines (real analysis) ──
+    // Each engine owns a category and does actual program analysis,
+    // structural inference, or linguistic analysis — not regex.
+    // Only include findings for rules that are actually loaded.
+    const loadedRuleIds = new Set(this.rules.map((r) => r.id));
+    const engineFindings: FindingInput[] = [];
+    const engineRuleIds = new Set<string>();
+
+    const allEngineResults: Array<{
+      rule_id: string;
+      severity: string;
+      evidence: string;
+      remediation: string;
+      owasp_category: string | null;
+      mitre_technique: string | null;
+      confidence?: number;
+      metadata?: Record<string, unknown>;
+    }> = [];
+
+    try { allEngineResults.push(...this.codeAnalyzer.analyze(context)); }
+    catch (err) { logger.error({ err }, "CodeAnalyzer error"); }
+
+    try { allEngineResults.push(...this.descriptionAnalyzer.analyze(context)); }
+    catch (err) { logger.error({ err }, "DescriptionAnalyzer error"); }
+
+    try { allEngineResults.push(...this.schemaAnalyzer.analyze(context)); }
+    catch (err) { logger.error({ err }, "SchemaAnalyzer error"); }
+
+    try { allEngineResults.push(...this.dependencyAnalyzer.analyze(context)); }
+    catch (err) { logger.error({ err }, "DependencyAnalyzer error"); }
+
+    try { allEngineResults.push(...this.protocolAnalyzer.analyze(context)); }
+    catch (err) { logger.error({ err }, "ProtocolAnalyzer error"); }
+
+    // Filter to only rules that are loaded, then convert
+    for (const f of allEngineResults) {
+      if (loadedRuleIds.has(f.rule_id)) {
+        engineFindings.push(this.toFindingInput(f as Parameters<typeof this.toFindingInput>[0]));
+        engineRuleIds.add(f.rule_id);
+      }
+    }
+
+    findings.push(...engineFindings);
+
+    // ── Phase 2: YAML rules (fallback for rules not covered by engines) ──
+    // Engines cover: C1-C16, A1-A9, B1-B7, D1-D7, E1-E4, F1-F7, H1-H3, I1-I2, I16
+    // YAML fallback covers: G1-G7, I3-I15, J1-J7, K-Q, and any rules engines missed
+    let typedRulesRun = 0;
+    let yamlRulesRun = 0;
+
     for (const rule of this.rules) {
+      // Skip rules already handled by specialized engines
+      if (engineRuleIds.has(rule.id)) continue;
+
       try {
-        const ruleFindings = this.runRule(rule, context);
-        findings.push(...ruleFindings);
+        const yamlFindings = this.runRule(rule, context);
+        findings.push(...yamlFindings);
+        yamlRulesRun++;
       } catch (err) {
         logger.error(
           { rule: rule.id, server: context.server.id, err },
@@ -97,13 +163,33 @@ export class AnalysisEngine {
     logger.info(
       {
         server: context.server.id,
-        rules_run: this.rules.length,
-        findings: findings.length,
+        engine_findings: engineFindings.length,
+        engine_rules: engineRuleIds.size,
+        yaml_fallback_rules: yamlRulesRun,
+        total_findings: findings.length,
       },
       "Analysis complete"
     );
 
     return findings;
+  }
+
+  private toFindingInput(f: {
+    rule_id: string;
+    severity: string;
+    evidence: string;
+    remediation: string;
+    owasp_category: string | null;
+    mitre_technique: string | null;
+  }): FindingInput {
+    return {
+      rule_id: f.rule_id,
+      severity: f.severity as FindingInput["severity"],
+      evidence: f.evidence,
+      remediation: f.remediation,
+      owasp_category: f.owasp_category as FindingInput["owasp_category"],
+      mitre_technique: f.mitre_technique,
+    };
   }
 
   private runRule(
