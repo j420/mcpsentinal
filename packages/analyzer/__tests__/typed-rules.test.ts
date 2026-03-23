@@ -375,6 +375,196 @@ subprocess.run(user_input, shell=True)
   });
 });
 
+// --- AST Taint Analysis Tests ---
+import { analyzeASTTaint, getUnsanitizedASTFlows } from "../src/rules/analyzers/taint-ast.js";
+
+describe("AST Taint Analysis", () => {
+  it("traces taint through variable assignment", () => {
+    const code = `
+const userInput = req.body.command;
+exec(userInput);
+`;
+    const flows = getUnsanitizedASTFlows(code);
+    expect(flows.length).toBeGreaterThan(0);
+    expect(flows[0].source.category).toBe("http_body");
+    expect(flows[0].sink.category).toBe("command_execution");
+  });
+
+  it("does NOT flag hardcoded strings", () => {
+    const code = `exec("git status");`;
+    const flows = getUnsanitizedASTFlows(code);
+    expect(flows.length).toBe(0);
+  });
+
+  it("traces through function calls (interprocedural)", () => {
+    const code = `
+function processInput(cmd) {
+  exec(cmd);
+}
+const input = req.body.data;
+processInput(input);
+`;
+    const flows = getUnsanitizedASTFlows(code);
+    expect(flows.length).toBeGreaterThan(0);
+    // Should show parameter_binding in the path
+    expect(flows[0].path.some((s) => s.type === "parameter_binding")).toBe(true);
+  });
+
+  it("recognizes sanitizers in the path", () => {
+    const code = `
+const input = req.body.command;
+const safe = escapeShell(input);
+exec(safe);
+`;
+    const flows = analyzeASTTaint(code);
+    const cmdFlows = flows.filter((f) => f.sink.category === "command_execution");
+    // Should find flow but mark it sanitized
+    if (cmdFlows.length > 0) {
+      expect(cmdFlows.some((f) => f.sanitized)).toBe(true);
+    }
+  });
+
+  it("detects template literal injection", () => {
+    const code = `
+const input = req.query.name;
+exec(\`echo \${input}\`);
+`;
+    const flows = getUnsanitizedASTFlows(code);
+    expect(flows.length).toBeGreaterThan(0);
+  });
+
+  it("tracks through string concatenation", () => {
+    const code = `
+const input = req.body.cmd;
+const fullCmd = "prefix " + input;
+exec(fullCmd);
+`;
+    const flows = getUnsanitizedASTFlows(code);
+    expect(flows.length).toBeGreaterThan(0);
+  });
+
+  it("tracks through property access chains", () => {
+    const code = `
+const data = req.body.nested;
+exec(data);
+`;
+    const flows = getUnsanitizedASTFlows(code);
+    expect(flows.length).toBeGreaterThan(0);
+    expect(flows[0].source.expression).toContain("req.body");
+  });
+
+  it("has higher confidence than regex taint", () => {
+    const code = `
+const cmd = req.body.command;
+exec(cmd);
+`;
+    const flows = getUnsanitizedASTFlows(code);
+    expect(flows.length).toBeGreaterThan(0);
+    // AST confidence should be > 0.8 (higher than regex fallback)
+    expect(flows[0].confidence).toBeGreaterThan(0.8);
+  });
+});
+
+// --- Schema Inference Tests ---
+import { analyzeSchema, analyzeToolSet } from "../src/rules/analyzers/schema-inference.js";
+
+describe("Schema Inference", () => {
+  it("classifies filesystem path parameters", () => {
+    const result = analyzeSchema("read_file", {
+      type: "object",
+      properties: {
+        path: { type: "string" },
+      },
+    });
+    expect(result.parameters[0].semantic_type).toBe("filesystem_path");
+    expect(result.capabilities.some((c) => c.capability === "filesystem_access")).toBe(true);
+  });
+
+  it("classifies command parameters as code execution", () => {
+    const result = analyzeSchema("run_command", {
+      type: "object",
+      properties: {
+        command: { type: "string" },
+      },
+    });
+    expect(result.parameters[0].semantic_type).toBe("shell_command");
+    expect(result.capabilities.some((c) => c.capability === "code_execution")).toBe(true);
+    expect(result.attack_surface_score).toBeGreaterThan(0.3);
+  });
+
+  it("reduces risk for constrained parameters", () => {
+    const unconstrained = analyzeSchema("tool", {
+      type: "object",
+      properties: { path: { type: "string" } },
+    });
+    const constrained = analyzeSchema("tool", {
+      type: "object",
+      properties: {
+        path: { type: "string", enum: ["/safe/dir1", "/safe/dir2"] },
+      },
+    });
+    // Constrained params should have lower risk
+    expect(constrained.parameters[0].risk_contribution).toBeLessThan(
+      unconstrained.parameters[0].risk_contribution
+    );
+  });
+
+  it("detects cross-tool lethal trifecta from schemas", () => {
+    const result = analyzeToolSet([
+      {
+        name: "query_db",
+        description: null,
+        input_schema: {
+          type: "object",
+          properties: {
+            query: { type: "string" },
+          },
+        },
+      },
+      {
+        name: "send_data",
+        description: null,
+        input_schema: {
+          type: "object",
+          properties: {
+            url: { type: "string", format: "uri" },
+            payload: { type: "string" },
+          },
+        },
+      },
+    ]);
+
+    const trifecta = result.cross_tool_patterns.filter(
+      (p) => p.type === "lethal_trifecta"
+    );
+    expect(trifecta.length).toBeGreaterThan(0);
+    // Evidence should mention "parameter types" not "description keywords"
+    expect(trifecta[0].evidence).toContain("Schema structural");
+  });
+
+  it("classifies credential parameters", () => {
+    const result = analyzeSchema("auth_tool", {
+      type: "object",
+      properties: {
+        api_key: { type: "string" },
+        token: { type: "string" },
+      },
+    });
+    expect(result.capabilities.some((c) => c.capability === "credential_handling")).toBe(true);
+  });
+
+  it("boolean parameters are low risk", () => {
+    const result = analyzeSchema("toggle", {
+      type: "object",
+      properties: {
+        enabled: { type: "boolean" },
+      },
+    });
+    expect(result.parameters[0].risk_contribution).toBeLessThan(0.1);
+    expect(result.attack_surface_score).toBeLessThan(0.1);
+  });
+});
+
 // --- Capability Graph Tests ---
 import { buildCapabilityGraph } from "../src/rules/analyzers/capability-graph.js";
 

@@ -22,6 +22,7 @@
 import type { TypedRule, TypedFinding } from "../base.js";
 import { registerTypedRule } from "../base.js";
 import type { AnalysisContext } from "../../engine.js";
+import { analyzeASTTaint, type ASTTaintFlow } from "../analyzers/taint-ast.js";
 import { analyzeTaint, type TaintFlow } from "../analyzers/taint.js";
 
 const RULE_ID = "C1";
@@ -77,48 +78,96 @@ class CommandInjectionRule implements TypedRule {
 
     const findings: TypedFinding[] = [];
 
-    // Phase 1: Taint analysis (high confidence)
-    const taintFlows = analyzeTaint(context.source_code);
-    const commandFlows = taintFlows.filter(
-      (f) => f.sink.category === "command_execution"
-    );
+    // Phase 1: AST-based taint analysis (highest confidence)
+    // Uses TypeScript compiler to parse source into a real AST,
+    // then traces data flow through assignments, function calls, and returns.
+    let astFlowCount = 0;
+    try {
+      const astFlows = analyzeASTTaint(context.source_code);
+      const astCommandFlows = astFlows.filter(
+        (f) => f.sink.category === "command_execution" || f.sink.category === "vm_escape"
+      );
 
-    for (const flow of commandFlows) {
-      if (flow.sanitized) {
-        // Sanitized flow — informational only
-        findings.push({
-          rule_id: RULE_ID,
-          severity: "informational",
-          evidence: this.formatTaintEvidence(flow, true),
-          remediation: "Sanitizer detected. Verify it handles all edge cases.",
-          owasp_category: OWASP,
-          mitre_technique: MITRE,
-          confidence: flow.confidence * 0.3,
-        });
-      } else {
-        // Unsanitized flow — real vulnerability
-        findings.push({
-          rule_id: RULE_ID,
-          severity: "critical",
-          evidence: this.formatTaintEvidence(flow, false),
-          remediation: REMEDIATION,
-          owasp_category: OWASP,
-          mitre_technique: MITRE,
-          confidence: flow.confidence,
-          metadata: {
-            analysis_type: "taint",
-            source_category: flow.source.category,
-            source_line: flow.source.line,
-            sink_line: flow.sink.line,
-            propagation_length: flow.propagation_chain.length,
-          },
-        });
+      for (const flow of astCommandFlows) {
+        astFlowCount++;
+        if (flow.sanitized) {
+          findings.push({
+            rule_id: RULE_ID,
+            severity: "informational",
+            evidence: this.formatASTEvidence(flow, true),
+            remediation: "Sanitizer detected. Verify it handles all edge cases.",
+            owasp_category: OWASP,
+            mitre_technique: MITRE,
+            confidence: flow.confidence * 0.3,
+          });
+        } else {
+          findings.push({
+            rule_id: RULE_ID,
+            severity: "critical",
+            evidence: this.formatASTEvidence(flow, false),
+            remediation: REMEDIATION,
+            owasp_category: OWASP,
+            mitre_technique: MITRE,
+            confidence: flow.confidence,
+            metadata: {
+              analysis_type: "ast_taint",
+              source_category: flow.source.category,
+              source_line: flow.source.line,
+              sink_line: flow.sink.line,
+              path_length: flow.path.length,
+              path_steps: flow.path.map((s) => `${s.type}: ${s.expression}`),
+            },
+          });
+        }
+      }
+    } catch (_err) {
+      // AST parsing failed (malformed code, unsupported syntax)
+      // Fall through to regex taint
+    }
+
+    // Phase 2: Regex-based taint analysis (fallback for patterns AST misses)
+    // Only if AST found nothing — avoid duplicate findings
+    if (astFlowCount === 0) {
+      const taintFlows = analyzeTaint(context.source_code);
+      const commandFlows = taintFlows.filter(
+        (f) => f.sink.category === "command_execution"
+      );
+
+      for (const flow of commandFlows) {
+        if (flow.sanitized) {
+          findings.push({
+            rule_id: RULE_ID,
+            severity: "informational",
+            evidence: this.formatTaintEvidence(flow, true),
+            remediation: "Sanitizer detected. Verify it handles all edge cases.",
+            owasp_category: OWASP,
+            mitre_technique: MITRE,
+            confidence: flow.confidence * 0.3,
+          });
+        } else {
+          findings.push({
+            rule_id: RULE_ID,
+            severity: "critical",
+            evidence: this.formatTaintEvidence(flow, false),
+            remediation: REMEDIATION,
+            owasp_category: OWASP,
+            mitre_technique: MITRE,
+            confidence: flow.confidence,
+            metadata: {
+              analysis_type: "taint",
+              source_category: flow.source.category,
+              source_line: flow.source.line,
+              sink_line: flow.sink.line,
+              propagation_length: flow.propagation_chain.length,
+            },
+          });
+        }
       }
     }
 
-    // Phase 2: Regex fallback for patterns taint analysis misses
-    // Only if taint analysis found no flows (avoid duplicates)
-    if (commandFlows.length === 0) {
+    // Phase 3: Regex fallback for patterns neither AST nor regex taint catches
+    // Only if no taint analysis found command flows
+    if (astFlowCount === 0 && findings.filter((f) => f.severity === "critical").length === 0) {
       for (const { regex, desc, confidence } of FALLBACK_PATTERNS) {
         regex.lastIndex = 0;
         let match: RegExpExecArray | null;
@@ -151,6 +200,27 @@ class CommandInjectionRule implements TypedRule {
     }
 
     return findings;
+  }
+
+  private formatASTEvidence(flow: ASTTaintFlow, sanitized: boolean): string {
+    const pathStr =
+      flow.path.length > 0
+        ? ` → ${flow.path.map((s) => `${s.type}(${s.expression.slice(0, 50)}, L${s.line})`).join(" → ")}`
+        : "";
+
+    const sanitizerStr = sanitized && flow.sanitizer_name
+      ? ` [SANITIZED by ${flow.sanitizer_name}]`
+      : "";
+
+    return (
+      `[AST taint analysis] Untrusted ${flow.source.category} source ` +
+      `"${flow.source.expression}" (L${flow.source.line}:${flow.source.column})` +
+      `${pathStr} → reaches ${flow.sink.category} sink ` +
+      `"${flow.sink.expression.slice(0, 60)}" (L${flow.sink.line}:${flow.sink.column})` +
+      `${sanitizerStr}. ` +
+      `AST-confirmed data flow with ${flow.path.length} intermediate step(s). ` +
+      `Confidence: ${(flow.confidence * 100).toFixed(0)}%.`
+    );
   }
 
   private formatTaintEvidence(flow: TaintFlow, sanitized: boolean): string {

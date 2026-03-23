@@ -23,6 +23,10 @@ import {
   type CapabilityGraphResult,
   type GraphPattern,
 } from "../analyzers/capability-graph.js";
+import {
+  analyzeToolSet,
+  type CrossToolPattern,
+} from "../analyzers/schema-inference.js";
 
 // --- F1: Lethal Trifecta ---
 
@@ -36,12 +40,87 @@ class LethalTrifectaRule implements TypedRule {
     const graph = buildCapabilityGraph(context.tools);
     const findings: TypedFinding[] = [];
 
-    // Extract lethal trifecta patterns
+    // Schema structural inference — analyzes JSON Schema structure
+    // (parameter types, constraints, semantic types) instead of description keywords
+    const schemaAnalysis = analyzeToolSet(context.tools);
+
+    // Schema-detected lethal trifecta (based on actual parameter types, not description text)
+    for (const pattern of schemaAnalysis.cross_tool_patterns) {
+      if (pattern.type === "lethal_trifecta") {
+        findings.push({
+          rule_id: "F1",
+          severity: "critical",
+          evidence:
+            `[Schema structural analysis] ${pattern.evidence} ` +
+            `Tool attack surfaces: ${schemaAnalysis.tools
+              .map((t) => `${t.tool_name}=${(t.attack_surface_score * 100).toFixed(0)}%`)
+              .join(", ")}. ` +
+            `Constraint density: ${schemaAnalysis.tools
+              .map((t) => `${t.tool_name}=${(t.overall_constraint_density * 100).toFixed(0)}%`)
+              .join(", ")}.`,
+          remediation:
+            "This server combines data access and network capabilities — " +
+            "confirmed by analyzing parameter schemas (not just descriptions). " +
+            "Separate these capabilities into isolated servers. Score capped at 40.",
+          owasp_category: "MCP04-data-exfiltration",
+          mitre_technique: "AML.T0054",
+          confidence: pattern.confidence,
+          metadata: {
+            analysis_type: "schema_structural",
+            tools_involved: pattern.tools,
+            per_tool_analysis: schemaAnalysis.tools.map((t) => ({
+              name: t.tool_name,
+              attack_surface: t.attack_surface_score,
+              constraint_density: t.overall_constraint_density,
+              capabilities: t.capabilities.map((c) => ({
+                type: c.capability,
+                confidence: c.confidence,
+                evidence: c.evidence,
+              })),
+              parameter_profiles: t.parameters.map((p) => p.evidence),
+            })),
+          },
+        });
+      }
+
+      if (pattern.type === "credential_exposure") {
+        findings.push({
+          rule_id: "F3",
+          severity: "critical",
+          evidence: `[Schema structural analysis] ${pattern.evidence}`,
+          remediation:
+            "Credential parameters should never coexist with network URL parameters. " +
+            "Isolate credential management from network-facing tools.",
+          owasp_category: "MCP04-data-exfiltration",
+          mitre_technique: "AML.T0057",
+          confidence: pattern.confidence,
+        });
+      }
+
+      if (pattern.type === "unrestricted_access") {
+        findings.push({
+          rule_id: "F2",
+          severity: "critical",
+          evidence: `[Schema structural analysis] ${pattern.evidence}`,
+          remediation:
+            "Add constraints to command/code parameters: enum values, pattern validation, " +
+            "maxLength limits. Unconstrained code execution parameters are the highest-risk surface.",
+          owasp_category: "MCP03-command-injection",
+          mitre_technique: "AML.T0054",
+          confidence: pattern.confidence,
+        });
+      }
+    }
+
+    // Graph-based lethal trifecta patterns (description-based — lower confidence)
     const trifectaPatterns = graph.patterns.filter(
       (p) => p.type === "lethal_trifecta"
     );
 
     for (const pattern of trifectaPatterns) {
+      // Skip if schema analysis already found this
+      if (findings.some((f) => f.rule_id === "F1")) continue;
+
       findings.push({
         rule_id: "F1",
         severity: "critical",

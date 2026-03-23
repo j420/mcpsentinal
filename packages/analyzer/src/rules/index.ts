@@ -20,7 +20,9 @@ export * as entropy from "./analyzers/entropy.js";
 export * as unicode from "./analyzers/unicode.js";
 export * as similarity from "./analyzers/similarity.js";
 export * as taint from "./analyzers/taint.js";
+export * as taintAST from "./analyzers/taint-ast.js";
 export * as capabilityGraph from "./analyzers/capability-graph.js";
+export * as schemaInference from "./analyzers/schema-inference.js";
 
 // Rule implementations (self-registering on import)
 import "./implementations/c1-command-injection.js";

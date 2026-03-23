@@ -24,4 +24,6 @@ export { shannonEntropy, classifyContent, slidingWindowEntropy } from "./rules/a
 export { analyzeUnicode, normalizeConfusables } from "./rules/analyzers/unicode.js";
 export { computeSimilarity, jaroWinkler, damerauLevenshtein } from "./rules/analyzers/similarity.js";
 export { analyzeTaint, getUnsanitizedFlows } from "./rules/analyzers/taint.js";
+export { analyzeASTTaint, getUnsanitizedASTFlows } from "./rules/analyzers/taint-ast.js";
 export { buildCapabilityGraph } from "./rules/analyzers/capability-graph.js";
+export { analyzeSchema, analyzeToolSet } from "./rules/analyzers/schema-inference.js";
