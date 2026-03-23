@@ -281,7 +281,7 @@ export class DescriptionAnalyzer {
       const hiddenMsg = extractTagMessage(text);
       findings.push({
         rule_id: "A7",
-        severity: hiddenMsg ? "critical" : "high",
+        severity: "critical",
         evidence:
           `[Unicode] "${toolRef}" — ${zwIssues.length} invisible character(s). ` +
           (hiddenMsg ? `HIDDEN MESSAGE from tag characters: "${hiddenMsg}".` : "May hide injection payloads."),
