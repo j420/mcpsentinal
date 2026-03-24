@@ -80,8 +80,10 @@ export interface BenchmarkMetrics {
 export function computeMetrics(
   tp: number, fn: number, tn: number, fp: number
 ): BenchmarkMetrics {
-  const precision = tp + fp > 0 ? tp / (tp + fp) : 1;
-  const recall = tp + fn > 0 ? tp / (tp + fn) : 1;
+  // When no positive samples exist (tp=0, fp=0), precision is undefined — report 0, not 100%.
+  // A tool that finds nothing should not claim perfect precision.
+  const precision = tp + fp > 0 ? tp / (tp + fp) : 0;
+  const recall = tp + fn > 0 ? tp / (tp + fn) : 0;
   const fpr = fp + tn > 0 ? fp / (fp + tn) : 0;
   const f1 = precision + recall > 0 ? (2 * precision * recall) / (precision + recall) : 0;
 

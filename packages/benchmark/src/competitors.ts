@@ -15,9 +15,6 @@
  */
 
 import { execSync } from "child_process";
-import pino from "pino";
-
-const logger = pino({ name: "benchmark:competitors" });
 
 export interface CompetitorFinding {
   rule_id: string;
@@ -48,15 +45,21 @@ async function runSnykAgentScan(
 ): Promise<CompetitorResult> {
   const start = Date.now();
   try {
-    const version = execSync("npx snyk-agent-scan --version 2>/dev/null", { timeout: 10000 }).toString().trim();
-    // snyk-agent-scan operates on MCP config files, not raw source
-    // Simulate by writing a temp config and scanning it
+    const version = execSync("npx snyk-agent-scan --version 2>/dev/null", {
+      timeout: 10000,
+      stdio: ["pipe", "pipe", "pipe"],
+    }).toString().trim();
+
+    // TODO: Implement real integration when snyk-agent-scan supports stdin/API mode.
+    // snyk-agent-scan currently only operates on MCP config files on disk, not raw source.
+    // Until we implement temp file scaffolding + output parsing, mark as unavailable.
     return {
       tool_name: "snyk-agent-scan",
       tool_version: version || "unknown",
-      available: true,
-      findings: [], // Would parse real output
+      available: false,
+      findings: [],
       elapsed_ms: Date.now() - start,
+      error: "snyk-agent-scan detected but output parsing not yet implemented",
     };
   } catch {
     return {
@@ -77,13 +80,20 @@ async function runCiscoScanner(
 ): Promise<CompetitorResult> {
   const start = Date.now();
   try {
-    const version = execSync("mcp-scanner --version 2>/dev/null", { timeout: 10000 }).toString().trim();
+    const version = execSync("mcp-scanner --version 2>/dev/null", {
+      timeout: 10000,
+      stdio: ["pipe", "pipe", "pipe"],
+    }).toString().trim();
+
+    // TODO: Implement real integration when Cisco scanner supports file/stdin mode.
+    // Currently requires a running MCP server endpoint, not raw source code.
     return {
       tool_name: "cisco-mcp-scanner",
       tool_version: version || "unknown",
-      available: true,
+      available: false,
       findings: [],
       elapsed_ms: Date.now() - start,
+      error: "Cisco MCP Scanner detected but output parsing not yet implemented",
     };
   } catch {
     return {
@@ -99,44 +109,27 @@ async function runCiscoScanner(
 
 // ── Adapter: MCPAmpel (public API) ───────────────────────────────────────────
 
+/**
+ * MCPAmpel adapter — placeholder for future API integration.
+ *
+ * MCPAmpel is a multi-engine scanner aggregator. When they publish a public
+ * scanning API, this adapter will POST tool metadata and parse results.
+ * Until then, this adapter reports unavailable.
+ */
 async function runMCPAmpel(
-  source: string | null, tools: Array<{ name: string; description: string | null }>, name: string
+  _source: string | null, _tools: Array<{ name: string; description: string | null }>, _name: string
 ): Promise<CompetitorResult> {
   const start = Date.now();
-  try {
-    // MCPAmpel provides a web API — would need to POST tool metadata
-    const resp = await fetch("https://mcpampel.com/api/v1/scan", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ server_name: name, tools }),
-      signal: AbortSignal.timeout(30000),
-    });
-
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-
-    const data = await resp.json() as { findings?: Array<{ id: string; severity: string; description: string }> };
-    return {
-      tool_name: "mcpampel",
-      tool_version: "api-v1",
-      available: true,
-      findings: (data.findings || []).map((f) => ({
-        rule_id: f.id,
-        severity: normalizeSeverity(f.severity),
-        description: f.description,
-        tool: "mcpampel",
-      })),
-      elapsed_ms: Date.now() - start,
-    };
-  } catch (err) {
-    return {
-      tool_name: "mcpampel",
-      tool_version: "unavailable",
-      available: false,
-      findings: [],
-      elapsed_ms: Date.now() - start,
-      error: `MCPAmpel API unavailable: ${err instanceof Error ? err.message : String(err)}`,
-    };
-  }
+  // MCPAmpel does not currently expose a public scanning API.
+  // This adapter is a placeholder for when their API becomes available.
+  return {
+    tool_name: "mcpampel",
+    tool_version: "unavailable",
+    available: false,
+    findings: [],
+    elapsed_ms: Date.now() - start,
+    error: "MCPAmpel public scanning API not yet available. Placeholder for future integration.",
+  };
 }
 
 // ── Adapter: Simulated Competitor (for offline benchmarking) ─────────────────

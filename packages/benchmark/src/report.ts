@@ -10,7 +10,6 @@
  */
 
 import type { BenchmarkMetrics } from "./ground-truth.js";
-import type { CompetitorResult } from "./competitors.js";
 import type { CorpusCategory } from "./corpus.js";
 
 export interface ToolBenchmarkResult {

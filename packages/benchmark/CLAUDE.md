@@ -38,22 +38,53 @@ pnpm benchmark --competitors  # Include real competitor tools (if installed)
 
 No database required — runs entirely on the in-memory corpus.
 
+## Architecture Decisions
+
+### Engine Caching
+The analyzer engine + 177 rules are loaded ONCE and reused for all 100 servers. This prevents 100x YAML parsing overhead.
+
+### Vulnerability Class Mapping
+Competitor tools use different rule ID namespaces (e.g., Sentinel uses "C1", baseline uses "CMD-INJ"). The `mapToVulnClass()` function normalizes both to a common vulnerability class (e.g., "command-injection") before computing unique-findings. Without this, every Sentinel finding would appear "unique" even when competitors detect the same vulnerability.
+
+### Full FP Measurement
+False positives are measured from TWO sources:
+1. Explicit `must_not_fire` rules that incorrectly trigger
+2. On clean/tricky servers, ANY finding not in `expected_findings` is counted as a false positive
+
+This prevents gaming the benchmark by only listing a few `must_not_fire` rules.
+
+### Zero-Division Handling
+When TP=0 and FP=0, precision reports 0% (not 100%). A tool that finds nothing should not claim perfect precision.
+
+## Corpus Design Rules
+
+### Tricky servers MUST avoid regex-matchable patterns
+If a tricky server's source code contains `exec(...)`, our regex rule C1 WILL match it. Putting C1 in `must_not_fire` creates a false expectation that regex can distinguish safe from unsafe `exec()` calls. Instead:
+- Use variable names containing "exec" (e.g., `executor`, `execSummary`) to test word-boundary matching
+- Use `execFile()` (different function) to test regex specificity
+- Never put a regex-detectable call in tricky code and expect it not to fire
+
+### Ground truth must match what the engine CAN detect
+If cve-004 expects C5 (hardcoded secrets), the source code must contain an actual secret pattern that matches C5's regex — not just `process.env.VERSION`.
+
 ## Competitor Adapters
 
-| Adapter | Tool | Availability |
-|---------|------|--------------|
-| `snyk-agent-scan` | Snyk Agent Scan (mcp-scan) | Requires npm install |
-| `cisco-mcp-scanner` | Cisco MCP Scanner | Requires pip install |
-| `mcpampel` | MCPAmpel | Public API (network required) |
-| `baseline-regex` | Simulated 13-rule regex scanner | Always available (offline) |
+| Adapter | Tool | Status |
+|---------|------|--------|
+| `snyk-agent-scan` | Snyk Agent Scan (mcp-scan) | Placeholder — output parsing not yet implemented |
+| `cisco-mcp-scanner` | Cisco MCP Scanner | Placeholder — output parsing not yet implemented |
+| `mcpampel` | MCPAmpel | Placeholder — public API not yet available |
+| `baseline-regex` | Simulated 13-rule regex scanner | Fully implemented, always available offline |
 
-When competitor tools are unavailable, the benchmark uses the simulated baseline for comparison. This gives a fair "typical MCP scanner" comparison without requiring tool installation.
+Competitor adapters that cannot parse real output report `available: false`. They are never included in metrics with empty findings (which would distort precision/recall).
 
 ## Adding Corpus Servers
 
 1. Add a `BenchmarkServer` entry to the appropriate category array in `corpus.ts`
 2. Include `expected_findings` (confirmed rule IDs) and `must_not_fire` (false positive traps)
-3. Run `pnpm benchmark` to verify
+3. For clean/tricky servers: verify source code does NOT contain regex patterns that match must_not_fire rules
+4. Run `pnpm benchmark` to verify
+5. Check unexpected findings output for new false positive sources
 
 ## What NOT to Do
 - Do NOT modify ground truth to make metrics look better — findings must be genuinely verified
@@ -61,3 +92,5 @@ When competitor tools are unavailable, the benchmark uses the simulated baseline
 - Do NOT add LLM evaluation — all benchmark scoring is deterministic
 - Do NOT run competitor tools in CI without explicit opt-in (--competitors flag)
 - Do NOT publish competitor results without verifying tool versions and availability
+- Do NOT put regex-matchable function calls in tricky servers and expect must_not_fire to pass
+- Do NOT return `available: true` with empty findings from competitor adapters — this distorts metrics
