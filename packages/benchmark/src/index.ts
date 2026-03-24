@@ -15,7 +15,7 @@ import { writeFileSync } from "fs";
 import { resolve } from "path";
 import pino from "pino";
 import { BENCHMARK_CORPUS, getCorpusStats, type BenchmarkServer, type CorpusCategory } from "./corpus.js";
-import { computeMetrics } from "./ground-truth.js";
+import { computeMetrics, type BenchmarkMetrics } from "./ground-truth.js";
 import { COMPETITOR_ADAPTERS, type CompetitorResult } from "./competitors.js";
 import { generateBenchmarkReport, type ToolBenchmarkResult, type BenchmarkReport } from "./report.js";
 
@@ -38,7 +38,7 @@ async function getOrCreateEngine(): Promise<{ analyze: (ctx: unknown) => Sentine
   const { AnalysisEngine, loadRules } = await import("@mcp-sentinel/analyzer");
 
   const rulesDir = resolve(import.meta.dirname ?? ".", "../../../rules");
-  let rules;
+  let rules: ReturnType<typeof loadRules>;
   try {
     rules = loadRules(rulesDir);
   } catch {

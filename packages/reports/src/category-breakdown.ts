@@ -10,6 +10,9 @@
 
 import type pg from "pg";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
+
 export interface FrameworkComparison {
   framework: string;
   server_count: number;
@@ -140,10 +143,10 @@ export async function computeCategoryReport(pool: pg.Pool): Promise<CategoryRepo
     ]);
 
   const totalScanned = parseInt(totalScannedRes.rows[0].cnt, 10) || 1;
-  const totalFindings = catRes.rows.reduce((s, r) => s + parseInt(r.cnt, 10), 0) || 1;
+  const totalFindings = catRes.rows.reduce((s: number, r: Row) => s + parseInt(r.cnt, 10), 0) || 1;
 
   // Framework comparison with critical rate
-  const frameworkComparison: FrameworkComparison[] = frameworkRes.rows.map((r) => ({
+  const frameworkComparison: FrameworkComparison[] = frameworkRes.rows.map((r: Row) => ({
     framework: r.framework,
     server_count: parseInt(r.server_count, 10),
     average_score: Math.round(parseFloat(r.avg_score) * 10) / 10,
@@ -154,7 +157,7 @@ export async function computeCategoryReport(pool: pg.Pool): Promise<CategoryRepo
 
   // OWASP compliance
   const owaspCompliance: OwaspCompliance[] = Object.entries(OWASP_NAMES).map(([id, name]) => {
-    const row = owaspRes.rows.find((r) => r.owasp_category === id);
+    const row = owaspRes.rows.find((r: Row) => r.owasp_category === id);
     const affected = row ? parseInt(row.affected_servers, 10) : 0;
     return {
       owasp_id: id,
@@ -195,7 +198,7 @@ export async function computeCategoryReport(pool: pg.Pool): Promise<CategoryRepo
   ];
 
   // Language breakdown
-  const languageBreakdown: LanguageBreakdown[] = langRes.rows.map((r) => ({
+  const languageBreakdown: LanguageBreakdown[] = langRes.rows.map((r: Row) => ({
     language: r.language,
     server_count: parseInt(r.server_count, 10),
     average_score: Math.round(parseFloat(r.avg_score) * 10) / 10,
@@ -208,7 +211,7 @@ export async function computeCategoryReport(pool: pg.Pool): Promise<CategoryRepo
     owasp_compliance: owaspCompliance,
     detection_comparison: detectionComparison,
     language_breakdown: languageBreakdown,
-    finding_category_distribution: catRes.rows.map((r) => ({
+    finding_category_distribution: catRes.rows.map((r: Row) => ({
       category: r.category,
       count: parseInt(r.cnt, 10),
       pct: Math.round((parseInt(r.cnt, 10) / totalFindings) * 1000) / 10,
