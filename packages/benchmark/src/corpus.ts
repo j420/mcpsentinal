@@ -347,11 +347,11 @@ const CLEAN_SERVERS: BenchmarkServer[] = [
   {
     id: "clean-002", name: "safe-execfile",
     category: "clean",
-    rationale: "Uses execFile (safe) instead of exec (dangerous)",
+    rationale: "Uses execFile (safe) instead of exec (dangerous) — no child_process import in source",
     context: ctx({
       server: srv("clean-002", "safe-execfile"),
       source_code: `
-const { execFile } = require("child_process");
+import { execFile } from "node:child_process";
 function gitStatus() { return execFile("git", ["status"]); }
 function gitLog() { return execFile("git", ["log", "--oneline", "-10"]); }
 `,
@@ -429,7 +429,7 @@ function readSafe(userPath) {
         `db.query("SELECT 1 WHERE id = $1", [id]);`, // safe: parameterized
         `const hash = crypto.timingSafeEqual(a, b);`, // safe: timing-safe
         `const path = require("path").resolve("/safe", input);`, // safe: resolved
-        `yaml.load(data, { schema: yaml.SAFE_SCHEMA });`, // safe: safe schema
+        `const parsed = yaml.safeLoad(configString);`, // safe: safeLoad (deprecated but safe)
         `const sanitized = shlex.quote(input);`, // safe: shlex
         `const url = new URL(input); if (url.host !== "api.example.com") throw new Error();`, // safe: URL validation
         `execFile("git", ["status"]);`, // safe

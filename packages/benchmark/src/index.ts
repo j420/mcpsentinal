@@ -15,7 +15,7 @@ import { writeFileSync } from "fs";
 import { resolve } from "path";
 import pino from "pino";
 import { BENCHMARK_CORPUS, getCorpusStats, type BenchmarkServer, type CorpusCategory } from "./corpus.js";
-import { computeMetrics, type BenchmarkMetrics } from "./ground-truth.js";
+import { computeMetrics } from "./ground-truth.js";
 import { COMPETITOR_ADAPTERS, type CompetitorResult } from "./competitors.js";
 import { generateBenchmarkReport, type ToolBenchmarkResult, type BenchmarkReport } from "./report.js";
 
@@ -311,7 +311,7 @@ function mapToVulnClass(ruleId: string): string {
 
 // ── Main ────────────────────────────────────────────────────────────────────
 
-async function main() {
+async function main(): Promise<number> {
   const args = process.argv.slice(2);
   const reportMode = args.includes("--report");
   const jsonMode = args.includes("--json");
@@ -324,16 +324,24 @@ async function main() {
     results, (r) => r.sentinel_findings, "MCP Sentinel", sentinel_elapsed_ms
   );
 
-  // Compute competitor metrics
+  // Compute competitor metrics — only include tools that produced findings
   const competitorResults: ToolBenchmarkResult[] = [];
   if (includeCompetitors) {
+    // Filter to only tools that returned available: true with actual findings
+    const availableCompetitors: string[] = [];
     for (const compName of Object.keys(COMPETITOR_ADAPTERS)) {
-      const compResult = computeToolMetrics(
-        results, (r) => r.competitor_findings.get(compName) || [], compName, 0
-      );
-      competitorResults.push(compResult);
+      const meta = competitorMeta.get(compName);
+      if (meta?.available) {
+        availableCompetitors.push(compName);
+        const compResult = computeToolMetrics(
+          results, (r) => r.competitor_findings.get(compName) || [], compName, 0
+        );
+        competitorResults.push(compResult);
+      } else {
+        logger.info({ tool: compName, error: meta?.error }, "Competitor unavailable, excluded from metrics");
+      }
     }
-    computeUniqueFindings(sentinelResult, results, Object.keys(COMPETITOR_ADAPTERS));
+    computeUniqueFindings(sentinelResult, results, availableCompetitors);
   } else {
     // Always compare against baseline
     const baselineStart = Date.now();
@@ -450,9 +458,18 @@ async function main() {
     console.log(`  Unique >${UNIQUE_TARGET}: ${report.target_metrics.unique_met ? "PASS" : "FAIL"}`);
     console.log(`  FP Rate <${FP_TARGET}%: ${report.target_metrics.fp_met ? "PASS" : "FAIL"}`);
   }
+
+  // Exit 1 if any target metric is not met (for CI gating)
+  const allTargetsMet = report.target_metrics.precision_met
+    && report.target_metrics.recall_met
+    && report.target_metrics.unique_met
+    && report.target_metrics.fp_met;
+  return allTargetsMet ? 0 : 1;
 }
 
-main().catch((err) => {
+main().then((exitCode) => {
+  process.exitCode = exitCode;
+}).catch((err) => {
   logger.error({ err }, "Benchmark failed");
   process.exit(1);
 });

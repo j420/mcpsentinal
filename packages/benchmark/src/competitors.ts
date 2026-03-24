@@ -191,7 +191,7 @@ export function getAvailableCompetitors(): string[] {
   return Object.keys(COMPETITOR_ADAPTERS);
 }
 
-function normalizeSeverity(s: string): CompetitorFinding["severity"] {
+export function normalizeSeverity(s: string): CompetitorFinding["severity"] {
   const normalized = s.toLowerCase();
   if (normalized === "critical" || normalized === "crit") return "critical";
   if (normalized === "high") return "high";
