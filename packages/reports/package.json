@@ -1,5 +1,5 @@
 {
-  "name": "@mcp-sentinel/analyzer",
+  "name": "@mcp-sentinel/reports",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -8,21 +8,15 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "scan": "tsx src/cli.ts"
+    "generate": "tsx src/cli.ts"
   },
   "dependencies": {
     "@mcp-sentinel/database": "workspace:*",
-    "pino": "^9.0.0",
-    "tree-sitter": "^0.25.0",
-    "tree-sitter-python": "^0.25.0",
-    "yaml": "^2.4.0",
-    "zod": "^3.23.0"
+    "pino": "^9.0.0"
   },
   "devDependencies": {
     "tsx": "^4.19.0",
-    "typescript": "^5.5.0",
-    "vitest": "^2.0.0"
+    "typescript": "^5.5.0"
   }
 }

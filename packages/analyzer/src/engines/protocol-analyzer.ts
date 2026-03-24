@@ -109,6 +109,12 @@ export class ProtocolAnalyzer {
     // H3: Multi-agent propagation risk
     findings.push(...this.analyzeMultiAgentRisk(context));
 
+    // G1: Indirect Injection Gateway (upgraded from keyword match to capability graph)
+    findings.push(...this.analyzeInjectionGateway(context));
+
+    // I7: Sampling Abuse (upgraded from capability presence to graph analysis)
+    findings.push(...this.analyzeSamplingAbuse(context));
+
     return findings;
   }
 
@@ -232,6 +238,196 @@ export class ProtocolAnalyzer {
           confidence: 0.8,
         });
       }
+    }
+
+    return findings;
+  }
+
+  // ── Capability classification helpers (inline — avoids depending on risk-matrix package) ──
+
+  private static readonly INJECTION_SOURCE_PATTERNS = [
+    /scrape|crawl|browse|webpage|fetch_url|get_page|web_search/i,
+    /read_email|read_slack|read_message|read_issue|get_inbox|list_email/i,
+    /read_file|list_files|get_file_content|cat|head|tail/i,
+    /read_rss|read_feed|ingest|import|parse_html|parse_xml/i,
+  ];
+
+  private static readonly ACTION_SINK_PATTERNS = [
+    /exec|run|eval|shell|bash|spawn|execute|system/i,
+    /send|post|email|slack|notify|webhook|push/i,
+    /write_file|save|create_file|update_file|append/i,
+    /query|insert|update|delete|drop/i,
+    /deploy|publish|release|upload/i,
+  ];
+
+  private classifyTool(tool: { name: string; description: string | null }): {
+    isInjectionSource: boolean;
+    isActionSink: boolean;
+    capabilities: string[];
+  } {
+    const text = `${tool.name} ${tool.description || ""}`;
+    const isInjectionSource = ProtocolAnalyzer.INJECTION_SOURCE_PATTERNS.some((p) => p.test(text));
+    const isActionSink = ProtocolAnalyzer.ACTION_SINK_PATTERNS.some((p) => p.test(text));
+    const capabilities: string[] = [];
+    if (isInjectionSource) capabilities.push("ingests-external-content");
+    if (isActionSink) capabilities.push("performs-actions");
+    return { isInjectionSource, isActionSink, capabilities };
+  }
+
+  /**
+   * G1: Indirect Prompt Injection Gateway (upgraded from keyword match).
+   *
+   * Uses capability graph reachability: does a tool ingesting external content
+   * coexist with a tool that acts on output? The key insight is that in an MCP
+   * server, ALL tools share the same AI context — so a content-ingestion tool's
+   * output can influence the AI's decision to call an action tool.
+   *
+   * This is the #1 real-world MCP attack vector (Rehberger 2024, Invariant Labs 2025).
+   */
+  private analyzeInjectionGateway(context: AnalysisContext): ProtocolFinding[] {
+    const findings: ProtocolFinding[] = [];
+    if (context.tools.length === 0) return findings;
+
+    const injectionSources: string[] = [];
+    const actionSinks: string[] = [];
+
+    for (const tool of context.tools) {
+      const classification = this.classifyTool(tool);
+      if (classification.isInjectionSource) injectionSources.push(tool.name);
+      if (classification.isActionSink) actionSinks.push(tool.name);
+    }
+
+    if (injectionSources.length === 0) return findings;
+
+    // Case 1: Same server has both injection sources and action sinks
+    // This is the classic indirect injection pattern
+    if (actionSinks.length > 0) {
+      const sourcesStr = injectionSources.slice(0, 3).join(", ");
+      const sinksStr = actionSinks.slice(0, 3).join(", ");
+
+      findings.push({
+        rule_id: "G1", severity: "critical",
+        evidence:
+          `[Capability graph — G1] Indirect injection gateway detected. ` +
+          `Content ingestion tools: [${sourcesStr}] share AI context with ` +
+          `action tools: [${sinksStr}]. ` +
+          `An attacker-controlled web page, email, or file processed by ${injectionSources[0]} ` +
+          `can contain prompt injection that causes the AI to invoke ${actionSinks[0]}. ` +
+          `Data path: external content → ${injectionSources[0]} → AI context → ${actionSinks[0]} → side effect. ` +
+          `${injectionSources.length} source(s), ${actionSinks.length} sink(s) — ` +
+          `attack surface: ${injectionSources.length * actionSinks.length} injection paths.`,
+        remediation:
+          "Separate content-ingestion tools from action tools into different servers. " +
+          "If co-location is required, implement output sanitization on ingestion tools " +
+          "and require explicit user confirmation before action tools execute.",
+        owasp_category: "MCP01-prompt-injection", mitre_technique: "AML.T0054.001",
+        confidence: 0.9,
+        metadata: {
+          engine: "protocol_analyzer", analysis: "capability_graph_g1",
+          injection_sources: injectionSources, action_sinks: actionSinks,
+          path_count: injectionSources.length * actionSinks.length,
+        },
+      });
+    }
+
+    // Case 2: Injection source exists even without action sinks —
+    // the AI client itself can be manipulated
+    if (actionSinks.length === 0 && injectionSources.length > 0) {
+      findings.push({
+        rule_id: "G1", severity: "high",
+        evidence:
+          `[Capability graph — G1] Content ingestion tool(s) detected: ` +
+          `[${injectionSources.join(", ")}]. While no action tools are present on this server, ` +
+          `injected content from ${injectionSources[0]} enters the AI's context window and can ` +
+          `manipulate the AI's behavior toward other connected MCP servers.`,
+        remediation:
+          "Sanitize all ingested content before returning to the AI. " +
+          "Strip prompt injection patterns from tool outputs.",
+        owasp_category: "MCP01-prompt-injection", mitre_technique: "AML.T0054.001",
+        confidence: 0.7,
+        metadata: {
+          engine: "protocol_analyzer", analysis: "capability_graph_g1",
+          injection_sources: injectionSources, action_sinks: [],
+        },
+      });
+    }
+
+    return findings;
+  }
+
+  /**
+   * I7: Sampling Capability Abuse (upgraded from presence check).
+   *
+   * Server declares sampling capability AND has content ingestion tools.
+   * Sampling lets the server call back into the AI client — combined with
+   * content ingestion, this creates a feedback loop with 23-41% attack
+   * amplification (arXiv 2601.17549).
+   *
+   * Uses capability graph to compute feedback loop risk score.
+   */
+  private analyzeSamplingAbuse(context: AnalysisContext): ProtocolFinding[] {
+    const findings: ProtocolFinding[] = [];
+
+    // Check if server declares sampling capability
+    const hasSampling = context.declared_capabilities?.sampling === true;
+    if (!hasSampling) return findings;
+
+    // Classify tools for injection sources
+    const injectionSources: string[] = [];
+    const allToolNames: string[] = [];
+
+    for (const tool of context.tools) {
+      allToolNames.push(tool.name);
+      const classification = this.classifyTool(tool);
+      if (classification.isInjectionSource) {
+        injectionSources.push(tool.name);
+      }
+    }
+
+    if (injectionSources.length > 0) {
+      // High risk: sampling + injection = feedback loop
+      const riskScore = Math.min(1.0, 0.6 + injectionSources.length * 0.1);
+
+      findings.push({
+        rule_id: "I7", severity: "critical",
+        evidence:
+          `[Capability graph — I7] Sampling feedback loop detected (risk: ${(riskScore * 100).toFixed(0)}%). ` +
+          `Server declares sampling capability AND has content ingestion tools: ` +
+          `[${injectionSources.join(", ")}]. ` +
+          `Sampling allows the server to call back into the AI — creating a feedback loop: ` +
+          `external content → ${injectionSources[0]} → AI context → sampling callback → ` +
+          `server processes AI response → injects again. ` +
+          `Research shows 23-41% attack amplification via this pattern (arXiv 2601.17549).`,
+        remediation:
+          "Remove sampling capability if not essential. If sampling is required, " +
+          "do not combine with tools that ingest external/untrusted content. " +
+          "Implement rate limiting and content inspection on sampling requests.",
+        owasp_category: "MCP01-prompt-injection", mitre_technique: "AML.T0054",
+        confidence: riskScore,
+        metadata: {
+          engine: "protocol_analyzer", analysis: "capability_graph_i7",
+          has_sampling: true, injection_sources: injectionSources,
+          feedback_risk_score: riskScore,
+        },
+      });
+    } else {
+      // Sampling without injection sources — still flag for cost risk (I8 territory,
+      // but we note it as informational under I7)
+      findings.push({
+        rule_id: "I7", severity: "medium",
+        evidence:
+          `[Capability graph — I7] Server declares sampling capability with ${allToolNames.length} tools ` +
+          `but no external content ingestion tools detected. Sampling without injection sources has ` +
+          `lower feedback loop risk but still enables unbounded cost amplification.`,
+        remediation:
+          "Implement rate limiting on sampling requests. Monitor sampling costs.",
+        owasp_category: "MCP01-prompt-injection", mitre_technique: "AML.T0054",
+        confidence: 0.5,
+        metadata: {
+          engine: "protocol_analyzer", analysis: "capability_graph_i7",
+          has_sampling: true, injection_sources: [],
+        },
+      });
     }
 
     return findings;

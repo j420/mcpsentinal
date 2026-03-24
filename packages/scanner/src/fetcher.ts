@@ -13,11 +13,12 @@
 
 import pino from "pino";
 import type { RawDependency } from "./types.js";
+import { resolveImportsFromSource, MAX_IMPORT_FILES, MAX_TOTAL_BYTES } from "./import-resolver.js";
 
 const logger = pino({ name: "scanner:fetcher" });
 
 /** Maximum combined source code bytes to include in the analysis context */
-const MAX_SOURCE_BYTES = 50_000;
+const MAX_SOURCE_BYTES = MAX_TOTAL_BYTES; // 200KB — up from 50KB to support multi-file analysis
 
 /** HTTP fetch timeout per file request */
 const FETCH_TIMEOUT_MS = 10_000;
@@ -56,6 +57,8 @@ const PY_ENTRY_PATHS = [
 export interface FetchedSource {
   /** Concatenated source code from fetched files, null if nothing could be fetched */
   source_code: string | null;
+  /** Per-file source code map for cross-module analysis (file path → content) */
+  source_files: Map<string, string> | null;
   /** Raw dependencies parsed from package manifests (before CVE enrichment) */
   raw_dependencies: RawDependency[];
   /** List of file paths successfully fetched */
@@ -87,6 +90,7 @@ export class SourceFetcher {
     if (!parsed) {
       return {
         source_code: null,
+        source_files: null,
         raw_dependencies: [],
         files_fetched: [],
         error: `Cannot parse GitHub URL: ${githubUrl}`,
@@ -144,27 +148,71 @@ export class SourceFetcher {
         : entryPaths;
 
       const filesFetched: string[] = [];
+      const sourceFiles = new Map<string, string>();
       let combinedSource = "";
+      let totalBytes = 0;
 
+      // Fetch entry point files
       for (const filePath of priorityPaths) {
-        if (combinedSource.length >= MAX_SOURCE_BYTES) break;
+        if (totalBytes >= MAX_SOURCE_BYTES) break;
         const content = await this.fetchRawFile(owner, repo, branch, filePath);
         if (content) {
-          const remaining = MAX_SOURCE_BYTES - combinedSource.length;
+          const remaining = MAX_SOURCE_BYTES - totalBytes;
           const chunk = content.length > remaining ? content.substring(0, remaining) : content;
           combinedSource += `\n// ═══ FILE: ${filePath} ═══\n${chunk}`;
+          sourceFiles.set(filePath, chunk);
           filesFetched.push(filePath);
+          totalBytes += chunk.length;
+        }
+      }
+
+      // Resolve imports from fetched entry points and fetch referenced files
+      if (filesFetched.length > 0 && totalBytes < MAX_SOURCE_BYTES) {
+        const importedPaths = new Set<string>();
+        for (const entryPath of filesFetched) {
+          const entrySource = sourceFiles.get(entryPath);
+          if (!entrySource) continue;
+          const language = entryPath.endsWith(".py") ? "python" as const : "js" as const;
+          const candidates = resolveImportsFromSource(entryPath, entrySource, language);
+          for (const c of candidates) importedPaths.add(c);
+        }
+
+        // Fetch imported files (up to MAX_IMPORT_FILES, within byte budget)
+        let importCount = 0;
+        for (const importPath of importedPaths) {
+          if (importCount >= MAX_IMPORT_FILES) break;
+          if (totalBytes >= MAX_SOURCE_BYTES) break;
+          if (filesFetched.includes(importPath)) continue;
+
+          const content = await this.fetchRawFile(owner, repo, branch, importPath);
+          if (content) {
+            const remaining = MAX_SOURCE_BYTES - totalBytes;
+            const chunk = content.length > remaining ? content.substring(0, remaining) : content;
+            combinedSource += `\n// ═══ FILE: ${importPath} ═══\n${chunk}`;
+            sourceFiles.set(importPath, chunk);
+            filesFetched.push(importPath);
+            totalBytes += chunk.length;
+            importCount++;
+          }
+        }
+
+        if (importCount > 0) {
+          logger.info(
+            { owner, repo, imported_files: importCount },
+            "Import resolution: fetched additional source files"
+          );
         }
       }
 
       // Always include package.json in source — C5 (hardcoded secrets) scans it for tokens
-      if (packageJsonContent && combinedSource.length < MAX_SOURCE_BYTES) {
-        const remaining = MAX_SOURCE_BYTES - combinedSource.length;
+      if (packageJsonContent && totalBytes < MAX_SOURCE_BYTES) {
+        const remaining = MAX_SOURCE_BYTES - totalBytes;
         const chunk =
           packageJsonContent.length > remaining
             ? packageJsonContent.substring(0, remaining)
             : packageJsonContent;
         combinedSource += `\n// ═══ FILE: package.json ═══\n${chunk}`;
+        sourceFiles.set("package.json", chunk);
         if (!filesFetched.includes("package.json")) {
           filesFetched.push("package.json");
         }
@@ -176,7 +224,7 @@ export class SourceFetcher {
           repo,
           branch,
           files: filesFetched.length,
-          bytes: combinedSource.length,
+          bytes: totalBytes,
           deps: rawDependencies.length,
           ecosystem: isNode ? "npm" : isPython ? "pypi" : "unknown",
         },
@@ -185,6 +233,7 @@ export class SourceFetcher {
 
       return {
         source_code: combinedSource.length > 0 ? combinedSource : null,
+        source_files: sourceFiles.size > 0 ? sourceFiles : null,
         raw_dependencies: rawDependencies,
         files_fetched: filesFetched,
         error: null,
@@ -192,7 +241,7 @@ export class SourceFetcher {
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
       logger.error({ owner, repo, error }, "Source fetch failed");
-      return { source_code: null, raw_dependencies: [], files_fetched: [], error };
+      return { source_code: null, source_files: null, raw_dependencies: [], files_fetched: [], error };
     }
   }
 

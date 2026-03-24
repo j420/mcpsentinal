@@ -34,6 +34,8 @@ export interface AnalysisContext {
     } | null;
   }>;
   source_code: string | null;
+  /** Per-file source map for cross-module analysis. Keys are file paths, values are source content. */
+  source_files?: Map<string, string> | null;
   dependencies: Array<{
     name: string;
     version: string | null;
@@ -139,8 +141,8 @@ export class AnalysisEngine {
     findings.push(...engineFindings);
 
     // ── Phase 2: YAML rules (fallback for rules not covered by engines) ──
-    // Engines cover: C1-C16, A1-A9, B1-B7, D1-D7, E1-E4, F1-F7, H1-H3, I1-I2, I16
-    // YAML fallback covers: G1-G7, I3-I15, J1-J7, K-Q, and any rules engines missed
+    // Engines cover: C1-C16, A1-A9, B1-B7, D1-D7, E1-E4, F1-F7, G1, H1-H3, I1-I2, I7, I16, J1, J5, K5
+    // YAML fallback covers: G2-G7, I3-I6, I8-I15, J2-J4, J6-J7, K1-K4, K6-K20, L-Q
     let typedRulesRun = 0;
     let yamlRulesRun = 0;
 
