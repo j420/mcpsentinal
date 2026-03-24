@@ -34,6 +34,8 @@ export interface AnalysisContext {
     } | null;
   }>;
   source_code: string | null;
+  /** Per-file source map for cross-module analysis. Keys are file paths, values are source content. */
+  source_files?: Map<string, string> | null;
   dependencies: Array<{
     name: string;
     version: string | null;

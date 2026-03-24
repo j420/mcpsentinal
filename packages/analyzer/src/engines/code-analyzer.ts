@@ -15,6 +15,7 @@ import type { AnalysisContext } from "../engine.js";
 import type { Severity, OwaspCategory } from "@mcp-sentinel/database";
 import { analyzeASTTaint, type ASTTaintFlow } from "../rules/analyzers/taint-ast.js";
 import { analyzePythonTaint, isPythonSource, type PythonTaintFlow, PYTHON_SINKS } from "../rules/analyzers/taint-python.js";
+import { buildModuleGraph, hasMultiFileContext, type CrossModuleFlow } from "../rules/analyzers/module-graph.js";
 import { shannonEntropy } from "../rules/analyzers/entropy.js";
 
 export interface CodeFinding {
@@ -180,10 +181,15 @@ export class CodeAnalyzer {
     // 1. AST taint analysis — traces user input to dangerous sinks
     findings.push(...this.runTaintAnalysis(context.source_code));
 
-    // 2. AST pattern analysis — structural checks that don't need taint
+    // 2. Cross-module taint analysis — traces taint across file boundaries
+    if (hasMultiFileContext(context.source_files)) {
+      findings.push(...this.runCrossModuleAnalysis(context.source_files!));
+    }
+
+    // 3. AST pattern analysis — structural checks that don't need taint
     findings.push(...this.runASTPatternAnalysis(context.source_code));
 
-    // 3. Secret detection via entropy — not regex patterns
+    // 4. Secret detection via entropy — not regex patterns
     findings.push(...this.runSecretDetection(context.source_code));
 
     return findings;
@@ -333,6 +339,70 @@ export class CodeAnalyzer {
       }
     } catch (_err) {
       // Python AST parsing failed — fall through to regex fallback
+    }
+
+    return findings;
+  }
+
+  /**
+   * Cross-module taint analysis using the module graph.
+   * Discovers taint flows that span file boundaries:
+   *   utils.ts:getInput() → handler.ts:processRequest() → exec()
+   */
+  private runCrossModuleAnalysis(sourceFiles: Map<string, string>): CodeFinding[] {
+    const findings: CodeFinding[] = [];
+
+    try {
+      const graph = buildModuleGraph(sourceFiles);
+
+      for (const crossFlow of graph.crossModuleFlows) {
+        const flow = crossFlow.flow;
+        const sinkEntry =
+          SINK_REGISTRY.find((s) => s.fn === this.extractFnName(flow.sink.expression)) ||
+          PYTHON_SINKS.find((s) => s.fn === this.extractFnName(flow.sink.expression));
+        const ruleId = sinkEntry?.rule_id || this.categoryToRule(flow.sink.category);
+        const meta = RULE_META[ruleId];
+        if (!meta) continue;
+
+        // Deduplicate: skip if single-file analysis already found this exact sink
+        const sinkKey = `${ruleId}:${flow.sink.line}:${flow.sink.expression.slice(0, 30)}`;
+        // Cross-module flows are additive — they provide richer evidence
+
+        const pathDesc = flow.path.length > 0
+          ? flow.path.map((s) => `${s.type}(L${s.line})`).join(" → ") + " → "
+          : "";
+
+        findings.push({
+          rule_id: ruleId,
+          severity: flow.sanitized ? "informational" : meta.severity,
+          evidence:
+            `[AST taint — cross-module] ${flow.source.category} source ` +
+            `"${flow.source.expression}" (${crossFlow.sourceFile}:L${flow.source.line}) → ` +
+            `${pathDesc}` +
+            `${flow.sink.category} sink "${flow.sink.expression.slice(0, 60)}" (${crossFlow.sinkFile}:L${flow.sink.line}). ` +
+            `Module chain: ${crossFlow.moduleChain}. ` +
+            (sinkEntry
+              ? `${sinkEntry.why}. Known sanitizers: ${sinkEntry.sanitizers.join(", ") || "none"}.`
+              : ""),
+          remediation: flow.sanitized
+            ? `Sanitizer "${flow.sanitizer_name}" detected across module boundary. Verify it handles all edge cases.`
+            : meta.remediation,
+          owasp_category: meta.owasp,
+          mitre_technique: meta.mitre,
+          confidence: flow.sanitized ? flow.confidence * 0.3 : flow.confidence,
+          metadata: {
+            engine: "code_analyzer",
+            analysis: "ast_taint_cross_module",
+            source_file: crossFlow.sourceFile,
+            sink_file: crossFlow.sinkFile,
+            module_chain: crossFlow.moduleChain,
+            sink_fn: sinkEntry?.fn,
+            path_length: flow.path.length,
+          },
+        });
+      }
+    } catch (_err) {
+      // Module graph construction failed — degrade gracefully
     }
 
     return findings;

@@ -244,6 +244,7 @@ export class ScanPipeline {
 
       // ── Stage 1: Fetch source code from GitHub ─────────────────────────────
       let sourceCode: string | null = null;
+      let sourceFiles: Map<string, string> | null = null;
       let enrichedDeps: EnrichedDependency[] = [];
       let protocolResources: Array<{ uri: string; name: string; description?: string | null; mimeType?: string | null }> = [];
       let protocolPrompts: Array<{ name: string; description?: string | null; arguments?: Array<{ name: string; description?: string | null; required?: boolean }> }> = [];
@@ -257,6 +258,7 @@ export class ScanPipeline {
 
         if (fetched.source_code) {
           sourceCode = fetched.source_code;
+          sourceFiles = fetched.source_files;
           stages.source_fetched = true;
           log.info(
             { files: fetched.files_fetched.length, bytes: fetched.source_code.length },
@@ -409,6 +411,7 @@ export class ScanPipeline {
         },
         tools: toolsForAnalysis,
         source_code: sourceCode,
+        source_files: sourceFiles,
         dependencies: enrichedDeps.map((d) => ({
           name: d.name,
           version: d.version,
