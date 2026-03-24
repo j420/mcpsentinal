@@ -252,6 +252,11 @@ export class ProtocolAnalyzer {
     /read_rss|read_feed|ingest|import|parse_html|parse_xml/i,
   ];
 
+  private static readonly SANITIZATION_SIGNAL_PATTERNS = [
+    /sanitize|sanitization|escape|strip_?html|clean|validate_?output|content_?policy/i,
+    /allow_?list|allowlist|safe_?content|content_?filter|output_?filter/i,
+  ];
+
   private static readonly ACTION_SINK_PATTERNS = [
     /exec|run|eval|shell|bash|spawn|execute|system/i,
     /send|post|email|slack|notify|webhook|push/i,
@@ -293,7 +298,14 @@ export class ProtocolAnalyzer {
 
     for (const tool of context.tools) {
       const classification = this.classifyTool(tool);
-      if (classification.isInjectionSource) injectionSources.push(tool.name);
+      if (classification.isInjectionSource) {
+        // Check if the tool description declares sanitization — if so, reduce risk
+        const toolText = `${tool.name} ${tool.description || ""}`;
+        const hasSanitization = ProtocolAnalyzer.SANITIZATION_SIGNAL_PATTERNS.some((p) => p.test(toolText));
+        if (!hasSanitization) {
+          injectionSources.push(tool.name);
+        }
+      }
       if (classification.isActionSink) actionSinks.push(tool.name);
     }
 
