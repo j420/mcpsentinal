@@ -132,7 +132,7 @@ async function runBenchmark(includeCompetitors: boolean): Promise<{
             server.context.tools.map((t) => ({ name: t.name, description: t.description })),
             server.name
           );
-          compFindings.set(name, result.findings.map((f) => f.rule_id));
+          compFindings.set(name, [...new Set(result.findings.map((f) => f.rule_id))]);
           if (!competitorMeta.has(name)) competitorMeta.set(name, result);
         } catch {
           compFindings.set(name, []);
@@ -358,7 +358,7 @@ async function main(): Promise<number> {
         server_id: server.id,
         category: server.category,
         sentinel_findings: original?.sentinel_findings || [],
-        competitor_findings: new Map([["baseline-regex", result.findings.map((f) => f.rule_id)]]),
+        competitor_findings: new Map([["baseline-regex", [...new Set(result.findings.map((f) => f.rule_id))]]]),
         expected_findings: server.expected_findings,
         must_not_fire: server.must_not_fire,
         sentinel_unexpected: original?.sentinel_unexpected || [],

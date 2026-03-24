@@ -88,13 +88,14 @@ function connectRemote(url) {
   {
     id: "cve-003", name: "filesystem-cve-2025-53109",
     category: "cve-backed", cve: "CVE-2025-53109",
-    rationale: "Anthropic filesystem server root boundary bypass",
+    rationale: "Anthropic filesystem server root boundary bypass — path from user input + root scope",
     context: ctx({
       server: srv("cve-003", "mcp-filesystem"),
       source_code: `
 const fs = require("fs");
-function readFile(path) { return fs.readFileSync(path, "utf8"); }
-function writeFile(path, content) { fs.writeFileSync(path, content); }
+const allowed = "/";
+function readFile(req) { return fs.readFileSync(req.body.path, "utf8"); }
+function listDir() { return fs.readdirSync("/"); }
 `,
       tools: [
         { name: "read_file", description: "Read any file on the filesystem", input_schema: { type: "object", properties: { path: { type: "string" } } } },

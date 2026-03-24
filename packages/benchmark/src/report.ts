@@ -68,7 +68,7 @@ export function generateBenchmarkReport(report: BenchmarkReport): string {
     [
       ["Precision", `>${targets.precision_target}%`, `${s.overall_metrics.precision}%`, targets.precision_met ? "**PASS**" : "FAIL"],
       ["Recall", `>${targets.recall_target}%`, `${s.overall_metrics.recall}%`, targets.recall_met ? "**PASS**" : "FAIL"],
-      ["Unique detections", `>${targets.unique_detection_target}%`, `${s.unique_findings} unique`, targets.unique_met ? "**PASS**" : "FAIL"],
+      ["Unique detections", `>${targets.unique_detection_target}`, `${s.unique_findings} unique`, targets.unique_met ? "**PASS**" : "FAIL"],
       ["False positive rate", `<${targets.false_positive_target}%`, `${s.overall_metrics.false_positive_rate}%`, targets.fp_met ? "**PASS**" : "FAIL"],
     ],
   );
