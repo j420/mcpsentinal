@@ -14,6 +14,7 @@ import ts from "typescript";
 import type { AnalysisContext } from "../engine.js";
 import type { Severity, OwaspCategory } from "@mcp-sentinel/database";
 import { analyzeASTTaint, type ASTTaintFlow } from "../rules/analyzers/taint-ast.js";
+import { analyzePythonTaint, isPythonSource, type PythonTaintFlow, PYTHON_SINKS } from "../rules/analyzers/taint-python.js";
 import { shannonEntropy } from "../rules/analyzers/entropy.js";
 
 export interface CodeFinding {
@@ -189,10 +190,18 @@ export class CodeAnalyzer {
   }
 
   /**
-   * Phase 1: Taint analysis using TypeScript compiler AST.
-   * For each sink in the registry, check if tainted data reaches it.
+   * Phase 1: Taint analysis using real AST parsing.
+   * Routes to TypeScript compiler API for JS/TS or tree-sitter for Python.
    */
   private runTaintAnalysis(source: string): CodeFinding[] {
+    if (isPythonSource(source)) {
+      return this.runPythonTaintAnalysis(source);
+    }
+    return this.runJSTaintAnalysis(source);
+  }
+
+  /** JS/TS taint analysis using TypeScript compiler AST. */
+  private runJSTaintAnalysis(source: string): CodeFinding[] {
     const findings: CodeFinding[] = [];
 
     try {
@@ -255,6 +264,75 @@ export class CodeAnalyzer {
       }
     } catch (_err) {
       // AST parsing failed — source may not be valid JS/TS
+    }
+
+    return findings;
+  }
+
+  /** Python taint analysis using tree-sitter AST. */
+  private runPythonTaintAnalysis(source: string): CodeFinding[] {
+    const findings: CodeFinding[] = [];
+
+    try {
+      const flows = analyzePythonTaint(source);
+      for (const flow of flows) {
+        // Look up the sink in our Python registry
+        const sinkEntry = PYTHON_SINKS.find(
+          (s) => s.fn === this.extractFnName(flow.sink.expression)
+        );
+        const ruleId = sinkEntry?.rule_id || this.categoryToRule(flow.sink.category);
+        const meta = RULE_META[ruleId];
+        if (!meta) continue;
+
+        if (flow.sanitized) {
+          findings.push({
+            rule_id: ruleId,
+            severity: "informational",
+            evidence:
+              `[AST taint — Python — sanitized] ${flow.source.category} source ` +
+              `"${flow.source.expression}" (L${flow.source.line}) → ` +
+              `sanitized by ${flow.sanitizer_name} → ` +
+              `${flow.sink.category} sink "${flow.sink.expression.slice(0, 50)}" (L${flow.sink.line}). ` +
+              (sinkEntry ? `Sink: ${sinkEntry.why}` : ""),
+            remediation: `Sanitizer "${flow.sanitizer_name}" detected. Verify it handles all edge cases.`,
+            owasp_category: meta.owasp,
+            mitre_technique: meta.mitre,
+            confidence: flow.confidence * 0.3,
+          });
+        } else {
+          const pathDesc = flow.path.length > 0
+            ? flow.path.map((s) => `${s.type}(L${s.line})`).join(" → ") + " → "
+            : "";
+
+          findings.push({
+            rule_id: ruleId,
+            severity: meta.severity,
+            evidence:
+              `[AST taint — Python] ${flow.source.category} source ` +
+              `"${flow.source.expression}" (L${flow.source.line}) → ` +
+              `${pathDesc}` +
+              `${flow.sink.category} sink "${flow.sink.expression.slice(0, 60)}" (L${flow.sink.line}). ` +
+              (sinkEntry
+                ? `${sinkEntry.why}. Module: ${sinkEntry.module || "global"}. ` +
+                  `Known sanitizers: ${sinkEntry.sanitizers.join(", ") || "none"}.`
+                : ""),
+            remediation: meta.remediation,
+            owasp_category: meta.owasp,
+            mitre_technique: meta.mitre,
+            confidence: flow.confidence,
+            metadata: {
+              engine: "code_analyzer",
+              analysis: "ast_taint_python",
+              source_category: flow.source.category,
+              sink_fn: sinkEntry?.fn,
+              sink_module: sinkEntry?.module,
+              path_length: flow.path.length,
+            },
+          });
+        }
+      }
+    } catch (_err) {
+      // Python AST parsing failed — fall through to regex fallback
     }
 
     return findings;
