@@ -1,0 +1,22 @@
+{
+  "name": "@mcp-sentinel/reports",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "generate": "tsx src/cli.ts"
+  },
+  "dependencies": {
+    "@mcp-sentinel/database": "workspace:*",
+    "pino": "^9.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
+  }
+}
