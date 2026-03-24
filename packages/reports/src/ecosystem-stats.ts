@@ -10,6 +10,9 @@
 
 import type pg from "pg";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
+
 export interface EcosystemOverview {
   total_crawled: number;
   total_scanned: number;
@@ -105,7 +108,7 @@ export async function computeEcosystemOverview(pool: pg.Pool): Promise<Ecosystem
   const criticalCount = parseInt(criticalRes.rows[0].cnt, 10);
   const totalFindings = parseInt(totalFindingsRes.rows[0].cnt, 10);
 
-  const scoreDistribution = distRes.rows.map((r) => ({
+  const scoreDistribution = distRes.rows.map((r: Row) => ({
     range: r.range as string,
     count: parseInt(r.count, 10),
     pct: totalScanned > 0 ? Math.round((parseInt(r.count, 10) / totalScanned) * 100) : 0,
@@ -128,13 +131,13 @@ export async function computeEcosystemOverview(pool: pg.Pool): Promise<Ecosystem
     servers_with_critical: criticalCount,
     critical_pct: totalScanned > 0 ? Math.round((criticalCount / totalScanned) * 100) : 0,
     language_distribution: Object.fromEntries(
-      langRes.rows.map((r) => [r.lang, parseInt(r.cnt, 10)])
+      langRes.rows.map((r: Row) => [r.lang, parseInt(r.cnt, 10)])
     ),
     framework_distribution: Object.fromEntries(
-      frameworkRes.rows.map((r) => [r.framework, parseInt(r.cnt, 10)])
+      frameworkRes.rows.map((r: Row) => [r.framework, parseInt(r.cnt, 10)])
     ),
     category_distribution: Object.fromEntries(
-      categoryRes.rows.map((r) => [r.cat, parseInt(r.cnt, 10)])
+      categoryRes.rows.map((r: Row) => [r.cat, parseInt(r.cnt, 10)])
     ),
     score_distribution: scoreDistribution,
     score_rating_distribution: ratingDist,

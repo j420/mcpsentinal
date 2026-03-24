@@ -7,6 +7,9 @@
 
 import type pg from "pg";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
+
 export interface TrendWindow {
   period: string;
   servers_scanned: number;
@@ -140,7 +143,7 @@ export async function computeTrendReport(pool: pg.Pool): Promise<TrendReport> {
   ]);
 
   const totalScanned = parseInt(totalScannedRes.rows[0].cnt, 10) || 1;
-  const totalFindings = severityRes.rows.reduce((sum, r) => sum + parseInt(r.cnt, 10), 0);
+  const totalFindings = severityRes.rows.reduce((sum: number, r: Row) => sum + parseInt(r.cnt, 10), 0);
   const pctOf = (n: string) => Math.round((parseInt(n, 10) / totalScanned) * 1000) / 10;
 
   // Rule name lookup (embedded subset — avoids requiring rule loader)
@@ -167,7 +170,7 @@ export async function computeTrendReport(pool: pg.Pool): Promise<TrendReport> {
   };
 
   return {
-    weekly_trends: weeklyRes.rows.map((r) => ({
+    weekly_trends: weeklyRes.rows.map((r: Row) => ({
       period: (r.period as Date).toISOString().slice(0, 10),
       servers_scanned: parseInt(r.servers_scanned, 10),
       average_score: Math.round(parseFloat(r.avg_score) * 10) / 10,
@@ -176,13 +179,13 @@ export async function computeTrendReport(pool: pg.Pool): Promise<TrendReport> {
       high_findings: 0,
       total_findings: parseInt(r.total_findings, 10),
     })),
-    severity_distribution: severityRes.rows.map((r) => ({
+    severity_distribution: severityRes.rows.map((r: Row) => ({
       severity: r.severity,
       count: parseInt(r.cnt, 10),
       pct_of_total: Math.round((parseInt(r.cnt, 10) / totalFindings) * 1000) / 10,
       pct_of_servers: pctOf(r.cnt),
     })),
-    top_vulnerabilities: topVulnRes.rows.map((r) => ({
+    top_vulnerabilities: topVulnRes.rows.map((r: Row) => ({
       rule_id: r.rule_id,
       rule_name: RULE_NAMES[r.rule_id] || r.rule_id,
       severity: r.severity,
