@@ -1,7 +1,7 @@
 # MCP Sentinel — Product Milestones
 ## P12 Product Strategist Output — v1.1
 
-_Last updated: 2026-03-22_
+_Last updated: 2026-03-24_
 
 ### Active Layer: Layer 3 (Public Interface) — polish & SEO
 
@@ -117,7 +117,7 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 
 ---
 
-### Layer 5: Advanced Detection — COMPLETE (verified 2026-03-22)
+### Layer 5: Advanced Detection — COMPLETE (verified 2026-03-24)
 
 **Goal:** Dynamic tool invocation testing, cross-server analysis.
 
@@ -133,8 +133,15 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 - [x] Rule accuracy auditing — AccuracyRunner with precision/recall metrics
 - [x] Pipeline integration — Stage 5b in scanner, --dynamic flag in CLI, scan.yml risk-matrix job, accuracy.yml workflow
 - [x] CLAUDE.md documentation for all three Layer 5 packages
+- [x] Competitive benchmark framework — `packages/benchmark/src/` (index.ts, corpus.ts, competitors.ts, ground-truth.ts, report.ts)
+  - 12-round reviewed, corpus of test fixtures, competitor comparison scoring
+- [x] Python AST taint analysis — `packages/analyzer/src/rules/analyzers/` (taint.ts, taint-python.ts, taint-ast.ts)
+  - tree-sitter-based Python AST parsing, source→sink taint propagation, cross-module import resolution
+- [x] 5 highest-priority G-Q rules upgraded from regex-only to engine-native analysis
+- [x] Ecosystem intelligence reports — `packages/reports/src/` (generator.ts, category-breakdown.ts, ecosystem-stats.ts, trend-analysis.ts, cli.ts)
+  - Category breakdown, ecosystem stats, trend analysis, CLI for report generation
 
-**Verification (2026-03-22):** 9 reported gaps triaged — all confirmed as false positives or out-of-scope (Layer 3/6 concerns). Database migration columns exist (lines 232-236), CLI --dynamic flag exists (line 49), output-scanner fully implemented (101 lines), L-Q fixtures all populated (411 total).
+**Verification (2026-03-24):** All 870 tests pass across 19 test files. G1 sanitization bug fixed. Typecheck clean. CI green.
 
 **Success Criteria:** Detection precision >80% across all rule categories.
 
@@ -171,7 +178,7 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 
 ---
 
-### Completed Work Summary (as of 2026-03-22)
+### Completed Work Summary (as of 2026-03-24)
 
 | Component | Package | Key Files | Tests |
 |-----------|---------|-----------|-------|
@@ -180,6 +187,7 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 | Crawler orchestration | `packages/crawler` | orchestrator.ts, cli.ts | orchestrator.test.ts |
 | MCP Connector | `packages/connector` | connector.ts | — |
 | Analysis Engine | `packages/analyzer` | engine.ts (73 KB), rule-loader.ts, tool-fingerprint.ts | 2 test files |
+| Python Taint Analysis | `packages/analyzer` | taint.ts, taint-python.ts, taint-ast.ts (2,442 lines) | — |
 | 177 Detection Rules | `rules/` | 177 YAML files across A-Q categories | — |
 | Scoring Algorithm | `packages/scorer` | scorer.ts, cli.ts | scorer.test.ts |
 | Scan Pipeline | `packages/scanner` | pipeline.ts (30 KB), fetcher.ts, auditor.ts, enumerate.ts, cli.ts | scanner.test.ts |
@@ -189,8 +197,10 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 | Dynamic Tester | `packages/dynamic-tester` | index.ts, consent.ts, canary.ts, audit-log.ts, output-scanner.ts | 5 test files |
 | Risk Matrix | `packages/risk-matrix` | index.ts, patterns.ts, graph.ts, cli.ts | 2 test files |
 | Red Team | `packages/red-team` | runner.ts, reporter.ts, cli.ts, 900+ fixtures | fixtures.test.ts |
+| Benchmark | `packages/benchmark` | index.ts, corpus.ts, competitors.ts, ground-truth.ts, report.ts | — |
+| Reports | `packages/reports` | generator.ts, category-breakdown.ts, ecosystem-stats.ts, trend-analysis.ts, cli.ts | — |
 | CI/CD | `.github/workflows/` | ci.yml, crawl.yml, scan.yml, accuracy.yml, publish.yml | — |
-| **Total** | **14 packages** | **~250 KB of core logic** | **18 test files** |
+| **Total** | **16 packages** | **~300 KB of core logic** | **19 test files, 870 tests** |
 
 ---
 
