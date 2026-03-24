@@ -106,12 +106,6 @@ importers:
       '@mcp-sentinel/analyzer':
         specifier: workspace:*
         version: link:../analyzer
-      '@mcp-sentinel/database':
-        specifier: workspace:*
-        version: link:../database
-      '@mcp-sentinel/scorer':
-        specifier: workspace:*
-        version: link:../scorer
       pino:
         specifier: ^9.0.0
         version: 9.14.0
