@@ -5,6 +5,7 @@ dist/
 .env.local
 *.log
 *.tsbuildinfo
+dynamic-test-audit.jsonl
 .DS_Store
 coverage/
 .turbo/
