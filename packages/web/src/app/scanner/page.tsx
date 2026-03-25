@@ -112,7 +112,7 @@ export default function ScannerPage() {
             </p>
             <div className="scanner-tool-meta">
               <span className="scanner-tool-badge scanner-tool-badge-input">Input: optional category/severity filter</span>
-              <span className="scanner-tool-badge scanner-tool-badge-output">Output: rule list with IDs, names, categories</span>
+              <span className="scanner-tool-badge scanner-tool-badge-output">Output: rule list with names, categories, severity</span>
             </div>
           </div>
         </div>
@@ -129,7 +129,7 @@ export default function ScannerPage() {
   "findings_count": 3,
   "findings": [
     {
-      "rule_id": "A1",
+      "rule": "Prompt Injection in Tool Description",
       "severity": "critical",
       "evidence": "Tool description contains injection pattern:
         'ignore all previous instructions'",
@@ -137,7 +137,7 @@ export default function ScannerPage() {
         tool descriptions. Use factual, concise descriptions."
     },
     {
-      "rule_id": "C5",
+      "rule": "Hardcoded Secrets",
       "severity": "high",
       "evidence": "Hardcoded API key pattern detected:
         sk-proj-abc123...",
@@ -145,7 +145,7 @@ export default function ScannerPage() {
         Never hardcode API keys in source code."
     },
     {
-      "rule_id": "B1",
+      "rule": "Missing Input Validation",
       "severity": "medium",
       "evidence": "Parameter 'query' has type string with
         no maxLength, pattern, or enum constraint.",
@@ -197,21 +197,20 @@ export default function ScannerPage() {
         <p className="scanner-section-sub">177 rules across 17 categories</p>
         <div className="scanner-coverage-grid">
           {[
-            { cat: "A", name: "Description Analysis", count: 9, example: "Prompt injection, unicode attacks" },
-            { cat: "B", name: "Schema Analysis", count: 7, example: "Missing validation, dangerous defaults" },
-            { cat: "C", name: "Code Analysis", count: 16, example: "Command injection, SSRF, secrets" },
-            { cat: "D", name: "Dependency Analysis", count: 7, example: "CVEs, typosquatting, malicious packages" },
-            { cat: "E", name: "Behavioral Analysis", count: 4, example: "Auth, transport, response time" },
-            { cat: "F", name: "Ecosystem Context", count: 7, example: "Lethal trifecta, exfiltration chains" },
-            { cat: "G", name: "Adversarial AI", count: 7, example: "Indirect injection, rug pull" },
-            { cat: "H", name: "2026 Attack Surface", count: 3, example: "OAuth, initialize injection" },
-            { cat: "I", name: "Protocol Surface", count: 16, example: "Annotations, sampling, elicitation" },
-            { cat: "J", name: "Threat Intelligence", count: 7, example: "CVE-backed: git injection, schema poisoning" },
-            { cat: "K", name: "Compliance", count: 20, example: "NIST, ISO 27001, EU AI Act" },
-            { cat: "L-Q", name: "Advanced Detection", count: 74, example: "Supply chain, AI runtime, data privacy" },
+            { name: "Description Analysis", count: 9, example: "Prompt injection, unicode attacks, encoded instructions" },
+            { name: "Schema Analysis", count: 7, example: "Missing validation, dangerous defaults, unconstrained properties" },
+            { name: "Code Analysis", count: 16, example: "Command injection, SSRF, SQL injection, hardcoded secrets" },
+            { name: "Dependency Analysis", count: 7, example: "Known CVEs, typosquatting, malicious packages" },
+            { name: "Behavioral Analysis", count: 4, example: "Missing auth, insecure transport, response anomalies" },
+            { name: "Ecosystem Context", count: 7, example: "Lethal trifecta, exfiltration chains, data flow risks" },
+            { name: "Adversarial AI", count: 7, example: "Indirect injection, rug pull, context saturation" },
+            { name: "Attack Surface", count: 3, example: "OAuth vulnerabilities, initialize injection, multi-agent" },
+            { name: "Protocol Surface", count: 16, example: "Annotation deception, sampling abuse, consent fatigue" },
+            { name: "Threat Intelligence", count: 7, example: "Git injection, schema poisoning, config poisoning" },
+            { name: "Compliance & Governance", count: 20, example: "NIST, ISO 27001, EU AI Act, OWASP Agentic" },
+            { name: "Advanced Detection", count: 74, example: "Supply chain, AI runtime, data privacy, infrastructure" },
           ].map((c) => (
-            <div key={c.cat} className="scanner-coverage-item">
-              <span className="scanner-coverage-cat">{c.cat}</span>
+            <div key={c.name} className="scanner-coverage-item">
               <div className="scanner-coverage-info">
                 <span className="scanner-coverage-name">{c.name}</span>
                 <span className="scanner-coverage-example">{c.example}</span>
