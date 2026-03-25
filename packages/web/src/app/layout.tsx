@@ -161,6 +161,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <a href="/servers" className="nav-link">Servers</a>
               <a href="/categories" className="nav-link">Categories</a>
               <a href="/dashboard" className="nav-link">Dashboard</a>
+              <a href="/scanner" className="nav-link">Scanner</a>
               <a href="/about" className="nav-link">About</a>
               <a href={API_URL} className="nav-link nav-link-api" target="_blank" rel="noopener noreferrer">
                 <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" style={{ display: "inline", verticalAlign: "-1px", marginRight: "3px" }}>

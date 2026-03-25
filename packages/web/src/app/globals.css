@@ -6237,3 +6237,172 @@ code, pre, kbd {
   .tax-nav-grid { grid-template-columns: 1fr 1fr; }
   .tax-stat { min-width: calc(50% - 1px); }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   SCANNER PAGE
+   ═══════════════════════════════════════════════════════════ */
+
+.scanner-page { padding-top: var(--s6); }
+
+.scanner-hero {
+  text-align: center;
+  margin-bottom: var(--s8);
+}
+
+.scanner-hero-badge {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--accent); background: var(--accent-sub); border: 1px solid var(--accent-ring);
+  border-radius: var(--r-full); padding: 4px 14px; margin-bottom: var(--s4);
+}
+
+.scanner-hero-title {
+  font-family: var(--font-mono);
+  font-size: clamp(28px, 4vw, 42px); font-weight: 800; letter-spacing: -0.03em;
+  color: var(--text); margin: 0 0 var(--s3);
+}
+
+.scanner-hero-sub {
+  font-size: 16px; color: var(--text-2); line-height: 1.6; max-width: 560px; margin: 0 auto var(--s5);
+}
+
+.scanner-install-box {
+  display: inline-flex; align-items: center;
+  background: #0D1117; border-radius: var(--r-lg); padding: 12px 24px;
+  border: 1px solid #21262D;
+}
+
+.scanner-install-cmd {
+  font-family: var(--font-mono); font-size: 15px; font-weight: 600; color: #C9D1D9;
+}
+
+/* ── Sections ──────────────────────────────────── */
+.scanner-section { margin-bottom: var(--s8); }
+.scanner-section-title {
+  font-family: var(--font-body); font-size: 20px; font-weight: 800;
+  letter-spacing: -0.02em; color: var(--text); margin-bottom: var(--s3);
+}
+.scanner-section-sub { font-size: 14px; color: var(--text-2); margin-bottom: var(--s4); }
+
+/* ── Steps ─────────────────────────────────────── */
+.scanner-steps { display: flex; flex-direction: column; gap: var(--s5); }
+.scanner-step {
+  display: flex; gap: var(--s4); align-items: flex-start;
+}
+.scanner-step-num {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-body); font-size: 14px; font-weight: 700;
+  flex-shrink: 0;
+}
+.scanner-step-content { flex: 1; min-width: 0; }
+.scanner-step-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: var(--s2); }
+.scanner-step-desc { font-size: 14px; color: var(--text-2); line-height: 1.6; margin-bottom: var(--s3); }
+
+/* ── Code blocks ───────────────────────────────── */
+.scanner-code {
+  font-family: var(--font-mono); font-size: 13px; line-height: 1.6;
+  background: #0D1117; color: #C9D1D9; border: 1px solid #21262D;
+  border-radius: var(--r-lg); padding: 16px 20px;
+  overflow-x: auto; white-space: pre;
+}
+.scanner-code-lg { font-size: 12px; }
+
+/* ── Examples ──────────────────────────────────── */
+.scanner-examples { display: flex; flex-direction: column; gap: var(--s2); }
+.scanner-example {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: var(--s3) var(--s4); background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+.scanner-example-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-3); }
+.scanner-example-text { font-size: 14px; color: var(--text); font-style: italic; }
+
+/* ── Tools grid ────────────────────────────────── */
+.scanner-tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--s4); }
+.scanner-tool-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
+  padding: var(--s5); box-shadow: var(--shadow-card);
+}
+.scanner-tool-name {
+  font-family: var(--font-mono); font-size: 15px; font-weight: 700;
+  color: var(--accent); margin-bottom: var(--s2);
+}
+.scanner-tool-desc { font-size: 13px; color: var(--text-2); line-height: 1.6; margin-bottom: var(--s3); }
+.scanner-tool-desc code { font-family: var(--font-mono); font-size: 12px; background: var(--surface-2); padding: 1px 4px; border-radius: 3px; }
+.scanner-tool-meta { display: flex; flex-direction: column; gap: var(--s1); }
+.scanner-tool-badge {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+  padding: 3px 8px; border-radius: var(--r-sm);
+}
+.scanner-tool-badge-input { color: var(--accent); background: var(--accent-sub); border: 1px solid var(--accent-ring); }
+.scanner-tool-badge-output { color: var(--text-2); background: var(--surface-2); border: 1px solid var(--border); }
+
+/* ── Score grid ────────────────────────────────── */
+.scanner-score-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s3); }
+.scanner-score-item {
+  text-align: center; padding: var(--s4); border-radius: var(--r-lg);
+  border: 1px solid var(--border); display: flex; flex-direction: column; gap: 4px;
+}
+.scanner-score-range { font-family: var(--font-mono); font-size: 18px; font-weight: 800; }
+.scanner-score-label { font-size: 13px; font-weight: 700; }
+.scanner-score-desc { font-size: 11px; color: var(--text-3); }
+.scanner-score-good { border-color: var(--good); }
+.scanner-score-good .scanner-score-range, .scanner-score-good .scanner-score-label { color: var(--good); }
+.scanner-score-moderate { border-color: var(--moderate); }
+.scanner-score-moderate .scanner-score-range, .scanner-score-moderate .scanner-score-label { color: var(--moderate); }
+.scanner-score-poor { border-color: var(--poor); }
+.scanner-score-poor .scanner-score-range, .scanner-score-poor .scanner-score-label { color: var(--poor); }
+.scanner-score-critical { border-color: var(--critical); }
+.scanner-score-critical .scanner-score-range, .scanner-score-critical .scanner-score-label { color: var(--critical); }
+
+/* ── Coverage grid ─────────────────────────────── */
+.scanner-coverage-grid { display: flex; flex-direction: column; gap: var(--s2); }
+.scanner-coverage-item {
+  display: flex; align-items: center; gap: var(--s3);
+  padding: var(--s3) var(--s4); background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+.scanner-coverage-cat {
+  font-family: var(--font-mono); font-size: 12px; font-weight: 800;
+  color: var(--accent); background: var(--accent-sub); border: 1px solid var(--accent-ring);
+  border-radius: var(--r-sm); padding: 2px 8px; min-width: 32px; text-align: center;
+}
+.scanner-coverage-info { flex: 1; min-width: 0; }
+.scanner-coverage-name { display: block; font-size: 13px; font-weight: 600; color: var(--text); }
+.scanner-coverage-example { display: block; font-size: 11px; color: var(--text-3); }
+.scanner-coverage-count {
+  font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--text);
+  min-width: 28px; text-align: right;
+}
+
+/* ── Safety box ────────────────────────────────── */
+.scanner-safety-box {
+  padding: var(--s5); background: rgba(5, 150, 105, 0.04);
+  border: 1px solid rgba(5, 150, 105, 0.15); border-left: 4px solid var(--good);
+  border-radius: var(--r-lg); font-size: 14px; line-height: 1.6; color: var(--text);
+}
+.scanner-safety-box code { font-family: var(--font-mono); font-size: 13px; background: var(--surface-2); padding: 1px 4px; border-radius: 3px; }
+
+/* ── Clients grid ──────────────────────────────── */
+.scanner-clients-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--s3); }
+.scanner-client-card {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: var(--s4); background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-md); box-shadow: var(--shadow-card);
+}
+.scanner-client-name { font-size: 14px; font-weight: 700; color: var(--text); }
+.scanner-client-config { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
+
+@media (max-width: 768px) {
+  .scanner-score-grid { grid-template-columns: repeat(2, 1fr); }
+  .scanner-tools-grid { grid-template-columns: 1fr; }
+  .scanner-clients-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .scanner-score-grid { grid-template-columns: 1fr 1fr; }
+  .scanner-step { flex-direction: column; gap: var(--s2); }
+}
