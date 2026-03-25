@@ -31,7 +31,7 @@ import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import pino from "pino";
 
-const logger = pino({ name: "mcp-sentinel-server" }, process.stderr);
+const logger = pino({ name: "mcp-sentinel-scanner" }, process.stderr);
 
 // ── Resolve rules directory ──────────────────────────────────────────────────
 
@@ -152,10 +152,10 @@ async function main() {
     ruleCategories[rule.id] = rule.category;
   }
 
-  logger.info({ ruleCount: rules.length }, "MCP Sentinel server starting");
+  logger.info({ ruleCount: rules.length }, "MCP Sentinel Scanner starting");
 
   const server = new Server(
-    { name: "mcp-sentinel", version: "0.1.0" },
+    { name: "mcp-sentinel-scanner", version: "0.1.0" },
     { capabilities: { tools: {} } },
   );
 
@@ -454,10 +454,10 @@ async function main() {
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  logger.info("MCP Sentinel server running on stdio");
+  logger.info("MCP Sentinel Scanner running on stdio");
 }
 
 main().catch((err) => {
-  logger.fatal({ err }, "Failed to start MCP Sentinel server");
+  logger.fatal({ err }, "Failed to start MCP Sentinel Scanner");
   process.exit(1);
 });

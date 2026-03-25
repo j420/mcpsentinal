@@ -1,12 +1,12 @@
 {
-  "name": "@mcp-sentinel/mcp-server",
+  "name": "@mcp-sentinel/scanner-mcp",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "mcp-sentinel-server": "./dist/index.js"
+    "mcp-sentinel-scanner": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc",

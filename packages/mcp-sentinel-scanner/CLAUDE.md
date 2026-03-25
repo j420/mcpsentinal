@@ -1,4 +1,4 @@
-# Package: mcp-server
+# Package: mcp-sentinel-scanner
 
 **Purpose:** MCP server that exposes MCP Sentinel's security scanning as tools. Any MCP client can connect and scan servers on demand.
 
@@ -31,15 +31,15 @@ It does NOT call `tools/call` on any target server.
 
 ```bash
 # Development
-pnpm --filter=@mcp-sentinel/mcp-server build
-node packages/mcp-server/dist/index.js
+pnpm --filter=@mcp-sentinel/scanner-mcp build
+node packages/mcp-sentinel-scanner/dist/index.js
 
 # Add to Claude Desktop config
 {
   "mcpServers": {
-    "mcp-sentinel": {
+    "mcp-sentinel-scanner": {
       "command": "node",
-      "args": ["path/to/packages/mcp-server/dist/index.js"]
+      "args": ["path/to/packages/mcp-sentinel-scanner/dist/index.js"]
     }
   }
 }
