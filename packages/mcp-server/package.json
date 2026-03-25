@@ -1,0 +1,31 @@
+{
+  "name": "@mcp-sentinel/mcp-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "mcp-sentinel-server": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@mcp-sentinel/analyzer": "workspace:*",
+    "@mcp-sentinel/scorer": "workspace:*",
+    "@mcp-sentinel/connector": "workspace:*",
+    "@mcp-sentinel/database": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "pino": "^9.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
