@@ -6239,6 +6239,99 @@ code, pre, kbd {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   COMPLIANCE PAGE
+   ═══════════════════════════════════════════════════════════ */
+
+.compliance-page { padding-top: var(--s6); }
+
+.compliance-hero { text-align: center; margin-bottom: var(--s8); }
+.compliance-hero-title {
+  font-family: var(--font-body); font-size: clamp(24px, 4vw, 36px);
+  font-weight: 800; letter-spacing: -0.03em; color: var(--text); margin: 0 0 var(--s3);
+}
+.compliance-hero-sub { font-size: 15px; color: var(--text-2); line-height: 1.65; max-width: 640px; margin: 0 auto; }
+
+.compliance-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: var(--s5);
+  margin-bottom: var(--s8);
+}
+
+.compliance-card {
+  background: var(--surface); border: 1px solid var(--border); border-top: 3px solid;
+  border-radius: var(--r-lg); padding: var(--s5); box-shadow: var(--shadow-card);
+  transition: box-shadow var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
+}
+.compliance-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+
+.compliance-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--s3); }
+.compliance-card-name { font-family: var(--font-body); font-size: 16px; font-weight: 700; margin: 0; }
+.compliance-card-count {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+  padding: 2px 8px; border-radius: var(--r-full); border: 1px solid;
+}
+.compliance-card-desc { font-size: 13px; color: var(--text-2); line-height: 1.6; margin-bottom: var(--s4); }
+
+.compliance-card-categories { display: flex; flex-direction: column; gap: 0; }
+.compliance-cat-row {
+  display: flex; align-items: center; gap: var(--s2);
+  padding: 6px 0; border-top: 1px solid var(--border);
+  font-size: 12px;
+}
+.compliance-cat-row:first-child { border-top: none; }
+.compliance-cat-id { font-family: var(--font-mono); font-weight: 700; color: var(--text-3); min-width: 80px; font-size: 11px; }
+.compliance-cat-name { flex: 1; color: var(--text); font-weight: 500; }
+.compliance-cat-rules { font-family: var(--font-mono); font-weight: 700; color: var(--text-3); font-size: 11px; }
+
+.compliance-cta {
+  text-align: center; padding: var(--s8) var(--s5);
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-xl);
+  margin-bottom: var(--s8);
+}
+.compliance-cta-title { font-size: 20px; font-weight: 800; color: var(--text); margin-bottom: var(--s3); }
+.compliance-cta-desc { font-size: 14px; color: var(--text-2); line-height: 1.6; max-width: 500px; margin: 0 auto var(--s5); }
+.compliance-cta-btn {
+  display: inline-block; padding: 10px 24px; background: var(--accent); color: #fff;
+  border-radius: var(--r-md); font-size: 14px; font-weight: 700; text-decoration: none;
+  transition: background var(--t-fast) var(--ease);
+}
+.compliance-cta-btn:hover { background: var(--accent-hover); color: #fff; }
+
+@media (max-width: 768px) {
+  .compliance-grid { grid-template-columns: 1fr; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIBLE DISCLOSURE PAGE
+   ═══════════════════════════════════════════════════════════ */
+
+.disclosure-page { padding-top: var(--s6); max-width: 720px; }
+.disclosure-title {
+  font-family: var(--font-body); font-size: clamp(24px, 4vw, 32px);
+  font-weight: 800; letter-spacing: -0.03em; color: var(--text); margin-bottom: var(--s2);
+}
+.disclosure-updated { font-size: 13px; color: var(--text-3); margin-bottom: var(--s8); }
+
+.disclosure-section { margin-bottom: var(--s6); }
+.disclosure-section h2 { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: var(--s3); }
+.disclosure-section p { font-size: 14px; color: var(--text-2); line-height: 1.7; margin-bottom: var(--s3); }
+.disclosure-section ul { font-size: 14px; color: var(--text-2); line-height: 1.7; padding-left: var(--s5); margin-bottom: var(--s3); }
+.disclosure-section li { margin-bottom: var(--s2); }
+.disclosure-section code { font-family: var(--font-mono); font-size: 13px; background: var(--surface-2); padding: 1px 4px; border-radius: 3px; }
+
+.disclosure-timeline { display: flex; flex-direction: column; gap: var(--s2); }
+.disclosure-timeline-item {
+  display: flex; gap: var(--s3); align-items: flex-start;
+  padding: var(--s3); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md);
+}
+.disclosure-timeline-day {
+  font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--accent);
+  min-width: 70px; flex-shrink: 0;
+}
+.disclosure-timeline-desc { font-size: 13px; color: var(--text); }
+
+/* ═══════════════════════════════════════════════════════════
    SCANNER PAGE
    ═══════════════════════════════════════════════════════════ */
 
