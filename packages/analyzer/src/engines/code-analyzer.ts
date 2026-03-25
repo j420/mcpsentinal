@@ -178,6 +178,18 @@ const RULE_META: Record<string, RuleMeta> = {
   K5: { id: "K5", name: "Auto-Approve / Bypass Confirmation Pattern", severity: "critical",
     owasp: "MCP06-excessive-permissions", mitre: "AML.T0054",
     remediation: "Always require explicit user confirmation for destructive operations. Never provide --yes/--no-confirm flags or auto_approve settings." },
+  K4: { id: "K4", name: "Missing Human Confirmation for Destructive Ops", severity: "high",
+    owasp: "MCP06-excessive-permissions", mitre: "AML.T0054",
+    remediation: "Add a human confirmation gate (confirm/prompt/approve) before all destructive operations. Use MCP destructiveHint annotation. Required by ISO 42001 A.9.1, EU AI Act Art. 14." },
+  K16: { id: "K16", name: "Unbounded Recursion / Missing Depth Limits", severity: "high",
+    owasp: "MCP07-insecure-config", mitre: "AML.T0054",
+    remediation: "Add a depth/limit parameter to all recursive functions. Check the limit at entry and return/throw when exceeded. For loops, ensure a bounded exit condition exists." },
+  K17: { id: "K17", name: "Missing Timeout or Circuit Breaker", severity: "medium",
+    owasp: "MCP07-insecure-config", mitre: "AML.T0054",
+    remediation: "Add timeout to all external calls: fetch(url, {signal: AbortSignal.timeout(30000)}), axios({timeout: 30000}), exec(cmd, {timeout: 60000}). Use a circuit breaker library (opossum, cockatiel) for resilience." },
+  K1: { id: "K1", name: "Absent Structured Logging", severity: "high",
+    owasp: "MCP07-insecure-config", mitre: "AML.T0054",
+    remediation: "Import a structured logging framework (pino, winston, bunyan). Log all tool invocations with correlation IDs, tool name, parameters, and outcome. Required by CoSAI MCP-T12, ISO 27001 A.8.15." },
 };
 
 // ─── Main CodeAnalyzer ──────────────────────────────────────────────────────
@@ -206,6 +218,10 @@ export class CodeAnalyzer {
     findings.push(...this.detectJ1ConfigPoisoning(context.source_code));
     findings.push(...this.detectJ5OutputPoisoning(context.source_code));
     findings.push(...this.detectK5AutoApprove(context.source_code));
+    findings.push(...this.detectK4MissingConfirmation(context.source_code));
+    findings.push(...this.detectK16UnboundedRecursion(context.source_code));
+    findings.push(...this.detectK17MissingTimeout(context.source_code));
+    findings.push(...this.detectK1AbsentStructuredLogging(context.source_code));
 
     return findings;
   }
@@ -973,6 +989,323 @@ export class CodeAnalyzer {
     };
 
     visit(sourceFile);
+    return findings;
+  }
+
+  // ── K4: Missing Human Confirmation for Destructive Ops (AST upgrade) ────────
+  // Detects destructive operations (delete, remove, drop, truncate, destroy, etc.)
+  // without a nearby confirmation/approve guard. ISO 42001 A.9.1, EU AI Act Art. 14.
+
+  private static readonly DESTRUCTIVE_OPS = /\b(delete|remove|drop|truncate|destroy|kill|format|overwrite|purge|erase|wipe)\s*\(/i;
+  private static readonly CONFIRMATION_GUARD = /\b(confirm|confirmation|approve|approval|prompt|ask|verify|consent)\b/i;
+
+  private detectK4MissingConfirmation(source: string): CodeFinding[] {
+    const findings: CodeFinding[] = [];
+    const meta = RULE_META.K4;
+    const lines = source.split("\n");
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const match = CodeAnalyzer.DESTRUCTIVE_OPS.exec(line);
+      if (!match) continue;
+
+      // Check surrounding ~5 lines for a confirmation guard
+      const windowStart = Math.max(0, i - 5);
+      const windowEnd = Math.min(lines.length - 1, i + 5);
+      let hasConfirmation = false;
+      for (let j = windowStart; j <= windowEnd; j++) {
+        if (CodeAnalyzer.CONFIRMATION_GUARD.test(lines[j])) {
+          hasConfirmation = true;
+          break;
+        }
+      }
+
+      if (!hasConfirmation) {
+        findings.push({
+          rule_id: "K4",
+          severity: "high",
+          evidence:
+            `[AST — K4] Destructive operation "${match[1]}()" at L${i + 1} without confirmation guard. ` +
+            `No confirm/approve/prompt pattern found within ±5 lines. ` +
+            `Destructive operations without human confirmation violate ISO 42001 A.9.1 and EU AI Act Art. 14.`,
+          remediation: meta.remediation,
+          owasp_category: meta.owasp,
+          mitre_technique: meta.mitre,
+          confidence: 0.75,
+          metadata: { engine: "code_analyzer", analysis: "ast_k4_missing_confirmation", operation: match[1] },
+        });
+      }
+    }
+
+    return findings;
+  }
+
+  // ── K16: Unbounded Recursion / Missing Depth Limits (AST upgrade) ───────────
+  // Detects recursive calls without depth/limit parameters and infinite loops
+  // without bounded exit conditions. OWASP ASI08, EU AI Act Art. 15.
+
+  private static readonly RECURSIVE_CALL_NAMES = /\b(recurse|traverse|walk|visit|crawl|dfs|bfs)\s*\(/i;
+  private static readonly DEPTH_LIMIT_GUARD = /\b(depth|limit|maxDepth|MAX_DEPTH|max_depth|level|maxLevel|max_level|maxRecursion)\b/;
+
+  private detectK16UnboundedRecursion(source: string): CodeFinding[] {
+    const findings: CodeFinding[] = [];
+    const meta = RULE_META.K16;
+
+    // Pattern 1: Named recursive functions without depth checks
+    const funcPattern = /function\s+(\w+)\s*\(([^)]*)\)/g;
+    let funcMatch: RegExpExecArray | null;
+    while ((funcMatch = funcPattern.exec(source))) {
+      const funcName = funcMatch[1];
+      const params = funcMatch[2];
+
+      // Check if function calls itself
+      const funcBodyStart = source.indexOf("{", funcMatch.index + funcMatch[0].length);
+      if (funcBodyStart === -1) continue;
+
+      // Find matching closing brace (simple nesting count)
+      let depth = 1;
+      let funcBodyEnd = funcBodyStart + 1;
+      while (funcBodyEnd < source.length && depth > 0) {
+        if (source[funcBodyEnd] === "{") depth++;
+        if (source[funcBodyEnd] === "}") depth--;
+        funcBodyEnd++;
+      }
+      const funcBody = source.slice(funcBodyStart, funcBodyEnd);
+
+      // Check if function calls itself
+      const selfCallPattern = new RegExp(`\\b${funcName}\\s*\\(`);
+      if (!selfCallPattern.test(funcBody)) continue;
+
+      // Check if parameters or body include a depth/limit guard
+      const hasDepthParam = CodeAnalyzer.DEPTH_LIMIT_GUARD.test(params);
+      const hasDepthCheck = CodeAnalyzer.DEPTH_LIMIT_GUARD.test(funcBody);
+
+      if (!hasDepthParam && !hasDepthCheck) {
+        const line = source.slice(0, funcMatch.index).split("\n").length;
+        findings.push({
+          rule_id: "K16",
+          severity: "high",
+          evidence:
+            `[AST — K16] Recursive function "${funcName}" at L${line} calls itself without a depth/limit guard. ` +
+            `No depth, limit, maxDepth, or level parameter or check found. ` +
+            `Unbounded recursion enables stack overflow denial-of-service.`,
+          remediation: meta.remediation,
+          owasp_category: meta.owasp,
+          mitre_technique: meta.mitre,
+          confidence: 0.82,
+          metadata: { engine: "code_analyzer", analysis: "ast_k16_unbounded_recursion", function_name: funcName },
+        });
+      }
+    }
+
+    // Pattern 2: Common recursive helper names without depth checks
+    const lines = source.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const recMatch = CodeAnalyzer.RECURSIVE_CALL_NAMES.exec(line);
+      if (!recMatch) continue;
+
+      // Check surrounding context for depth guard
+      const windowStart = Math.max(0, i - 3);
+      const windowEnd = Math.min(lines.length - 1, i + 3);
+      let hasGuard = false;
+      for (let j = windowStart; j <= windowEnd; j++) {
+        if (CodeAnalyzer.DEPTH_LIMIT_GUARD.test(lines[j])) {
+          hasGuard = true;
+          break;
+        }
+      }
+
+      if (!hasGuard) {
+        findings.push({
+          rule_id: "K16",
+          severity: "high",
+          evidence:
+            `[AST — K16] Recursive call pattern "${recMatch[1]}()" at L${i + 1} without depth/limit check nearby. ` +
+            `Add a depth parameter and check it at function entry to prevent stack overflow.`,
+          remediation: meta.remediation,
+          owasp_category: meta.owasp,
+          mitre_technique: meta.mitre,
+          confidence: 0.7,
+          metadata: { engine: "code_analyzer", analysis: "ast_k16_recursive_call", call_name: recMatch[1] },
+        });
+      }
+    }
+
+    // Pattern 3: Infinite loops without break/bounded condition
+    const infiniteLoopPattern = /\b(while\s*\(\s*true\s*\)|for\s*\(\s*;\s*;\s*\))/g;
+    let loopMatch: RegExpExecArray | null;
+    while ((loopMatch = infiniteLoopPattern.exec(source))) {
+      // Check if loop body contains break/return within reasonable distance
+      const loopStart = source.indexOf("{", loopMatch.index + loopMatch[0].length);
+      if (loopStart === -1) continue;
+
+      // Grab next ~500 chars as the loop body approximation
+      const loopBody = source.slice(loopStart, loopStart + 500);
+      const hasBreak = /\b(break|return)\b/.test(loopBody);
+
+      if (!hasBreak) {
+        const line = source.slice(0, loopMatch.index).split("\n").length;
+        findings.push({
+          rule_id: "K16",
+          severity: "high",
+          evidence:
+            `[AST — K16] Infinite loop "${loopMatch[1]}" at L${line} without break/return in loop body. ` +
+            `Unbounded loops without exit conditions enable denial-of-service.`,
+          remediation: meta.remediation,
+          owasp_category: meta.owasp,
+          mitre_technique: meta.mitre,
+          confidence: 0.8,
+          metadata: { engine: "code_analyzer", analysis: "ast_k16_infinite_loop" },
+        });
+      }
+    }
+
+    return findings;
+  }
+
+  // ── K17: Missing Timeout or Circuit Breaker (AST upgrade) ──────────────────
+  // Detects external calls (fetch, axios, http.request, etc.) without timeout
+  // configuration. OWASP ASI08, EU AI Act Art. 15.
+
+  private static readonly EXTERNAL_CALL_PATTERNS: Array<{
+    name: string;
+    pattern: RegExp;
+    timeoutIndicators: RegExp;
+  }> = [
+    {
+      name: "fetch",
+      pattern: /\bfetch\s*\(/g,
+      timeoutIndicators: /\b(signal|AbortSignal|timeout|AbortController)\b/,
+    },
+    {
+      name: "axios",
+      pattern: /\baxios\s*[\.(]/g,
+      timeoutIndicators: /\btimeout\s*[:=]/,
+    },
+    {
+      name: "http.request",
+      pattern: /\bhttps?\.request\s*\(/g,
+      timeoutIndicators: /\btimeout\s*[:=]/,
+    },
+    {
+      name: "got",
+      pattern: /\bgot\s*[\.(]/g,
+      timeoutIndicators: /\btimeout\s*[:=]/,
+    },
+    {
+      name: "superagent",
+      pattern: /\bsuperagent\b|\.get\s*\(|\.post\s*\(|\.put\s*\(|\.delete\s*\(/g,
+      timeoutIndicators: /\.timeout\s*\(/,
+    },
+    {
+      name: "net.connect",
+      pattern: /\bnet\.connect\s*\(/g,
+      timeoutIndicators: /\btimeout\s*[:=]|\.setTimeout\s*\(/,
+    },
+    {
+      name: "request",
+      pattern: /\brequest\s*\(\s*\{/g,
+      timeoutIndicators: /\btimeout\s*[:=]/,
+    },
+  ];
+
+  private detectK17MissingTimeout(source: string): CodeFinding[] {
+    const findings: CodeFinding[] = [];
+    const meta = RULE_META.K17;
+    const lines = source.split("\n");
+
+    for (const { name, pattern, timeoutIndicators } of CodeAnalyzer.EXTERNAL_CALL_PATTERNS) {
+      // Reset regex lastIndex for each scan
+      pattern.lastIndex = 0;
+      let callMatch: RegExpExecArray | null;
+
+      while ((callMatch = pattern.exec(source))) {
+        const callIndex = callMatch.index;
+        const lineNum = source.slice(0, callIndex).split("\n").length;
+
+        // Check surrounding ~10 lines for timeout configuration
+        const windowStart = Math.max(0, lineNum - 3);
+        const windowEnd = Math.min(lines.length, lineNum + 10);
+        const contextWindow = lines.slice(windowStart, windowEnd).join("\n");
+
+        if (!timeoutIndicators.test(contextWindow)) {
+          findings.push({
+            rule_id: "K17",
+            severity: "medium",
+            evidence:
+              `[AST — K17] External call "${name}" at L${lineNum} without timeout configuration. ` +
+              `No ${name === "fetch" ? "AbortSignal/signal" : "timeout option"} found nearby. ` +
+              `Missing timeouts enable slow-loris and connection exhaustion denial-of-service attacks.`,
+            remediation: meta.remediation,
+            owasp_category: meta.owasp,
+            mitre_technique: meta.mitre,
+            confidence: 0.72,
+            metadata: { engine: "code_analyzer", analysis: "ast_k17_missing_timeout", call_name: name },
+          });
+        }
+      }
+    }
+
+    return findings;
+  }
+
+  // ── K1: Absent Structured Logging (AST upgrade) ────────────────────────────
+  // Detects files that handle tool invocations or requests but use only
+  // console.log/console.error instead of structured logging (pino, winston, etc.).
+  // CoSAI MCP-T12, ISO 27001 A.8.15.
+
+  private static readonly STRUCTURED_LOGGER_IMPORTS = /\b(pino|winston|bunyan|log4js|loglevel|signale|roarr)\b/;
+  private static readonly CONSOLE_LOGGING = /\bconsole\.(log|error|warn|info|debug)\s*\(/;
+  private static readonly TOOL_HANDLER_PATTERNS = /\b(tool|handler|request|invoke|execute|dispatch|process|serve)\b/i;
+
+  private detectK1AbsentStructuredLogging(source: string): CodeFinding[] {
+    const findings: CodeFinding[] = [];
+    const meta = RULE_META.K1;
+
+    // Only flag if the code looks like it handles tool invocations or requests
+    if (!CodeAnalyzer.TOOL_HANDLER_PATTERNS.test(source)) {
+      return findings;
+    }
+
+    const hasStructuredLogger = CodeAnalyzer.STRUCTURED_LOGGER_IMPORTS.test(source);
+    const hasConsoleLogging = CodeAnalyzer.CONSOLE_LOGGING.test(source);
+
+    // Flag: has console logging but no structured logger in a tool handler file
+    if (hasConsoleLogging && !hasStructuredLogger) {
+      // Find the first console.log occurrence for evidence
+      const lines = source.split("\n");
+      const consoleCalls: string[] = [];
+      let firstConsoleLine = 0;
+
+      for (let i = 0; i < lines.length; i++) {
+        if (CodeAnalyzer.CONSOLE_LOGGING.test(lines[i])) {
+          if (consoleCalls.length === 0) firstConsoleLine = i + 1;
+          consoleCalls.push(`L${i + 1}`);
+          if (consoleCalls.length >= 5) break; // Cap evidence collection
+        }
+      }
+
+      findings.push({
+        rule_id: "K1",
+        severity: "high",
+        evidence:
+          `[AST — K1] Tool handler code uses console.* logging (${consoleCalls.join(", ")}) ` +
+          `without a structured logging framework. No import of pino, winston, bunyan, or log4js detected. ` +
+          `console.log produces unstructured text that cannot be queried, correlated, or audited. ` +
+          `First occurrence at L${firstConsoleLine}.`,
+        remediation: meta.remediation,
+        owasp_category: meta.owasp,
+        mitre_technique: meta.mitre,
+        confidence: 0.7,
+        metadata: {
+          engine: "code_analyzer",
+          analysis: "ast_k1_absent_structured_logging",
+          console_call_count: consoleCalls.length,
+        },
+      });
+    }
+
     return findings;
   }
 
