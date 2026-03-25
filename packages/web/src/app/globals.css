@@ -2703,6 +2703,7 @@ code, pre, kbd {
 .stats-cards {
   display: grid;
   grid-template-columns: 1.2fr 0.8fr 0.8fr;
+  grid-auto-rows: 280px;
   gap: var(--s4);
   margin-bottom: var(--s8);
 }
@@ -2714,7 +2715,6 @@ code, pre, kbd {
   flex-direction: column;
   position: relative;
   overflow: hidden;
-  min-height: 240px;
 }
 
 /* Card 1 — Dark */
@@ -2849,7 +2849,7 @@ code, pre, kbd {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  min-height: 240px;
+  height: 100%;
 }
 
 .scanner-anim-header {
@@ -2889,7 +2889,7 @@ code, pre, kbd {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
-  min-height: 120px;
+  overflow: hidden;
 }
 
 .scanner-line {
@@ -3873,8 +3873,9 @@ code, pre, kbd {
   .cat-detail-header { flex-direction: column; align-items: flex-start; }
   .featured-grid { grid-template-columns: 1fr; }
   .score-badge   { font-size: 12px; min-width: 40px; padding: 3px 8px; }
-  .stats-cards { grid-template-columns: 1fr; }
-  .stats-card { padding: var(--s5); }
+  .stats-cards { grid-template-columns: 1fr; grid-auto-rows: auto; }
+  .stats-card { padding: var(--s5); min-height: 180px; }
+  .scanner-anim { min-height: 260px; }
   .stats-card-dark .stats-card-big-num,
   .stats-card-green .stats-card-big-num { font-size: 36px; }
   .author-filter { width: 100%; }

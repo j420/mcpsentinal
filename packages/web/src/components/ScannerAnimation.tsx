@@ -6,9 +6,9 @@ const SCAN_STEPS = [
   { label: "Connecting", detail: "initialize + tools/list", color: "#10B981" },
   { label: "Enumerating", detail: "12 tools found", color: "#10B981" },
   { label: "Analyzing", detail: "177 rules running...", color: "#F59E0B" },
-  { label: "Finding", detail: "A1 Prompt Injection in description", color: "#EF4444", severity: "critical" },
-  { label: "Finding", detail: "C5 Hardcoded API key detected", color: "#EF4444", severity: "high" },
-  { label: "Finding", detail: "B1 Missing input validation", color: "#F59E0B", severity: "medium" },
+  { label: "Finding", detail: "Prompt Injection in description", color: "#EF4444", severity: "critical" },
+  { label: "Finding", detail: "Hardcoded API key detected", color: "#EF4444", severity: "high" },
+  { label: "Finding", detail: "Missing input validation", color: "#F59E0B", severity: "medium" },
   { label: "Scoring", detail: "Score: 62/100 — Moderate", color: "#F59E0B" },
   { label: "Complete", detail: "3 findings · 62/100", color: "#10B981" },
 ];
