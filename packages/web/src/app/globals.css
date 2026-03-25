@@ -3059,7 +3059,7 @@ code, pre, kbd {
 }
 .server-table-header {
   display: grid;
-  grid-template-columns: 1fr 120px 120px 90px 60px 80px 80px;
+  grid-template-columns: 1fr 120px 120px 100px;
   gap: 0;
   padding: 10px 20px;
   background: var(--surface-2);
@@ -3072,7 +3072,7 @@ code, pre, kbd {
 }
 .server-table-row {
   display: grid;
-  grid-template-columns: 1fr 120px 120px 90px 60px 80px 80px;
+  grid-template-columns: 1fr 120px 120px 100px;
   gap: 0;
   padding: 14px 20px;
   background: var(--surface);
@@ -3091,8 +3091,6 @@ code, pre, kbd {
 .stcol-name .server-row-author { font-size: 12px; color: var(--text-3); }
 .stcol-name .server-row-desc { font-size: 12px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; line-height: 1.4; }
 .stcol-score { text-align: right; }
-.stcol-tools { text-align: center; }
-.stcol-origin { text-align: center; }
 .stcol-category { text-align: center; }
 .stcol-owner { font-size: 12px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stcol-lang { text-align: center; }
@@ -3108,7 +3106,7 @@ code, pre, kbd {
   }
   .stcol-name { grid-column: 1; grid-row: 1; }
   .stcol-score { grid-column: 2; grid-row: 1; }
-  .stcol-owner, .stcol-category, .stcol-lang, .stcol-tools, .stcol-origin { display: none; }
+  .stcol-owner, .stcol-category, .stcol-lang { display: none; }
 }
 
 .server-row {

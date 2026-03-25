@@ -459,8 +459,6 @@ export default async function HomePage({
             <span className="stcol stcol-owner">Owner</span>
             <span className="stcol stcol-category">Category</span>
             <span className="stcol stcol-lang">Language</span>
-            <span className="stcol stcol-tools">Tools</span>
-            <span className="stcol stcol-origin">Source</span>
           </div>
           {servers.map((server) => (
             <a
@@ -486,20 +484,6 @@ export default async function HomePage({
               </span>
               <span className="stcol stcol-lang">
                 {server.language || "\u2014"}
-              </span>
-              <span className="stcol stcol-tools">
-                {server.tool_count > 0 ? server.tool_count : "\u2014"}
-              </span>
-              <span className="stcol stcol-origin">
-                {server.source_names.length > 0 ? (
-                  server.source_names.map((s) => (
-                    <span key={s} className="server-meta-chip server-meta-origin">
-                      {SOURCE_DISPLAY[s] || s}
-                    </span>
-                  ))
-                ) : (
-                  <span className="stcol-empty">{"\u2014"}</span>
-                )}
               </span>
             </a>
           ))}
