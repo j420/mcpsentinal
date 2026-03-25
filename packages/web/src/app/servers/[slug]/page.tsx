@@ -273,13 +273,13 @@ export default async function ServerDetailPage({
         {server.owasp_coverage && Object.keys(server.owasp_coverage).length > 0 && (
           <a href="#owasp">OWASP Coverage</a>
         )}
-        {findings.length > 0 && (
-          <a href="#findings">Findings ({findings.length})</a>
-        )}
         {tools.length > 0 && (
           <a href="#tools">Tools ({tools.length})</a>
         )}
         <a href="#deep-dive">Category Deep Dive</a>
+        {findings.length > 0 && (
+          <a href="#findings">Findings ({findings.length})</a>
+        )}
       </nav>
 
       {/* ── OWASP Coverage ─────────────────────────────────── */}
@@ -305,7 +305,41 @@ export default async function ServerDetailPage({
         </section>
       )}
 
-      {/* ── Findings ────────────────────────────────────────── */}
+      {/* ── Tools ──────────────────────────────────────────── */}
+      {tools.length > 0 && (
+        <section id="tools" className="sd-section">
+          <h2 className="sd-section-title">
+            Tools
+            <span className="sd-section-count">{tools.length}</span>
+          </h2>
+          <div className="sd-tools-grid">
+            {tools.map((tool) => (
+              <div key={tool.name} className="sd-tool">
+                <div className="sd-tool-name">{tool.name}</div>
+                {tool.description && (
+                  <div className="sd-tool-desc">{tool.description}</div>
+                )}
+                {tool.capability_tags.length > 0 && (
+                  <div className="sd-tool-caps">
+                    {tool.capability_tags.map((tag) => (
+                      <span key={tag} className={`cap-tag cap-${tag}`}>
+                        {tag.replace(/-/g, " ")}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Category Deep Dive ─────────────────────────────── */}
+      <div id="deep-dive">
+        <CategoryDeepDivePanel findings={cddFindings} />
+      </div>
+
+      {/* ── Findings Detail ──────────────────────────────────── */}
       {findings.length > 0 && (
         <section id="findings" className="sd-section">
           <h2 className="sd-section-title">
@@ -364,40 +398,6 @@ export default async function ServerDetailPage({
           </div>
         </section>
       )}
-
-      {/* ── Tools ──────────────────────────────────────────── */}
-      {tools.length > 0 && (
-        <section id="tools" className="sd-section">
-          <h2 className="sd-section-title">
-            Tools
-            <span className="sd-section-count">{tools.length}</span>
-          </h2>
-          <div className="sd-tools-grid">
-            {tools.map((tool) => (
-              <div key={tool.name} className="sd-tool">
-                <div className="sd-tool-name">{tool.name}</div>
-                {tool.description && (
-                  <div className="sd-tool-desc">{tool.description}</div>
-                )}
-                {tool.capability_tags.length > 0 && (
-                  <div className="sd-tool-caps">
-                    {tool.capability_tags.map((tag) => (
-                      <span key={tag} className={`cap-tag cap-${tag}`}>
-                        {tag.replace(/-/g, " ")}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* ── Category Deep Dive ─────────────────────────────── */}
-      <div id="deep-dive">
-        <CategoryDeepDivePanel findings={cddFindings} />
-      </div>
     </div>
   );
 }
