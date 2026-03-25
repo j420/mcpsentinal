@@ -46,10 +46,6 @@
     "yaml": "^2.7.0",
     "zod": "^3.23.0"
   },
-  "optionalDependencies": {
-    "tree-sitter": "^0.25.0",
-    "tree-sitter-python": "^0.25.0"
-  },
   "devDependencies": {
     "@mcp-sentinel/analyzer": "workspace:*",
     "@mcp-sentinel/scorer": "workspace:*",
