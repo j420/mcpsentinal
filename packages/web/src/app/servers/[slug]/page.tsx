@@ -116,8 +116,6 @@ const OWASP_NAMES: Record<string, string> = {
   MCP10: "Supply Chain",
 };
 
-const SEV_ORDER = ["critical", "high", "medium", "low", "informational"] as const;
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function ServerDetailPage({
@@ -137,18 +135,6 @@ export default async function ServerDetailPage({
     severity: f.severity,
   }));
 
-  // Group findings by severity
-  const findingsBySev: Record<string, Finding[]> = {};
-  for (const f of findings) {
-    if (!findingsBySev[f.severity]) findingsBySev[f.severity] = [];
-    findingsBySev[f.severity].push(f);
-  }
-
-  const sevCounts = SEV_ORDER.map((s) => ({
-    sev: s,
-    count: findingsBySev[s]?.length ?? 0,
-  }));
-
   return (
     <div className="sd-page">
       {/* Breadcrumb */}
@@ -162,6 +148,7 @@ export default async function ServerDetailPage({
 
       {/* ── Hero Section ───────────────────────────────────── */}
       <section className="sd-hero">
+        <div className="sd-hero-left">
           <div className="sd-hero-title-row">
             <h1 className="sd-hero-name">{server.name}</h1>
             {server.connection_status === "connected" && (
@@ -217,54 +204,36 @@ export default async function ServerDetailPage({
               </a>
             )}
           </div>
-      </section>
+        </div>
 
-      {/* ── Quick Stats ────────────────────────────────────── */}
-      <section className="sd-quick-stats">
-        <div className="sd-qs-item">
-          <span className="sd-qs-val">{server.tool_count}</span>
-          <span className="sd-qs-label">Tools</span>
-        </div>
-        <div className="sd-qs-item">
-          <span className="sd-qs-val" style={findings.length > 0 ? { color: "var(--critical)" } : { color: "var(--good)" }}>
-            {findings.length}
-          </span>
-          <span className="sd-qs-label">Findings</span>
-        </div>
-        {server.github_stars != null && (
-          <div className="sd-qs-item">
-            <span className="sd-qs-val">{fmtNum(server.github_stars)}</span>
-            <span className="sd-qs-label">Stars</span>
+        <div className="sd-hero-stats">
+          <div className="sd-hero-stat">
+            <span className="sd-hero-stat-val">{server.tool_count}</span>
+            <span className="sd-hero-stat-label">Tools</span>
           </div>
-        )}
-        {server.npm_downloads != null && (
-          <div className="sd-qs-item">
-            <span className="sd-qs-val">{fmtNum(server.npm_downloads)}</span>
-            <span className="sd-qs-label">Downloads</span>
-          </div>
-        )}
-        <div className="sd-qs-item">
-          <span className="sd-qs-val sd-qs-val-sm">{fmtDate(server.last_scanned_at)}</span>
-          <span className="sd-qs-label">Last Scanned</span>
-        </div>
-      </section>
-
-      {/* ── Verdict Banner ──────────────────────────────────── */}
-      <section className="sd-verdict">
-        {findings.length === 0 && server.last_scanned_at ? (
-          <div className="sd-verdict-clean">
-            <span className="sd-verdict-icon">&#10003;</span>
-            <span>No security findings detected across 177 detection rules.</span>
-          </div>
-        ) : findings.length > 0 ? (
-          <div className="sd-verdict-alert">
-            <span className="sd-verdict-icon">&#9888;</span>
-            <span>
-              {sevCounts.filter(s => s.count > 0).map(s => `${s.count} ${s.sev}`).join(" \u00B7 ")}
-              {" "}finding{findings.length !== 1 ? "s" : ""} detected
+          <div className="sd-hero-stat">
+            <span className="sd-hero-stat-val" style={findings.length > 0 ? { color: "var(--critical)" } : { color: "var(--good)" }}>
+              {findings.length}
             </span>
+            <span className="sd-hero-stat-label">Findings</span>
           </div>
-        ) : null}
+          {server.github_stars != null && (
+            <div className="sd-hero-stat">
+              <span className="sd-hero-stat-val">{fmtNum(server.github_stars)}</span>
+              <span className="sd-hero-stat-label">Stars</span>
+            </div>
+          )}
+          {server.npm_downloads != null && (
+            <div className="sd-hero-stat">
+              <span className="sd-hero-stat-val">{fmtNum(server.npm_downloads)}</span>
+              <span className="sd-hero-stat-label">Downloads</span>
+            </div>
+          )}
+          <div className="sd-hero-stat">
+            <span className="sd-hero-stat-val sd-hero-stat-val-sm">{fmtDate(server.last_scanned_at)}</span>
+            <span className="sd-hero-stat-label">Last Scanned</span>
+          </div>
+        </div>
       </section>
 
       {/* ── OWASP Coverage ─────────────────────────────────── */}
