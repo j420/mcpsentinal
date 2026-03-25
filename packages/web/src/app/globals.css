@@ -6015,6 +6015,37 @@ code, pre, kbd {
 .sd-empty-icon { font-size: 18px; color: var(--good); font-weight: 700; }
 .sd-empty-text { font-size: 14px; color: var(--good); font-weight: 600; }
 
+/* ── Global mobile improvements ────────────────────────── */
+@media (max-width: 768px) {
+  .site-main { padding: 0 var(--s4) var(--s8); }
+  .header-inner { padding: 0 var(--s4); }
+  .sd-hero-name { font-size: clamp(20px, 5vw, 28px); }
+  .sd-hero-desc { max-width: none; font-size: 14px; }
+  .sd-meta-chip { font-size: 11px; padding: 3px 8px; }
+  .sd-link-btn { font-size: 12px; padding: 5px 10px; }
+  .cdd-section-title { font-size: 1.1rem; }
+  .cdd-cat-name { font-size: 0.95rem; }
+  .cdd-cat-tagline { font-size: 0.7rem; }
+  .cdd-view-tabs { padding: 0.5rem 0.75rem; }
+  .cdd-finding-hdr { font-size: 0.7rem; }
+}
+
+@media (max-width: 480px) {
+  .site-main { padding: 0 var(--s3) var(--s6); }
+  .header-inner { padding: 0 var(--s3); gap: var(--s3); }
+  .sd-hero-name { font-size: 20px; }
+  .sd-hero-stat-val { font-size: 16px; }
+  .sd-hero-stat-val-sm { font-size: 11px; }
+  .sd-hero-stat-label { font-size: 9px; }
+  .cdd-detail { padding: 0.75rem; }
+  .cdd-cat-hdr { padding: 0.75rem; }
+  .cdd-stats { flex-wrap: wrap; }
+  .cdd-stat { min-width: calc(33% - 1px); }
+  .cdd-view-tab { padding: 0.3rem 0.5rem; font-size: 0.62rem; }
+  .cdd-subcat-hdr { flex-direction: column; align-items: flex-start; }
+  .cdd-subcat-right { width: 100%; }
+}
+
 /* Server detail responsive */
 @media (max-width: 768px) {
   .sd-hero { flex-direction: column; gap: var(--s3); }

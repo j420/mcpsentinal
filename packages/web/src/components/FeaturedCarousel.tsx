@@ -51,7 +51,7 @@ export default function FeaturedCarousel({ orgs }: { orgs: FeaturedOrg[] }) {
         {visible.map((org) => (
           <a
             key={org.slug}
-            href={`/server/${org.slug}`}
+            href={`/servers/${org.slug}`}
             className="featured-card featured-card-branded"
             style={{
               background: org.color,

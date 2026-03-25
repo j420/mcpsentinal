@@ -101,7 +101,7 @@ export default function CategoryDeepDivePanel({ findings, fullFindings }: { find
                   type="button"
                   className={`cdd-sidebar-item${isActive ? " cdd-sidebar-item-active" : ""}`}
                   style={{ "--cc": c.color } as React.CSSProperties}
-                  onClick={() => setSelectedCat(c.id)}
+                  onClick={() => setSelectedCat(isActive ? null : c.id)}
                 >
                   <span className="cdd-sidebar-name">{c.name}</span>
                   {cFindingCount > 0 && (
