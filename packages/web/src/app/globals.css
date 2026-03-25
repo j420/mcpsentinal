@@ -4144,6 +4144,66 @@ code, pre, kbd {
   font-weight: 700;
   color: var(--good);
 }
+/* ── Overview grid (no category selected) ──────────────── */
+
+.cdd-overview-intro {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text-2);
+  margin: 0 0 1.25rem;
+  line-height: 1.5;
+}
+
+.cdd-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.6rem;
+}
+
+.cdd-overview-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--cc);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  font-family: var(--font-body);
+  text-align: left;
+  transition: all var(--t-fast) var(--ease);
+}
+
+.cdd-overview-card:hover {
+  border-color: var(--cc);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.cdd-overview-card-hit {
+  background: rgba(185, 28, 28, 0.02);
+}
+
+.cdd-overview-card-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.cdd-overview-card-meta {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.68rem;
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+.cdd-overview-card-findings {
+  color: var(--sev-critical);
+  font-weight: 700;
+}
+
 /* ── Panels ─────────────────────────────────────────────── */
 
 /* ── Category header card ───────────────────────────────── */
@@ -4745,7 +4805,24 @@ code, pre, kbd {
   .cdd-stat  { min-width: 33%; }
   .cdd-right { flex-direction: column; }
   .cdd-bar-wrap { width: 50px; }
-  .cdd-detail { padding: 1rem; }
+  .cdd-detail { padding: 0.75rem; }
+  .cdd-cat-hdr { padding: 0.75rem 1rem; flex-wrap: wrap; gap: 0.5rem; }
+  .cdd-cat-name { font-size: 0.9rem; }
+  .cdd-view-tab { padding: 0.3rem 0.5rem; font-size: 0.62rem; }
+  .cdd-overview-grid { grid-template-columns: 1fr 1fr; }
+  .cdd-subcat-hdr { flex-direction: column; align-items: flex-start; }
+  .cdd-subcat-right { width: 100%; }
+  .cdd-findings-section { padding: 0.65rem; }
+  .cdd-finding-card { padding: 0.6rem 0.75rem; }
+}
+
+@media (max-width: 480px) {
+  .sd-hero-name { font-size: 20px; }
+  .sd-hero-desc { font-size: 13px; max-width: none; }
+  .sd-meta-chip { font-size: 11px; padding: 3px 8px; }
+  .cdd-section-title { font-size: 1.1rem; }
+  .cdd-overview-grid { grid-template-columns: 1fr; }
+  .cdd-sidebar-item { padding: 0.3rem 0.5rem; font-size: 0.65rem; }
 }
 
 /* ── View tabs (6 inner tabs) ─────────────────────────────── */
@@ -5941,6 +6018,8 @@ code, pre, kbd {
 /* Server detail responsive */
 @media (max-width: 768px) {
   .sd-hero { flex-direction: column; gap: var(--s3); }
+  .sd-hero-left { width: 100%; }
+  .sd-hero-desc { max-width: none; }
   .sd-hero-stats { flex-direction: row; width: 100%; min-width: 0; }
   .sd-hero-stat { flex: 1; border-bottom: none; border-right: 1px solid var(--border); }
   .sd-hero-stat:last-child { border-right: none; }
@@ -5951,6 +6030,7 @@ code, pre, kbd {
 @media (max-width: 480px) {
   .sd-hero-stats { flex-wrap: wrap; }
   .sd-hero-stat { min-width: calc(33% - 1px); flex: 1 1 auto; }
+  .sd-hero-stat-val { font-size: 16px; }
   .sd-tools-grid { grid-template-columns: 1fr; }
 }
 
