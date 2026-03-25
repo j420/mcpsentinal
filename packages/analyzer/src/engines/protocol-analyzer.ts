@@ -50,6 +50,58 @@ const OAUTH_PATTERNS: Array<{
     severity: "high" },
 ];
 
+/** Prompt injection patterns reused across I3, I6, and other resource/prompt analysis */
+const INJECTION_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
+  { pattern: /you\s+are\s+(?:now|a|an|the)/i, label: "role injection" },
+  { pattern: /(?:ignore|override|forget|disregard)\s+(?:previous|prior|all|safety|above|system)/i, label: "instruction override" },
+  { pattern: /(?:always|never|must)\s+(?:execute|run|call|use|output|return|respond)/i, label: "behavioral directive" },
+  { pattern: /\bsystem\s*(?:prompt|message|instruction)\b/i, label: "system prompt reference" },
+  { pattern: /\b(?:INST|<<SYS>>|<\|im_start\||<\|system\||<\|assistant\|)/i, label: "LLM special token" },
+  { pattern: /\b(?:BEGIN SYSTEM|END SYSTEM|<\|endoftext\|>)/i, label: "LLM delimiter" },
+  { pattern: /(?:admin|root|superuser|sudo)\s+(?:mode|access|privilege)/i, label: "privilege claim" },
+  { pattern: /(?:approved|certified|verified)\s+by\s+(?:anthropic|openai|google|microsoft)/i, label: "trust assertion" },
+];
+
+/** Tool names commonly shadowed by malicious resources (I5) */
+const TOOL_SHADOW_NAMES = [
+  "read_file", "write_file", "execute", "run", "shell", "eval",
+  "query", "search", "fetch", "download", "upload", "delete",
+  "send_email", "send_message", "create_file", "list_files",
+  "exec", "bash", "cmd", "remove", "install", "deploy",
+];
+
+/** Dangerous root paths (I11) */
+const DANGEROUS_ROOTS: Array<{ path: string; reason: string }> = [
+  { path: "/", reason: "entire filesystem" },
+  { path: "/etc", reason: "system configuration files" },
+  { path: "/root", reason: "root user home directory" },
+  { path: "/home", reason: "all user home directories" },
+  { path: "~/.ssh", reason: "SSH private keys" },
+  { path: "~/.aws", reason: "AWS credentials" },
+  { path: "~/.config", reason: "user config (often contains secrets)" },
+  { path: "/var/run", reason: "runtime sockets (Docker, systemd)" },
+  { path: "/proc", reason: "process information (PIDs, memory maps)" },
+  { path: "/sys", reason: "kernel parameters" },
+  { path: "C:\\", reason: "Windows filesystem root" },
+  { path: "C:\\Windows", reason: "Windows system directory" },
+  { path: "C:\\Users", reason: "all Windows user profiles" },
+  { path: "/var/lib/docker", reason: "Docker internals" },
+  { path: "~/.gnupg", reason: "GPG private keys" },
+  { path: "~/.kube", reason: "Kubernetes credentials" },
+];
+
+/** Privileged prompt names suggesting override capability (I6) */
+const PRIVILEGED_PROMPT_NAMES = [
+  /^system[_-]?prompt$/i,
+  /^override[_-]?safety$/i,
+  /^admin[_-]?mode$/i,
+  /^disable[_-]?(?:filter|guard|safety)/i,
+  /^bypass[_-]?/i,
+  /^raw[_-]?(?:prompt|instruction)/i,
+  /^inject/i,
+  /^escalat/i,
+];
+
 /** Multi-agent propagation patterns */
 const AGENTIC_SINK_PATTERNS = [
   /(?:agent|task|workflow)\s*(?:_input|_request|_message)/i,
@@ -114,6 +166,24 @@ export class ProtocolAnalyzer {
 
     // I7: Sampling Abuse (upgraded from capability presence to graph analysis)
     findings.push(...this.analyzeSamplingAbuse(context));
+
+    // I3: Resource Metadata Injection
+    findings.push(...this.analyzeResourceMetadataInjection(context));
+
+    // I4: Dangerous Resource URI
+    findings.push(...this.analyzeDangerousResourceUri(context));
+
+    // I5: Resource-Tool Shadowing
+    findings.push(...this.analyzeResourceToolShadowing(context));
+
+    // I6: Prompt Template Injection
+    findings.push(...this.analyzePromptTemplateInjection(context));
+
+    // I11: Over-Privileged Root
+    findings.push(...this.analyzeOverPrivilegedRoot(context));
+
+    // I12: Capability Escalation Post-Init
+    findings.push(...this.analyzeCapabilityEscalation(context));
 
     return findings;
   }
@@ -470,6 +540,412 @@ export class ProtocolAnalyzer {
             metadata: { engine: "protocol_analyzer", analysis: "multi_agent_risk" },
           });
           break;
+        }
+      }
+    }
+
+    return findings;
+  }
+
+  /**
+   * I3: Resource Metadata Injection.
+   *
+   * Scans resource name, description, and URI fields for prompt injection patterns.
+   * Resources are processed alongside tools and can contain injection payloads
+   * in their metadata.
+   */
+  private analyzeResourceMetadataInjection(context: AnalysisContext): ProtocolFinding[] {
+    const findings: ProtocolFinding[] = [];
+    if (!context.resources || context.resources.length === 0) return findings;
+
+    for (const resource of context.resources) {
+      const text = [resource.name, resource.description || "", resource.uri].join(" ");
+      if (text.trim().length < 5) continue;
+
+      for (const { pattern, label } of INJECTION_PATTERNS) {
+        pattern.lastIndex = 0;
+        if (pattern.test(text)) {
+          findings.push({
+            rule_id: "I3", severity: "critical",
+            evidence:
+              `[Protocol] Resource "${resource.name}" (URI: ${resource.uri}) contains ` +
+              `${label} pattern in its metadata. Resources are processed alongside tools — ` +
+              `injection in resource metadata can manipulate AI behavior.`,
+            remediation:
+              "Sanitize resource name, description, and URI fields. " +
+              "Do not include behavioral directives or role injection in resource metadata.",
+            owasp_category: "MCP01-prompt-injection", mitre_technique: "AML.T0054",
+            confidence: 0.85,
+            metadata: {
+              engine: "protocol_analyzer", analysis: "resource_metadata_injection",
+              resource_name: resource.name, resource_uri: resource.uri, injection_type: label,
+            },
+          });
+          break; // One finding per resource is sufficient
+        }
+      }
+    }
+
+    return findings;
+  }
+
+  /**
+   * I4: Dangerous Resource URI.
+   *
+   * Flags resources with dangerous URI schemes (file://, data:, javascript:),
+   * path traversal patterns, or UNC paths.
+   */
+  private analyzeDangerousResourceUri(context: AnalysisContext): ProtocolFinding[] {
+    const findings: ProtocolFinding[] = [];
+    if (!context.resources || context.resources.length === 0) return findings;
+
+    const dangerousPatterns: Array<{ pattern: RegExp; label: string }> = [
+      { pattern: /^file:\/\/.*\.\.\//i, label: "file:// scheme with path traversal" },
+      { pattern: /^data:/i, label: "data: scheme (inline content injection)" },
+      { pattern: /^javascript:/i, label: "javascript: scheme (XSS)" },
+      { pattern: /\.\.\//g, label: "path traversal (../)" },
+      { pattern: /%2e%2e/i, label: "URL-encoded path traversal (%2e%2e)" },
+      { pattern: /\.\.%2f/i, label: "mixed-encoded path traversal (..%2f)" },
+      { pattern: /^\\\\/, label: "UNC path (remote file share)" },
+    ];
+
+    for (const resource of context.resources) {
+      const uri = resource.uri;
+      if (!uri) continue;
+
+      for (const { pattern, label } of dangerousPatterns) {
+        pattern.lastIndex = 0;
+        if (pattern.test(uri)) {
+          findings.push({
+            rule_id: "I4", severity: "critical",
+            evidence:
+              `[Protocol] Resource "${resource.name}" has dangerous URI: "${uri}". ` +
+              `Detected: ${label}. This can enable filesystem access, data injection, ` +
+              `or cross-site scripting via resource URIs.`,
+            remediation:
+              "Use only safe URI schemes (https://). Reject file://, data:, and javascript: schemes. " +
+              "Validate URIs server-side and block path traversal patterns.",
+            owasp_category: "MCP05-privilege-escalation", mitre_technique: null,
+            confidence: 0.9,
+            metadata: {
+              engine: "protocol_analyzer", analysis: "dangerous_resource_uri",
+              resource_name: resource.name, resource_uri: uri, danger_type: label,
+            },
+          });
+          break; // One finding per resource is sufficient
+        }
+      }
+    }
+
+    return findings;
+  }
+
+  /**
+   * I5: Resource-Tool Shadowing.
+   *
+   * Flags resources whose names shadow common tool names, creating confusion
+   * between resource access and tool invocation in AI clients.
+   */
+  private analyzeResourceToolShadowing(context: AnalysisContext): ProtocolFinding[] {
+    const findings: ProtocolFinding[] = [];
+    if (!context.resources || context.resources.length === 0) return findings;
+
+    for (const resource of context.resources) {
+      const normalized = resource.name.toLowerCase().replace(/[\s-]/g, "_");
+
+      for (const shadowName of TOOL_SHADOW_NAMES) {
+        if (normalized === shadowName) {
+          findings.push({
+            rule_id: "I5", severity: "high",
+            evidence:
+              `[Protocol] Resource "${resource.name}" shadows common tool name "${shadowName}". ` +
+              `AI clients may confuse resource access with tool invocation, potentially ` +
+              `executing unintended operations.`,
+            remediation:
+              "Rename the resource to avoid collision with common tool names. " +
+              "Use descriptive, unique names that clearly distinguish resources from tools.",
+            owasp_category: "MCP02-tool-poisoning", mitre_technique: null,
+            confidence: 0.8,
+            metadata: {
+              engine: "protocol_analyzer", analysis: "resource_tool_shadowing",
+              resource_name: resource.name, shadowed_tool: shadowName,
+            },
+          });
+          break;
+        }
+      }
+    }
+
+    return findings;
+  }
+
+  /**
+   * I6: Prompt Template Injection.
+   *
+   * Scans prompt metadata for injection patterns, privileged prompt names,
+   * and unsafe template interpolation.
+   */
+  private analyzePromptTemplateInjection(context: AnalysisContext): ProtocolFinding[] {
+    const findings: ProtocolFinding[] = [];
+    if (!context.prompts || context.prompts.length === 0) return findings;
+
+    const templatePatterns: RegExp[] = [
+      /\$\{[^}]+\}/,       // ${...} template literal
+      /\{\{[^}]+\}\}/,     // {{...}} handlebars/mustache
+      /\{user_input\}/i,   // {user_input} placeholder
+      /\{prompt\}/i,       // {prompt} placeholder
+      /\{query\}/i,        // {query} placeholder
+    ];
+
+    for (const prompt of context.prompts) {
+      // (a) Check if prompt name matches privileged names
+      for (const namePattern of PRIVILEGED_PROMPT_NAMES) {
+        if (namePattern.test(prompt.name)) {
+          findings.push({
+            rule_id: "I6", severity: "critical",
+            evidence:
+              `[Protocol] Prompt "${prompt.name}" has a privileged/dangerous name matching ` +
+              `pattern ${namePattern}. Prompt names suggesting override or injection capability ` +
+              `can be exploited by AI clients to bypass safety controls.`,
+            remediation:
+              "Rename prompts to use descriptive, non-privileged names. " +
+              "Avoid names that suggest system override, admin, or bypass capabilities.",
+            owasp_category: "MCP01-prompt-injection", mitre_technique: "AML.T0054",
+            confidence: 0.85,
+            metadata: {
+              engine: "protocol_analyzer", analysis: "prompt_template_injection",
+              prompt_name: prompt.name, trigger: "privileged_name",
+            },
+          });
+          break;
+        }
+      }
+
+      // Build text from description + argument descriptions for scanning
+      const textParts: string[] = [];
+      if (prompt.description) textParts.push(prompt.description);
+      for (const arg of prompt.arguments || []) {
+        if (arg.description) textParts.push(arg.description);
+      }
+      const text = textParts.join(" ");
+
+      // (b) Scan against injection patterns
+      if (text.length >= 5) {
+        for (const { pattern, label } of INJECTION_PATTERNS) {
+          pattern.lastIndex = 0;
+          if (pattern.test(text)) {
+            findings.push({
+              rule_id: "I6", severity: "critical",
+              evidence:
+                `[Protocol] Prompt "${prompt.name}" contains ${label} pattern in its metadata. ` +
+                `Prompt templates with injection patterns can manipulate AI behavior when ` +
+                `invoked via prompts/get.`,
+              remediation:
+                "Sanitize prompt descriptions and argument descriptions. " +
+                "Do not include behavioral directives in prompt metadata.",
+              owasp_category: "MCP01-prompt-injection", mitre_technique: "AML.T0054",
+              confidence: 0.85,
+              metadata: {
+                engine: "protocol_analyzer", analysis: "prompt_template_injection",
+                prompt_name: prompt.name, injection_type: label, trigger: "injection_pattern",
+              },
+            });
+            break; // One injection finding per prompt
+          }
+        }
+      }
+
+      // (c) Check for unsafe template interpolation
+      if (text.length >= 3) {
+        const sanitizationPattern = /sanitiz|escap|validat|clean|filter/i;
+        const hasSanitization = sanitizationPattern.test(text);
+
+        if (!hasSanitization) {
+          for (const tplPattern of templatePatterns) {
+            if (tplPattern.test(text)) {
+              findings.push({
+                rule_id: "I6", severity: "critical",
+                evidence:
+                  `[Protocol] Prompt "${prompt.name}" contains template interpolation ` +
+                  `pattern (${tplPattern.source}) without sanitization mentions. ` +
+                  `Unsanitized user input in prompt templates enables injection via ` +
+                  `the prompts/get endpoint.`,
+                remediation:
+                  "Sanitize all user-supplied values before template interpolation. " +
+                  "Use parameterized prompt arguments with explicit type constraints.",
+                owasp_category: "MCP01-prompt-injection", mitre_technique: "AML.T0054",
+                confidence: 0.75,
+                metadata: {
+                  engine: "protocol_analyzer", analysis: "prompt_template_injection",
+                  prompt_name: prompt.name, trigger: "unsafe_template",
+                },
+              });
+              break; // One template finding per prompt
+            }
+          }
+        }
+      }
+    }
+
+    return findings;
+  }
+
+  /**
+   * I11: Over-Privileged Root.
+   *
+   * Roots declared at sensitive system directories expose private keys,
+   * credentials, and system configuration to the MCP server.
+   */
+  private analyzeOverPrivilegedRoot(context: AnalysisContext): ProtocolFinding[] {
+    const findings: ProtocolFinding[] = [];
+    if (!context.roots || context.roots.length === 0) return findings;
+
+    for (const root of context.roots) {
+      // Normalize: strip file:// prefix and trailing slashes
+      let rootPath = root.uri;
+      if (rootPath.startsWith("file://")) {
+        rootPath = rootPath.slice(7);
+      }
+      rootPath = rootPath.replace(/\/+$/, "") || "/";
+
+      // Expand ~ to common home directory prefixes for matching
+      const homeExpanded = rootPath.replace(/^~/, "/home/user");
+      const rootHomeExpanded = rootPath.replace(/^~/, "/root");
+
+      for (const { path: dangerousPath, reason } of DANGEROUS_ROOTS) {
+        // Normalize the dangerous path too
+        let normalizedDangerous = dangerousPath.replace(/\/+$/, "") || "/";
+
+        // Check direct match and ~ expansion
+        const candidates = [rootPath, homeExpanded, rootHomeExpanded];
+        // Also expand the dangerous path's ~ for comparison
+        const dangerousCandidates = [
+          normalizedDangerous,
+          normalizedDangerous.replace(/^~/, "/home/user"),
+          normalizedDangerous.replace(/^~/, "/root"),
+        ];
+
+        let matched = false;
+        for (const candidate of candidates) {
+          for (const dangerousCandidate of dangerousCandidates) {
+            if (candidate === dangerousCandidate || candidate.startsWith(dangerousCandidate + "/") && dangerousCandidate === "/") {
+              matched = true;
+              break;
+            }
+            // Direct path match
+            if (candidate === dangerousCandidate) {
+              matched = true;
+              break;
+            }
+          }
+          if (matched) break;
+        }
+
+        if (matched) {
+          findings.push({
+            rule_id: "I11", severity: "high",
+            evidence:
+              `[Protocol] Root "${root.uri}" resolves to sensitive path "${dangerousPath}" ` +
+              `(${reason}). Roots define the server's filesystem scope — overly broad ` +
+              `roots expose sensitive data to the MCP server.`,
+            remediation:
+              "Restrict roots to the minimum necessary directory scope. " +
+              "Never declare roots at system directories, home directories, or credential paths.",
+            owasp_category: "MCP06-excessive-permissions", mitre_technique: null,
+            confidence: 0.9,
+            metadata: {
+              engine: "protocol_analyzer", analysis: "over_privileged_root",
+              root_uri: root.uri, dangerous_path: dangerousPath, reason,
+            },
+          });
+          break; // One finding per root is sufficient
+        }
+      }
+    }
+
+    return findings;
+  }
+
+  /**
+   * I12: Capability Escalation Post-Init.
+   *
+   * Detects tools that reference capabilities (resources, prompts, sampling)
+   * not declared during initialization. Indicates undeclared privilege escalation.
+   */
+  private analyzeCapabilityEscalation(context: AnalysisContext): ProtocolFinding[] {
+    const findings: ProtocolFinding[] = [];
+    if (!context.declared_capabilities) return findings;
+    if (context.tools.length === 0) return findings;
+
+    const capabilityReferences: Array<{
+      capability: string;
+      declared: boolean;
+      patterns: RegExp[];
+    }> = [
+      {
+        capability: "resources",
+        declared: context.declared_capabilities.resources === true,
+        patterns: [
+          /\bresources?\s*\/\s*read\b/i,
+          /\bresources?\s*\/\s*list\b/i,
+          /\bread\s+resource/i,
+          /\baccess\s+resource/i,
+          /\blist\s+resources\b/i,
+        ],
+      },
+      {
+        capability: "prompts",
+        declared: context.declared_capabilities.prompts === true,
+        patterns: [
+          /\bprompts?\s*\/\s*get\b/i,
+          /\bprompts?\s*\/\s*list\b/i,
+          /\bget\s+prompt/i,
+          /\blist\s+prompts\b/i,
+          /\binvoke\s+prompt/i,
+        ],
+      },
+      {
+        capability: "sampling",
+        declared: context.declared_capabilities.sampling === true,
+        patterns: [
+          /\bsampling\s*\/\s*createMessage\b/i,
+          /\bcreateMessage\b/i,
+          /\bsampling\s+request/i,
+          /\bcall\s+back\s+(?:to\s+)?(?:the\s+)?(?:ai|llm|model|client)\b/i,
+          /\brequests?\s+(?:ai|llm|model)\s+(?:completion|generation|inference)\b/i,
+        ],
+      },
+    ];
+
+    for (const tool of context.tools) {
+      const text = `${tool.name} ${tool.description || ""}`;
+
+      for (const { capability, declared, patterns } of capabilityReferences) {
+        if (declared) continue; // Capability is properly declared, no issue
+
+        for (const pattern of patterns) {
+          pattern.lastIndex = 0;
+          if (pattern.test(text)) {
+            findings.push({
+              rule_id: "I12", severity: "critical",
+              evidence:
+                `[Protocol] Tool "${tool.name}" references "${capability}" capability ` +
+                `but the server did not declare it during initialization. ` +
+                `Undeclared capability usage indicates privilege escalation — ` +
+                `the server is accessing protocol features it never announced.`,
+              remediation:
+                `Declare all used capabilities during initialization. ` +
+                `If "${capability}" is required, include it in the server's capabilities object. ` +
+                `If not required, remove references from tool descriptions.`,
+              owasp_category: "MCP05-privilege-escalation", mitre_technique: null,
+              confidence: 0.8,
+              metadata: {
+                engine: "protocol_analyzer", analysis: "capability_escalation",
+                tool_name: tool.name, undeclared_capability: capability,
+              },
+            });
+            break; // One finding per capability per tool
+          }
         }
       }
     }

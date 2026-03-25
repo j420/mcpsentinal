@@ -85,32 +85,6 @@ async function getTopServers(): Promise<Server[]> {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function scoreColor(s: number | null): string {
-  if (s === null) return "var(--text-3)";
-  if (s >= 80) return "var(--good)";
-  if (s >= 60) return "var(--moderate)";
-  if (s >= 40) return "var(--poor)";
-  return "var(--critical)";
-}
-
-function ScoreBadge({ score }: { score: number | null }) {
-  const cls =
-    score === null
-      ? "score-unscanned"
-      : score >= 80
-        ? "score-good"
-        : score >= 60
-          ? "score-moderate"
-          : score >= 40
-            ? "score-poor"
-            : "score-critical";
-  return (
-    <span className={`score-badge ${cls}`}>
-      {score === null ? "—" : score}
-    </span>
-  );
-}
-
 const OWASP_LIST = [
   { id: "MCP01", name: "Prompt Injection" },
   { id: "MCP02", name: "Tool Poisoning" },
@@ -159,22 +133,9 @@ export default async function DashboardPage() {
     ? Math.round((stats.total_scanned / Math.max(stats.total_servers, 1)) * 100)
     : 0;
 
-  const avgColor =
-    stats && stats.average_score >= 80
-      ? "var(--good)"
-      : stats && stats.average_score >= 60
-        ? "var(--moderate)"
-        : stats && stats.average_score >= 40
-          ? "var(--poor)"
-          : "var(--critical)";
-
   const totalFindings = stats
     ? Object.values(stats.severity_breakdown).reduce((a, b) => a + b, 0)
     : 0;
-
-  const maxDistCount = stats
-    ? Math.max(...(stats.score_distribution || []).map((d) => d.count), 1)
-    : 1;
 
   const maxCatCount = stats
     ? Math.max(...Object.values(stats.category_breakdown || {}), 1)
@@ -222,13 +183,6 @@ export default async function DashboardPage() {
           <span className="stat-label">Scanned</span>
         </div>
         <div className="stat-card">
-          <span className="stat-value" style={{ color: avgColor }}>
-            {stats?.average_score ?? "\u2014"}
-            <span className="stat-value-denom">/100</span>
-          </span>
-          <span className="stat-label">Avg Security Score</span>
-        </div>
-        <div className="stat-card">
           <span className="stat-value" style={{ color: "var(--critical)" }}>
             {(stats?.severity_breakdown?.["critical"] ?? 0).toLocaleString()}
           </span>
@@ -238,45 +192,6 @@ export default async function DashboardPage() {
 
       {/* ── Two-column layout ───────────────────────── */}
       <div className="dash-two-col">
-        {/* Score distribution */}
-        <div className="card">
-          <h2 className="section-title">Score Distribution</h2>
-          {stats?.score_distribution && stats.score_distribution.length > 0 ? (
-            <div>
-              {stats.score_distribution.map((bucket) => {
-                const pct = Math.round((bucket.count / maxDistCount) * 100);
-                const rangeLow = parseInt(bucket.range.split("-")[0] || "0", 10);
-                const barColor =
-                  rangeLow >= 80
-                    ? "var(--good)"
-                    : rangeLow >= 60
-                      ? "var(--moderate)"
-                      : rangeLow >= 40
-                        ? "var(--poor)"
-                        : "var(--critical)";
-                return (
-                  <div key={bucket.range} className="dist-bar-row">
-                    <span className="dist-bar-label">{bucket.range}</span>
-                    <div className="dist-bar-bg">
-                      <div
-                        className="dist-bar-fill"
-                        style={{ width: `${pct}%`, background: barColor }}
-                      />
-                    </div>
-                    <span className="dist-bar-count">
-                      {bucket.count.toLocaleString()}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-muted-sm">
-              No distribution data yet &mdash; run a scan first.
-            </p>
-          )}
-        </div>
-
         {/* Findings by severity */}
         <div className="card">
           <h2 className="section-title">
@@ -344,14 +259,14 @@ export default async function DashboardPage() {
 
       {/* ── At-risk + Top-scored ────────────────────── */}
       <div className="dash-two-col">
-        {/* At-risk servers */}
+        {/* Most findings */}
         <div className="card">
           <h2 className="section-title">
-            Highest Risk
+            Most Findings
             <span className="count">{atRisk.length}</span>
           </h2>
           {atRisk.length === 0 ? (
-            <p className="text-muted-sm">No critical-risk servers found.</p>
+            <p className="text-muted-sm">No servers with findings yet.</p>
           ) : (
             <div className="server-list">
               {atRisk.map((server) => (
@@ -364,21 +279,23 @@ export default async function DashboardPage() {
                       <span className="server-row-cat">{server.category}</span>
                     )}
                   </div>
-                  <ScoreBadge score={server.latest_score} />
+                  <span className="findings-count">
+                    {server.findings_count ?? "\u2014"} findings
+                  </span>
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        {/* Top-scored servers */}
+        {/* Cleanest servers */}
         <div className="card">
           <h2 className="section-title">
-            Top Scored
+            Cleanest Servers
             <span className="count">{topServers.length}</span>
           </h2>
           {topServers.length === 0 ? (
-            <p className="text-muted-sm">No servers with high scores yet.</p>
+            <p className="text-muted-sm">No clean servers found yet.</p>
           ) : (
             <div className="server-list">
               {topServers.map((server) => (
@@ -391,7 +308,9 @@ export default async function DashboardPage() {
                       <span className="server-row-cat">{server.category}</span>
                     )}
                   </div>
-                  <ScoreBadge score={server.latest_score} />
+                  <span className="findings-count">
+                    {server.findings_count ?? "\u2014"} findings
+                  </span>
                 </div>
               ))}
             </div>

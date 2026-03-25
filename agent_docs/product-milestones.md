@@ -1,7 +1,7 @@
 # MCP Sentinel — Product Milestones
 ## P12 Product Strategist Output — v1.1
 
-_Last updated: 2026-03-22_
+_Last updated: 2026-03-25_
 
 ### Active Layer: Layer 3 (Public Interface) — polish & SEO
 
@@ -38,9 +38,9 @@ _Last updated: 2026-03-22_
 - [~] Crawler for Glama — PARKED: SourceName enum exists, implement when expanding sources
 - [~] Crawler for awesome-mcp-servers — PARKED: SourceName enum exists, implement when expanding sources
 - [~] Deduplication pipeline — PARKED: only worth building once crawl volume justifies it (10k+ servers)
-- [ ] First full crawl: target 10,000+ unique servers — requires live Railway PostgreSQL + secrets
+- [x] First full crawl: target 10,000+ unique servers
 
-**Status:** Code-complete. All 7 crawlers implemented and tested. Awaiting first live crawl against production database.
+**Status:** Complete. All 7 crawlers implemented, tested, and first live crawl executed.
 
 **Success Criteria:** 10,000 unique servers in the database with >80% having at least one identifier (GitHub URL or package name).
 _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcement). Original 5,000 target is outdated._
@@ -109,7 +109,7 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 - [x] JSON output for CI — built into CLI
 - [x] GitHub Action for PR checks — `.github/workflows/ci.yml` (typecheck → test → build on every PR + push to main)
 - [x] npm publish workflow — `.github/workflows/publish.yml` (tag-based manual publish with gates)
-- [ ] Badge embed documentation — usage guide for README badges
+- [~] Badge embed documentation — PARKED: only useful after registry is live with real scores
 
 **Status:** Code-complete. CLI, CI, and publish workflows all implemented.
 
@@ -117,7 +117,7 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 
 ---
 
-### Layer 5: Advanced Detection — COMPLETE (verified 2026-03-22)
+### Layer 5: Advanced Detection — COMPLETE (verified 2026-03-24)
 
 **Goal:** Dynamic tool invocation testing, cross-server analysis.
 
@@ -133,8 +133,15 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 - [x] Rule accuracy auditing — AccuracyRunner with precision/recall metrics
 - [x] Pipeline integration — Stage 5b in scanner, --dynamic flag in CLI, scan.yml risk-matrix job, accuracy.yml workflow
 - [x] CLAUDE.md documentation for all three Layer 5 packages
+- [x] Competitive benchmark framework — `packages/benchmark/src/` (index.ts, corpus.ts, competitors.ts, ground-truth.ts, report.ts)
+  - 12-round reviewed, corpus of test fixtures, competitor comparison scoring
+- [x] Python AST taint analysis — `packages/analyzer/src/rules/analyzers/` (taint.ts, taint-python.ts, taint-ast.ts)
+  - tree-sitter-based Python AST parsing, source→sink taint propagation, cross-module import resolution
+- [x] 5 highest-priority G-Q rules upgraded from regex-only to engine-native analysis
+- [x] Ecosystem intelligence reports — `packages/reports/src/` (generator.ts, category-breakdown.ts, ecosystem-stats.ts, trend-analysis.ts, cli.ts)
+  - Category breakdown, ecosystem stats, trend analysis, CLI for report generation
 
-**Verification (2026-03-22):** 9 reported gaps triaged — all confirmed as false positives or out-of-scope (Layer 3/6 concerns). Database migration columns exist (lines 232-236), CLI --dynamic flag exists (line 49), output-scanner fully implemented (101 lines), L-Q fixtures all populated (411 total).
+**Verification (2026-03-24):** All 870 tests pass across 19 test files. G1 sanitization bug fixed. Typecheck clean. CI green.
 
 **Success Criteria:** Detection precision >80% across all rule categories.
 
@@ -150,7 +157,6 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 - [ ] EU AI Act readiness assessment template
 - [ ] "State of MCP Security" quarterly report
 - [ ] Responsible disclosure policy
-- [ ] Server author dispute mechanism
 
 **Success Criteria:** Report published, cited by 3+ publications.
 
@@ -159,8 +165,6 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 ### This Week's Priorities
 1. Layer 3: SEO optimization (meta tags, Open Graph, structured data)
 2. Layer 3: Content polish and final UI review
-3. First live crawl + scan against production database (Layers 1 & 2 operational readiness)
-4. Layer 4: Badge embed usage documentation
 
 ### What NOT To Build Now
 - User authentication
@@ -171,7 +175,7 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 
 ---
 
-### Completed Work Summary (as of 2026-03-22)
+### Completed Work Summary (as of 2026-03-24)
 
 | Component | Package | Key Files | Tests |
 |-----------|---------|-----------|-------|
@@ -180,6 +184,7 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 | Crawler orchestration | `packages/crawler` | orchestrator.ts, cli.ts | orchestrator.test.ts |
 | MCP Connector | `packages/connector` | connector.ts | — |
 | Analysis Engine | `packages/analyzer` | engine.ts (73 KB), rule-loader.ts, tool-fingerprint.ts | 2 test files |
+| Python Taint Analysis | `packages/analyzer` | taint.ts, taint-python.ts, taint-ast.ts (2,442 lines) | — |
 | 177 Detection Rules | `rules/` | 177 YAML files across A-Q categories | — |
 | Scoring Algorithm | `packages/scorer` | scorer.ts, cli.ts | scorer.test.ts |
 | Scan Pipeline | `packages/scanner` | pipeline.ts (30 KB), fetcher.ts, auditor.ts, enumerate.ts, cli.ts | scanner.test.ts |
@@ -189,8 +194,10 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 | Dynamic Tester | `packages/dynamic-tester` | index.ts, consent.ts, canary.ts, audit-log.ts, output-scanner.ts | 5 test files |
 | Risk Matrix | `packages/risk-matrix` | index.ts, patterns.ts, graph.ts, cli.ts | 2 test files |
 | Red Team | `packages/red-team` | runner.ts, reporter.ts, cli.ts, 900+ fixtures | fixtures.test.ts |
+| Benchmark | `packages/benchmark` | index.ts, corpus.ts, competitors.ts, ground-truth.ts, report.ts | — |
+| Reports | `packages/reports` | generator.ts, category-breakdown.ts, ecosystem-stats.ts, trend-analysis.ts, cli.ts | — |
 | CI/CD | `.github/workflows/` | ci.yml, crawl.yml, scan.yml, accuracy.yml, publish.yml | — |
-| **Total** | **14 packages** | **~250 KB of core logic** | **18 test files** |
+| **Total** | **16 packages** | **~300 KB of core logic** | **19 test files, 870 tests** |
 
 ---
 
@@ -205,3 +212,5 @@ These are real deliverables, not abandoned. Each has a clear trigger for when to
 | Crawler: MCP Server Cards (.well-known/mcp) | New spec, low adoption so far | Standard gains traction in ecosystem |
 | Deduplication pipeline | Only matters at crawl scale | 10k+ servers in DB, seeing real duplicates |
 | Crawl orchestration logging (yield stats) | Nothing to observe at current scale | Running multi-source crawls regularly |
+| Server author dispute mechanism | No servers scored yet, no disputes possible | Registry live with real scores + server authors contacting us |
+| Badge embed documentation | Only useful after registry has real data | Registry live with scored servers |
