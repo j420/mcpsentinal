@@ -232,23 +232,59 @@ export default async function ServerDetailPage({
           </span>
           <span className="sd-qs-label">Findings</span>
         </div>
-        <div className="sd-qs-item">
-          <span className="sd-qs-val">{fmtNum(server.github_stars)}</span>
-          <span className="sd-qs-label">Stars</span>
-        </div>
-        <div className="sd-qs-item">
-          <span className="sd-qs-val">{fmtNum(server.npm_downloads)}</span>
-          <span className="sd-qs-label">Downloads</span>
-        </div>
+        {server.github_stars != null && (
+          <div className="sd-qs-item">
+            <span className="sd-qs-val">{fmtNum(server.github_stars)}</span>
+            <span className="sd-qs-label">Stars</span>
+          </div>
+        )}
+        {server.npm_downloads != null && (
+          <div className="sd-qs-item">
+            <span className="sd-qs-val">{fmtNum(server.npm_downloads)}</span>
+            <span className="sd-qs-label">Downloads</span>
+          </div>
+        )}
         <div className="sd-qs-item">
           <span className="sd-qs-val sd-qs-val-sm">{fmtDate(server.last_scanned_at)}</span>
           <span className="sd-qs-label">Last Scanned</span>
         </div>
       </section>
 
+      {/* ── Verdict Banner ──────────────────────────────────── */}
+      <section className="sd-verdict">
+        {findings.length === 0 && server.last_scanned_at ? (
+          <div className="sd-verdict-clean">
+            <span className="sd-verdict-icon">&#10003;</span>
+            <span>No security findings detected across 177 detection rules.</span>
+          </div>
+        ) : findings.length > 0 ? (
+          <div className="sd-verdict-alert">
+            <span className="sd-verdict-icon">&#9888;</span>
+            <span>
+              {sevCounts.filter(s => s.count > 0).map(s => `${s.count} ${s.sev}`).join(" \u00B7 ")}
+              {" "}finding{findings.length !== 1 ? "s" : ""} detected
+            </span>
+          </div>
+        ) : null}
+      </section>
+
+      {/* ── Section Navigation ─────────────────────────────── */}
+      <nav className="sd-section-nav">
+        {server.owasp_coverage && Object.keys(server.owasp_coverage).length > 0 && (
+          <a href="#owasp">OWASP Coverage</a>
+        )}
+        {findings.length > 0 && (
+          <a href="#findings">Findings ({findings.length})</a>
+        )}
+        {tools.length > 0 && (
+          <a href="#tools">Tools ({tools.length})</a>
+        )}
+        <a href="#deep-dive">Category Deep Dive</a>
+      </nav>
+
       {/* ── OWASP Coverage ─────────────────────────────────── */}
       {server.owasp_coverage && Object.keys(server.owasp_coverage).length > 0 && (
-        <section className="sd-section">
+        <section id="owasp" className="sd-section">
           <h2 className="sd-section-title">
             OWASP MCP Top 10 Coverage
           </h2>
@@ -270,24 +306,15 @@ export default async function ServerDetailPage({
       )}
 
       {/* ── Findings ────────────────────────────────────────── */}
-      {findings.length === 0 && server.last_scanned_at && (
-        <section className="sd-section">
-          <h2 className="sd-section-title">Findings</h2>
-          <div className="sd-empty-state">
-            <span className="sd-empty-icon">&#10003;</span>
-            <span className="sd-empty-text">No findings detected across 177 detection rules.</span>
-          </div>
-        </section>
-      )}
       {findings.length > 0 && (
-        <section className="sd-section">
+        <section id="findings" className="sd-section">
           <h2 className="sd-section-title">
             Findings
             <span className="sd-section-count">{findings.length}</span>
           </h2>
 
           <div className="sd-sev-summary">
-            {sevCounts.map(({ sev, count }) => (
+            {sevCounts.filter(({ count }) => count > 0).map(({ sev, count }) => (
               <div key={sev} className={`sd-sev-chip sd-sev-chip-${sev}`}>
                 <span className="sd-sev-chip-count">{count}</span>
                 <span className="sd-sev-chip-label">{sev}</span>
@@ -296,47 +323,51 @@ export default async function ServerDetailPage({
           </div>
 
           <div className="sd-findings-list">
-            {SEV_ORDER.map((sev) =>
-              (findingsBySev[sev] ?? []).map((f) => (
-                <div
-                  key={f.id}
-                  className={`sd-finding finding-${f.severity}`}
-                >
-                  <div className="sd-finding-header">
-                    <span className={`sev-badge sev-${f.severity}`}>
-                      {f.severity}
-                    </span>
-                    <span className="sd-finding-rule">{f.rule_id}</span>
-                    <span className="sd-finding-name">
-                      {RULE_NAMES[f.rule_id] ?? f.rule_id}
-                    </span>
-                    {f.owasp_category && (
-                      <span className="sd-finding-owasp">{f.owasp_category}</span>
-                    )}
-                    {f.mitre_technique && (
-                      <span className="sd-finding-mitre">{f.mitre_technique}</span>
-                    )}
-                  </div>
-                  <div className="sd-finding-evidence">{f.evidence}</div>
-                  {f.remediation && (
-                    <div className="sd-finding-fix">{f.remediation}</div>
-                  )}
+            {SEV_ORDER.map((sev) => {
+              const group = findingsBySev[sev] ?? [];
+              if (group.length === 0) return null;
+              return (
+                <div key={sev} className="sd-findings-group">
+                  <h3 className={`sd-findings-group-title sd-sev-${sev}`}>
+                    {sev.charAt(0).toUpperCase() + sev.slice(1)}
+                    <span className="sd-findings-group-count">{group.length}</span>
+                  </h3>
+                  {group.map((f) => (
+                    <div
+                      key={f.id}
+                      className={`sd-finding finding-${f.severity}`}
+                    >
+                      <div className="sd-finding-header">
+                        <span className={`sev-badge sev-${f.severity}`}>
+                          {f.severity}
+                        </span>
+                        <span className="sd-finding-rule">{f.rule_id}</span>
+                        <span className="sd-finding-name">
+                          {RULE_NAMES[f.rule_id] ?? f.rule_id}
+                        </span>
+                        {f.owasp_category && (
+                          <span className="sd-finding-owasp">{f.owasp_category}</span>
+                        )}
+                        {f.mitre_technique && (
+                          <span className="sd-finding-mitre">{f.mitre_technique}</span>
+                        )}
+                      </div>
+                      <div className="sd-finding-evidence">{f.evidence}</div>
+                      {f.remediation && (
+                        <div className="sd-finding-fix">{f.remediation}</div>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ))
-            )}
+              );
+            })}
           </div>
         </section>
       )}
 
       {/* ── Tools ──────────────────────────────────────────── */}
-      {tools.length === 0 && (
-        <section className="sd-section">
-          <h2 className="sd-section-title">Tools</h2>
-          <p className="text-muted-sm">No tools exposed by this server.</p>
-        </section>
-      )}
       {tools.length > 0 && (
-        <section className="sd-section">
+        <section id="tools" className="sd-section">
           <h2 className="sd-section-title">
             Tools
             <span className="sd-section-count">{tools.length}</span>
@@ -364,7 +395,9 @@ export default async function ServerDetailPage({
       )}
 
       {/* ── Category Deep Dive ─────────────────────────────── */}
-      <CategoryDeepDivePanel findings={cddFindings} />
+      <div id="deep-dive">
+        <CategoryDeepDivePanel findings={cddFindings} />
+      </div>
     </div>
   );
 }
