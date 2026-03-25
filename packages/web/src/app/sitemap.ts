@@ -12,8 +12,8 @@ async function fetchServerPage(
     const params = new URLSearchParams({
       limit: String(limit),
       page: String(page),
-      sort: "score",
-      order: "desc",
+      sort: "name",
+      order: "asc",
     });
     const res = await fetch(`${API_URL}/api/v1/servers?${params}`, {
       next: { revalidate: 3600 }, // re-generate sitemap every hour

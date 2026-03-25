@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Browse by Category",
   description:
-    "Explore MCP servers organised by category. Compare security scores across database connectors, filesystem tools, API integrations, AI/ML servers, and more.",
+    "Explore MCP servers organised by category. Browse database connectors, filesystem tools, API integrations, AI/ML servers, and more.",
 };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3100";
@@ -15,7 +15,6 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3100";
 interface EcosystemStats {
   total_servers: number;
   total_scanned: number;
-  average_score: number;
   category_breakdown: Record<string, number>;
 }
 
@@ -68,7 +67,7 @@ const CATEGORY_META: Record<
     icon: <CommunicationIcon />,
   },
   "cloud-infra": {
-    label: "Cloud Infra",
+    label: "Cloud Infrastructure",
     description:
       "AWS, GCP, Azure, and cloud-native tools — infrastructure provisioning, resource management, and deployment.",
     riskNote: "Excessive IAM permissions · privilege escalation",
@@ -364,7 +363,7 @@ export default async function CategoriesPage() {
         </div>
 
         <p style={{ fontSize: "15px", color: "var(--text-2)", maxWidth: "560px", lineHeight: 1.6 }}>
-          Every category is ranked by security score. High-risk categories and servers with
+          Every category is analysed for security findings. High-risk categories and servers with
           critical findings are surfaced first.
         </p>
       </div>

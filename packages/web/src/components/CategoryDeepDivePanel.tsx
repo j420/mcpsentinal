@@ -100,7 +100,7 @@ export default function CategoryDeepDivePanel({ findings }: { findings: CddFindi
                 onClick={() => setSelectedCat(c.id)}
               >
                 <span className="cdd-tab-icon">{c.icon}</span>
-                <span className="cdd-tab-name">{c.id}</span>
+                <span className="cdd-tab-name">{c.name}</span>
                 {cFindings > 0 && <span className="cdd-tab-dot" />}
               </button>
             );
@@ -121,19 +121,19 @@ export default function CategoryDeepDivePanel({ findings }: { findings: CddFindi
               <div className="cdd-maturity-num" style={{ color: maturity.overall >= 60 ? "var(--good)" : maturity.overall >= 40 ? "var(--moderate)" : "var(--critical)" }}>
                 {maturity.overall}
               </div>
-              <div className="cdd-maturity-label">MATURITY</div>
+              <div className="cdd-maturity-label">Maturity</div>
             </div>
           </div>
 
           {/* ── Stats row ─────────────────────────────────────── */}
           <div className="cdd-stats">
             {[
-              { num: allRuleIds.length, label: "RULES", color: undefined },
-              { num: cat.subCats.length, label: "SUB-CATS", color: undefined },
-              { num: catGaps.length, label: "GAPS", color: catGaps.length > 0 ? "var(--moderate)" : undefined },
-              { num: `${implPct}%`, label: "IMPL.", color: implPct >= 80 ? "var(--good)" : implPct >= 50 ? "var(--moderate)" : "var(--critical)" },
-              { num: totalTests, label: "TESTS", color: undefined },
-              { num: catStories.length, label: "STORIES", color: undefined },
+              { num: allRuleIds.length, label: "Rules", color: undefined },
+              { num: cat.subCats.length, label: "Sub-Categories", color: undefined },
+              { num: catGaps.length, label: "Gaps", color: catGaps.length > 0 ? "var(--moderate)" : undefined },
+              { num: `${implPct}%`, label: "Implemented", color: implPct >= 80 ? "var(--good)" : implPct >= 50 ? "var(--moderate)" : "var(--critical)" },
+              { num: totalTests, label: "Tests", color: undefined },
+              { num: catStories.length, label: "Stories", color: undefined },
             ].map((s) => (
               <div key={s.label} className="cdd-stat">
                 <div className="cdd-stat-num" style={s.color ? { color: s.color } : {}}>

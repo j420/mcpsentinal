@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Browse MCP Servers",
   description:
-    "Browse and search thousands of MCP servers. Filter by category, score, and language. View detailed security analysis for every server.",
+    "Browse and search thousands of MCP servers. Filter by category and language. View detailed security analysis for every server.",
 };
 
 export const dynamic = "force-dynamic";
@@ -22,7 +22,6 @@ interface Server {
   language: string | null;
   github_stars: number | null;
   npm_downloads: number | null;
-  latest_score: number | null;
   last_commit: string | null;
   tool_count: number;
   connection_status: "success" | "failed" | "timeout" | "no_endpoint" | null;
@@ -46,18 +45,16 @@ async function getServers(params: {
   sort?: string;
   order?: string;
   page?: number;
-  min_score?: string;
 }): Promise<{ servers: Server[]; pagination: Pagination }> {
   try {
     const sp = new URLSearchParams();
     sp.set("limit", "24");
-    sp.set("sort", params.sort || "score");
-    sp.set("order", params.order || "desc");
+    sp.set("sort", params.sort || "name");
+    sp.set("order", params.order || "asc");
     if (params.q) sp.set("q", params.q);
     if (params.category && params.category !== "all")
       sp.set("category", params.category);
     if (params.page && params.page > 1) sp.set("page", String(params.page));
-    if (params.min_score) sp.set("min_score", params.min_score);
 
     const res = await fetch(`${API_URL}/api/v1/servers?${sp}`, {
       signal: AbortSignal.timeout(4000),
@@ -81,22 +78,6 @@ async function getServers(params: {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function scoreClass(score: number | null): string {
-  if (score === null) return "score-unscanned";
-  if (score >= 80) return "score-good";
-  if (score >= 60) return "score-moderate";
-  if (score >= 40) return "score-poor";
-  return "score-critical";
-}
-
-function scoreRating(score: number | null): string {
-  if (score === null) return "Unscanned";
-  if (score >= 80) return "Good";
-  if (score >= 60) return "Moderate";
-  if (score >= 40) return "Poor";
-  return "Critical";
-}
 
 function fmtNum(n: number | null | undefined): string {
   if (n == null) return "\u2014";
@@ -130,10 +111,9 @@ const CATEGORIES = [
 ];
 
 const SORT_OPTIONS = [
-  { value: "score", label: "Score" },
+  { value: "name", label: "Name" },
   { value: "stars", label: "Stars" },
   { value: "downloads", label: "Downloads" },
-  { value: "name", label: "Name" },
   { value: "updated", label: "Last Updated" },
 ];
 
@@ -148,7 +128,6 @@ export default async function ServersPage({
     sort?: string;
     order?: string;
     page?: string;
-    min_score?: string;
   }>;
 }) {
   const sp = await searchParams;
@@ -160,7 +139,6 @@ export default async function ServersPage({
     sort: sp.sort,
     order: sp.order,
     page,
-    min_score: sp.min_score,
   });
 
   return (
@@ -218,19 +196,8 @@ export default async function ServersPage({
 
           <select
             className="filter-select"
-            name="min_score"
-            defaultValue={sp.min_score || ""}
-          >
-            <option value="">Any score</option>
-            <option value="80">Good (80+)</option>
-            <option value="60">Moderate (60+)</option>
-            <option value="40">Poor (40+)</option>
-          </select>
-
-          <select
-            className="filter-select"
             name="sort"
-            defaultValue={sp.sort || "score"}
+            defaultValue={sp.sort || "name"}
           >
             {SORT_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -244,8 +211,8 @@ export default async function ServersPage({
             name="order"
             defaultValue={sp.order || "desc"}
           >
-            <option value="desc">Desc</option>
-            <option value="asc">Asc</option>
+            <option value="desc">Descending</option>
+            <option value="asc">Ascending</option>
           </select>
 
           <button type="submit" className="btn-primary btn-primary-sm">
@@ -272,20 +239,14 @@ export default async function ServersPage({
               href={`/servers/${server.slug}`}
               className="srv-card"
             >
-              {/* Score indicator stripe */}
-              <div className={`srv-card-score-stripe srv-stripe-${scoreRating(server.latest_score).toLowerCase()}`} />
-
               <div className="srv-card-inner">
-                {/* Top row: name + score */}
+                {/* Top row: name */}
                 <div className="srv-card-top">
                   <div className="srv-card-name-col">
                     <h3 className="srv-card-name">{server.name}</h3>
                     {server.author && (
                       <span className="srv-card-author">by {server.author}</span>
                     )}
-                  </div>
-                  <div className={`srv-card-score ${scoreClass(server.latest_score)}`}>
-                    {server.latest_score !== null ? server.latest_score : "\u2014"}
                   </div>
                 </div>
 
@@ -407,9 +368,8 @@ function buildPageUrl(
   const params = new URLSearchParams();
   if (sp.q) params.set("q", sp.q);
   if (sp.category && sp.category !== "all") params.set("category", sp.category);
-  if (sp.sort && sp.sort !== "score") params.set("sort", sp.sort);
-  if (sp.order && sp.order !== "desc") params.set("order", sp.order);
-  if (sp.min_score) params.set("min_score", sp.min_score);
+  if (sp.sort && sp.sort !== "name") params.set("sort", sp.sort);
+  if (sp.order && sp.order !== "asc") params.set("order", sp.order);
   if (page > 1) params.set("page", String(page));
   const qs = params.toString();
   return qs ? `/servers?${qs}` : "/servers";
