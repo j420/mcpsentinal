@@ -2,6 +2,7 @@
 import React, { useState, useCallback, useMemo } from "react";
 import {
   CddFinding,
+  FullFinding,
   RULE_NAMES,
   RULE_SEVERITIES,
   THREAT_CATS,
@@ -10,6 +11,7 @@ import {
   RULE_TESTS,
   getRuleFrameworks,
   getFrameworkCoverage,
+  getFindingsForCategory,
   RULES,
   GAPS,
   ATTACK_STORIES,
@@ -48,7 +50,9 @@ function statusClass(status: string): string {
   return "cdd-status-planned";
 }
 
-export default function CategoryDeepDivePanel({ findings }: { findings: CddFinding[] }) {
+const SEV_ORDER = ["critical", "high", "medium", "low", "informational"] as const;
+
+export default function CategoryDeepDivePanel({ findings, fullFindings }: { findings: CddFinding[]; fullFindings?: FullFinding[] }) {
   const triggered = new Set(findings.map((f) => f.rule_id));
   const [expandedRule, setExpandedRule] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<ViewTab>("tree");
@@ -75,6 +79,19 @@ export default function CategoryDeepDivePanel({ findings }: { findings: CddFindi
   const totalTests = catRules.reduce((s, r) => s + r.tests.length, 0);
   const catStories = ATTACK_STORIES.filter(s => s.cat === selectedCat);
 
+  // Findings for the selected category (with full evidence/remediation)
+  const catFullFindings = useMemo(
+    () => fullFindings ? getFindingsForCategory(selectedCat, fullFindings) : [],
+    [selectedCat, fullFindings]
+  );
+  const catSevCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const f of catFullFindings) {
+      counts[f.severity] = (counts[f.severity] ?? 0) + 1;
+    }
+    return SEV_ORDER.map(s => ({ sev: s, count: counts[s] ?? 0 })).filter(s => s.count > 0);
+  }, [catFullFindings]);
+
   return (
     <section className="cdd-section">
       <div className="cdd-section-header">
@@ -82,30 +99,52 @@ export default function CategoryDeepDivePanel({ findings }: { findings: CddFindi
       </div>
 
       <div className="cdd-wrap">
-        {/* ── Category selection tabs ─────────────────────────── */}
-        <div className="cdd-tabs">
+        {/* ── Sidebar ────────────────────────────────────────── */}
+        <nav className="cdd-sidebar">
           {THREAT_CATS.map((c) => {
             const cRules = c.subCats.flatMap((sc) => sc.rules);
-            const cFindings = cRules.filter((r) => triggered.has(r)).length;
+            const cFindingCount = cRules.filter((r) => triggered.has(r)).length;
             const isActive = c.id === selectedCat;
             return (
-              <button
-                key={c.id}
-                type="button"
-                className={`cdd-tab${isActive ? " cdd-tab-active" : ""}`}
-                style={{ "--cc": c.color } as React.CSSProperties}
-                onClick={() => setSelectedCat(c.id)}
-              >
-                <span className="cdd-tab-icon">{c.icon}</span>
-                <span className="cdd-tab-name">{c.name}</span>
-                {cFindings > 0 && <span className="cdd-tab-dot" />}
-              </button>
+              <div key={c.id}>
+                <button
+                  type="button"
+                  className={`cdd-sidebar-item${isActive ? " cdd-sidebar-item-active" : ""}`}
+                  style={{ "--cc": c.color } as React.CSSProperties}
+                  onClick={() => setSelectedCat(c.id)}
+                >
+                  <span className="cdd-sidebar-icon">{c.icon}</span>
+                  <span className="cdd-sidebar-name">{c.name}</span>
+                  {cFindingCount > 0 && (
+                    <span className="cdd-sidebar-count">{cFindingCount}</span>
+                  )}
+                </button>
+                {isActive && (
+                  <div className="cdd-sidebar-subs">
+                    {c.subCats.map((sc) => {
+                      const scHits = sc.rules.filter((r) => triggered.has(r)).length;
+                      return (
+                        <div
+                          key={sc.id}
+                          className={`cdd-sidebar-subitem${scHits > 0 ? " cdd-sidebar-subitem-hit" : ""}`}
+                        >
+                          <span className="cdd-sidebar-sub-name">{sc.name}</span>
+                          {scHits > 0 && (
+                            <span className="cdd-sidebar-sub-count">{scHits}</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
-        </div>
+        </nav>
 
-        {/* ── Category header ─────────────────────────────────── */}
-        <div className="cdd-panel">
+        {/* ── Detail panel ───────────────────────────────────── */}
+        <div className="cdd-detail">
+          {/* Category header */}
           <div className="cdd-cat-hdr" style={{ "--cc": cat.color } as React.CSSProperties}>
             <div className="cdd-cat-hdr-left">
               <span className="cdd-cat-icon">{cat.icon}</span>
@@ -122,7 +161,7 @@ export default function CategoryDeepDivePanel({ findings }: { findings: CddFindi
             </div>
           </div>
 
-          {/* ── Stats row ─────────────────────────────────────── */}
+          {/* Stats row */}
           <div className="cdd-stats">
             {[
               { num: allRuleIds.length, label: "Rules", color: undefined },
@@ -141,7 +180,41 @@ export default function CategoryDeepDivePanel({ findings }: { findings: CddFindi
             ))}
           </div>
 
-          {/* ── View tabs ─────────────────────────────────────── */}
+          {/* Triggered findings for this category */}
+          {catFullFindings.length > 0 && (
+            <div className="cdd-findings-section">
+              <div className="cdd-findings-header">
+                <span className="cdd-findings-title">Findings</span>
+                <span className="cdd-findings-count">{catFullFindings.length}</span>
+              </div>
+              <div className="cdd-findings-sevs">
+                {catSevCounts.map(({ sev, count }) => (
+                  <span key={sev} className={`cdd-findings-sev cdd-findings-sev-${sev}`}>
+                    {count} {sev}
+                  </span>
+                ))}
+              </div>
+              <div className="cdd-findings-list">
+                {catFullFindings.map((f) => (
+                  <div key={f.id} className={`cdd-finding-card cdd-finding-${f.severity}`}>
+                    <div className="cdd-finding-hdr">
+                      <span className={`sev-badge sev-${f.severity}`}>{f.severity}</span>
+                      <span className="cdd-finding-rule-id">{f.rule_id}</span>
+                      <span className="cdd-finding-rule-name">{RULE_NAMES[f.rule_id] ?? f.rule_id}</span>
+                      {f.owasp_category && <span className="cdd-finding-owasp">{f.owasp_category}</span>}
+                      {f.mitre_technique && <span className="cdd-finding-mitre">{f.mitre_technique}</span>}
+                    </div>
+                    <div className="cdd-finding-evidence">{f.evidence}</div>
+                    {f.remediation && (
+                      <div className="cdd-finding-remediation">{f.remediation}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* View tabs */}
           <div className="cdd-view-tabs">
             {VIEW_TABS.map((vt) => (
               <button
@@ -156,7 +229,7 @@ export default function CategoryDeepDivePanel({ findings }: { findings: CddFindi
             ))}
           </div>
 
-          {/* ── Tab content ───────────────────────────────────── */}
+          {/* Tab content */}
           {activeView === "tree" && (
             <TreeTab
               cat={cat}
