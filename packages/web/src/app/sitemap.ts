@@ -77,7 +77,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 1.0,
     },
     {
-      url: `${SITE_URL}/dashboard`,
+      url: `${SITE_URL}/servers`,
       lastModified: now,
       changeFrequency: "hourly",
       priority: 0.9,
@@ -95,17 +95,35 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     })),
     {
-      url: `${SITE_URL}/about`,
+      url: `${SITE_URL}/scanner`,
       lastModified: now,
       changeFrequency: "monthly",
-      priority: 0.6,
+      priority: 0.85,
+    },
+    {
+      url: `${SITE_URL}/compliance`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/taxonomy`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+    {
+      url: `${SITE_URL}/responsible-disclosure`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.5,
     },
   ];
 
   // Dynamic server pages
   const slugs = await getAllServerSlugs();
   const serverRoutes: MetadataRoute.Sitemap = slugs.map((slug) => ({
-    url: `${SITE_URL}/server/${slug}`,
+    url: `${SITE_URL}/servers/${slug}`,
     lastModified: now,
     changeFrequency: "weekly" as const,
     priority: 0.7,

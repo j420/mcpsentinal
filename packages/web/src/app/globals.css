@@ -6212,14 +6212,6 @@ code, pre, kbd {
 .tax-stat-val { font-family: var(--font-body); font-size: 24px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.1; }
 .tax-stat-label { font-family: var(--font-body); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-3); }
 
-/* Mobile nav toggle */
-.nav-toggle {
-  display: none; background: none; border: 1px solid var(--border); border-radius: var(--r-sm);
-  padding: 4px; color: var(--text-2); cursor: pointer;
-  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
-}
-.nav-toggle:hover { background: var(--surface-2); color: var(--text); }
-
 @media (max-width: 768px) {
   .tax-nav-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
   .tax-stats { flex-wrap: wrap; }

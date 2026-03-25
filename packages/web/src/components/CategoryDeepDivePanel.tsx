@@ -246,7 +246,6 @@ export default function CategoryDeepDivePanel({ findings, fullFindings }: { find
                 <TreeTab
                   cat={cat}
                   catGaps={catGaps}
-                  catRules={catRules}
                   triggered={triggered}
                   allRuleIds={allRuleIds}
                   catHits={catHits}
@@ -291,7 +290,6 @@ export default function CategoryDeepDivePanel({ findings, fullFindings }: { find
 interface TreeTabProps {
   cat: (typeof THREAT_CATS)[number];
   catGaps: Gap[];
-  catRules: EnrichedRule[];
   triggered: Set<string>;
   allRuleIds: string[];
   catHits: string[];

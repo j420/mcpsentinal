@@ -151,11 +151,11 @@ export default async function ServerDetailPage({
         <div className="sd-hero-left">
           <div className="sd-hero-title-row">
             <h1 className="sd-hero-name">{server.name}</h1>
-            {server.connection_status === "connected" && (
-              <span className="sd-status-dot sd-status-connected" title="Connected" aria-label="Connection status: connected" role="img" />
+            {server.connection_status === "success" && (
+              <span className="sd-status-dot sd-status-connected" title="Connected" aria-label="Connection status: success" role="img" />
             )}
-            {server.connection_status === "error" && (
-              <span className="sd-status-dot sd-status-error" title="Connection Error" aria-label="Connection status: error" role="img" />
+            {(server.connection_status === "failed" || server.connection_status === "timeout") && (
+              <span className="sd-status-dot sd-status-error" title="Connection Error" aria-label="Connection status: failed" role="img" />
             )}
           </div>
           {server.description && (
