@@ -96,7 +96,7 @@ export async function generateMetadata({
   const findCount = server.findings?.length ?? 0;
   return {
     title: `${server.name} Security Report`,
-    description: `Security analysis of ${server.name} MCP server. ${scoreStr} ${findCount} finding${findCount !== 1 ? "s" : ""} detected across 103 security rules.`,
+    description: `Security analysis of ${server.name} MCP server. ${scoreStr} ${findCount} finding${findCount !== 1 ? "s" : ""} detected across 177 detection rules.`,
   };
 }
 
@@ -266,10 +266,10 @@ export default async function ServerDetailPage({
           <div className="sd-hero-title-row">
             <h1 className="sd-hero-name">{server.name}</h1>
             {server.connection_status === "connected" && (
-              <span className="sd-status-dot sd-status-connected" title="Connected" />
+              <span className="sd-status-dot sd-status-connected" title="Connected" aria-label="Connection status: connected" role="img" />
             )}
             {server.connection_status === "error" && (
-              <span className="sd-status-dot sd-status-error" title="Connection Error" />
+              <span className="sd-status-dot sd-status-error" title="Connection Error" aria-label="Connection status: error" role="img" />
             )}
           </div>
           {server.description && (
@@ -352,6 +352,11 @@ export default async function ServerDetailPage({
       </section>
 
       {/* ── Score Breakdown ────────────────────────────────── */}
+      {!sd && server.last_scanned_at && (
+        <section className="sd-section">
+          <p className="text-muted-sm">Score breakdown pending — analysis in progress.</p>
+        </section>
+      )}
       {sd && (
         <section className="sd-section">
           <h2 className="sd-section-title">
@@ -374,6 +379,7 @@ export default async function ServerDetailPage({
           <h2 className="sd-section-title">
             OWASP MCP Top 10 Coverage
           </h2>
+          <p className="sd-section-sub">Pass = no findings in this category. Fail = issues detected.</p>
           <div className="sd-owasp-grid">
             {Object.entries(sd.owasp_coverage).map(([id, clean]) => (
               <div
@@ -390,7 +396,16 @@ export default async function ServerDetailPage({
         </section>
       )}
 
-      {/* ── Severity Summary ───────────────────────────────── */}
+      {/* ── Findings ────────────────────────────────────────── */}
+      {findings.length === 0 && server.last_scanned_at && (
+        <section className="sd-section">
+          <h2 className="sd-section-title">Findings</h2>
+          <div className="sd-empty-state">
+            <span className="sd-empty-icon">&#10003;</span>
+            <span className="sd-empty-text">No findings detected across 177 detection rules.</span>
+          </div>
+        </section>
+      )}
       {findings.length > 0 && (
         <section className="sd-section">
           <h2 className="sd-section-title">
@@ -441,6 +456,12 @@ export default async function ServerDetailPage({
       )}
 
       {/* ── Tools ──────────────────────────────────────────── */}
+      {tools.length === 0 && (
+        <section className="sd-section">
+          <h2 className="sd-section-title">Tools</h2>
+          <p className="text-muted-sm">No tools exposed by this server.</p>
+        </section>
+      )}
       {tools.length > 0 && (
         <section className="sd-section">
           <h2 className="sd-section-title">

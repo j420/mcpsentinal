@@ -169,7 +169,7 @@ export default async function ServersPage({
       <div className="servers-page-header">
         <h1 className="servers-page-title">MCP Server Registry</h1>
         <p className="servers-page-sub">
-          Browse {pagination.total > 0 ? pagination.total.toLocaleString() : ""} servers scanned across 103 security rules
+          Browse {pagination.total > 0 ? pagination.total.toLocaleString() : ""} servers scanned across 177 detection rules
         </p>
       </div>
 
