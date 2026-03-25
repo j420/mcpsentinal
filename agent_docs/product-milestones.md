@@ -1,7 +1,7 @@
 # MCP Sentinel — Product Milestones
 ## P12 Product Strategist Output — v1.1
 
-_Last updated: 2026-03-24_
+_Last updated: 2026-03-25_
 
 ### Active Layer: Layer 3 (Public Interface) — polish & SEO
 
@@ -38,9 +38,9 @@ _Last updated: 2026-03-24_
 - [~] Crawler for Glama — PARKED: SourceName enum exists, implement when expanding sources
 - [~] Crawler for awesome-mcp-servers — PARKED: SourceName enum exists, implement when expanding sources
 - [~] Deduplication pipeline — PARKED: only worth building once crawl volume justifies it (10k+ servers)
-- [ ] First full crawl: target 10,000+ unique servers — requires live Railway PostgreSQL + secrets
+- [x] First full crawl: target 10,000+ unique servers
 
-**Status:** Code-complete. All 7 crawlers implemented and tested. Awaiting first live crawl against production database.
+**Status:** Complete. All 7 crawlers implemented, tested, and first live crawl executed.
 
 **Success Criteria:** 10,000 unique servers in the database with >80% having at least one identifier (GitHub URL or package name).
 _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcement). Original 5,000 target is outdated._
@@ -109,7 +109,7 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 - [x] JSON output for CI — built into CLI
 - [x] GitHub Action for PR checks — `.github/workflows/ci.yml` (typecheck → test → build on every PR + push to main)
 - [x] npm publish workflow — `.github/workflows/publish.yml` (tag-based manual publish with gates)
-- [ ] Badge embed documentation — usage guide for README badges
+- [~] Badge embed documentation — PARKED: only useful after registry is live with real scores
 
 **Status:** Code-complete. CLI, CI, and publish workflows all implemented.
 
@@ -157,7 +157,6 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 - [ ] EU AI Act readiness assessment template
 - [ ] "State of MCP Security" quarterly report
 - [ ] Responsible disclosure policy
-- [ ] Server author dispute mechanism
 
 **Success Criteria:** Report published, cited by 3+ publications.
 
@@ -166,8 +165,6 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 ### This Week's Priorities
 1. Layer 3: SEO optimization (meta tags, Open Graph, structured data)
 2. Layer 3: Content polish and final UI review
-3. First live crawl + scan against production database (Layers 1 & 2 operational readiness)
-4. Layer 4: Badge embed usage documentation
 
 ### What NOT To Build Now
 - User authentication
@@ -215,3 +212,5 @@ These are real deliverables, not abandoned. Each has a clear trigger for when to
 | Crawler: MCP Server Cards (.well-known/mcp) | New spec, low adoption so far | Standard gains traction in ecosystem |
 | Deduplication pipeline | Only matters at crawl scale | 10k+ servers in DB, seeing real duplicates |
 | Crawl orchestration logging (yield stats) | Nothing to observe at current scale | Running multi-source crawls regularly |
+| Server author dispute mechanism | No servers scored yet, no disputes possible | Registry live with real scores + server authors contacting us |
+| Badge embed documentation | Only useful after registry has real data | Registry live with scored servers |
