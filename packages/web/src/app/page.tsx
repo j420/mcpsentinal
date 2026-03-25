@@ -145,7 +145,12 @@ const SORT_OPTIONS = [
   { value: "updated", label: "Last Updated" },
 ];
 
-// ── Brand colors for top tech orgs (used to style featured server cards) ─────
+// ── Official Integrations — 50 curated top-tech MCP servers ─────────────────
+// These are the definitive list of servers to feature on the home page.
+// Brand colors are verified against each org's official brand guidelines.
+// Slugs match the actual server slugs in the database (from crawlers).
+// If the server exists in the DB, links go to /servers/:slug. If not, search.
+
 interface FeaturedOrg {
   name: string;
   org: string;
@@ -155,118 +160,70 @@ interface FeaturedOrg {
   initials: string;
 }
 
-// Brand color + initials lookup — keyed by lowercase author/org name variations
-const BRAND_COLORS: Record<string, { color: string; initials: string }> = {
-  github: { color: "#24292e", initials: "GH" },
-  stripe: { color: "#635BFF", initials: "ST" },
-  cloudflare: { color: "#F38020", initials: "CF" },
-  linear: { color: "#5E6AD2", initials: "LN" },
-  notion: { color: "#2D2D2D", initials: "NT" },
-  atlassian: { color: "#0052CC", initials: "AT" },
-  slack: { color: "#4A154B", initials: "SL" },
-  google: { color: "#4285F4", initials: "GG" },
-  microsoft: { color: "#00A4EF", initials: "MS" },
-  aws: { color: "#FF9900", initials: "AW" },
-  amazon: { color: "#FF9900", initials: "AW" },
-  vercel: { color: "#1A1A1A", initials: "VC" },
-  supabase: { color: "#3ECF8E", initials: "SB" },
-  datadog: { color: "#632CA6", initials: "DD" },
-  pagerduty: { color: "#06AC38", initials: "PD" },
-  sentry: { color: "#362D59", initials: "SN" },
-  mongodb: { color: "#00ED64", initials: "MG" },
-  redis: { color: "#FF4438", initials: "RD" },
-  twilio: { color: "#F22F46", initials: "TW" },
-  sendgrid: { color: "#1A82E2", initials: "SG" },
-  figma: { color: "#A259FF", initials: "FG" },
-  shopify: { color: "#95BF47", initials: "SH" },
-  salesforce: { color: "#00A1E0", initials: "SF" },
-  hubspot: { color: "#FF7A59", initials: "HS" },
-  zendesk: { color: "#03363D", initials: "ZD" },
-  jira: { color: "#0052CC", initials: "JR" },
-  confluence: { color: "#1868DB", initials: "CN" },
-  gitlab: { color: "#FC6D26", initials: "GL" },
-  bitbucket: { color: "#0052CC", initials: "BB" },
-  docker: { color: "#1D63ED", initials: "DK" },
-  kubernetes: { color: "#326CE5", initials: "K8" },
-  hashicorp: { color: "#7B42BC", initials: "TF" },
-  terraform: { color: "#7B42BC", initials: "TF" },
-  snowflake: { color: "#29B5E8", initials: "SW" },
-  databricks: { color: "#FF3621", initials: "DB" },
-  elastic: { color: "#00BFB3", initials: "EL" },
-  grafana: { color: "#F46800", initials: "GF" },
-  "new relic": { color: "#008C99", initials: "NR" },
-  splunk: { color: "#65A637", initials: "SP" },
-  airtable: { color: "#2D7FF9", initials: "AT" },
-  asana: { color: "#F06A6A", initials: "AS" },
-  monday: { color: "#6C6CFF", initials: "MN" },
-  okta: { color: "#007DC1", initials: "OK" },
-  auth0: { color: "#EB5424", initials: "A0" },
-  postman: { color: "#FF6C37", initials: "PM" },
-  circleci: { color: "#343434", initials: "CI" },
-  launchdarkly: { color: "#405BFF", initials: "LD" },
-  prisma: { color: "#2D3748", initials: "PR" },
-  planetscale: { color: "#303030", initials: "PS" },
-  neon: { color: "#00E599", initials: "NE" },
-  render: { color: "#46E3B7", initials: "RN" },
-  "fly.io": { color: "#7B3FE4", initials: "FY" },
-  anthropic: { color: "#D4A27F", initials: "AN" },
-  openai: { color: "#10A37F", initials: "OA" },
-  "1password": { color: "#0572EC", initials: "1P" },
-  brave: { color: "#FB542B", initials: "BR" },
-  browserbase: { color: "#FF6B35", initials: "BB" },
-  upstash: { color: "#00E9A3", initials: "UP" },
-  axiom: { color: "#2E0854", initials: "AX" },
-  "e2b": { color: "#FF8800", initials: "E2" },
-  firecrawl: { color: "#FF6154", initials: "FC" },
-};
-
-function lookupBrand(author: string | null): { color: string; initials: string } | null {
-  if (!author) return null;
-  const key = author.toLowerCase().trim();
-  if (BRAND_COLORS[key]) return BRAND_COLORS[key];
-  // Fuzzy: check if any brand key is contained in the author string
-  for (const [bk, bv] of Object.entries(BRAND_COLORS)) {
-    if (key.includes(bk) || bk.includes(key)) return bv;
-  }
-  return null;
-}
-
-async function getFeaturedServers(): Promise<FeaturedOrg[]> {
-  try {
-    // Fetch top servers sorted by stars — these tend to be the official org servers
-    const res = await fetch(`${API_URL}/api/v1/servers?sort=stars&order=desc&limit=100`, {
-      signal: AbortSignal.timeout(4000),
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    const servers: Server[] = (data.data || []).map((s: Record<string, unknown>) => ({
-      ...s,
-      source_names: Array.isArray(s.source_names) ? s.source_names : [],
-    }));
-
-    // Filter to servers from known top-tech orgs and map to FeaturedOrg
-    const featured: FeaturedOrg[] = [];
-    const seenOrgs = new Set<string>();
-    for (const s of servers) {
-      const brand = lookupBrand(s.author);
-      if (!brand) continue;
-      const orgKey = (s.author ?? "").toLowerCase();
-      if (seenOrgs.has(orgKey)) continue; // One server per org
-      seenOrgs.add(orgKey);
-      featured.push({
-        name: s.name,
-        org: s.author ?? s.name,
-        slug: s.slug,
-        desc: s.description ? (s.description.length > 80 ? s.description.slice(0, 77) + "..." : s.description) : "",
-        color: brand.color,
-        initials: brand.initials,
-      });
-    }
-    return featured;
-  } catch {
-    return [];
-  }
-}
+const OFFICIAL_INTEGRATIONS: FeaturedOrg[] = [
+  // ── Top AI ────────────────────────────────────────────
+  { name: "Claude MCP Servers", org: "Anthropic", slug: "mcp-server-filesystem", desc: "Official reference servers: filesystem, GitHub, Postgres, Brave Search, SQLite.", color: "#D4A27F", initials: "AN" },
+  { name: "OpenAI Agents SDK", org: "OpenAI", slug: "openai-agents-mcp", desc: "Agent framework with MCP tool integration.", color: "#10A37F", initials: "OA" },
+  { name: "Google Gemini MCP", org: "Google", slug: "google-gemini-mcp", desc: "Gemini API, Vertex AI, Google Cloud tools.", color: "#4285F4", initials: "GG" },
+  { name: "Cohere MCP Server", org: "Cohere", slug: "cohere-mcp-server", desc: "Cohere LLM APIs, embeddings, reranking.", color: "#39594D", initials: "CO" },
+  { name: "Hugging Face MCP", org: "Hugging Face", slug: "huggingface-mcp", desc: "Model hub, inference API, datasets.", color: "#FFD21E", initials: "HF" },
+  // ── Developer Platforms ───────────────────────────────
+  { name: "GitHub MCP Server", org: "GitHub", slug: "github-mcp-server", desc: "Repositories, issues, pull requests, code search, Actions.", color: "#24292e", initials: "GH" },
+  { name: "GitLab MCP Server", org: "GitLab", slug: "gitlab-mcp-server", desc: "Repos, CI/CD pipelines, merge requests.", color: "#FC6D26", initials: "GL" },
+  { name: "Vercel MCP Server", org: "Vercel", slug: "vercel-mcp-server", desc: "Deployments, domains, edge functions, analytics.", color: "#000000", initials: "VC" },
+  { name: "Netlify MCP Server", org: "Netlify", slug: "netlify-mcp-server", desc: "Sites, deploys, functions, forms.", color: "#00C7B7", initials: "NL" },
+  { name: "Render MCP Server", org: "Render", slug: "render-mcp-server", desc: "Services, deploys, databases, cron jobs.", color: "#46E3B7", initials: "RN" },
+  // ── Cloud & Infrastructure ────────────────────────────
+  { name: "AWS MCP Server", org: "AWS", slug: "aws-mcp-server", desc: "S3, Lambda, DynamoDB, CloudFormation, EC2.", color: "#FF9900", initials: "AW" },
+  { name: "Cloudflare MCP Server", org: "Cloudflare", slug: "mcp-server-cloudflare", desc: "Workers, R2, KV, D1, Durable Objects.", color: "#F38020", initials: "CF" },
+  { name: "Docker MCP Server", org: "Docker", slug: "docker-mcp-server", desc: "Containers, images, volumes, networks.", color: "#2496ED", initials: "DK" },
+  { name: "Kubernetes MCP Server", org: "Kubernetes", slug: "kubernetes-mcp-server", desc: "Pods, deployments, services, config maps.", color: "#326CE5", initials: "K8" },
+  { name: "Terraform MCP Server", org: "HashiCorp", slug: "terraform-mcp-server", desc: "Infrastructure as code, state management, plans.", color: "#7B42BC", initials: "TF" },
+  // ── Databases ─────────────────────────────────────────
+  { name: "Supabase MCP Server", org: "Supabase", slug: "supabase-mcp-server", desc: "Postgres database, auth, storage, edge functions.", color: "#3ECF8E", initials: "SB" },
+  { name: "MongoDB MCP Server", org: "MongoDB", slug: "mongodb-mcp-server", desc: "Atlas clusters, collections, aggregation pipelines.", color: "#00ED64", initials: "MG" },
+  { name: "Redis MCP Server", org: "Redis", slug: "redis-mcp-server", desc: "Key-value operations, streams, pub/sub.", color: "#FF4438", initials: "RD" },
+  { name: "PlanetScale MCP", org: "PlanetScale", slug: "planetscale-mcp-server", desc: "MySQL-compatible serverless databases, branches.", color: "#000000", initials: "PS" },
+  { name: "Neon MCP Server", org: "Neon", slug: "neon-mcp-server", desc: "Serverless Postgres, branching, endpoints.", color: "#00E599", initials: "NE" },
+  // ── Payments & Fintech ────────────────────────────────
+  { name: "Stripe Agent Toolkit", org: "Stripe", slug: "stripe-agent-toolkit", desc: "Payments, customers, invoices, subscriptions.", color: "#635BFF", initials: "ST" },
+  { name: "Plaid MCP Server", org: "Plaid", slug: "plaid-mcp-server", desc: "Bank connections, transactions, identity verification.", color: "#000000", initials: "PL" },
+  { name: "Square MCP Server", org: "Square", slug: "square-mcp-server", desc: "Payments, catalog, orders, customers.", color: "#006AFF", initials: "SQ" },
+  // ── SaaS & Productivity ───────────────────────────────
+  { name: "Notion MCP", org: "Notion", slug: "notion-mcp", desc: "Pages, databases, blocks, search.", color: "#000000", initials: "NT" },
+  { name: "Slack MCP Server", org: "Slack", slug: "slack-mcp-server", desc: "Channels, messages, users, reactions.", color: "#4A154B", initials: "SL" },
+  { name: "Linear MCP", org: "Linear", slug: "linear-mcp", desc: "Issues, projects, cycles, teams.", color: "#5E6AD2", initials: "LN" },
+  { name: "Atlassian Remote MCP", org: "Atlassian", slug: "atlassian-remote-mcp-server", desc: "Jira issues, Confluence pages, Bitbucket repos.", color: "#0052CC", initials: "AT" },
+  { name: "Asana MCP Server", org: "Asana", slug: "asana-mcp-server", desc: "Tasks, projects, portfolios, goals.", color: "#F06A6A", initials: "AS" },
+  { name: "Airtable MCP Server", org: "Airtable", slug: "airtable-mcp-server", desc: "Bases, tables, records, views.", color: "#2D7FF9", initials: "AT" },
+  { name: "Monday.com MCP", org: "Monday", slug: "monday-mcp-server", desc: "Boards, items, updates, automations.", color: "#6C6CFF", initials: "MN" },
+  // ── Observability & DevOps ────────────────────────────
+  { name: "Datadog MCP Server", org: "Datadog", slug: "datadog-mcp-server", desc: "Metrics, logs, traces, monitors, dashboards.", color: "#632CA6", initials: "DD" },
+  { name: "Sentry MCP Server", org: "Sentry", slug: "sentry-mcp-server", desc: "Error tracking, performance, releases, alerts.", color: "#362D59", initials: "SN" },
+  { name: "Grafana MCP Server", org: "Grafana", slug: "grafana-mcp-server", desc: "Dashboards, alerts, data sources, panels.", color: "#F46800", initials: "GF" },
+  { name: "PagerDuty MCP Server", org: "PagerDuty", slug: "pagerduty-mcp-server", desc: "Incidents, services, escalation policies.", color: "#06AC38", initials: "PD" },
+  { name: "CircleCI MCP Server", org: "CircleCI", slug: "circleci-mcp-server", desc: "Pipelines, workflows, jobs, orbs.", color: "#343434", initials: "CI" },
+  // ── Communication ─────────────────────────────────────
+  { name: "Twilio MCP Server", org: "Twilio", slug: "twilio-mcp-server", desc: "SMS, voice, video, authentication.", color: "#F22F46", initials: "TW" },
+  { name: "SendGrid MCP Server", org: "SendGrid", slug: "sendgrid-mcp-server", desc: "Email delivery, templates, analytics.", color: "#1A82E2", initials: "SG" },
+  // ── Security & Auth ───────────────────────────────────
+  { name: "1Password MCP", org: "1Password", slug: "1password-mcp-server", desc: "Vaults, items, secrets management.", color: "#0572EC", initials: "1P" },
+  { name: "Okta MCP Server", org: "Okta", slug: "okta-mcp-server", desc: "Users, groups, apps, auth policies.", color: "#007DC1", initials: "OK" },
+  { name: "Auth0 MCP Server", org: "Auth0", slug: "auth0-mcp-server", desc: "Tenants, users, rules, connections.", color: "#EB5424", initials: "A0" },
+  // ── Design & CRM ──────────────────────────────────────
+  { name: "Figma MCP Server", org: "Figma", slug: "figma-mcp-server", desc: "Design files, components, variables, styles.", color: "#A259FF", initials: "FG" },
+  { name: "Salesforce MCP", org: "Salesforce", slug: "salesforce-mcp-server", desc: "CRM objects, SOQL queries, workflows.", color: "#00A1E0", initials: "SF" },
+  { name: "HubSpot MCP Server", org: "HubSpot", slug: "hubspot-mcp-server", desc: "Contacts, deals, tickets, marketing.", color: "#FF7A59", initials: "HS" },
+  { name: "Shopify MCP Server", org: "Shopify", slug: "shopify-mcp-server", desc: "Products, orders, customers, inventory.", color: "#95BF47", initials: "SH" },
+  // ── Data & Analytics ──────────────────────────────────
+  { name: "Snowflake MCP Server", org: "Snowflake", slug: "snowflake-mcp-server", desc: "Warehouses, queries, stages, pipes.", color: "#29B5E8", initials: "SW" },
+  { name: "Databricks MCP", org: "Databricks", slug: "databricks-mcp-server", desc: "Notebooks, jobs, clusters, Unity Catalog.", color: "#FF3621", initials: "DB" },
+  // ── Developer Tools ───────────────────────────────────
+  { name: "Postman MCP Server", org: "Postman", slug: "postman-mcp-server", desc: "Collections, environments, monitors, APIs.", color: "#FF6C37", initials: "PM" },
+  { name: "Prisma MCP Server", org: "Prisma", slug: "prisma-mcp-server", desc: "Schema management, migrations, queries.", color: "#2D3748", initials: "PR" },
+  { name: "LaunchDarkly MCP", org: "LaunchDarkly", slug: "launchdarkly-mcp-server", desc: "Feature flags, segments, experiments.", color: "#405BFF", initials: "LD" },
+  { name: "Brave Search MCP", org: "Brave", slug: "brave-search-mcp", desc: "Web search, news, images via Brave API.", color: "#FB542B", initials: "BR" },
+];
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -290,7 +247,7 @@ export default async function HomePage({
     !!sp.author ||
     (!!sp.category && sp.category !== "all");
 
-  const [{ servers, pagination }, stats, featuredOrgs] = await Promise.all([
+  const [{ servers, pagination }, stats] = await Promise.all([
     getServers({
       q: sp.q,
       author: sp.author,
@@ -300,7 +257,6 @@ export default async function HomePage({
       page,
     }),
     getStats(),
-    getFeaturedServers(),
   ]);
 
   const apiDown = !stats && servers.length === 0;
@@ -383,7 +339,7 @@ export default async function HomePage({
       </section>
 
       {/* ── Featured Official Servers (rotating carousel) ── */}
-      {!isFiltered && featuredOrgs.length > 0 && (
+      {!isFiltered && (
         <section className="featured-section" aria-label="Official server integrations">
           <div className="featured-header">
             <h2 className="featured-heading">Official Integrations</h2>
@@ -391,7 +347,7 @@ export default async function HomePage({
               Browse all →
             </a>
           </div>
-          <FeaturedCarousel orgs={featuredOrgs} />
+          <FeaturedCarousel orgs={OFFICIAL_INTEGRATIONS} />
         </section>
       )}
 
