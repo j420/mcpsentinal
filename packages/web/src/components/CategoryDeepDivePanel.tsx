@@ -79,9 +79,6 @@ export default function CategoryDeepDivePanel({ findings }: { findings: CddFindi
     <section className="cdd-section">
       <div className="cdd-section-header">
         <h2 className="cdd-section-title">Security Category Deep Dive</h2>
-        <p className="cdd-section-sub">
-          Sub-Category Tree &middot; Remediation Roadmap &middot; Attack Stories &middot; Compliance Overlay &middot; ATLAS Techniques &middot; Maturity Model
-        </p>
       </div>
 
       <div className="cdd-wrap">
