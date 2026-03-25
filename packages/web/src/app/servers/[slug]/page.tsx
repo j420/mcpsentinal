@@ -267,17 +267,6 @@ export default async function ServerDetailPage({
         ) : null}
       </section>
 
-      {/* ── Section Navigation ─────────────────────────────── */}
-      <nav className="sd-section-nav">
-        {server.owasp_coverage && Object.keys(server.owasp_coverage).length > 0 && (
-          <a href="#owasp">OWASP Coverage</a>
-        )}
-        {tools.length > 0 && (
-          <a href="#tools">Tools ({tools.length})</a>
-        )}
-        <a href="#deep-dive">Category Deep Dive</a>
-      </nav>
-
       {/* ── OWASP Coverage ─────────────────────────────────── */}
       {server.owasp_coverage && Object.keys(server.owasp_coverage).length > 0 && (
         <section id="owasp" className="sd-section">
