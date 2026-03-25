@@ -463,7 +463,7 @@ export default async function HomePage({
           {servers.map((server) => (
             <a
               key={server.id}
-              href={`/server/${server.slug}`}
+              href={`/servers/${server.slug}`}
               className="server-table-row"
             >
               <div className="stcol stcol-name">

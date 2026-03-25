@@ -483,7 +483,7 @@ export default async function CategoryPage({
             {servers.map((server) => (
               <tr key={server.id}>
                 <td>
-                  <a href={`/server/${server.slug}`} className="server-name-link">
+                  <a href={`/servers/${server.slug}`} className="server-name-link">
                     {server.name}
                   </a>
                   {server.description && (

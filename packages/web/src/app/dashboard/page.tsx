@@ -245,7 +245,7 @@ export default async function DashboardPage() {
             {atRisk.map((server) => (
               <div key={server.id} className="server-row-hover">
                 <div>
-                  <a href={`/server/${server.slug}`} className="server-row-link">
+                  <a href={`/servers/${server.slug}`} className="server-row-link">
                     {server.name}
                   </a>
                   {server.category && (
