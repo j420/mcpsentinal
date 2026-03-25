@@ -346,10 +346,11 @@ code, pre, kbd {
   border-radius: 1px;
 }
 
-.nav-link-api {
+.nav-link-scanner {
   color: var(--accent) !important;
+  font-weight: 700 !important;
 }
-.nav-link-api:hover { color: var(--accent-hover) !important; }
+.nav-link-scanner:hover { color: var(--accent-hover) !important; }
 
 .site-main {
   max-width: 1200px;
@@ -2713,7 +2714,7 @@ code, pre, kbd {
   flex-direction: column;
   position: relative;
   overflow: hidden;
-  min-height: 180px;
+  min-height: 240px;
 }
 
 /* Card 1 — Dark */
@@ -2848,7 +2849,7 @@ code, pre, kbd {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  min-height: 180px;
+  min-height: 240px;
 }
 
 .scanner-anim-header {
