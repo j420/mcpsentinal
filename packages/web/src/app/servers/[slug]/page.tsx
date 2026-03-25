@@ -1,7 +1,9 @@
 import React from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import ServerFindings from "@/components/ServerFindings";
+import CategoryDeepDivePanel from "@/components/CategoryDeepDivePanel";
+import type { CddFinding } from "@/components/cdd-data";
+import { RULE_NAMES, RULE_SEVERITIES } from "@/components/cdd-data";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +19,16 @@ interface Finding {
   remediation: string;
   owasp_category: string | null;
   mitre_technique: string | null;
+}
+
+interface ScoreDetail {
+  total_score: number;
+  code_score: number;
+  deps_score: number;
+  config_score: number;
+  description_score: number;
+  behavior_score: number;
+  owasp_coverage: Record<string, boolean>;
 }
 
 interface Tool {
@@ -48,6 +60,7 @@ interface ServerDetail {
   tool_count: number;
   tools: Tool[];
   findings: Finding[];
+  score_detail?: ScoreDetail;
 }
 
 // ── Data Fetching ─────────────────────────────────────────────────────────────
@@ -76,20 +89,42 @@ export async function generateMetadata({
   const { slug } = await params;
   const server = await getServer(slug);
   if (!server) return { title: "Server Not Found" };
+  const scoreStr =
+    server.latest_score !== null
+      ? `Score: ${server.latest_score}/100.`
+      : "Not yet scanned.";
   const findCount = server.findings?.length ?? 0;
-  const hasCritical = server.findings?.some((f) => f.severity === "critical");
-  const verdictStr = findCount === 0
-    ? "No issues detected."
-    : hasCritical
-      ? "Critical issues found."
-      : `${findCount} finding${findCount !== 1 ? "s" : ""} detected.`;
   return {
     title: `${server.name} Security Report`,
-    description: `Security analysis of ${server.name} MCP server. ${verdictStr} Scanned against 177 detection rules.`,
+    description: `Security analysis of ${server.name} MCP server. ${scoreStr} ${findCount} finding${findCount !== 1 ? "s" : ""} detected across 177 detection rules.`,
   };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+function scoreColor(s: number | null): string {
+  if (s === null) return "var(--text-3)";
+  if (s >= 80) return "var(--good)";
+  if (s >= 60) return "var(--moderate)";
+  if (s >= 40) return "var(--poor)";
+  return "var(--critical)";
+}
+
+function scoreLabel(s: number | null): string {
+  if (s === null) return "Unscanned";
+  if (s >= 80) return "Good";
+  if (s >= 60) return "Moderate";
+  if (s >= 40) return "Poor";
+  return "Critical";
+}
+
+function scoreClass(s: number | null): string {
+  if (s === null) return "unscanned";
+  if (s >= 80) return "good";
+  if (s >= 60) return "moderate";
+  if (s >= 40) return "poor";
+  return "critical";
+}
 
 function fmtNum(n: number | null): string {
   if (n == null) return "\u2014";
@@ -108,6 +143,80 @@ function fmtDate(iso: string | null): string {
   });
 }
 
+const OWASP_NAMES: Record<string, string> = {
+  MCP01: "Prompt Injection",
+  MCP02: "Tool Poisoning",
+  MCP03: "Command Injection",
+  MCP04: "Data Exfiltration",
+  MCP05: "Privilege Escalation",
+  MCP06: "Excessive Permissions",
+  MCP07: "Insecure Configuration",
+  MCP08: "Dependency Vulnerabilities",
+  MCP09: "Logging & Monitoring",
+  MCP10: "Supply Chain",
+};
+
+const SEV_ORDER = ["critical", "high", "medium", "low", "informational"] as const;
+
+// ── Components ────────────────────────────────────────────────────────────────
+
+function ScoreHero({ score, label }: { score: number | null; label: string }) {
+  const r = 54;
+  const circ = 2 * Math.PI * r;
+  const pct = score !== null ? score / 100 : 0;
+  const offset = circ * (1 - pct);
+  const color = scoreColor(score);
+
+  return (
+    <div className="sd-score-hero" role="meter" aria-label={`Security score: ${score !== null ? `${score} out of 100, rated ${label}` : "Not yet scanned"}`} aria-valuenow={score ?? undefined} aria-valuemin={0} aria-valuemax={100}>
+      <div className="sd-score-ring-wrap">
+        <svg width="140" height="140" viewBox="0 0 140 140" className="sd-score-ring-svg" aria-hidden="true">
+          <circle cx="70" cy="70" r={r} fill="none" stroke="var(--surface-3)" strokeWidth="10" />
+          {score !== null && (
+            <circle
+              cx="70"
+              cy="70"
+              r={r}
+              fill="none"
+              stroke={color}
+              strokeWidth="10"
+              strokeLinecap="round"
+              strokeDasharray={circ}
+              strokeDashoffset={offset}
+              className="score-ring-arc"
+            />
+          )}
+        </svg>
+        <div className="sd-score-center">
+          <span className="sd-score-number" style={{ color }}>
+            {score !== null ? score : "\u2014"}
+          </span>
+          <span className="sd-score-of">/100</span>
+        </div>
+      </div>
+      <span className={`sd-score-label sd-score-label-${scoreClass(score)}`}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function SubScoreRow({ label, value, icon }: { label: string; value: number | undefined; icon: string }) {
+  const v = value ?? 100;
+  const color =
+    v >= 80 ? "var(--good)" : v >= 60 ? "var(--moderate)" : v >= 40 ? "var(--poor)" : "var(--critical)";
+  return (
+    <div className="sd-subscore">
+      <span className="sd-subscore-icon">{icon}</span>
+      <span className="sd-subscore-label">{label}</span>
+      <div className="sd-subscore-bar">
+        <div className="sd-subscore-fill" style={{ width: `${v}%`, background: color }} />
+      </div>
+      <span className="sd-subscore-val" style={{ color }}>{v}</span>
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function ServerDetailPage({
@@ -120,8 +229,25 @@ export default async function ServerDetailPage({
 
   if (!server) return notFound();
 
+  const sd = server.score_detail;
   const findings = server.findings ?? [];
   const tools = server.tools ?? [];
+  const cddFindings: CddFinding[] = findings.map((f) => ({
+    rule_id: f.rule_id,
+    severity: f.severity,
+  }));
+
+  // Group findings by severity
+  const findingsBySev: Record<string, Finding[]> = {};
+  for (const f of findings) {
+    if (!findingsBySev[f.severity]) findingsBySev[f.severity] = [];
+    findingsBySev[f.severity].push(f);
+  }
+
+  const sevCounts = SEV_ORDER.map((s) => ({
+    sev: s,
+    count: findingsBySev[s]?.length ?? 0,
+  }));
 
   return (
     <div className="sd-page">
@@ -140,10 +266,10 @@ export default async function ServerDetailPage({
           <div className="sd-hero-title-row">
             <h1 className="sd-hero-name">{server.name}</h1>
             {server.connection_status === "connected" && (
-              <span className="sd-status-dot sd-status-connected" title="Connected" />
+              <span className="sd-status-dot sd-status-connected" title="Connected" aria-label="Connection status: connected" role="img" />
             )}
             {server.connection_status === "error" && (
-              <span className="sd-status-dot sd-status-error" title="Connection Error" />
+              <span className="sd-status-dot sd-status-error" title="Connection Error" aria-label="Connection status: error" role="img" />
             )}
           </div>
           {server.description && (
@@ -193,6 +319,10 @@ export default async function ServerDetailPage({
             )}
           </div>
         </div>
+
+        <div className="sd-hero-right">
+          <ScoreHero score={server.latest_score} label={scoreLabel(server.latest_score)} />
+        </div>
       </section>
 
       {/* ── Quick Stats ────────────────────────────────────── */}
@@ -202,7 +332,9 @@ export default async function ServerDetailPage({
           <span className="sd-qs-label">Tools</span>
         </div>
         <div className="sd-qs-item">
-          <span className="sd-qs-val">{findings.length}</span>
+          <span className="sd-qs-val" style={findings.length > 0 ? { color: "var(--critical)" } : { color: "var(--good)" }}>
+            {findings.length}
+          </span>
           <span className="sd-qs-label">Findings</span>
         </div>
         <div className="sd-qs-item">
@@ -219,12 +351,147 @@ export default async function ServerDetailPage({
         </div>
       </section>
 
-      {/* ── Verdict + Findings + Tools (interactive client component) ── */}
-      <ServerFindings
-        findings={findings}
-        tools={tools}
-        lastScannedAt={server.last_scanned_at}
-      />
+      {/* ── Score Breakdown ────────────────────────────────── */}
+      {!sd && server.last_scanned_at && (
+        <section className="sd-section">
+          <p className="text-muted-sm">Score breakdown pending — analysis in progress.</p>
+        </section>
+      )}
+      {sd && (
+        <section className="sd-section">
+          <h2 className="sd-section-title">
+            Score Breakdown
+            <span className="sd-section-count">5 categories</span>
+          </h2>
+          <div className="sd-subscores-card">
+            <SubScoreRow label="Code" value={sd.code_score} icon="&lt;/&gt;" />
+            <SubScoreRow label="Dependencies" value={sd.deps_score} icon="&#9881;" />
+            <SubScoreRow label="Config" value={sd.config_score} icon="&#9776;" />
+            <SubScoreRow label="Description" value={sd.description_score} icon="&#9998;" />
+            <SubScoreRow label="Behavior" value={sd.behavior_score} icon="&#9673;" />
+          </div>
+        </section>
+      )}
+
+      {/* ── OWASP Coverage ─────────────────────────────────── */}
+      {sd?.owasp_coverage && Object.keys(sd.owasp_coverage).length > 0 && (
+        <section className="sd-section">
+          <h2 className="sd-section-title">
+            OWASP MCP Top 10 Coverage
+          </h2>
+          <p className="sd-section-sub">Pass = no findings in this category. Fail = issues detected.</p>
+          <div className="sd-owasp-grid">
+            {Object.entries(sd.owasp_coverage).map(([id, clean]) => (
+              <div
+                key={id}
+                className={`sd-owasp-item ${clean ? "sd-owasp-clean" : "sd-owasp-dirty"}`}
+              >
+                <span className="sd-owasp-indicator" />
+                <span className="sd-owasp-id">{id}</span>
+                <span className="sd-owasp-name">{OWASP_NAMES[id] ?? id}</span>
+                <span className="sd-owasp-status">{clean ? "Pass" : "Fail"}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Findings ────────────────────────────────────────── */}
+      {findings.length === 0 && server.last_scanned_at && (
+        <section className="sd-section">
+          <h2 className="sd-section-title">Findings</h2>
+          <div className="sd-empty-state">
+            <span className="sd-empty-icon">&#10003;</span>
+            <span className="sd-empty-text">No findings detected across 177 detection rules.</span>
+          </div>
+        </section>
+      )}
+      {findings.length > 0 && (
+        <section className="sd-section">
+          <h2 className="sd-section-title">
+            Findings
+            <span className="sd-section-count">{findings.length}</span>
+          </h2>
+
+          <div className="sd-sev-summary">
+            {sevCounts.map(({ sev, count }) => (
+              <div key={sev} className={`sd-sev-chip sd-sev-chip-${sev}`}>
+                <span className="sd-sev-chip-count">{count}</span>
+                <span className="sd-sev-chip-label">{sev}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="sd-findings-list">
+            {SEV_ORDER.map((sev) =>
+              (findingsBySev[sev] ?? []).map((f) => (
+                <div
+                  key={f.id}
+                  className={`sd-finding finding-${f.severity}`}
+                >
+                  <div className="sd-finding-header">
+                    <span className={`sev-badge sev-${f.severity}`}>
+                      {f.severity}
+                    </span>
+                    <span className="sd-finding-rule">{f.rule_id}</span>
+                    <span className="sd-finding-name">
+                      {RULE_NAMES[f.rule_id] ?? f.rule_id}
+                    </span>
+                    {f.owasp_category && (
+                      <span className="sd-finding-owasp">{f.owasp_category}</span>
+                    )}
+                    {f.mitre_technique && (
+                      <span className="sd-finding-mitre">{f.mitre_technique}</span>
+                    )}
+                  </div>
+                  <div className="sd-finding-evidence">{f.evidence}</div>
+                  {f.remediation && (
+                    <div className="sd-finding-fix">{f.remediation}</div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* ── Tools ──────────────────────────────────────────── */}
+      {tools.length === 0 && (
+        <section className="sd-section">
+          <h2 className="sd-section-title">Tools</h2>
+          <p className="text-muted-sm">No tools exposed by this server.</p>
+        </section>
+      )}
+      {tools.length > 0 && (
+        <section className="sd-section">
+          <h2 className="sd-section-title">
+            Tools
+            <span className="sd-section-count">{tools.length}</span>
+          </h2>
+          <div className="sd-tools-grid">
+            {tools.map((tool) => (
+              <div key={tool.name} className="sd-tool">
+                <div className="sd-tool-name">{tool.name}</div>
+                {tool.description && (
+                  <div className="sd-tool-desc">{tool.description}</div>
+                )}
+                {tool.capability_tags.length > 0 && (
+                  <div className="sd-tool-caps">
+                    {tool.capability_tags.map((tag) => (
+                      <span key={tag} className={`cap-tag cap-${tag}`}>
+                        {tag.replace(/-/g, " ")}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Category Deep Dive ─────────────────────────────── */}
+      <CategoryDeepDivePanel findings={cddFindings} />
     </div>
   );
 }
