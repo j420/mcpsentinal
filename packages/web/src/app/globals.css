@@ -2841,6 +2841,116 @@ code, pre, kbd {
   letter-spacing: 0.02em;
 }
 
+/* ── Scanner Animation Card ───────────────────────────── */
+.scanner-anim {
+  background: #0D1117;
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 180px;
+}
+
+.scanner-anim-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  background: #161B22;
+  border-bottom: 1px solid #21262D;
+}
+
+.scanner-anim-dots {
+  display: flex;
+  gap: 5px;
+}
+
+.scanner-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.scanner-dot-red { background: #FF5F57; }
+.scanner-dot-yellow { background: #FEBC2E; }
+.scanner-dot-green { background: #28C840; }
+
+.scanner-anim-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #8B949E;
+  font-weight: 500;
+}
+
+.scanner-anim-body {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-height: 120px;
+}
+
+.scanner-line {
+  display: flex;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  opacity: 0;
+  animation: scanLineIn 0.3s ease forwards;
+}
+
+@keyframes scanLineIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.scanner-label {
+  font-weight: 700;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.scanner-detail {
+  color: #C9D1D9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.scanner-cursor {
+  display: inline-block;
+  width: 7px;
+  height: 14px;
+  background: #58A6FF;
+  animation: cursorBlink 1s step-end infinite;
+  margin-top: 2px;
+}
+
+@keyframes cursorBlink {
+  50% { opacity: 0; }
+}
+
+.scanner-anim-cta {
+  display: block;
+  text-align: center;
+  padding: 0.6rem 1rem;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: #58A6FF;
+  background: #161B22;
+  border-top: 1px solid #21262D;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.scanner-anim-cta:hover {
+  background: #1F2937;
+  color: #79C0FF;
+}
+
 /* ── API warning alert ─────────────────────────────────── */
 .api-alert {
   background: var(--surface-2);

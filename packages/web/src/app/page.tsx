@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import FeaturedCarousel from "../components/FeaturedCarousel";
+import ScannerAnimation from "../components/ScannerAnimation";
 
 export const dynamic = "force-dynamic";
 
@@ -332,10 +333,13 @@ export default async function HomePage({
 
         {/* Card 2 — Green: detection rules */}
         <div className="stats-card stats-card-green">
-          <span className="stats-card-big-num">150+</span>
+          <span className="stats-card-big-num">177</span>
           <span className="stats-card-subtitle">Detection Rules</span>
           <span className="stats-card-green-detail">Deterministic &middot; No LLMs &middot; No false positives</span>
         </div>
+
+        {/* Card 3 — Scanner animation */}
+        <ScannerAnimation />
       </section>
 
       {/* ── Featured Official Servers (rotating carousel) ── */}
