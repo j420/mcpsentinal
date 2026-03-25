@@ -1,15 +1,10 @@
 "use client";
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import {
   CddFinding,
   FullFinding,
   RULE_NAMES,
-  RULE_SEVERITIES,
   THREAT_CATS,
-  CAT_VECTORS,
-  CAT_MITIGATIONS,
-  RULE_TESTS,
-  getRuleFrameworks,
   getFrameworkCoverage,
   getFindingsForCategory,
   RULES,
@@ -29,13 +24,13 @@ export { THREAT_CATS };
 // ── View tab type ───────────────────────────────────────────────────────────
 type ViewTab = "tree" | "remediation" | "stories" | "compliance" | "atlas" | "maturity";
 
-const VIEW_TABS: { id: ViewTab; icon: string; label: string }[] = [
-  { id: "tree",        icon: "🌳", label: "Sub-Category Tree" },
-  { id: "remediation", icon: "🛠",  label: "Remediation Roadmap" },
-  { id: "stories",     icon: "📖", label: "Attack Stories" },
-  { id: "compliance",  icon: "📋", label: "Compliance Overlay" },
-  { id: "atlas",       icon: "🎯", label: "ATLAS Technique Tree" },
-  { id: "maturity",    icon: "📊", label: "Maturity Model" },
+const VIEW_TABS: { id: ViewTab; label: string }[] = [
+  { id: "tree",        label: "Sub-Category Tree" },
+  { id: "remediation", label: "Remediation Roadmap" },
+  { id: "stories",     label: "Attack Stories" },
+  { id: "compliance",  label: "Compliance Overlay" },
+  { id: "atlas",       label: "ATLAS Technique Tree" },
+  { id: "maturity",    label: "Maturity Model" },
 ];
 
 // ── Status helpers ──────────────────────────────────────────────────────────
@@ -54,34 +49,29 @@ const SEV_ORDER = ["critical", "high", "medium", "low", "informational"] as cons
 
 export default function CategoryDeepDivePanel({ findings, fullFindings }: { findings: CddFinding[]; fullFindings?: FullFinding[] }) {
   const triggered = new Set(findings.map((f) => f.rule_id));
-  const [expandedRule, setExpandedRule] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<ViewTab>("tree");
-  const [selectedCat, setSelectedCat] = useState("PI");
+  const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [expandedStory, setExpandedStory] = useState<string | null>(null);
   const [expandedAtlas, setExpandedAtlas] = useState<string | null>(null);
 
-  const toggleRule = useCallback((ruleId: string) => {
-    setExpandedRule((prev) => (prev === ruleId ? null : ruleId));
-  }, []);
-
-  // Shared derived data — all tabs read from the same arrays
-  const catRules = useMemo(() => RULES.filter(r => r.cat === selectedCat), [selectedCat]);
-  const catGaps = useMemo(() => GAPS.filter(g => g.cat === selectedCat), [selectedCat]);
+  // Shared derived data — computed only when a category is selected
+  const cat = selectedCat ? THREAT_CATS.find(c => c.id === selectedCat) ?? null : null;
+  const catRules = useMemo(() => selectedCat ? RULES.filter(r => r.cat === selectedCat) : [], [selectedCat]);
+  const catGaps = useMemo(() => selectedCat ? GAPS.filter(g => g.cat === selectedCat) : [], [selectedCat]);
   const maturity = useMemo(() => computeMaturity(catRules), [catRules]);
   const remediation = useMemo(() => computeRemediation(catRules), [catRules]);
 
-  const cat = THREAT_CATS.find(c => c.id === selectedCat)!;
-  const allRuleIds = cat.subCats.flatMap((sc) => sc.rules);
+  const allRuleIds = cat ? cat.subCats.flatMap((sc) => sc.rules) : [];
   const catHits = allRuleIds.filter((r) => triggered.has(r));
   const implPct = catRules.length > 0
     ? Math.round((catRules.filter(r => r.status === "implemented").length / catRules.length) * 100)
     : 0;
   const totalTests = catRules.reduce((s, r) => s + r.tests.length, 0);
-  const catStories = ATTACK_STORIES.filter(s => s.cat === selectedCat);
+  const catStories = selectedCat ? ATTACK_STORIES.filter(s => s.cat === selectedCat) : [];
 
   // Findings for the selected category (with full evidence/remediation)
   const catFullFindings = useMemo(
-    () => fullFindings ? getFindingsForCategory(selectedCat, fullFindings) : [],
+    () => (fullFindings && selectedCat) ? getFindingsForCategory(selectedCat, fullFindings) : [],
     [selectedCat, fullFindings]
   );
   const catSevCounts = useMemo(() => {
@@ -143,126 +133,150 @@ export default function CategoryDeepDivePanel({ findings, fullFindings }: { find
 
         {/* ── Detail panel ───────────────────────────────────── */}
         <div className="cdd-detail">
-          {/* Category header */}
-          <div className="cdd-cat-hdr" style={{ "--cc": cat.color } as React.CSSProperties}>
-            <div className="cdd-cat-hdr-left">
-              <div>
-                <div className="cdd-cat-name">{cat.name}</div>
-                <div className="cdd-cat-tagline">{cat.tagline}</div>
+          {!cat ? (
+            /* ── No category selected — show category grid ──── */
+            <div className="cdd-overview">
+              <p className="cdd-overview-intro">Select a category to explore sub-categories, findings, and compliance coverage.</p>
+              <div className="cdd-overview-grid">
+                {THREAT_CATS.map((c) => {
+                  const cRules = c.subCats.flatMap((sc) => sc.rules);
+                  const cFindingCount = cRules.filter((r) => triggered.has(r)).length;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className={`cdd-overview-card${cFindingCount > 0 ? " cdd-overview-card-hit" : ""}`}
+                      style={{ "--cc": c.color } as React.CSSProperties}
+                      onClick={() => setSelectedCat(c.id)}
+                    >
+                      <div className="cdd-overview-card-name">{c.name}</div>
+                      <div className="cdd-overview-card-meta">
+                        <span>{cRules.length} rules</span>
+                        {cFindingCount > 0 && (
+                          <span className="cdd-overview-card-findings">{cFindingCount} findings</span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
-            <div className="cdd-maturity">
-              <div className="cdd-maturity-num" style={{ color: maturity.overall >= 60 ? "var(--good)" : maturity.overall >= 40 ? "var(--moderate)" : "var(--critical)" }}>
-                {maturity.overall}
-              </div>
-              <div className="cdd-maturity-label">Maturity</div>
-            </div>
-          </div>
-
-          {/* Stats row */}
-          <div className="cdd-stats">
-            {[
-              { num: allRuleIds.length, label: "Rules", color: undefined },
-              { num: cat.subCats.length, label: "Sub-Categories", color: undefined },
-              { num: catGaps.length, label: "Gaps", color: catGaps.length > 0 ? "var(--moderate)" : undefined },
-              { num: `${implPct}%`, label: "Implemented", color: implPct >= 80 ? "var(--good)" : implPct >= 50 ? "var(--moderate)" : "var(--critical)" },
-              { num: totalTests, label: "Tests", color: undefined },
-              { num: catStories.length, label: "Stories", color: undefined },
-            ].map((s) => (
-              <div key={s.label} className="cdd-stat">
-                <div className="cdd-stat-num" style={s.color ? { color: s.color } : {}}>
-                  {s.num}
+          ) : (
+            /* ── Category selected — show detail ──────────── */
+            <>
+              {/* Category header */}
+              <div className="cdd-cat-hdr" style={{ "--cc": cat.color } as React.CSSProperties}>
+                <div className="cdd-cat-hdr-left">
+                  <div>
+                    <div className="cdd-cat-name">{cat.name}</div>
+                    <div className="cdd-cat-tagline">{cat.tagline}</div>
+                  </div>
                 </div>
-                <div className="cdd-stat-label">{s.label}</div>
               </div>
-            ))}
-          </div>
 
-          {/* Triggered findings for this category */}
-          {catFullFindings.length > 0 && (
-            <div className="cdd-findings-section">
-              <div className="cdd-findings-header">
-                <span className="cdd-findings-title">Findings</span>
-                <span className="cdd-findings-count">{catFullFindings.length}</span>
-              </div>
-              <div className="cdd-findings-sevs">
-                {catSevCounts.map(({ sev, count }) => (
-                  <span key={sev} className={`cdd-findings-sev cdd-findings-sev-${sev}`}>
-                    {count} {sev}
-                  </span>
-                ))}
-              </div>
-              <div className="cdd-findings-list">
-                {catFullFindings.map((f) => (
-                  <div key={f.id} className={`cdd-finding-card cdd-finding-${f.severity}`}>
-                    <div className="cdd-finding-hdr">
-                      <span className={`sev-badge sev-${f.severity}`}>{f.severity}</span>
-                      <span className="cdd-finding-rule-id">{f.rule_id}</span>
-                      <span className="cdd-finding-rule-name">{RULE_NAMES[f.rule_id] ?? f.rule_id}</span>
-                      {f.owasp_category && <span className="cdd-finding-owasp">{f.owasp_category}</span>}
-                      {f.mitre_technique && <span className="cdd-finding-mitre">{f.mitre_technique}</span>}
+              {/* Stats row */}
+              <div className="cdd-stats">
+                {[
+                  { num: allRuleIds.length, label: "Rules", color: undefined },
+                  { num: cat.subCats.length, label: "Sub-Categories", color: undefined },
+                  { num: catGaps.length, label: "Gaps", color: catGaps.length > 0 ? "var(--moderate)" : undefined },
+                  { num: `${implPct}%`, label: "Implemented", color: implPct >= 80 ? "var(--good)" : implPct >= 50 ? "var(--moderate)" : "var(--critical)" },
+                  { num: totalTests, label: "Tests", color: undefined },
+                  { num: catStories.length, label: "Stories", color: undefined },
+                ].map((s) => (
+                  <div key={s.label} className="cdd-stat">
+                    <div className="cdd-stat-num" style={s.color ? { color: s.color } : {}}>
+                      {s.num}
                     </div>
-                    <div className="cdd-finding-evidence">{f.evidence}</div>
-                    {f.remediation && (
-                      <div className="cdd-finding-remediation">{f.remediation}</div>
-                    )}
+                    <div className="cdd-stat-label">{s.label}</div>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
 
-          {/* View tabs */}
-          <div className="cdd-view-tabs">
-            {VIEW_TABS.map((vt) => (
-              <button
-                key={vt.id}
-                type="button"
-                className={`cdd-view-tab${activeView === vt.id ? " cdd-view-tab-active" : ""}`}
-                onClick={() => setActiveView(vt.id)}
-              >
-                <span className="cdd-view-tab-icon">{vt.icon}</span>
-                {vt.label}
-              </button>
-            ))}
-          </div>
+              {/* Triggered findings for this category */}
+              {catFullFindings.length > 0 && (
+                <div className="cdd-findings-section">
+                  <div className="cdd-findings-header">
+                    <span className="cdd-findings-title">Findings</span>
+                    <span className="cdd-findings-count">{catFullFindings.length}</span>
+                  </div>
+                  <div className="cdd-findings-sevs">
+                    {catSevCounts.map(({ sev, count }) => (
+                      <span key={sev} className={`cdd-findings-sev cdd-findings-sev-${sev}`}>
+                        {count} {sev}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="cdd-findings-list">
+                    {catFullFindings.map((f) => (
+                      <div key={f.id} className={`cdd-finding-card cdd-finding-${f.severity}`}>
+                        <div className="cdd-finding-hdr">
+                          <span className={`sev-badge sev-${f.severity}`}>{f.severity}</span>
+                          <span className="cdd-finding-rule-id">{f.rule_id}</span>
+                          <span className="cdd-finding-rule-name">{RULE_NAMES[f.rule_id] ?? f.rule_id}</span>
+                          {f.owasp_category && <span className="cdd-finding-owasp">{f.owasp_category}</span>}
+                          {f.mitre_technique && <span className="cdd-finding-mitre">{f.mitre_technique}</span>}
+                        </div>
+                        <div className="cdd-finding-evidence">{f.evidence}</div>
+                        {f.remediation && (
+                          <div className="cdd-finding-remediation">{f.remediation}</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-          {/* Tab content */}
-          {activeView === "tree" && (
-            <TreeTab
-              cat={cat}
-              catGaps={catGaps}
-              catRules={catRules}
-              triggered={triggered}
-              expandedRule={expandedRule}
-              toggleRule={toggleRule}
-              allRuleIds={allRuleIds}
-              catHits={catHits}
-            />
-          )}
-          {activeView === "remediation" && (
-            <RemediationTab catColor={cat.color} remediation={remediation} />
-          )}
-          {activeView === "stories" && (
-            <StoriesTab
-              stories={catStories}
-              catColor={cat.color}
-              expandedStory={expandedStory}
-              setExpandedStory={setExpandedStory}
-            />
-          )}
-          {activeView === "compliance" && (
-            <ComplianceTab cat={cat} catRules={catRules} />
-          )}
-          {activeView === "atlas" && (
-            <AtlasTab
-              cat={cat}
-              expandedAtlas={expandedAtlas}
-              setExpandedAtlas={setExpandedAtlas}
-            />
-          )}
-          {activeView === "maturity" && (
-            <MaturityTab catColor={cat.color} maturity={maturity} />
+              {/* View tabs */}
+              <div className="cdd-view-tabs">
+                {VIEW_TABS.map((vt) => (
+                  <button
+                    key={vt.id}
+                    type="button"
+                    className={`cdd-view-tab${activeView === vt.id ? " cdd-view-tab-active" : ""}`}
+                    onClick={() => setActiveView(vt.id)}
+                  >
+                    {vt.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Tab content */}
+              {activeView === "tree" && (
+                <TreeTab
+                  cat={cat}
+                  catGaps={catGaps}
+                  catRules={catRules}
+                  triggered={triggered}
+                  allRuleIds={allRuleIds}
+                  catHits={catHits}
+                />
+              )}
+              {activeView === "remediation" && (
+                <RemediationTab catColor={cat.color} remediation={remediation} />
+              )}
+              {activeView === "stories" && (
+                <StoriesTab
+                  stories={catStories}
+                  catColor={cat.color}
+                  expandedStory={expandedStory}
+                  setExpandedStory={setExpandedStory}
+                />
+              )}
+              {activeView === "compliance" && (
+                <ComplianceTab cat={cat} catRules={catRules} />
+              )}
+              {activeView === "atlas" && (
+                <AtlasTab
+                  cat={cat}
+                  expandedAtlas={expandedAtlas}
+                  setExpandedAtlas={setExpandedAtlas}
+                />
+              )}
+              {activeView === "maturity" && (
+                <MaturityTab catColor={cat.color} maturity={maturity} />
+              )}
+            </>
           )}
         </div>
       </div>
@@ -279,13 +293,11 @@ interface TreeTabProps {
   catGaps: Gap[];
   catRules: EnrichedRule[];
   triggered: Set<string>;
-  expandedRule: string | null;
-  toggleRule: (id: string) => void;
   allRuleIds: string[];
   catHits: string[];
 }
 
-function TreeTab({ cat, catGaps, catRules, triggered, expandedRule, toggleRule, allRuleIds, catHits }: TreeTabProps) {
+function TreeTab({ cat, catGaps, triggered, allRuleIds, catHits }: TreeTabProps) {
   return (
     <div className="cdd-body">
       <div className="cdd-left">
@@ -302,7 +314,6 @@ function TreeTab({ cat, catGaps, catRules, triggered, expandedRule, toggleRule, 
             <div key={sc.id} className={`cdd-subcat${scHits.length > 0 ? " cdd-subcat-hit" : ""}`}>
               <div className="cdd-subcat-hdr">
                 <div className="cdd-subcat-meta">
-                  <span className="cdd-subcat-id" style={{ color: cat.color }}>{sc.id}</span>
                   <span className="cdd-subcat-name">{sc.name}</span>
                 </div>
                 <div className="cdd-subcat-right">
@@ -326,106 +337,6 @@ function TreeTab({ cat, catGaps, catRules, triggered, expandedRule, toggleRule, 
                   <span className="cdd-gap-desc">{gap.desc}</span>
                 </div>
               ))}
-
-              {/* Rule rows */}
-              <div className="cdd-rule-list">
-                {sc.rules.map((ruleId) => {
-                  const isHit = triggered.has(ruleId);
-                  const isOpen = expandedRule === ruleId;
-                  const sev = RULE_SEVERITIES[ruleId] ?? "medium";
-                  const rule = catRules.find(r => r.id === ruleId);
-                  const catPrefix = ruleId.replace(/\d+$/, "");
-                  const vectors = CAT_VECTORS[catPrefix] ?? ["Tool metadata", "Server analysis"];
-                  const mitigations = CAT_MITIGATIONS[catPrefix] ?? ["Apply security best practices"];
-                  const tests = RULE_TESTS[ruleId] ?? [];
-                  const fwBadges = getRuleFrameworks(ruleId);
-                  return (
-                    <div
-                      key={ruleId}
-                      className={`cdd-rule${isHit ? " cdd-rule-hit" : " cdd-rule-clean"}${isOpen ? " cdd-rule-open" : ""}`}
-                    >
-                      <button
-                        type="button"
-                        className="cdd-rule-summary"
-                        onClick={() => toggleRule(ruleId)}
-                        aria-expanded={isOpen}
-                      >
-                        <span className="cdd-rule-id" style={{ color: cat.color }}>{ruleId}</span>
-                        <span className={`cdd-sev-dot cdd-sev-${sev}`} />
-                        <span className="cdd-rule-name">{RULE_NAMES[ruleId] ?? ruleId}</span>
-                        <div className="cdd-rule-right">
-                          {rule && (
-                            <span className={`cdd-badge ${statusClass(rule.status)}`}>
-                              {rule.status}
-                            </span>
-                          )}
-                          {isHit ? (
-                            <span className="cdd-badge cdd-badge-triggered">triggered</span>
-                          ) : (
-                            <span className="cdd-badge cdd-badge-clean">clean</span>
-                          )}
-                          <span className="cdd-tests">{tests.length}✓</span>
-                          <span className={`cdd-expand-arrow${isOpen ? " cdd-expand-arrow-up" : ""}`}>▼</span>
-                        </div>
-                      </button>
-                      {isOpen && (
-                        <div className="cdd-rule-detail">
-                          <div className="cdd-rule-detail-sections">
-                            <div className="cdd-detail-section cdd-detail-tests">
-                              <div className="cdd-detail-heading">Tests</div>
-                              <div className="cdd-detail-grid">
-                                {tests.map((t, ti) => (
-                                  <div key={ti} className="cdd-detail-item cdd-detail-test">
-                                    <span className="cdd-detail-check">✓</span>
-                                    <span>{t}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                            <div className="cdd-detail-right-col">
-                              <div className="cdd-detail-section">
-                                <div className="cdd-detail-heading">Attack Vectors</div>
-                                <div className="cdd-detail-grid">
-                                  {vectors.map((v, vi) => (
-                                    <div key={vi} className="cdd-detail-item cdd-detail-vector">
-                                      <span className="cdd-detail-bar" style={{ background: cat.color }} />
-                                      <span>{v}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                              <div className="cdd-detail-section">
-                                <div className="cdd-detail-heading">Mitigations</div>
-                                <div className="cdd-detail-grid">
-                                  {mitigations.map((m, mi) => (
-                                    <div key={mi} className="cdd-detail-item cdd-detail-mitigation">
-                                      <span className="cdd-detail-arrow">→</span>
-                                      <span>{m}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          {fwBadges.length > 0 && (
-                            <div className="cdd-fw-badges">
-                              {fwBadges.map((fw) => (
-                                <span
-                                  key={fw.abbr}
-                                  className="cdd-fw-pill"
-                                  style={{ background: fw.color + "22", color: fw.color, borderColor: fw.color + "44" }}
-                                >
-                                  {fw.abbr}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
             </div>
           );
         })}
