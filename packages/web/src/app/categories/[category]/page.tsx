@@ -164,10 +164,10 @@ export async function generateMetadata({
   if (!meta) return {};
   return {
     title: `${meta.label} MCP Servers`,
-    description: `Browse ${meta.label} MCP servers. ${meta.description}`,
+    description: `Browse ${meta.label} MCP servers ranked by security score. ${meta.description}`,
     openGraph: {
       title: `${meta.label} MCP Servers — MCP Sentinel`,
-      description: `Browse ${meta.label} MCP servers. ${meta.description}`,
+      description: `Browse ${meta.label} MCP servers ranked by security score. ${meta.description}`,
     },
   };
 }
@@ -179,14 +179,16 @@ async function getCategoryServers(params: {
   sort?: string;
   order?: string;
   page?: number;
+  min_score?: string;
 }): Promise<{ servers: Server[]; pagination: Pagination }> {
   try {
     const sp = new URLSearchParams();
     sp.set("category", params.category);
     sp.set("limit", "25");
-    sp.set("sort", params.sort || "stars");
+    sp.set("sort", params.sort || "score");
     sp.set("order", params.order || "desc");
     if (params.page && params.page > 1) sp.set("page", String(params.page));
+    if (params.min_score) sp.set("min_score", params.min_score);
 
     const res = await fetch(`${API_URL}/api/v1/servers?${sp}`, {
       signal: AbortSignal.timeout(4000),
@@ -206,11 +208,25 @@ async function getCategoryServers(params: {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+function scoreClass(score: number | null): string {
+  if (score === null) return "score-unscanned";
+  if (score >= 80) return "score-good";
+  if (score >= 60) return "score-moderate";
+  if (score >= 40) return "score-poor";
+  return "score-critical";
+}
+
 function fmtNum(n: number | null | undefined): string {
   if (n == null) return "—";
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
   return n.toLocaleString();
+}
+
+function avgScore(servers: Server[]): number | null {
+  const scanned = servers.filter((s) => s.latest_score !== null);
+  if (scanned.length === 0) return null;
+  return Math.round(scanned.reduce((s, srv) => s + (srv.latest_score ?? 0), 0) / scanned.length);
 }
 
 function buildPageUrl(
@@ -219,8 +235,9 @@ function buildPageUrl(
   page: number
 ): string {
   const params = new URLSearchParams();
-  if (sp.sort && sp.sort !== "stars") params.set("sort", sp.sort);
+  if (sp.sort && sp.sort !== "score") params.set("sort", sp.sort);
   if (sp.order && sp.order !== "desc") params.set("order", sp.order);
+  if (sp.min_score) params.set("min_score", sp.min_score);
   if (page > 1) params.set("page", String(page));
   const qs = params.toString();
   return qs ? `/categories/${category}?${qs}` : `/categories/${category}`;
@@ -364,6 +381,7 @@ function OtherIcon() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 const SORT_OPTIONS = [
+  { value: "score", label: "Score" },
   { value: "stars", label: "Stars" },
   { value: "downloads", label: "Downloads" },
   { value: "name", label: "Name" },
@@ -379,6 +397,7 @@ export default async function CategoryPage({
     sort?: string;
     order?: string;
     page?: string;
+    min_score?: string;
   }>;
 }) {
   const { category } = await params;
@@ -394,7 +413,25 @@ export default async function CategoryPage({
     sort: sp.sort,
     order: sp.order,
     page,
+    min_score: sp.min_score,
   });
+
+  const avg = avgScore(servers);
+  const scannedCount = servers.filter((s) => s.latest_score !== null).length;
+  const criticalCount = servers.filter(
+    (s) => s.latest_score !== null && s.latest_score < 40
+  ).length;
+
+  const avgColor =
+    avg === null
+      ? "var(--text-3)"
+      : avg >= 80
+        ? "var(--good)"
+        : avg >= 60
+          ? "var(--moderate)"
+          : avg >= 40
+            ? "var(--poor)"
+            : "var(--critical)";
 
   return (
     <>
@@ -427,6 +464,27 @@ export default async function CategoryPage({
           <span className="stat-value">{pagination.total.toLocaleString()}</span>
           <span className="stat-label">Total Servers</span>
         </div>
+        <div className="stat-card">
+          <span className="stat-value">{scannedCount.toLocaleString()}</span>
+          <span className="stat-label">Scanned (this page)</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-value" style={{ color: avgColor }}>
+            {avg !== null ? (
+              <>
+                {avg}
+                <span className="stat-value-denom">/100</span>
+              </>
+            ) : "—"}
+          </span>
+          <span className="stat-label">Avg Score (this page)</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-value" style={{ color: criticalCount > 0 ? "var(--critical)" : "var(--good)" }}>
+            {criticalCount}
+          </span>
+          <span className="stat-label">Critical (&lt;40)</span>
+        </div>
       </section>
 
       {/* ── Filters ─────────────────────────────────────────── */}
@@ -434,7 +492,7 @@ export default async function CategoryPage({
         <div className="filter-row" style={{ marginBottom: "var(--s6)" }}>
           <span className="filter-label">Sort:</span>
 
-          <select className="filter-select" name="sort" defaultValue={sp.sort || "stars"}>
+          <select className="filter-select" name="sort" defaultValue={sp.sort || "score"}>
             {SORT_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
                 Sort by {o.label}
@@ -445,6 +503,13 @@ export default async function CategoryPage({
           <select className="filter-select" name="order" defaultValue={sp.order || "desc"}>
             <option value="desc">Descending</option>
             <option value="asc">Ascending</option>
+          </select>
+
+          <select className="filter-select" name="min_score" defaultValue={sp.min_score || ""}>
+            <option value="">Any score</option>
+            <option value="80">Good (80+)</option>
+            <option value="60">Moderate (60+)</option>
+            <option value="40">Poor (40+)</option>
           </select>
 
           <button type="submit" className="btn-primary btn-primary-sm">
@@ -478,6 +543,7 @@ export default async function CategoryPage({
               <th>Language</th>
               <th className="right">Stars</th>
               <th className="right">Downloads</th>
+              <th className="right">Score</th>
             </tr>
           </thead>
           <tbody>
@@ -504,6 +570,11 @@ export default async function CategoryPage({
                 </td>
                 <td className="right server-metric">
                   {fmtNum(server.npm_downloads)}
+                </td>
+                <td className="right">
+                  <span className={`score-badge ${scoreClass(server.latest_score)}`}>
+                    {server.latest_score === null ? "Unscanned" : server.latest_score}
+                  </span>
                 </td>
               </tr>
             ))}
