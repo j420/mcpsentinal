@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "MCP Server Security Registry",
   description:
-    "Search thousands of MCP servers. Compare security scores. Evaluate the safety of every Model Context Protocol integration before you deploy.",
+    "Search thousands of MCP servers. Evaluate the safety of every Model Context Protocol integration before you deploy.",
 };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3100";
@@ -23,7 +23,6 @@ interface Server {
   language: string | null;
   github_stars: number | null;
   npm_downloads: number | null;
-  latest_score: number | null;
   last_commit: string | null;
   tool_count: number;
   connection_status: "success" | "failed" | "timeout" | "no_endpoint" | null;
@@ -43,10 +42,8 @@ interface Pagination {
 interface EcosystemStats {
   total_servers: number;
   total_scanned: number;
-  average_score: number;
   category_breakdown: Record<string, number>;
   severity_breakdown: Record<string, number>;
-  score_distribution: Array<{ range: string; count: number }>;
 }
 
 // ── Data fetching ─────────────────────────────────────────────────────────────
@@ -58,19 +55,17 @@ async function getServers(params: {
   sort?: string;
   order?: string;
   page?: number;
-  min_score?: string;
 }): Promise<{ servers: Server[]; pagination: Pagination }> {
   try {
     const sp = new URLSearchParams();
     sp.set("limit", "25");
-    sp.set("sort", params.sort || "score");
-    sp.set("order", params.order || "desc");
+    sp.set("sort", params.sort || "name");
+    sp.set("order", params.order || "asc");
     const searchQ = [params.q, params.author].filter(Boolean).join(" ");
     if (searchQ) sp.set("q", searchQ);
     if (params.category && params.category !== "all")
       sp.set("category", params.category);
     if (params.page && params.page > 1) sp.set("page", String(params.page));
-    if (params.min_score) sp.set("min_score", params.min_score);
 
     const res = await fetch(`${API_URL}/api/v1/servers?${sp}`, {
       signal: AbortSignal.timeout(4000),
@@ -103,14 +98,6 @@ async function getStats(): Promise<EcosystemStats | null> {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function scoreClass(score: number | null): string {
-  if (score === null) return "score-unscanned";
-  if (score >= 80) return "score-good";
-  if (score >= 60) return "score-moderate";
-  if (score >= 40) return "score-poor";
-  return "score-critical";
-}
 
 function fmtNum(n: number | null | undefined): string {
   if (n == null) return "—";
@@ -152,10 +139,9 @@ const CATEGORIES = [
 ];
 
 const SORT_OPTIONS = [
-  { value: "score", label: "Score" },
+  { value: "name", label: "Name" },
   { value: "stars", label: "Stars" },
   { value: "downloads", label: "Downloads" },
-  { value: "name", label: "Name" },
   { value: "updated", label: "Last Updated" },
 ];
 
@@ -222,17 +208,6 @@ const FEATURED_ORGS: FeaturedOrg[] = [
   { name: "Fly.io MCP Server", org: "Fly.io", slug: "fly-mcp-server", desc: "Apps, machines, volumes, secrets.", color: "#7B3FE4", initials: "FY" },
 ];
 
-// ── Components ────────────────────────────────────────────────────────────────
-
-function ScoreBadge({ score }: { score: number | null }) {
-  const cls = scoreClass(score);
-  return (
-    <span className={`score-badge ${cls}`}>
-      {score === null ? "Unscanned" : score}
-    </span>
-  );
-}
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function HomePage({
@@ -245,7 +220,6 @@ export default async function HomePage({
     sort?: string;
     order?: string;
     page?: string;
-    min_score?: string;
   }>;
 }) {
   const sp = await searchParams;
@@ -254,8 +228,7 @@ export default async function HomePage({
   const isFiltered =
     !!sp.q ||
     !!sp.author ||
-    (!!sp.category && sp.category !== "all") ||
-    !!sp.min_score;
+    (!!sp.category && sp.category !== "all");
 
   const [{ servers, pagination }, stats] = await Promise.all([
     getServers({
@@ -265,19 +238,9 @@ export default async function HomePage({
       sort: sp.sort,
       order: sp.order,
       page,
-      min_score: sp.min_score,
     }),
     getStats(),
   ]);
-
-  const avgScoreColor =
-    stats && stats.average_score >= 80
-      ? "var(--good)"
-      : stats && stats.average_score >= 60
-        ? "var(--moderate)"
-        : stats && stats.average_score >= 40
-          ? "var(--poor)"
-          : "var(--critical)";
 
   const apiDown = !stats && servers.length === 0;
 
@@ -329,7 +292,7 @@ export default async function HomePage({
           <span className="stats-card-big-num">
             {stats ? stats.total_servers.toLocaleString() : "\u2014"}
           </span>
-          <span className="stats-card-subtitle">MCP servers discovered and scored</span>
+          <span className="stats-card-subtitle">MCP servers discovered and analyzed</span>
           <div className="stats-card-sub-row">
             <div className="stats-card-sub-item">
               <span className="stats-card-sub-num">
@@ -350,32 +313,7 @@ export default async function HomePage({
           </div>
         </div>
 
-        {/* Card 2 — White: avg trust score ring */}
-        <div className="stats-card stats-card-score">
-          <div className="stats-card-ring-wrap">
-            <svg width="120" height="120" viewBox="0 0 120 120" className="stats-card-ring" aria-hidden="true">
-              <circle cx="60" cy="60" r="48" fill="none" stroke="#E5E7EB" strokeWidth="8" />
-              <circle
-                cx="60"
-                cy="60"
-                r="48"
-                fill="none"
-                stroke={avgScoreColor}
-                strokeWidth="8"
-                strokeLinecap="round"
-                strokeDasharray={2 * Math.PI * 48}
-                strokeDashoffset={2 * Math.PI * 48 * (1 - (stats?.average_score ?? 0) / 100)}
-                style={{ transform: "rotate(-90deg)", transformOrigin: "center" }}
-              />
-            </svg>
-            <span className="stats-card-ring-num" style={{ color: avgScoreColor }}>
-              {stats?.average_score ?? "\u2014"}
-            </span>
-          </div>
-          <span className="stats-card-ring-label">Avg Trust Score</span>
-        </div>
-
-        {/* Card 3 — Green: detection rules */}
+        {/* Card 2 — Green: detection rules */}
         <div className="stats-card stats-card-green">
           <span className="stats-card-big-num">150+</span>
           <span className="stats-card-subtitle">Detection Rules</span>
@@ -388,7 +326,7 @@ export default async function HomePage({
         <section className="featured-section" aria-label="Official server integrations">
           <div className="featured-header">
             <h2 className="featured-heading">Official Integrations</h2>
-            <a href="/?sort=score&order=desc" className="featured-view-all">
+            <a href="/servers" className="featured-view-all">
               Browse all →
             </a>
           </div>
@@ -439,17 +377,6 @@ export default async function HomePage({
             ))}
           </select>
 
-          <select
-            className="filter-select"
-            name="min_score"
-            defaultValue={sp.min_score || ""}
-          >
-            <option value="">Any score</option>
-            <option value="80">Good (80+)</option>
-            <option value="60">Moderate (60+)</option>
-            <option value="40">Poor (40+)</option>
-          </select>
-
           <label className="author-filter">
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
               <circle cx="8" cy="5.5" r="2.5" />
@@ -469,7 +396,7 @@ export default async function HomePage({
           <select
             className="filter-select"
             name="sort"
-            defaultValue={sp.sort || "score"}
+            defaultValue={sp.sort || "name"}
           >
             {SORT_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -513,7 +440,6 @@ export default async function HomePage({
             <span className="stcol stcol-lang">Language</span>
             <span className="stcol stcol-tools">Tools</span>
             <span className="stcol stcol-origin">Source</span>
-            <span className="stcol stcol-score">Score</span>
           </div>
           {servers.map((server) => (
             <a
@@ -553,9 +479,6 @@ export default async function HomePage({
                 ) : (
                   <span className="stcol-empty">{"\u2014"}</span>
                 )}
-              </span>
-              <span className="stcol stcol-score">
-                <ScoreBadge score={server.latest_score} />
               </span>
             </a>
           ))}
@@ -621,9 +544,8 @@ function buildPageUrl(
   if (sp.q) params.set("q", sp.q);
   if (sp.author) params.set("author", sp.author);
   if (sp.category && sp.category !== "all") params.set("category", sp.category);
-  if (sp.sort && sp.sort !== "score") params.set("sort", sp.sort);
-  if (sp.order && sp.order !== "desc") params.set("order", sp.order);
-  if (sp.min_score) params.set("min_score", sp.min_score);
+  if (sp.sort && sp.sort !== "name") params.set("sort", sp.sort);
+  if (sp.order && sp.order !== "asc") params.set("order", sp.order);
   if (page > 1) params.set("page", String(page));
   const qs = params.toString();
   return qs ? `/?${qs}` : "/";

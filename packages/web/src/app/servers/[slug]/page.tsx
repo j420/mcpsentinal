@@ -21,16 +21,6 @@ interface Finding {
   mitre_technique: string | null;
 }
 
-interface ScoreDetail {
-  total_score: number;
-  code_score: number;
-  deps_score: number;
-  config_score: number;
-  description_score: number;
-  behavior_score: number;
-  owasp_coverage: Record<string, boolean>;
-}
-
 interface Tool {
   name: string;
   description: string | null;
@@ -51,7 +41,6 @@ interface ServerDetail {
   pypi_package: string | null;
   github_stars: number | null;
   npm_downloads: number | null;
-  latest_score: number | null;
   last_commit: string | null;
   last_scanned_at: string | null;
   endpoint_url: string | null;
@@ -60,7 +49,7 @@ interface ServerDetail {
   tool_count: number;
   tools: Tool[];
   findings: Finding[];
-  score_detail?: ScoreDetail;
+  owasp_coverage?: Record<string, boolean>;
 }
 
 // ── Data Fetching ─────────────────────────────────────────────────────────────
@@ -89,42 +78,14 @@ export async function generateMetadata({
   const { slug } = await params;
   const server = await getServer(slug);
   if (!server) return { title: "Server Not Found" };
-  const scoreStr =
-    server.latest_score !== null
-      ? `Score: ${server.latest_score}/100.`
-      : "Not yet scanned.";
   const findCount = server.findings?.length ?? 0;
   return {
     title: `${server.name} Security Report`,
-    description: `Security analysis of ${server.name} MCP server. ${scoreStr} ${findCount} finding${findCount !== 1 ? "s" : ""} detected across 177 detection rules.`,
+    description: `Security analysis of ${server.name} MCP server. ${findCount} finding${findCount !== 1 ? "s" : ""} detected across 177 detection rules.`,
   };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function scoreColor(s: number | null): string {
-  if (s === null) return "var(--text-3)";
-  if (s >= 80) return "var(--good)";
-  if (s >= 60) return "var(--moderate)";
-  if (s >= 40) return "var(--poor)";
-  return "var(--critical)";
-}
-
-function scoreLabel(s: number | null): string {
-  if (s === null) return "Unscanned";
-  if (s >= 80) return "Good";
-  if (s >= 60) return "Moderate";
-  if (s >= 40) return "Poor";
-  return "Critical";
-}
-
-function scoreClass(s: number | null): string {
-  if (s === null) return "unscanned";
-  if (s >= 80) return "good";
-  if (s >= 60) return "moderate";
-  if (s >= 40) return "poor";
-  return "critical";
-}
 
 function fmtNum(n: number | null): string {
   if (n == null) return "\u2014";
@@ -158,65 +119,6 @@ const OWASP_NAMES: Record<string, string> = {
 
 const SEV_ORDER = ["critical", "high", "medium", "low", "informational"] as const;
 
-// ── Components ────────────────────────────────────────────────────────────────
-
-function ScoreHero({ score, label }: { score: number | null; label: string }) {
-  const r = 54;
-  const circ = 2 * Math.PI * r;
-  const pct = score !== null ? score / 100 : 0;
-  const offset = circ * (1 - pct);
-  const color = scoreColor(score);
-
-  return (
-    <div className="sd-score-hero" role="meter" aria-label={`Security score: ${score !== null ? `${score} out of 100, rated ${label}` : "Not yet scanned"}`} aria-valuenow={score ?? undefined} aria-valuemin={0} aria-valuemax={100}>
-      <div className="sd-score-ring-wrap">
-        <svg width="140" height="140" viewBox="0 0 140 140" className="sd-score-ring-svg" aria-hidden="true">
-          <circle cx="70" cy="70" r={r} fill="none" stroke="var(--surface-3)" strokeWidth="10" />
-          {score !== null && (
-            <circle
-              cx="70"
-              cy="70"
-              r={r}
-              fill="none"
-              stroke={color}
-              strokeWidth="10"
-              strokeLinecap="round"
-              strokeDasharray={circ}
-              strokeDashoffset={offset}
-              className="score-ring-arc"
-            />
-          )}
-        </svg>
-        <div className="sd-score-center">
-          <span className="sd-score-number" style={{ color }}>
-            {score !== null ? score : "\u2014"}
-          </span>
-          <span className="sd-score-of">/100</span>
-        </div>
-      </div>
-      <span className={`sd-score-label sd-score-label-${scoreClass(score)}`}>
-        {label}
-      </span>
-    </div>
-  );
-}
-
-function SubScoreRow({ label, value, icon }: { label: string; value: number | undefined; icon: string }) {
-  const v = value ?? 100;
-  const color =
-    v >= 80 ? "var(--good)" : v >= 60 ? "var(--moderate)" : v >= 40 ? "var(--poor)" : "var(--critical)";
-  return (
-    <div className="sd-subscore">
-      <span className="sd-subscore-icon">{icon}</span>
-      <span className="sd-subscore-label">{label}</span>
-      <div className="sd-subscore-bar">
-        <div className="sd-subscore-fill" style={{ width: `${v}%`, background: color }} />
-      </div>
-      <span className="sd-subscore-val" style={{ color }}>{v}</span>
-    </div>
-  );
-}
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function ServerDetailPage({
@@ -229,7 +131,6 @@ export default async function ServerDetailPage({
 
   if (!server) return notFound();
 
-  const sd = server.score_detail;
   const findings = server.findings ?? [];
   const tools = server.tools ?? [];
   const cddFindings: CddFinding[] = findings.map((f) => ({
@@ -262,7 +163,6 @@ export default async function ServerDetailPage({
 
       {/* ── Hero Section ───────────────────────────────────── */}
       <section className="sd-hero">
-        <div className="sd-hero-left">
           <div className="sd-hero-title-row">
             <h1 className="sd-hero-name">{server.name}</h1>
             {server.connection_status === "connected" && (
@@ -318,11 +218,6 @@ export default async function ServerDetailPage({
               </a>
             )}
           </div>
-        </div>
-
-        <div className="sd-hero-right">
-          <ScoreHero score={server.latest_score} label={scoreLabel(server.latest_score)} />
-        </div>
       </section>
 
       {/* ── Quick Stats ────────────────────────────────────── */}
@@ -351,37 +246,15 @@ export default async function ServerDetailPage({
         </div>
       </section>
 
-      {/* ── Score Breakdown ────────────────────────────────── */}
-      {!sd && server.last_scanned_at && (
-        <section className="sd-section">
-          <p className="text-muted-sm">Score breakdown pending — analysis in progress.</p>
-        </section>
-      )}
-      {sd && (
-        <section className="sd-section">
-          <h2 className="sd-section-title">
-            Score Breakdown
-            <span className="sd-section-count">5 categories</span>
-          </h2>
-          <div className="sd-subscores-card">
-            <SubScoreRow label="Code" value={sd.code_score} icon="&lt;/&gt;" />
-            <SubScoreRow label="Dependencies" value={sd.deps_score} icon="&#9881;" />
-            <SubScoreRow label="Config" value={sd.config_score} icon="&#9776;" />
-            <SubScoreRow label="Description" value={sd.description_score} icon="&#9998;" />
-            <SubScoreRow label="Behavior" value={sd.behavior_score} icon="&#9673;" />
-          </div>
-        </section>
-      )}
-
       {/* ── OWASP Coverage ─────────────────────────────────── */}
-      {sd?.owasp_coverage && Object.keys(sd.owasp_coverage).length > 0 && (
+      {server.owasp_coverage && Object.keys(server.owasp_coverage).length > 0 && (
         <section className="sd-section">
           <h2 className="sd-section-title">
             OWASP MCP Top 10 Coverage
           </h2>
           <p className="sd-section-sub">Pass = no findings in this category. Fail = issues detected.</p>
           <div className="sd-owasp-grid">
-            {Object.entries(sd.owasp_coverage).map(([id, clean]) => (
+            {Object.entries(server.owasp_coverage).map(([id, clean]) => (
               <div
                 key={id}
                 className={`sd-owasp-item ${clean ? "sd-owasp-clean" : "sd-owasp-dirty"}`}
