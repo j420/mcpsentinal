@@ -7,6 +7,18 @@ export interface CddFinding {
   severity: "critical" | "high" | "medium" | "low" | "informational";
 }
 
+// ── Full Finding type (with evidence/remediation for integrated display) ────
+
+export interface FullFinding {
+  id: string;
+  rule_id: string;
+  severity: "critical" | "high" | "medium" | "low" | "informational";
+  evidence: string;
+  remediation: string;
+  owasp_category: string | null;
+  mitre_technique: string | null;
+}
+
 // ── Rule names ─────────────────────────────────────────────────────────────
 
 export const RULE_NAMES: Record<string, string> = {
@@ -1243,4 +1255,13 @@ export function computeRemediation(catRules: EnrichedRule[]): RemediationItem[] 
       return { rule: r, priority, failingTests };
     })
     .sort((a, b) => b.priority - a.priority);
+}
+
+// ── Category-finding mapper ─────────────────────────────────────────────────
+
+export function getFindingsForCategory(catId: string, fullFindings: FullFinding[]): FullFinding[] {
+  const cat = THREAT_CATS.find(c => c.id === catId);
+  if (!cat) return [];
+  const ruleSet = new Set(cat.subCats.flatMap(sc => sc.rules));
+  return fullFindings.filter(f => ruleSet.has(f.rule_id));
 }

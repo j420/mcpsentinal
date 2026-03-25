@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import CategoryDeepDivePanel from "@/components/CategoryDeepDivePanel";
 import type { CddFinding } from "@/components/cdd-data";
-import { RULE_NAMES, RULE_SEVERITIES } from "@/components/cdd-data";
 
 export const dynamic = "force-dynamic";
 
@@ -277,9 +276,6 @@ export default async function ServerDetailPage({
           <a href="#tools">Tools ({tools.length})</a>
         )}
         <a href="#deep-dive">Category Deep Dive</a>
-        {findings.length > 0 && (
-          <a href="#findings">Findings ({findings.length})</a>
-        )}
       </nav>
 
       {/* ── OWASP Coverage ─────────────────────────────────── */}
@@ -336,68 +332,9 @@ export default async function ServerDetailPage({
 
       {/* ── Category Deep Dive ─────────────────────────────── */}
       <div id="deep-dive">
-        <CategoryDeepDivePanel findings={cddFindings} />
+        <CategoryDeepDivePanel findings={cddFindings} fullFindings={findings} />
       </div>
 
-      {/* ── Findings Detail ──────────────────────────────────── */}
-      {findings.length > 0 && (
-        <section id="findings" className="sd-section">
-          <h2 className="sd-section-title">
-            Findings
-            <span className="sd-section-count">{findings.length}</span>
-          </h2>
-
-          <div className="sd-sev-summary">
-            {sevCounts.filter(({ count }) => count > 0).map(({ sev, count }) => (
-              <div key={sev} className={`sd-sev-chip sd-sev-chip-${sev}`}>
-                <span className="sd-sev-chip-count">{count}</span>
-                <span className="sd-sev-chip-label">{sev}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="sd-findings-list">
-            {SEV_ORDER.map((sev) => {
-              const group = findingsBySev[sev] ?? [];
-              if (group.length === 0) return null;
-              return (
-                <div key={sev} className="sd-findings-group">
-                  <h3 className={`sd-findings-group-title sd-sev-${sev}`}>
-                    {sev.charAt(0).toUpperCase() + sev.slice(1)}
-                    <span className="sd-findings-group-count">{group.length}</span>
-                  </h3>
-                  {group.map((f) => (
-                    <div
-                      key={f.id}
-                      className={`sd-finding finding-${f.severity}`}
-                    >
-                      <div className="sd-finding-header">
-                        <span className={`sev-badge sev-${f.severity}`}>
-                          {f.severity}
-                        </span>
-                        <span className="sd-finding-rule">{f.rule_id}</span>
-                        <span className="sd-finding-name">
-                          {RULE_NAMES[f.rule_id] ?? f.rule_id}
-                        </span>
-                        {f.owasp_category && (
-                          <span className="sd-finding-owasp">{f.owasp_category}</span>
-                        )}
-                        {f.mitre_technique && (
-                          <span className="sd-finding-mitre">{f.mitre_technique}</span>
-                        )}
-                      </div>
-                      <div className="sd-finding-evidence">{f.evidence}</div>
-                      {f.remediation && (
-                        <div className="sd-finding-fix">{f.remediation}</div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
     </div>
   );
 }
