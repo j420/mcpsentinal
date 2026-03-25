@@ -161,7 +161,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <a href="/servers" className="nav-link">Servers</a>
               <a href="/categories" className="nav-link">Categories</a>
               <a href="/dashboard" className="nav-link">Dashboard</a>
-              <a href="/scanner" className="nav-link nav-link-scanner">Scanner</a>
+              <a href="/scanner" className="nav-link nav-link-scanner">MCP Scanner</a>
             </nav>
           </div>
         </header>
@@ -194,7 +194,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   <a href="/" className="footer-link">Registry</a>
                   <a href="/categories" className="footer-link">Categories</a>
                   <a href="/dashboard" className="footer-link">Dashboard</a>
-                  <a href="/about" className="footer-link">About</a>
+                  <a href="/scanner" className="footer-link">MCP Scanner</a>
                 </nav>
               </div>
               <div className="footer-col">
@@ -218,9 +218,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="footer-bottom-inner">
               <span className="footer-copy">
                 &copy; {new Date().getFullYear()} MCP Sentinel
-              </span>
-              <span className="footer-copy">
-                All detection is deterministic. No LLMs in the analysis pipeline.
               </span>
             </div>
           </div>
