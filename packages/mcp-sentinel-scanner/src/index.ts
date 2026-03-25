@@ -38,9 +38,9 @@ const logger = pino({ name: "mcp-sentinel-scanner" }, process.stderr);
 function findRulesDir(): string {
   const thisDir = dirname(fileURLToPath(import.meta.url));
   const candidates = [
-    join(thisDir, "..", "..", "..", "rules"),
-    join(thisDir, "..", "rules"),
-    join(process.cwd(), "rules"),
+    join(thisDir, "..", "rules"),                     // npm package: dist/../rules
+    join(thisDir, "..", "..", "..", "rules"),          // monorepo dev: packages/*/dist/../../../rules
+    join(process.cwd(), "rules"),                     // fallback to cwd
   ];
   for (const dir of candidates) {
     try {
