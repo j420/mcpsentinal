@@ -113,7 +113,6 @@ export default function CategoryDeepDivePanel({ findings, fullFindings }: { find
                   style={{ "--cc": c.color } as React.CSSProperties}
                   onClick={() => setSelectedCat(c.id)}
                 >
-                  <span className="cdd-sidebar-icon">{c.icon}</span>
                   <span className="cdd-sidebar-name">{c.name}</span>
                   {cFindingCount > 0 && (
                     <span className="cdd-sidebar-count">{cFindingCount}</span>
@@ -147,7 +146,6 @@ export default function CategoryDeepDivePanel({ findings, fullFindings }: { find
           {/* Category header */}
           <div className="cdd-cat-hdr" style={{ "--cc": cat.color } as React.CSSProperties}>
             <div className="cdd-cat-hdr-left">
-              <span className="cdd-cat-icon">{cat.icon}</span>
               <div>
                 <div className="cdd-cat-name">{cat.name}</div>
                 <div className="cdd-cat-tagline">{cat.tagline}</div>
