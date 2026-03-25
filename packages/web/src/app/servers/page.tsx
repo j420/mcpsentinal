@@ -51,7 +51,7 @@ async function getServers(params: {
   try {
     const sp = new URLSearchParams();
     sp.set("limit", "24");
-    sp.set("sort", params.sort || "score");
+    sp.set("sort", params.sort || "stars");
     sp.set("order", params.order || "desc");
     if (params.q) sp.set("q", params.q);
     if (params.category && params.category !== "all")
@@ -81,22 +81,6 @@ async function getServers(params: {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function scoreClass(score: number | null): string {
-  if (score === null) return "score-unscanned";
-  if (score >= 80) return "score-good";
-  if (score >= 60) return "score-moderate";
-  if (score >= 40) return "score-poor";
-  return "score-critical";
-}
-
-function scoreRating(score: number | null): string {
-  if (score === null) return "Unscanned";
-  if (score >= 80) return "Good";
-  if (score >= 60) return "Moderate";
-  if (score >= 40) return "Poor";
-  return "Critical";
-}
 
 function fmtNum(n: number | null | undefined): string {
   if (n == null) return "\u2014";
@@ -130,7 +114,6 @@ const CATEGORIES = [
 ];
 
 const SORT_OPTIONS = [
-  { value: "score", label: "Score" },
   { value: "stars", label: "Stars" },
   { value: "downloads", label: "Downloads" },
   { value: "name", label: "Name" },
@@ -218,19 +201,8 @@ export default async function ServersPage({
 
           <select
             className="filter-select"
-            name="min_score"
-            defaultValue={sp.min_score || ""}
-          >
-            <option value="">Any score</option>
-            <option value="80">Good (80+)</option>
-            <option value="60">Moderate (60+)</option>
-            <option value="40">Poor (40+)</option>
-          </select>
-
-          <select
-            className="filter-select"
             name="sort"
-            defaultValue={sp.sort || "score"}
+            defaultValue={sp.sort || "stars"}
           >
             {SORT_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -272,20 +244,14 @@ export default async function ServersPage({
               href={`/servers/${server.slug}`}
               className="srv-card"
             >
-              {/* Score indicator stripe */}
-              <div className={`srv-card-score-stripe srv-stripe-${scoreRating(server.latest_score).toLowerCase()}`} />
-
               <div className="srv-card-inner">
-                {/* Top row: name + score */}
+                {/* Top row: name */}
                 <div className="srv-card-top">
                   <div className="srv-card-name-col">
                     <h3 className="srv-card-name">{server.name}</h3>
                     {server.author && (
                       <span className="srv-card-author">by {server.author}</span>
                     )}
-                  </div>
-                  <div className={`srv-card-score ${scoreClass(server.latest_score)}`}>
-                    {server.latest_score !== null ? server.latest_score : "\u2014"}
                   </div>
                 </div>
 
@@ -407,9 +373,8 @@ function buildPageUrl(
   const params = new URLSearchParams();
   if (sp.q) params.set("q", sp.q);
   if (sp.category && sp.category !== "all") params.set("category", sp.category);
-  if (sp.sort && sp.sort !== "score") params.set("sort", sp.sort);
+  if (sp.sort && sp.sort !== "stars") params.set("sort", sp.sort);
   if (sp.order && sp.order !== "desc") params.set("order", sp.order);
-  if (sp.min_score) params.set("min_score", sp.min_score);
   if (page > 1) params.set("page", String(page));
   const qs = params.toString();
   return qs ? `/servers?${qs}` : "/servers";

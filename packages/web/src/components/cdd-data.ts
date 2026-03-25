@@ -790,6 +790,58 @@ export const THREAT_CATS: ThreatCat[] = [
   },
 ];
 
+// ── Developer-facing taglines (plain English, not security jargon) ──────────
+
+export const THREAT_CAT_DEV_TAGLINES: Record<string, string> = {
+  PI: "Hidden instructions in tool descriptions that manipulate AI behavior",
+  TP: "Fake or deceptive tools that impersonate legitimate ones",
+  CI: "Dangerous code execution patterns — shell commands, SQL, templates",
+  DE: "Data theft chains that read, encode, and send your data externally",
+  PV: "Tools that quietly gain more access than they were granted",
+  IC: "Weak configuration — missing validation, broken crypto, exposed endpoints",
+  DV: "Vulnerable, abandoned, or malicious packages in the dependency tree",
+  SC: "Supply chain attacks — install hooks, generated code, registry tricks",
+  AT: "Authentication flaws — hardcoded secrets, weak OAuth, token mismanagement",
+  AI: "Attacks that exploit how AI models reason and trust tool descriptions",
+  CG: "Missing audit trails, human oversight, and governance controls",
+  SA: "CI/CD pipeline poisoning, build tampering, and config injection",
+  MR: "Attacks on AI reasoning — token injection, cost bombs, prompt extraction",
+  PE: "Protocol-level exploits — JSON-RPC abuse, transport hijacking",
+  DP: "Stealthy data exfiltration via covert channels and credential harvesting",
+  IR: "Container escapes, cloud metadata access, and host filesystem exposure",
+  CE: "Cross-protocol attacks spanning IDE plugins, gateways, and agent networks",
+};
+
+// ── Severity icon SVG paths (distinct shapes for colorblind accessibility) ──
+
+export const SEV_ICONS: Record<string, { viewBox: string; d: string }> = {
+  critical: {
+    // Octagon (stop sign)
+    viewBox: "0 0 16 16",
+    d: "M5.3 1h5.4L15 5.3v5.4L10.7 15H5.3L1 10.7V5.3L5.3 1z",
+  },
+  high: {
+    // Triangle (warning)
+    viewBox: "0 0 16 16",
+    d: "M8 1L15.5 14H0.5L8 1z",
+  },
+  medium: {
+    // Diamond
+    viewBox: "0 0 16 16",
+    d: "M8 1L15 8L8 15L1 8L8 1z",
+  },
+  low: {
+    // Circle
+    viewBox: "0 0 16 16",
+    d: "M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2z",
+  },
+  informational: {
+    // Info circle (circle with "i")
+    viewBox: "0 0 16 16",
+    d: "M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2zM7.5 5h1v1h-1V5zm0 2.5h1V11h-1V7.5z",
+  },
+};
+
 // ── Enriched rule model (shared across all 6 tabs) ─────────────────────────
 
 export type RuleStatus = "implemented" | "partial" | "planned";
