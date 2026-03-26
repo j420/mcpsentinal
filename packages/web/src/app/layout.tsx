@@ -160,7 +160,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <a href="/" className="nav-link">Registry</a>
               <a href="/servers" className="nav-link">Servers</a>
               <a href="/categories" className="nav-link">Categories</a>
-              <a href="/compliance" className="nav-link">Compliance</a>
               <a href="/scanner" className="nav-link nav-link-scanner">MCP Scanner</a>
             </nav>
           </div>
@@ -193,7 +192,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <nav className="footer-col-links" aria-label="Product links">
                   <a href="/" className="footer-link">Registry</a>
                   <a href="/categories" className="footer-link">Categories</a>
-                  <a href="/compliance" className="footer-link">Compliance</a>
                   <a href="/scanner" className="footer-link">MCP Scanner</a>
                   <a href="/responsible-disclosure" className="footer-link">Responsible Disclosure</a>
                 </nav>
