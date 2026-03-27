@@ -22,27 +22,40 @@ interface AnalysisContext {
     transport: string
     response_time_ms: number
   } | null
-  initialize_metadata?: {             // H2 surface — currently always undefined (P0 bug)
+  initialize_metadata?: {             // H2 surface — populated from MCPConnector.enumerate()
     server_version?: string | null
     server_instructions?: string | null
   }
 }
 ```
 
-## The 4 Rule Handler Types
+## Detection Architecture: 2-Phase Analysis
 
-| `detect.type` | Handler method | Used by |
+### Phase 1: TypeScript Engines (preferred — all new rules go here)
+Five specialized engines in `src/engines/` run first:
+- **CodeAnalyzer** — C1, C16 (AST taint, secrets, entropy)
+- **DescriptionAnalyzer** — A1–A5, H1–H2 (linguistic injection scoring)
+- **SchemaAnalyzer** — B1–B7 (structural inference)
+- **DependencyAnalyzer** — D1–D7 (similarity, CVE lookup)
+- **ProtocolAnalyzer** — I1–I16, J1, J5 (transport, OAuth, annotations)
+
+Plus self-registering TypedRule implementations in `src/rules/implementations/`.
+
+### Phase 2: YAML Fallback (legacy — do NOT add new rules here)
+For rules not yet migrated to TypeScript, the engine falls back to YAML interpretation:
+
+| `detect.type` | Handler method | Status |
 |---|---|---|
-| `regex` | `runRegexRule()` | A1–A9, B5, C1–C16, H1, H2 |
-| `schema-check` | `runSchemaCheckRule()` | B1–B7, E1–E4 |
-| `behavioral` | `runBehavioralRule()` | E1–E4, G6 |
-| `composite` | `runCompositeRule()` | F1–F7, G1–G5, G7, H3, D-rules |
+| `regex` | `runRegexRule()` | **LEGACY ONLY — banned for new rules** |
+| `schema-check` | `runSchemaCheckRule()` | Active |
+| `behavioral` | `runBehavioralRule()` | Active |
+| `composite` | `runCompositeRule()` | Active |
 
-**Adding a new `detect.type`**: add a new `runXRule()` method, add a case to `runRule()`, add to the Engine Implementation Status table in `agent_docs/detection-rules.md`.
+**Adding a new rule**: Create a TypeScript implementation in `src/rules/implementations/`, register it in `src/rules/index.ts`. See `rules/CLAUDE.md` for the complete guide.
 
 ## Context → Text Mapping (`getTextsForContext`)
 
-Each regex rule specifies a `context` — where to search for the pattern:
+Legacy regex rules and some engine internals use `getTextsForContext` to map a context to searchable text:
 
 | context value | What it searches |
 |---|---|
@@ -53,7 +66,7 @@ Each regex rule specifies a `context` — where to search for the pattern:
 | `metadata` | Server name + description + all tool names joined |
 | `server_initialize_fields` | `server.name` + `initialize_metadata.server_version` + `initialize_metadata.server_instructions` |
 
-**`server_initialize_fields`** is the H2 context. It currently receives no data because `initialize_metadata` is always `undefined`. See `packages/connector/CLAUDE.md` for the fix.
+**`server_initialize_fields`** is the H2 context. Populated from `MCPConnector.enumerate()` via `client.getServerVersion()` + `client.getInstructions()`.
 
 ## Every Finding Must Have
 ```typescript
