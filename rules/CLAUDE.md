@@ -2,7 +2,7 @@
 
 ## What This Directory Contains
 
-177 YAML detection rule definitions across 17 categories (A–Q). The analyzer engine (`packages/analyzer`) loads and interprets these at runtime. **Rules are data, not code** (ADR-005) — adding a rule should never require changing engine code.
+177 detection rule definitions across 17 categories (A–Q). The YAML files define rule **metadata** (id, name, severity, OWASP/MITRE mappings, test cases). The actual detection logic lives in **TypeScript** inside `packages/analyzer/`. YAML is the rule registry; TypeScript is the detection engine.
 
 ## Before You Start
 
@@ -20,13 +20,8 @@ severity: critical                        # critical | high | medium | low | inf
 owasp: MCP03-command-injection            # OWASP MCP Top 10 ID (MCP01–MCP10) or null
 mitre: AML.T0054                          # MITRE ATLAS technique ID or null
 detect:
-  type: regex                             # regex | schema-check | behavioral | composite
-  patterns:                               # For regex type: array of regex strings
-    - "exec\\s*\\("
-    - "execSync\\s*\\("
-  context: source_code                    # What text the patterns run against (see below)
-  exclude_patterns:                       # Optional: suppress match if these also match
-    - "// safe: sanitized input"
+  type: typed                             # Detection logic lives in TypeScript (see below)
+  engine: code-analyzer                   # Which specialized engine handles this rule
 remediation: "Replace exec() with..."     # Actionable fix — REQUIRED, never leave empty
 test_cases:
   true_positive:                          # Minimum 2 required
@@ -37,6 +32,8 @@ test_cases:
     - { description: "...", expected: false }
 enabled: true                             # Set false to disable without deleting
 ```
+
+**Note:** Legacy rules may still have `detect.type: regex` with `patterns` arrays. These are technical debt. All new rules MUST use TypeScript implementations. Existing regex rules should be migrated to TypeScript when touched.
 
 ## Valid Categories
 
@@ -84,62 +81,69 @@ enabled: true                             # Set false to disable without deletin
 | `low` | -3 points |
 | `informational` | -1 point |
 
-## Detect Types and Their Handlers
+## Detect Types
 
-| `detect.type` | Engine Handler | When to Use |
+| `detect.type` | Where Logic Lives | When to Use |
 |---|---|---|
-| `regex` | `runRegexRule()` | Pattern matching against text contexts. Most common. |
-| `schema-check` | `runSchemaCheckRule()` | Structural checks on tool schemas (parameter count, missing constraints, dangerous defaults). |
-| `behavioral` | `runBehavioralRule()` | Connection-time checks (auth, transport, response time, tool drift). |
-| `composite` | `runCompositeRule()` | Multi-signal analysis requiring cross-tool or cross-field logic (lethal trifecta, data flow, namespace squatting). |
+| `typed` | `packages/analyzer/src/rules/implementations/` | **ALL new rules.** TypeScript class implementing `TypedRule` interface. |
+| `composite` | `runCompositeRule()` in `engine.ts` | Multi-signal detection requiring cross-tool, cross-field, or historical analysis. 28+ check types already exist. |
+| `schema-check` | `runSchemaCheckRule()` in `engine.ts` | Structural validation of tool schemas (parameter counts, constraints, dangerous defaults). |
+| `behavioral` | `runBehavioralRule()` in `engine.ts` | Connection-time and temporal analysis (auth, transport, response timing, capability drift). |
+| `regex` | **BANNED for new rules.** Legacy only. | Existing regex rules are technical debt to be migrated. |
 
-## CRITICAL: Detection Quality Standards — No Toy Regex
+## ABSOLUTE RULE: No YAML Regex — TypeScript Only
 
-**YAML regex patterns are the LAST resort, not the default.** Simple regex in YAML produces high false-positive rates and misses real attacks. Every new rule must use the most technically rigorous detection method available.
+**Do NOT write detection logic as YAML regex patterns. Period.**
 
-### Decision ladder (use the FIRST option that applies)
+YAML regex is fundamentally inadequate for security detection:
+- It matches strings, not code structure — fires on comments, string literals, documentation, safe wrappers
+- It cannot track data flow — cannot distinguish `exec(userInput)` from `exec("ls")`
+- It cannot reason about context — cannot tell if a pattern appears in a test file vs production code
+- It produces unacceptable false positive rates that destroy user trust
+- It is unmaintainable — complex regex in YAML is unreadable, untestable, and fragile
 
-1. **Typed Rule (TypeScript implementation)** — Preferred for any rule requiring real analysis. Write a class in `packages/analyzer/src/rules/implementations/` that implements the `TypedRule` interface. This gives you access to:
-   - **AST-based analysis** — Parse source code into syntax trees (tree-sitter) and walk nodes. Detects actual code structure, not string coincidences. See `c1-command-injection.ts`.
-   - **Taint flow analysis** — Track data from sources (user input, external APIs) to sinks (exec, eval, SQL). Cross-function, cross-module propagation. See `taint.ts`, `taint-python.ts`, `taint-ast.ts`.
-   - **String distance algorithms** — Levenshtein, Jaro-Winkler, Damerau-Levenshtein for typosquatting, namespace squatting, homoglyph detection. See `similarity.ts`, `d3-typosquatting.ts`.
-   - **Entropy analysis** — Shannon entropy with sliding windows for secret detection, encoded payload detection. See `entropy.ts`.
-   - **Unicode normalization** — Confusable detection, script mixing analysis, zero-width character categorization. See `unicode.ts`, `a6-unicode-homoglyph.ts`.
-   - **Capability graph analysis** — Model tool capabilities as a directed graph, detect dangerous capability combinations. See `capability-graph.ts`, `f1-lethal-trifecta.ts`.
-   - **Schema inference** — Structural analysis of JSON schemas, type system reasoning. See `schema-inference.ts`.
-   - **Cryptographic fingerprinting** — SHA-256 content hashing with field-level granularity for drift detection. See `tool-fingerprint.ts`.
+**Every new rule MUST have a TypeScript implementation.** The YAML file defines metadata only (id, name, severity, OWASP/MITRE, test cases). The detection algorithm lives in TypeScript where it has access to real analysis techniques.
 
-2. **Composite rule handler** — For multi-signal detection that requires cross-tool, cross-field, or historical analysis. The composite handler in `engine.ts` already supports 28+ check types. If your detection logic needs to reason across multiple tools, combine capability signals, or compare against baselines, add a new composite check type.
+### How to implement detection for a new rule
 
-3. **Schema-check handler** — For structural validation of tool schemas (parameter counts, constraint presence, dangerous defaults, additional properties). Pure schema reasoning, no string matching.
+Write a TypeScript class in `packages/analyzer/src/rules/implementations/{id}-{name}.ts` implementing the `TypedRule` interface. You have access to the full analysis toolkit:
 
-4. **Behavioral handler** — For connection-time and temporal analysis (auth detection, transport security, response timing, capability drift over scan history).
+**Code Analysis Techniques:**
+- **AST parsing** (tree-sitter) — Walk syntax trees, inspect node types, understand code structure. See `c1-command-injection.ts`.
+- **Taint flow analysis** — Track data propagation from sources (user input, external APIs) to dangerous sinks (exec, eval, SQL). Cross-function, cross-module. See `taint.ts`, `taint-python.ts`, `taint-ast.ts`.
+- **Control flow analysis** — Understand branching, loop bounds, reachability. Built on top of AST.
 
-5. **YAML regex (last resort)** — Only acceptable when ALL of the following are true:
-   - The pattern is genuinely a string-literal match (e.g., a specific function name, a known malicious package name, a protocol token)
-   - No structural/semantic understanding is needed
-   - False positive rate is demonstrably low (<5%) based on test fixtures
-   - The pattern cannot be improved by any of the above methods
+**String & Data Analysis Techniques:**
+- **String distance algorithms** — Levenshtein, Jaro-Winkler, Damerau-Levenshtein for typosquatting, namespace squatting, homoglyph detection. See `similarity.ts`, `d3-typosquatting.ts`.
+- **Shannon entropy** — Sliding-window entropy analysis for secret detection, encoded payload detection, randomness measurement. See `entropy.ts`.
+- **Unicode normalization** — Confusable detection, script mixing analysis, zero-width character categorization, homoglyph mapping. See `unicode.ts`, `a6-unicode-homoglyph.ts`.
 
-### What "production-grade detection" looks like
+**Structural Analysis Techniques:**
+- **Capability graph analysis** — Model tool capabilities as a directed graph, detect dangerous capability combinations, identify attack chains. See `capability-graph.ts`, `f1-lethal-trifecta.ts`.
+- **Schema inference** — Structural analysis of JSON schemas, type system reasoning, constraint validation. See `schema-inference.ts`.
+- **Module dependency graph** — Cross-file import resolution, dependency chain analysis. See `module-graph.ts`.
+- **Cryptographic fingerprinting** — SHA-256 content hashing with field-level granularity for drift/rug-pull detection. See `tool-fingerprint.ts`.
 
-| BAD (toy regex) | GOOD (real analysis) |
+### What production-grade detection looks like
+
+| Problem | Correct Approach |
 |---|---|
-| `"eval\\("` matches comments, strings, safe wrappers | AST-based: only flags `eval()` where argument traces to user input via taint flow |
-| `"password"` matches variable declarations, docs, constants | Entropy analysis: detects high-entropy strings near assignment operators in credential contexts |
-| `"exec\\s*\\("` matches `execFile()` (safe) | AST walker: distinguishes `exec(userInput)` from `execFile(binary, [sanitized])` by argument origin |
-| `"mcp-server"` for typosquatting | Levenshtein + Jaro-Winkler similarity against 60+ known package names with configurable threshold |
-| `"\\<\\|system\\|\\>"` for prompt injection | Multi-signal: token detection + context position analysis + entropy of surrounding text + role injection pattern clustering |
+| Detect `eval()` with user input | AST-based taint flow: parse source, identify `eval()` call nodes, trace arguments back to user input sources |
+| Detect hardcoded secrets | Entropy analysis: sliding window over string literals, flag high-entropy values near assignment operators in credential-like contexts |
+| Detect `exec()` vs safe `execFile()` | AST walker: distinguish by function name node + argument origin analysis (tainted vs constant) |
+| Detect typosquatting packages | Levenshtein + Jaro-Winkler similarity against 60+ known package names with configurable threshold |
+| Detect prompt injection in descriptions | Multi-signal: LLM special token detection + context position analysis + entropy of surrounding text + role injection pattern clustering |
+| Detect capability drift over time | Cryptographic fingerprinting: SHA-256 tool pins with field-level diff, threshold-based alerting |
+| Detect dangerous capability combinations | Capability graph: model read/write/execute/network as directed edges, detect lethal patterns via graph traversal |
 
-### When writing YAML regex patterns (if you must)
+### Migrating existing regex rules
 
-- Patterns must be **precise and narrow** — anchor to structural context, not just keywords
-- Use **negative lookahead/lookbehind** (`(?!...)`, `(?<!...)`) to reduce false positives
-- Use **non-greedy quantifiers** (`*?`, `+?`) to avoid catastrophic backtracking (we detect ReDoS — rule C11 — don't introduce it)
-- Use **character classes** over alternation where possible (`[aA]` not `(a|A)`)
-- Combine multiple signals in `patterns` array — a single vague pattern is never acceptable
-- Always provide `exclude_patterns` to suppress known-safe contexts (test files, documentation, security tooling)
-- Test against the red-team fixture suite — if precision drops below 80%, the pattern is too broad
+When touching an existing rule that uses `detect.type: regex`, migrate it:
+1. Create a TypeScript implementation in `packages/analyzer/src/rules/implementations/`
+2. Register it in `packages/analyzer/src/rules/index.ts`
+3. Update the YAML `detect.type` to `typed`
+4. Remove the `patterns` and `context` fields from the YAML
+5. Verify with red-team fixtures that precision improves or stays the same
 
 ## Naming Convention
 
@@ -165,13 +169,13 @@ Use the `/add-detection-rule` skill for a guided walkthrough.
 
 ## What NOT to Do
 
+- **Do NOT write YAML regex patterns for new rules.** This is the single most important rule in this file. All detection logic must be implemented in TypeScript. No exceptions.
 - Do NOT create rules with `detect.type: composite` or `detect.type: behavioral` unless the composite/behavioral check already exists in the engine. These require corresponding TypeScript handlers.
 - Do NOT omit `remediation` — findings without remediation are useless to users.
 - Do NOT omit `test_cases` — the post-edit hook and CI will reject rules without them.
 - Do NOT use severity `critical` unless the finding represents a directly exploitable vulnerability. Overuse of critical dilutes scoring.
 - Do NOT change `id` of an existing rule — IDs are referenced in findings, scores, OWASP mappings, fixture files, and documentation.
 - Do NOT delete a rule file to disable it — set `enabled: false` instead. Historical findings reference the rule ID.
-- Do NOT put regex patterns with unescaped special YAML characters. Use double-quoted strings for patterns containing `: [ ] { } , # & * ? | - < > = ! % @`.
 
 ## Validation
 
