@@ -35,17 +35,18 @@ mcp-sentinel/
 ├── packages/
 │   ├── crawler/                 ← Discovery: finds MCP servers across 7+ sources (each has CLAUDE.md)
 │   ├── connector/               ← Connection: MCP SDK wrapper — initialize + tools/list ONLY (has CLAUDE.md)
-│   ├── analyzer/                ← Analysis: runs 103 detection rules, produces findings (has CLAUDE.md)
+│   ├── analyzer/                ← Analysis: runs 177 detection rules, produces findings (has CLAUDE.md)
 │   ├── scorer/                  ← Scoring: computes composite scores from findings (has CLAUDE.md)
 │   ├── database/                ← PostgreSQL schema, migrations, queries — ALL SQL lives here (has CLAUDE.md)
 │   ├── api/                     ← Public REST API (has CLAUDE.md)
 │   ├── web/                     ← Next.js registry website (has CLAUDE.md)
-│   └── cli/                     ← npx mcp-sentinel CLI tool (has CLAUDE.md)
+│   ├── cli/                     ← npx mcp-sentinel CLI tool (has CLAUDE.md)
+│   └── mcp-sentinel-scanner/    ← MCP server that exposes scanning as tools (has CLAUDE.md)
 ├── docs/
 │   └── runbooks/                ← Operational runbooks: add-new-rule, new-cve-response, full-crawl
 ├── tools/
 │   └── scripts/                 ← validate-rules.sh and operational scripts
-├── rules/                       ← Detection rule definitions (YAML) — 103 rules across A–K
+├── rules/                       ← Detection rule metadata (YAML) — 177 rules across A–Q (detection logic in TypeScript)
 ├── tests/                       ← Integration and E2E tests
 └── data/                        ← Seed data, test fixtures
 ```
@@ -79,8 +80,8 @@ pnpm deploy:web                  # Deploy registry website
 ```
 ## Architecture Principles
 1. **Pipeline, not monolith.** Data flows: Discovery → Connection → Analysis → Scoring → Publication. Each stage is a separate package with a clear contract.
-2. **Rules are data, not code.** Detection rules are YAML definitions. The analyzer interprets them. Adding a rule should never require changing engine code.
-3. **No LLM in v1.** All detection is deterministic (regex, AST, schema validation, CVE lookup). LLM classification is v1.1 — only added where rules demonstrably fail.
+2. **Rules are metadata + TypeScript.** YAML files define rule metadata (id, severity, OWASP/MITRE mappings, test cases). Detection logic lives in TypeScript implementations inside `packages/analyzer/`. YAML regex patterns are banned for new rules — all detection must use TypeScript with real analysis techniques (AST, taint tracking, string distance, etc.).
+3. **No LLM in v1.** All detection is deterministic (AST, taint analysis, schema validation, string distance, CVE lookup). LLM classification is v1.1 — only added where a deterministic rule demonstrably fails.
 4. **Collect everything, judge later.** Crawlers store raw metadata. Analysis is a separate pass. Never discard data because you don't have a rule for it yet.
 5. **History by default.** Every scan result is immutable. Scores change over time. The history table tracks every change. Trends are a first-class feature.
 ## Coding Rules
@@ -93,6 +94,10 @@ pnpm deploy:web                  # Deploy registry website
 - All detection rules get test cases: minimum 2 true positives, 2 true negatives per rule.
 ## Working with Detection Rules
 Read @agent_docs/detection-rules.md before touching rules/ or packages/analyzer/.
+Read rules/CLAUDE.md for the complete rule authoring guide.
+
+**IMPORTANT: YAML regex patterns are BANNED for new rules.** All detection logic must be implemented in TypeScript inside `packages/analyzer/src/rules/implementations/`. YAML files define metadata only.
+
 Rules follow this structure:
 ```yaml
 id: C1
@@ -102,15 +107,9 @@ severity: critical
 owasp: MCP03
 mitre: AML.T0054
 detect:
-  type: regex
-  patterns:
-    - "exec\\s*\\("
-    - "execSync\\s*\\("
-    - "child_process"
-  context: source_code
-  exclude_patterns:
-    - "// safe: sanitized input"
+  type: typed                      # TypeScript implementation — NOT regex
 remediation: "Replace exec() with execFile() and validate all inputs against an allowlist."
+enabled: true
 test_cases:
   true_positive:
     - { file: "fixtures/vuln-exec.ts", expected: true }
@@ -119,6 +118,8 @@ test_cases:
     - { file: "fixtures/safe-execfile.ts", expected: false }
     - { file: "fixtures/safe-sanitized.ts", expected: false }
 ```
+
+Detection logic lives in TypeScript (e.g., `packages/analyzer/src/rules/implementations/c1-command-injection.ts`) where it has access to AST parsing, taint tracking, string distance algorithms, and other real analysis techniques that YAML regex cannot provide.
 ## Working with the Scoring Algorithm
 Read @agent_docs/scoring-algorithm.md before touching packages/scorer/.
 Score = 100 minus weighted penalty deductions. Never returns below 0 or above 100.
