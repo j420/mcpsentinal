@@ -93,6 +93,54 @@ enabled: true                             # Set false to disable without deletin
 | `behavioral` | `runBehavioralRule()` | Connection-time checks (auth, transport, response time, tool drift). |
 | `composite` | `runCompositeRule()` | Multi-signal analysis requiring cross-tool or cross-field logic (lethal trifecta, data flow, namespace squatting). |
 
+## CRITICAL: Detection Quality Standards — No Toy Regex
+
+**YAML regex patterns are the LAST resort, not the default.** Simple regex in YAML produces high false-positive rates and misses real attacks. Every new rule must use the most technically rigorous detection method available.
+
+### Decision ladder (use the FIRST option that applies)
+
+1. **Typed Rule (TypeScript implementation)** — Preferred for any rule requiring real analysis. Write a class in `packages/analyzer/src/rules/implementations/` that implements the `TypedRule` interface. This gives you access to:
+   - **AST-based analysis** — Parse source code into syntax trees (tree-sitter) and walk nodes. Detects actual code structure, not string coincidences. See `c1-command-injection.ts`.
+   - **Taint flow analysis** — Track data from sources (user input, external APIs) to sinks (exec, eval, SQL). Cross-function, cross-module propagation. See `taint.ts`, `taint-python.ts`, `taint-ast.ts`.
+   - **String distance algorithms** — Levenshtein, Jaro-Winkler, Damerau-Levenshtein for typosquatting, namespace squatting, homoglyph detection. See `similarity.ts`, `d3-typosquatting.ts`.
+   - **Entropy analysis** — Shannon entropy with sliding windows for secret detection, encoded payload detection. See `entropy.ts`.
+   - **Unicode normalization** — Confusable detection, script mixing analysis, zero-width character categorization. See `unicode.ts`, `a6-unicode-homoglyph.ts`.
+   - **Capability graph analysis** — Model tool capabilities as a directed graph, detect dangerous capability combinations. See `capability-graph.ts`, `f1-lethal-trifecta.ts`.
+   - **Schema inference** — Structural analysis of JSON schemas, type system reasoning. See `schema-inference.ts`.
+   - **Cryptographic fingerprinting** — SHA-256 content hashing with field-level granularity for drift detection. See `tool-fingerprint.ts`.
+
+2. **Composite rule handler** — For multi-signal detection that requires cross-tool, cross-field, or historical analysis. The composite handler in `engine.ts` already supports 28+ check types. If your detection logic needs to reason across multiple tools, combine capability signals, or compare against baselines, add a new composite check type.
+
+3. **Schema-check handler** — For structural validation of tool schemas (parameter counts, constraint presence, dangerous defaults, additional properties). Pure schema reasoning, no string matching.
+
+4. **Behavioral handler** — For connection-time and temporal analysis (auth detection, transport security, response timing, capability drift over scan history).
+
+5. **YAML regex (last resort)** — Only acceptable when ALL of the following are true:
+   - The pattern is genuinely a string-literal match (e.g., a specific function name, a known malicious package name, a protocol token)
+   - No structural/semantic understanding is needed
+   - False positive rate is demonstrably low (<5%) based on test fixtures
+   - The pattern cannot be improved by any of the above methods
+
+### What "production-grade detection" looks like
+
+| BAD (toy regex) | GOOD (real analysis) |
+|---|---|
+| `"eval\\("` matches comments, strings, safe wrappers | AST-based: only flags `eval()` where argument traces to user input via taint flow |
+| `"password"` matches variable declarations, docs, constants | Entropy analysis: detects high-entropy strings near assignment operators in credential contexts |
+| `"exec\\s*\\("` matches `execFile()` (safe) | AST walker: distinguishes `exec(userInput)` from `execFile(binary, [sanitized])` by argument origin |
+| `"mcp-server"` for typosquatting | Levenshtein + Jaro-Winkler similarity against 60+ known package names with configurable threshold |
+| `"\\<\\|system\\|\\>"` for prompt injection | Multi-signal: token detection + context position analysis + entropy of surrounding text + role injection pattern clustering |
+
+### When writing YAML regex patterns (if you must)
+
+- Patterns must be **precise and narrow** — anchor to structural context, not just keywords
+- Use **negative lookahead/lookbehind** (`(?!...)`, `(?<!...)`) to reduce false positives
+- Use **non-greedy quantifiers** (`*?`, `+?`) to avoid catastrophic backtracking (we detect ReDoS — rule C11 — don't introduce it)
+- Use **character classes** over alternation where possible (`[aA]` not `(a|A)`)
+- Combine multiple signals in `patterns` array — a single vague pattern is never acceptable
+- Always provide `exclude_patterns` to suppress known-safe contexts (test files, documentation, security tooling)
+- Test against the red-team fixture suite — if precision drops below 80%, the pattern is too broad
+
 ## Naming Convention
 
 Files are named `{ID}-{kebab-case-name}.yaml`:
