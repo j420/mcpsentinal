@@ -110,6 +110,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
+        <script
+          defer
+          src="https://umami-production-44da.up.railway.app/script.js"
+          data-website-id="4b999c02-095c-4945-9914-0a7365cf656d"
+        />
       </head>
       <body>
         {/* ── Header ────────────────────────────────── */}
