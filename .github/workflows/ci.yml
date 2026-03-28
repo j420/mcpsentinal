@@ -14,9 +14,6 @@ on:
       - 'tsconfig*.json'
       - 'turbo.json'
       - '.github/workflows/ci.yml'
-    paths-ignore:
-      - '**/*.md'
-      - '**/CLAUDE.md'
   pull_request:
     branches: [main]
     paths:
@@ -30,9 +27,6 @@ on:
       - 'tsconfig*.json'
       - 'turbo.json'
       - '.github/workflows/ci.yml'
-    paths-ignore:
-      - '**/*.md'
-      - '**/CLAUDE.md'
 
 jobs:
   build-and-test:
