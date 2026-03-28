@@ -31,3 +31,8 @@ import "./implementations/a9-encoded-instructions.js";
 import "./implementations/d3-typosquatting.js";
 import "./implementations/f1-lethal-trifecta.js";
 import "./implementations/g4-context-saturation.js";
+import "./implementations/tainted-execution-detector.js";
+import "./implementations/cross-tool-risk-detector.js";
+import "./implementations/config-poisoning-detector.js";
+import "./implementations/secret-exfil-detector.js";
+import "./implementations/supply-chain-detector.js";

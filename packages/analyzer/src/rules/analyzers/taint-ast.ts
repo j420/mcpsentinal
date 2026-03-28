@@ -182,6 +182,24 @@ const SINK_DEFINITIONS: Array<{
     category: "vm_escape",
     dangerous_args: [0],
   },
+  // Deserialization sinks (C12: unsafe deserialization)
+  {
+    names: ["deserialize", "unserialize"],
+    category: "deserialization",
+    dangerous_args: [0],
+  },
+  // Template rendering sinks (C13: server-side template injection)
+  {
+    names: ["render", "renderString", "renderFile", "compile"],
+    category: "template_injection",
+    dangerous_args: [0],
+  },
+  // DNS resolution sinks (G7: DNS-based exfiltration)
+  {
+    names: ["resolve", "resolve4", "resolve6", "lookup"],
+    category: "dns_exfil",
+    dangerous_args: [0],
+  },
 ];
 
 /** Known sanitizer function names */

@@ -254,6 +254,28 @@ const SINK_PATTERNS: Array<{
     category: "template_render",
     extract_args: (m) => [m[1].trim()],
   },
+  // Deserialization sinks (C12: unsafe deserialization)
+  {
+    pattern: /pickle\.loads?\s*\(([^)]*)\)/g,
+    category: "deserialization",
+    extract_args: (m) => [m[1].trim()],
+  },
+  {
+    pattern: /yaml\.(?:load|unsafe_load)\s*\(([^)]*)\)/g,
+    category: "deserialization",
+    extract_args: (m) => [m[1].trim()],
+  },
+  {
+    pattern: /(?:unserialize|deserialize)\s*\(([^)]*)\)/g,
+    category: "deserialization",
+    extract_args: (m) => [m[1].trim()],
+  },
+  // DNS resolution sinks (G7: DNS-based exfiltration)
+  {
+    pattern: /dns\.(?:resolve|resolve4|resolve6|lookup)\s*\(([^,)]*)/g,
+    category: "url_request",
+    extract_args: (m) => [m[1].trim()],
+  },
 ];
 
 // --- Sanitizer Patterns ---
