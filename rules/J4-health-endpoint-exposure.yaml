@@ -23,8 +23,7 @@ mitre: AML.T0054
 # MCP servers often run with elevated privileges.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Health/status endpoints exposing system info
     - "(?i)(app\\.get|router\\.get|server\\.route).*[\"'](/health/detailed|/debug|/status/full|/metrics|/info|/env)[\"']"
     - "(?i)os\\.(platform|arch|release|cpus|totalmem|freemem|hostname|networkInterfaces)\\s*\\("
@@ -36,11 +35,6 @@ detect:
     # Python equivalents
     - "(?i)(platform\\.system|platform\\.release|platform\\.machine|psutil).*(?:jsonify|json\\.dumps|Response)"
     - "(?i)(?:jsonify|json\\.dumps).*(?:platform\\.|psutil\\.|os\\.environ)"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture"
-    - "(?i)auth.*middleware|require.*auth|authenticate"
-    - "(?i)/health[\"']\\s*,\\s*\\(.*\\)\\s*=>\\s*res\\.(json|send)\\(\\{\\s*status"
 remediation: "Remove detailed system information from health endpoints. Health checks should return only { status: 'ok' } with no system details. If monitoring data is needed, protect endpoints with authentication and restrict to internal networks. See CVE-2026-29787."
 test_cases:
   true_positive:

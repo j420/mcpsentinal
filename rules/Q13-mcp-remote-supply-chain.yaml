@@ -27,8 +27,7 @@ mitre: AML.T0054
 # OWASP ASI04 Agentic Supply Chain
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Running MCP bridge packages without version pinning
     - "(?i)npx\\s+(?:mcp-remote|mcp-proxy|mcp-gateway|@modelcontextprotocol)(?!@\\d)"
     - "(?i)uvx\\s+(?:mcp|fastmcp|mcp-server)(?!==\\d)"
@@ -43,10 +42,6 @@ detect:
     - "(?i)(?:registry|index[_\\s-]?url).*(?:http://|(?!npmjs|pypi|registry\\.npmjs))"
     # Dynamic/runtime MCP bridge package installation
     - "(?i)(?:pip\\s+install|npm\\s+install|npx).*(?:mcp|fastmcp).*(?:--no-cache|--force)"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example"
-    - "(?i)(?:lock|lockfile|shrinkwrap|frozen)"
 remediation: "MCP bridge packages (mcp-remote, mcp-proxy, @modelcontextprotocol/sdk, fastmcp) are high-value supply chain targets — CVE-2025-6514 (CVSS 9.6) in mcp-remote affected 437,000+ installs. Always pin exact versions (no ^ or ~ ranges). Use lockfiles (package-lock.json, pnpm-lock.yaml, uv.lock). Never run `npx mcp-remote` without version pinning. Verify package integrity with `npm audit` or `pip-audit` before deployment. Reference: CVE-2025-6514, OWASP ASI04."
 test_cases:
   true_positive:

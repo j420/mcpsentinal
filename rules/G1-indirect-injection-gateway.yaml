@@ -27,33 +27,7 @@ mitre: AML.T0054
 # without explicit return-value sanitization.
 
 detect:
-  type: composite
-  conditions:
-    check: indirect_injection_gateway
-    # Tools that ingest untrusted external content (sources an attacker can write to)
-    ingestion_tool_patterns:
-      # Web content
-      - "(?i)(fetch|scrape|browse|crawl|get_?page|read_?url|visit|navigate|web_?search|browse_?web)"
-      - "(?i)(html|webpage|website|url|http_?get)"
-      # Email
-      - "(?i)(read_?email|get_?email|fetch_?email|list_?email|email_?content|inbox|imap|gmail|outlook)"
-      # Files/documents the AI doesn't own
-      - "(?i)(read_?file|open_?file|get_?file|load_?file|file_?content|parse_?pdf|parse_?doc)"
-      # Chat/messaging (attacker can send messages)
-      - "(?i)(read_?message|get_?message|slack|discord|telegram|teams|list_?channel|channel_?history)"
-      # Code repositories (attacker can create issues, PRs, comments)
-      - "(?i)(get_?issue|read_?issue|get_?pr|get_?comment|get_?review|issue_?body|pr_?body)"
-      # Calendar/tasks (attacker can send meeting invites)
-      - "(?i)(get_?event|read_?calendar|get_?task|todo_?item)"
-      # Database rows (attacker may control row content)
-      - "(?i)(query_?db|run_?query|sql_?select|search_?records|find_?records|get_?record)"
-      # RSS/news feeds (attacker controls feed items)
-      - "(?i)(rss|atom|feed|news_?article|get_?article)"
-    # Sanitization signals that would reduce the risk
-    sanitization_signals:
-      - "(?i)(sanitize|sanitization|escape|strip_?html|clean|validate_?output|content_?policy)"
-      - "(?i)(allow_?list|allowlist|safe_?content|content_?filter|output_?filter)"
-  context: metadata
+  type: typed
 remediation: >
   This tool ingests content from sources an attacker can influence (web pages, emails, messages, files,
   database rows, GitHub issues). The content returned is processed directly by the AI without declared

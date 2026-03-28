@@ -32,8 +32,7 @@ mitre: AML.T0054
 # via recursive agent loops.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Recursive tool call chains in descriptions
     - "(?i)(after|when|once)\\s+(complet|finish|done|execut).{0,30}(call|invoke|use|run|trigger)\\s+(tool|function|method)\\s+"
     - "(?i)(then|next|subsequently)\\s+(call|invoke|use|run)\\s+(this|itself|the same)"
@@ -53,10 +52,6 @@ detect:
     - "(?i)(pad|expand|inflate|extend)\\s+(response|output|result)\\s+(to|with|until)\\s+(maximum|max|\\d{4,})"
     # Recursive self-invocation pattern in tool descriptions
     - "(?i)(call|invoke|use|run)\\s+(this\\s+tool|itself|the\\s+same\\s+tool)\\s+(again|recursively|repeatedly)"
-  context: tool_description
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example"
-    - "(?i)pagination|batch|limit|max_results"
 remediation: >
   Implement strict bounds on tool execution: maximum iterations, response size
   limits, and recursion depth caps. Never create circular tool call chains where

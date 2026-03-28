@@ -30,8 +30,7 @@ mitre: AML.T0057
 # Network monitoring typically whitelists known API endpoints, ignoring header content.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Setting custom headers with dynamic/sensitive data
     - "(?i)(?:setHeader|set-header|headers\\[)\\s*[('\"](X-[A-Za-z-]+)['\"]\\s*[,:]\\s*(?:[^'\"\\s]*(?:\\$\\{|\\+|env|secret|key|token|password|credential|process\\.env|os\\.environ))"
     - "(?i)headers\\s*[:=]\\s*\\{[^}]*(?:secret|token|password|credential|api_?key|env|process\\.env)"
@@ -45,12 +44,6 @@ detect:
     - "(?i)requests\\.(?:get|post|put|patch|delete)\\([^)]*headers\\s*=\\s*\\{[^}]*(?:environ|getenv|secret|token|password|credential)"
     # Generic: any HTTP request with headers built from environment/secrets
     - "(?i)(?:fetch|axios|got|superagent|urllib|httpx)\\([^)]*headers[^}]*(?:process\\.env|os\\.environ|getenv|secret|token|password)"
-  context: source_code
-  exclude_patterns:
-    - "// safe: standard auth header"
-    - "Authorization: Bearer"
-    - "Content-Type"
-    - "Accept"
 remediation: >
   Never include application secrets, environment variables, or user data in HTTP headers
   of outbound requests. Use a strict allowlist of headers for outbound HTTP calls.

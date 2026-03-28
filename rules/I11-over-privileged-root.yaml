@@ -5,25 +5,7 @@ severity: high
 owasp: MCP06-excessive-permissions
 mitre: AML.T0054
 detect:
-  type: composite
-  conditions:
-    check: over_privileged_root
-    sensitive_paths:
-      - "file:///"
-      - "file:///etc"
-      - "file:///root"
-      - "file:///home"
-      - "file:///var"
-      - "file:///proc"
-      - "file:///sys"
-      - "file:///dev"
-      - "file:///tmp"
-      - "file:///usr"
-      - "file:///opt"
-      - "file:///C:"
-      - "file:///C:/Windows"
-      - "file:///C:/Users"
-  context: metadata
+  type: typed
 remediation: "Declare filesystem roots at the minimum required scope — project directories, not system roots. CVE-2025-53109 and CVE-2025-53110 demonstrated root boundary bypass in Anthropic's own filesystem server. Over-privileged roots enable path traversal, symlink exploitation, and sensitive data exposure."
 test_cases:
   true_positive:

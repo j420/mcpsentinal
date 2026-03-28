@@ -24,8 +24,7 @@ mitre: AML.T0017
 # patches, re-enabling the symlink bypass and root boundary escape.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Overrides/resolutions forcing specific old versions
     - "(?i)[\"'](?:overrides|resolutions|pnpm\\.overrides)[\"']\\s*:\\s*\\{[^}]*[\"'][\\w@/-]+[\"']\\s*:\\s*[\"'](?:0\\.|1\\.0|<=|<\\d)"
     # Lockfile modification scripts
@@ -40,11 +39,6 @@ detect:
     - "(?i)npm\\s+shrinkwrap.*(?:sed|awk|modify|replace)"
     # Downgrade indicators in CI scripts
     - "(?i)(?:npm\\s+install|pip\\s+install|pnpm\\s+add).*(?:@0\\.|@1\\.0|==0\\.|==1\\.0|<=\\d\\.\\d\\.\\d).*(?:mcp|server|sdk)"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example"
-    - "(?i)npm\\s+ci(?!.*--force)"
-    - "(?i)renovate|dependabot|greenkeeper"
 remediation: "Use 'npm ci' (not 'npm install') in CI to enforce lockfile integrity. Enable npm audit signatures to verify package provenance. Pin all direct dependencies to exact versions. Use SLSA provenance verification for critical dependencies. Monitor lockfile changes in pull requests with automated diff review. Never use --force or --legacy-peer-deps in production CI."
 test_cases:
   true_positive:

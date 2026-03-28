@@ -36,8 +36,7 @@ mitre: AML.T0040
 # - URL patterns where the subdomain is constructed from user/system data
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Source code: DNS lookup with dynamic/variable subdomain
     - "(?i)dns\\.(?:lookup|resolve|resolve4|resolve6)\\s*\\([^)]*(?:req|input|param|args|body|\\$\\{|\\+)"
     - "(?i)require\\s*\\(['\"]dns['\"]\\).*\\.(?:lookup|resolve)\\s*\\([^)]*(?:\\$\\{|\\+|concat)"
@@ -54,13 +53,6 @@ detect:
     # Domain generation algorithm indicators (high entropy subdomain construction)
     - "(?i)(?:hex|base64|b64|encode|btoa).*\\+.*\\.(?:com|net|org|io|cc|xyz)"
     - "\\.toString\\s*\\(\\s*16\\s*\\).*\\."
-  context: source_code
-  exclude_patterns:
-    - "// safe: internal DNS"
-    - "localhost"
-    - "127.0.0.1"
-    - "health.check"
-    - "dns.resolve('example.com')"
 remediation: >
   Remove all dynamic DNS queries where subdomain content is derived from application data,
   user input, or system information. DNS exfiltration channels are invisible to most monitoring

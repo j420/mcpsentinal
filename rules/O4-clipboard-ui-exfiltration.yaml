@@ -27,8 +27,7 @@ mitre: AML.T0057
 # - OWASP LLM01:2025: Prompt injection via rendered content
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Source code: constructing hidden image tags with dynamic URLs
     - "(?i)<img\\s+[^>]*src\\s*=\\s*['\"][^'\"]*(?:\\$\\{|\\+|concat|format|encode|base64|secret|token|env)"
     - "(?i)(?:width|height)\\s*=\\s*['\"]?(?:0|0px|1|1px)['\"]?.*(?:width|height)\\s*=\\s*['\"]?(?:0|0px|1|1px)"
@@ -43,11 +42,6 @@ detect:
     - "(?i)!\\[[^\\]]*\\]\\([^)]*(?:webhook\\.site|requestbin|pipedream|interactsh|burpcollaborator|ngrok)"
     # Tool response containing data-URI with encoded content
     - "(?i)data:(?:image|text|application)/[^;]+;base64,[A-Za-z0-9+/=]{100,}"
-  context: source_code
-  exclude_patterns:
-    - "// safe: legitimate image rendering"
-    - "alt=\"placeholder\""
-    - "test fixture"
 remediation: >
   Never construct HTML image tags, iframes, or CSS url() references with dynamic data
   derived from secrets, environment variables, or user credentials. Sanitize all tool

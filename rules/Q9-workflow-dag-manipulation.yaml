@@ -33,8 +33,7 @@ mitre: AML.T0058
 # arXiv 2510.23883 (Oct 2025), OWASP ASI01 Agent Goal Hijack
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # MCP tools that modify workflow/graph state
     - "(?i)(?:add|remove|modify|update|insert|delete)[_\\s]?(?:node|edge|step|task|stage)"
     - "(?i)(?:graph|workflow|pipeline|dag).*(?:modify|update|mutate|alter|change)"
@@ -48,10 +47,6 @@ detect:
     # AutoGen/CrewAI execution order manipulation
     - "(?i)(?:GroupChat|TaskDAG|crew).*(?:modify|update|reorder|alter)"
     - "(?i)(?:execution[_\\s]?order|task[_\\s]?priority|agent[_\\s]?order).*(?:set|change|override)"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example|readme"
-    - "(?i)(?:define|create|build|construct)[_\\s]?(?:graph|workflow|pipeline)"
 remediation: "MCP tools must NOT modify agentic workflow graphs, execution order, or routing during runtime. Workflow structure should be immutable once execution begins. If dynamic workflow modification is required, implement: (1) approval gates that require human confirmation before graph mutations, (2) integrity checks that validate the workflow graph against a known-good baseline after each step, (3) audit logging of all graph modifications with rollback capability. Reference: arXiv 2602.19555, Trend Micro subgraph impersonation attack (2026)."
 test_cases:
   true_positive:

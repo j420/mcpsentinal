@@ -23,8 +23,7 @@ mitre: AML.T0017
 # MITIGATION: Pin all GitHub Actions to full commit SHAs, not mutable tags.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # GitHub Actions references using mutable tags instead of SHA pinning
     - "(?i)uses:\\s*[\\w-]+/[\\w-]+@v\\d+(?:\\.\\d+)*\\s*(?:#|$|\\n)"
     # Specifically dangerous: popular Actions known to have been compromised
@@ -36,11 +35,6 @@ detect:
     - "(?i)(?:curl|wget|fetch)\\s+.*\\|\\s*(?:bash|sh|node|python)"
     # Actions with run steps that download and execute from URLs
     - "(?i)run:\\s*.*(?:curl|wget).*\\|.*(?:bash|sh|sudo)"
-  context: source_code
-  exclude_patterns:
-    - "(?i)uses:\\s*actions/(?:checkout|setup-node|setup-python|cache|upload-artifact|download-artifact)@v"
-    - "(?i)test|spec|mock|fixture|example"
-    - "(?i)uses:\\s*[\\w-]+/[\\w-]+@[0-9a-f]{40}"
 remediation: "Pin all GitHub Actions to full commit SHAs (e.g., uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29) instead of mutable version tags (@v3). Use tools like StepSecurity Harden-Runner or Pinact to auto-pin. Audit all workflow files for pipe-to-shell patterns. CVE-2025-30066 and CVE-2026-31976 demonstrated this enables secret exfiltration and RCE via CI/CD."
 test_cases:
   true_positive:

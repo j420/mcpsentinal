@@ -5,20 +5,7 @@ severity: critical
 owasp: MCP01-prompt-injection
 mitre: AML.T0054
 detect:
-  type: regex
-  patterns:
-    - "(?i)ignore\\s+(all\\s+)?previous\\s+instructions"
-    - "(?i)you\\s+are\\s+now\\s+(a|an)\\s+"
-    - "(?i)system\\s*:\\s*you"
-    - "(?i)\\[INST\\]|\\[/INST\\]|<\\|system\\|>|<\\|user\\|>|<\\|assistant\\|>"
-    - "(?i)do\\s+not\\s+reveal|do\\s+not\\s+disclose"
-    - "(?i)override\\s+(all\\s+)?(safety|security|restrictions)"
-    - "(?i)act\\s+as\\s+(a\\s+)?(root|admin|superuser)"
-    - "(?i)execute\\s+the\\s+following\\s+(without|regardless)"
-    - "(?i)IMPORTANT:\\s*(ignore|override|disregard|forget)"
-  context: resource_metadata
-  exclude_patterns:
-    - "(?i)security\\s+documentation|safe\\s+usage\\s+example"
+  type: typed
 remediation: "Remove prompt injection payloads from resource names, descriptions, and URIs. Resource metadata is processed by AI clients and should contain only factual descriptions of the resource content."
 test_cases:
   true_positive:

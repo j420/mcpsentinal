@@ -22,8 +22,7 @@ mitre: AML.T0054
 #   4. Running as root without dropping privileges
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Docker privileged mode
     - "(?i)(privileged|--privileged)\\s*[:=]\\s*(true|yes|1)"
     - "(?i)cap[_\\s-]?add.*(?:SYS_ADMIN|SYS_PTRACE|NET_RAW|ALL)"
@@ -38,10 +37,6 @@ detect:
     - "(?i)(run[_\\s-]?as[_\\s-]?root|EUID.*0|uid.*0)(?!.*(?:drop|setuid|seteuid|change.?user))"
     # Network namespace sharing (host network)
     - "(?i)(network[_\\s-]?mode|--net|--network)\\s*[:=]\\s*[\"']?host[\"']?"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture"
-    - "(?i)rootless|unprivileged|drop[_\\s-]?privilege|gosu|su-exec"
 remediation: "Run MCP servers in sandboxed containers with: (1) No --privileged flag, (2) Minimal Linux capabilities (drop ALL, add only needed), (3) Read-only root filesystem, (4) Non-root user, (5) Seccomp/AppArmor profiles enabled, (6) No host mounts except data volumes. CoSAI warns containers alone are insufficient — add seccomp profiles. Required by CoSAI MCP-T8 and ISO 27001 A.8.22."
 test_cases:
   true_positive:

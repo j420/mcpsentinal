@@ -5,8 +5,7 @@ severity: high
 owasp: MCP07-insecure-config
 mitre: AML.T0054
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Server accepts batch requests without size limits
     - "(?i)Array\\.isArray\\(\\s*(body|request|message|data|payload)\\s*\\)(?!.*(?:length\\s*[<>]|maxBatch|batch[_\\s-]?limit|MAX_BATCH))"
     # JSON.parse without batch size guard — processes arbitrary-length arrays
@@ -23,10 +22,6 @@ detect:
     - "(?i)for\\s+\\w+\\s+in\\s+(?:batch|requests|messages)\\s*:(?!.*(?:len\\(|max_batch|BATCH_LIMIT|islice))"
     # Batch endpoint handler with no per-request timeout
     - "(?i)(?:handleBatch|process_batch|batch_handler)\\s*(?:=>|=|\\()(?!.*(?:timeout|deadline|AbortSignal|Promise\\.race))"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example"
-    - "(?i)maxBatch|batch[_\\s-]?(size|limit|max)|MAX_BATCH"
 remediation: "Enforce a maximum batch size for JSON-RPC requests (recommended: 20-25 requests per batch). Reject batches exceeding the limit with a -32600 (Invalid Request) error. Implement per-batch timeout and memory limits. Reference: JSON-RPC 2.0 Section 6 (Batch) does not mandate limits — servers MUST enforce them."
 test_cases:
   true_positive:

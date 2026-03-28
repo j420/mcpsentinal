@@ -11,8 +11,7 @@ mitre: T1611
 # CIS Docker Benchmark v1.7.0 §5.25: "Restrict container from acquiring additional privileges"
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Docker --privileged flag
     - "(?i)privileged\\s*[:=]\\s*(?:true|yes|1)"
     - "(?i)--privileged(?:\\s|$)"
@@ -30,10 +29,6 @@ detect:
     - "(?i)(?:uts[_\\s-]?mode|hostUTS)\\s*[:=]\\s*[\"']?(?:host|true)[\"']?"
     # no-new-privileges disabled
     - "(?i)no[_\\-]?new[_\\-]?privileges\\s*[:=]\\s*(?:false|0|no)"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example"
-    - "(?i)cap[_\\s-]?drop\\s*[:=]?\\s*(?:\\[\\s*)?[\"']?ALL"
 remediation: "Run MCP server containers with minimal capabilities: drop ALL capabilities, add back only what is strictly needed (typically none, or NET_BIND_SERVICE for port 80/443). Set allowPrivilegeEscalation: false, hostPID: false, hostIPC: false. Never use --privileged. Apply Kubernetes Pod Security Standards 'restricted' profile. CVE-2025-23266 demonstrated that even OCI hooks can be exploited when container capabilities are too broad."
 test_cases:
   true_positive:

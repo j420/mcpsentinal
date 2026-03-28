@@ -5,31 +5,7 @@ severity: high
 owasp: MCP02-tool-poisoning
 mitre: AML.T0054
 detect:
-  type: composite
-  conditions:
-    check: resource_tool_shadowing
-    known_tool_names:
-      - "read_file"
-      - "write_file"
-      - "execute_command"
-      - "list_directory"
-      - "search"
-      - "query"
-      - "fetch"
-      - "get"
-      - "create"
-      - "delete"
-      - "run_command"
-      - "bash"
-      - "shell"
-      - "sql_query"
-      - "send_email"
-      - "read_database"
-      - "list_files"
-      - "get_secret"
-      - "create_file"
-      - "delete_file"
-  context: resource_metadata
+  type: typed
 remediation: "Use unique, descriptive resource names that do not shadow well-known tool names. Name collisions confuse AI clients about whether they are accessing a tool or a resource, potentially bypassing tool-specific safety checks."
 test_cases:
   true_positive:

@@ -5,8 +5,7 @@ severity: critical
 owasp: MCP01-prompt-injection
 mitre: AML.T0054
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Long base64 blocks — legitimately rare in descriptions, often used to hide instructions
     - "(?:[A-Za-z0-9+/]{40,}={0,2})"
     # URL-encoded sequences (more than 3 percent-encoded chars in a row is suspicious)
@@ -24,13 +23,6 @@ detect:
     - "(?i)(?:String\\.fromCharCode|chr\\s*\\(|charCodeAt)\\s*\\([0-9,\\s]{10,}\\)"
     # Morse code or similar alternate encoding structures
     - "(?:[.-]{3,}\\s){5,}"
-  context: tool_description
-  exclude_patterns:
-    - "example"
-    - "documentation"
-    - "base64 encoded"
-    - "returns base64"
-    - "returns a base64"
 remediation: "Do not use any encoding (base64, URL encoding, HTML entities, hex) in tool descriptions. All descriptions must be plain human-readable text. Encoded content in descriptions is a strong indicator of an attempt to hide malicious instructions from human review while ensuring LLM processing."
 test_cases:
   true_positive:

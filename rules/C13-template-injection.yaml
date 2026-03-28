@@ -5,8 +5,7 @@ severity: critical
 owasp: MCP03-command-injection
 mitre: null
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Python Jinja2 / Mako — render with user input
     - "(?i)(?:render_template_string|from_string|Template)\\s*\\(\\s*(?:req|input|param|args|body|query|user|f['\"])"
     - "(?i)jinja2\\.Template\\s*\\(\\s*(?:req|input|param|args|body)"
@@ -29,12 +28,6 @@ detect:
     - "(?i)nunjucks\\.renderString\\s*\\(\\s*(?:req|input|param|args|body)"
     # String interpolation in f-strings passed to template engines
     - "f['\"][^'\"]*\\{[^}]*(?:req|input|param|args)\\.[^}]*\\}[^'\"]*['\"]"
-  context: source_code
-  exclude_patterns:
-    - "// safe: static template"
-    - "autoescape"
-    - "escape()"
-    - "sanitize"
 remediation: "Never pass user-supplied strings directly to template engines as the template itself. Pass user data only as template variables (context). Enable autoescaping. If dynamic templates are required, use a sandboxed environment with no access to server internals."
 test_cases:
   true_positive:

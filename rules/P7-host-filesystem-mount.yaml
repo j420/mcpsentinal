@@ -11,8 +11,7 @@ mitre: T1611
 # Unit42 Container Escape Techniques (2025): host mounts enable container breakout.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Mounting host root filesystem
     - "(?i)(?:volumes?|mount|bind|\\-v)\\s*[:\\-]?\\s*[\"']?/\\s*:\\s*/"
     - "(?i)hostPath\\s*:\\s*\\n?\\s*path\\s*:\\s*[\"']?/$"
@@ -32,11 +31,6 @@ detect:
     - "(?i)hostPath[\\s\\S]{0,100}(?:readOnly\\s*:\\s*false|type\\s*:\\s*DirectoryOrCreate)"
     # Writable /proc/sys mounts (cgroup escape vector)
     - "(?i)(?:mount|bind).*(?:/proc/sys|/sys/fs/cgroup).*(?:rw|readwrite)"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example"
-    - "(?i)readOnly\\s*:\\s*true"
-    - "(?i)read[_\\-]?only"
 remediation: "Mount only the specific data directories needed by the MCP server, never entire host filesystem trees. Use read-only mounts (ro flag) wherever possible. For Kubernetes, avoid hostPath volumes entirely — use PersistentVolumeClaims instead. CVE-2025-53109/53110 demonstrated that even Anthropic's own filesystem MCP server had root boundary bypass bugs. Enforce Kubernetes Pod Security Standards 'restricted' profile which prohibits hostPath mounts."
 test_cases:
   true_positive:

@@ -5,12 +5,7 @@ severity: low
 owasp: MCP01-prompt-injection
 mitre: null
 detect:
-  type: schema-check
-  conditions:
-    check: description_length_anomaly
-    description_min_length: 2000
-    description_contains_newlines: true
-  context: tool_description
+  type: typed
 remediation: "Keep tool descriptions concise (under 500 characters). Excessively long descriptions may hide prompt injection payloads or confuse AI models."
 test_cases:
   true_positive:

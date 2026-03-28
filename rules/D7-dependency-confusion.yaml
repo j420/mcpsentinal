@@ -5,23 +5,7 @@ severity: high
 owasp: MCP10-supply-chain
 mitre: null
 detect:
-  type: composite
-  conditions:
-    check: dependency_confusion_risk
-    # Dependency confusion: a scoped private package (@company/pkg) may have an unscoped
-    # public counterpart (pkg) on npm/PyPI that an attacker can publish with a higher version.
-    # Package managers historically prefer public packages when version conflicts arise.
-    signals:
-      # Using internal/private scopes that may have public unscoped equivalents
-      - pattern: "^@[a-z][a-z0-9-]*/[a-z]"
-        description: "Scoped package — verify no higher-versioned unscoped public counterpart exists"
-      # Version pinned to a very high number (attacker trick to win version resolution)
-      - pattern: "\\d{4,}\\."
-        description: "Suspiciously high major version — common dependency confusion attack version (e.g. 9999.0.0)"
-      # Packages resolving from multiple registries simultaneously
-      - registry_mismatch: true
-        description: "Package resolved from different registry than lockfile expects"
-  context: metadata
+  type: typed
 remediation: "Use npm/pip --registry flags to pin all installs to your private registry. Add a .npmrc with 'registry' pinned. For scoped packages, set scope-level registry configuration. Use Subresource Integrity (SRI) hashes in lockfiles. Publish placeholder packages to the public registry to block squatting."
 test_cases:
   true_positive:

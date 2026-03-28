@@ -5,13 +5,7 @@ severity: high
 owasp: MCP03-command-injection
 mitre: null
 detect:
-  type: regex
-  patterns:
-    - "(?i)(file_?path|filepath|filename|directory|dir_path)"
-    - "(?i)(command|cmd|shell|exec|script)"
-    - "(?i)(sql|query|sql_query|raw_query)"
-    - "(?i)(url|uri|endpoint|webhook_url)"
-  context: parameter_schema
+  type: typed
   exclude_patterns: []
 remediation: "Parameters that accept file paths, URLs, commands, or SQL should have strict validation: allowlists, path normalization, URL scheme restrictions, or parameterized queries."
 test_cases:

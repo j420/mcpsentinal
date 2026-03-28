@@ -5,13 +5,7 @@ severity: high
 owasp: MCP07-insecure-config
 mitre: null
 detect:
-  type: behavioral
-  conditions:
-    check: connection_transport
-    insecure_transports:
-      - http
-      - ws
-  context: metadata
+  type: typed
 remediation: "Use HTTPS/WSS for all network-exposed MCP server connections. HTTP and WS transmit data in cleartext, exposing tool calls and responses to interception."
 test_cases:
   true_positive:

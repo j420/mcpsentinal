@@ -27,8 +27,7 @@ mitre: AML.T0054
 # Intelligence: CVE-2025-68664 (Cyata/Yarden Porat, Dec 2025), CVE-2025-68665
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # MCP server code that constructs responses with LangChain serialization markers
     - "(?i)[\"']lc[\"']\\s*:\\s*[12]"
     - "(?i)[\"']type[\"']\\s*:\\s*[\"'](?:constructor|secret|not_implemented)[\"']"
@@ -43,10 +42,6 @@ detect:
     # Vulnerable deserialization with secrets enabled
     - "(?i)secrets_from_env\\s*=\\s*True"
     - "(?i)load\\(.*(?:allow_dangerous|secrets)"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example"
-    - "(?i)secrets_from_env\\s*=\\s*False"
 remediation: "MCP tool outputs flowing into LangChain serialization pipelines must be sanitized to strip `lc` marker keys before serialization. Update LangChain to >=0.3.81 or >=1.2.5 which patches CVE-2025-68664. Never use secrets_from_env=True in production. Implement an allowlist via `allowed_objects` parameter on load()/loads(). Treat all MCP tool responses as untrusted data in LangChain deserialization contexts."
 test_cases:
   true_positive:

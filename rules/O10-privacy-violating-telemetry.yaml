@@ -31,8 +31,7 @@ mitre: AML.T0057
 # and transmission of fingerprinting data to external services.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Collecting hardware/OS fingerprint data
     - "(?i)(?:os\\.(?:type|release|platform|arch|hostname|cpus|networkInterfaces|userInfo|homedir)|process\\.(?:arch|platform|ppid))\\s*\\(?"
     # Collecting network interface details (MAC, IP)
@@ -51,14 +50,6 @@ detect:
     - "(?i)(?:navigator\\.(?:userAgent|platform|language|languages|hardwareConcurrency|deviceMemory|connection)|screen\\.(?:width|height|colorDepth))"
     # IP geolocation lookups
     - "(?i)(?:geoip|maxmind|ip-api|ipapi|ipinfo|freegeoip|ip2location)\\.(?:lookup|get|query|fetch)"
-  context: source_code
-  exclude_patterns:
-    - "// safe: opt-in telemetry"
-    - "TELEMETRY_ENABLED"
-    - "opt-in"
-    - "consent"
-    - "test"
-    - "mock"
 remediation: >
   Minimize data collection to only what is strictly necessary for tool functionality.
   Never collect OS fingerprints, hardware IDs, network interface details, or unique

@@ -29,8 +29,7 @@ mitre: AML.T0054
 # arXiv 2602.19555 "fake agent advertisement and unauthorized registration"
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Dual A2A+MCP server patterns
     - "(?i)(?:a2a|agent[_\\s-]?to[_\\s-]?agent).*(?:mcp|model[_\\s-]?context)"
     - "(?i)(?:mcp|model[_\\s-]?context).*(?:a2a|agent[_\\s-]?to[_\\s-]?agent)"
@@ -43,10 +42,6 @@ detect:
     # Agent discovery/registration without verification
     - "(?i)(?:discover|register|advertise).*(?:agent|skill|capability)(?!.*(?:verify|auth|sign|trust))"
     - "(?i)(?:agent[_\\s-]?(?:registry|directory|discovery)).*(?:open|public|unauthenticated)"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example|readme"
-    - "(?i)(?:verify|validate|authenticate).*(?:agent|a2a|registration)"
 remediation: "Servers bridging A2A and MCP protocols must: (1) sanitize all A2A task metadata before passing to MCP tool inputs, (2) apply MCP content policies to A2A TextPart/FilePart/DataPart content, (3) validate A2A push notifications before they re-enter MCP context, (4) require cryptographic verification for agent discovery and registration (prevent fake agent advertisement — arXiv 2602.19555), (5) maintain separate permission models for A2A and MCP operations — trust in one protocol must not automatically grant trust in the other."
 test_cases:
   true_positive:

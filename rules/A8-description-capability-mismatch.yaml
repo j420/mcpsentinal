@@ -5,22 +5,7 @@ severity: high
 owasp: MCP02-tool-poisoning
 mitre: AML.T0054
 detect:
-  type: composite
-  conditions:
-    check: description_capability_mismatch
-    readonly_claim_patterns:
-      - "(?i)read[- ]only"
-      - "(?i)non[- ]destructive"
-      - "(?i)does not (modify|write|change|alter|delete|update)"
-      - "(?i)will not (modify|write|change|alter|delete|update)"
-      - "(?i)safe to (run|use|call|execute)"
-      - "(?i)no (side[- ]effects?|modifications?|changes?|writes?)"
-      - "(?i)retrieves?|fetches?|reads?|queries?|lists?|gets?|searches?"
-    write_parameter_patterns:
-      - "(?i)(write|overwrite|create|delete|remove|modify|update|edit|append|truncate|drop|insert|replace|set|save|put|patch)(?:_|\\s)"
-      - "(?i)(dest|destination|output_?(?:file|path|dir)|target_?(?:file|path|dir))"
-      - "(?i)(content|body|data|payload).*(?:write|save|store|persist)"
-  context: tool_description
+  type: typed
 remediation: "Align tool descriptions with actual parameter capabilities. A tool claiming to be 'read-only' must not accept parameters that perform writes, deletions, or modifications. Mismatch between description and capability is a deception vector that causes AI agents to approve dangerous operations."
 test_cases:
   true_positive:

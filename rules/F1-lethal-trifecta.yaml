@@ -5,18 +5,7 @@ severity: critical
 owasp: MCP04-data-exfiltration
 mitre: AML.T0054
 detect:
-  type: composite
-  conditions:
-    check: lethal_trifecta
-    requires_all:
-      - capability: reads-data
-        description: "Tool reads private/sensitive data (database, files, credentials)"
-      - capability: reads-data
-        from_untrusted: true
-        description: "Tool ingests untrusted content (web pages, user uploads, external APIs)"
-      - capability: sends-network
-        description: "Tool can communicate externally (HTTP, email, webhooks)"
-  context: metadata
+  type: typed
 remediation: "This server combines private data access, untrusted content ingestion, and external communication — the 'lethal trifecta' for data exfiltration. Separate these capabilities into isolated servers or add strict data flow controls."
 test_cases:
   true_positive:

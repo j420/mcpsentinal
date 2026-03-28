@@ -30,8 +30,7 @@ mitre: AML.T0054
 # source (2025), OWASP ASI02 Tool Misuse
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Detects dual-protocol server patterns — serves both MCP and OpenAI/Gemini
     - "(?i)(openai|function[_\\s-]?calling|tool[_\\s-]?choice).{0,60}(mcp|model[_\\s-]?context)"
     - "(?i)(mcp|model[_\\s-]?context).{0,60}(openai|function[_\\s-]?calling|tool[_\\s-]?choice)"
@@ -42,9 +41,6 @@ detect:
     - "(?i)(?:function|tool)_schema_from_mcp"
     # Pattern constraint stripping indicators
     - "(?i)(?:delete|remove|strip|omit|drop|ignore)\\s+(?:pattern|format|minLength|maxLength|constraints)"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture"
 remediation: "Dual-protocol MCP servers must validate input constraints server-side, not rely on client-side schema enforcement. When translating MCP schemas to OpenAI function-calling format, constraints like `pattern`, `minLength`, `maxLength`, and `format` are silently dropped. Implement server-side Zod/AJV validation on all tool inputs regardless of the calling protocol."
 test_cases:
   true_positive:

@@ -19,8 +19,7 @@ mitre: AML.T0054
 # calls Tool A) creating infinite loops.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Self-referential function calls without depth tracking
     - "(?i)function\\s+(\\w+).*\\{[^}]*\\1\\s*\\((?!.*(?:depth|level|limit|max|count|recursi))"
     - "(?i)(async\\s+)?function\\s+(\\w+).*\\{[^}]*await\\s+\\2\\s*\\("
@@ -31,10 +30,6 @@ detect:
     - "(?i)(readdir|walk|glob|find).*(?:recursi|deep|nested)(?!.*(?:depth|level|limit|max))"
     # Agent re-invocation without depth tracking
     - "(?i)(invoke|call|execute)[_\\s-]?(?:tool|agent|self)(?!.*(?:depth|level|limit|max[_\\s-]?(?:depth|recursi|iter|call)|count))"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture"
-    - "(?i)depth|max[_\\s-]?depth|max[_\\s-]?level|recursion[_\\s-]?limit|stack[_\\s-]?limit"
 remediation: "Add explicit depth/recursion limits to all recursive operations. Use iterative approaches where possible. Set maximum depth for directory walking (max_depth=10), tree traversal (max_level=20), and agent re-invocation (max_calls=5). Implement circuit breakers that halt after N iterations. Required by EU AI Act Art. 15 (robustness) and OWASP ASI08."
 test_cases:
   true_positive:

@@ -5,8 +5,7 @@ severity: critical
 owasp: MCP05-privilege-escalation
 mitre: null
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Direct prototype assignment from user input
     - "(?i)\\.__proto__\\s*\\["
     - "(?i)\\.__proto__\\s*\\."
@@ -25,11 +24,6 @@ detect:
     - "(?i)JSON\\.parse\\s*\\([^)]+\\).*__proto__"
     # hasOwnProperty bypass (indicator that prototype checks are being bypassed)
     - "(?i)\\[\\s*['\"]hasOwnProperty['\"]\\s*\\]"
-  context: source_code
-  exclude_patterns:
-    - "hasOwnProperty.call"
-    - "Object.create(null)"
-    - "// safe:"
 remediation: "Sanitize all user-supplied keys before merging into objects. Use Object.create(null) for configuration objects to strip prototype. Validate that keys don't include '__proto__', 'constructor', or 'prototype'. Use structuredClone() for deep copying untrusted data."
 test_cases:
   true_positive:

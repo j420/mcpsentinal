@@ -10,8 +10,7 @@ mitre: T1552.005
 # CIS AWS Foundations Benchmark v3.0 §5.6: "Ensure IMDSv2 is required on all instances."
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # AWS/Azure/GCP metadata endpoints (direct access)
     - "169\\.254\\.169\\.254"
     - "(?i)metadata\\.google\\.internal"
@@ -36,11 +35,6 @@ detect:
     - "(?i)Metadata-Flavor:\\s*Google"
     # Azure IMDS header
     - "(?i)Metadata:\\s*true"
-  context: source_code
-  exclude_patterns:
-    - "(?i)IMDSv2|X-aws-ec2-metadata-token-ttl"
-    - "(?i)test|spec|mock|fixture|example"
-    - "(?i)block.*metadata|disable.*metadata|deny.*metadata"
 remediation: "MCP servers should never directly access cloud metadata services. If cloud credentials are needed, use IAM Roles for Service Accounts (IRSA on EKS), Workload Identity (GKE), or Managed Identity (AKS) which provide credentials via projected service account tokens — not the metadata endpoint. Enforce IMDSv2 with hop limit 1 on all EC2 instances. Set HttpPutResponseHopLimit=1 to prevent container-level metadata access. Block 169.254.169.254 in container network policies."
 test_cases:
   true_positive:

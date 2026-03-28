@@ -28,8 +28,7 @@ mitre: AML.T0017
 # indicators of manifest/tarball divergence.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Publish scripts that modify package.json before npm pack/publish
     - "(?i)[\"']prepublish(?:Only)?[\"']\\s*:\\s*[\"'][^\"']*(?:sed|awk|perl|node.*package\\.json|jq.*package\\.json)"
     # Dynamic modification of package.json during publish lifecycle
@@ -44,10 +43,6 @@ detect:
     - "(?i)[\"']exports[\"'].*[\"']\\.[\"'].*[\"'](?:import|require)[\"'].*(?:(?!index)\\w+\\.(?:js|mjs|cjs))"
     # Hidden bin field entries not matching declared tool names
     - "(?i)[\"']bin[\"']\\s*:\\s*\\{[^}]*[\"'](?!(?:mcp-sentinel|npx))[\\w-]+[\"']\\s*:\\s*[\"'][^\"']*(?:backdoor|payload|hook|inject)"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example"
-    - "(?i)(?:prepublish|prepublishOnly).*(?:tsc|build|compile|lint|typecheck)"
 remediation: "Verify package integrity by comparing registry manifest with tarball package.json using npm-manifest-check or similar tools. Pin dependencies by integrity hash in lockfiles. Use 'npm publish --provenance' for Sigstore attestation. Audit prepublish scripts for package.json modifications. Add 'npm pack --dry-run' to CI to verify tarball contents match expectations."
 test_cases:
   true_positive:

@@ -38,23 +38,7 @@ mitre: AML.T0054
 # - Payload positioned at the END of a long description (recency attack)
 
 detect:
-  type: composite
-  conditions:
-    check: context_window_saturation
-    # Detection signals for saturation-designed descriptions
-    signals:
-      # Single tool description exceeds this character count (approx 1500 tokens)
-      description_char_threshold: 6000
-      # Ratio of description length to number of parameters (high ratio = padding)
-      description_to_params_ratio: 500  # chars per parameter — unusually verbose
-      # Description contains repetitive filler patterns
-      repetition_patterns:
-        - "(?i)(note|please\\s+note|important|remember|keep\\s+in\\s+mind)\\s*:"
-        - "(?i)(this\\s+tool|this\\s+function|this\\s+method)\\s+(is|will|can|should|must)"
-      # Injection payload positioned in final 20% of a long description
-      tail_injection_check: true
-      tail_window_percent: 20
-  context: tool_description
+  type: typed
 remediation: >
   Tool descriptions must be concise. Keep descriptions under 500 characters for simple tools
   and under 1000 for complex tools. Never pad descriptions with repetitive disclaimers, lengthy

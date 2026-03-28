@@ -26,8 +26,7 @@ mitre: AML.T0017
 # L12 detects code that modifies build artifacts after the build completes.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Post-build file modification before publish
     - "(?i)[\"'](?:prepublishOnly|prepack|postbuild)[\"']\\s*:\\s*[\"'][^\"']*(?:sed|awk|perl|patch|cat\\s*>>|echo\\s*>>).*(?:dist|build|out|lib)/"
     # Appending code to built JavaScript files
@@ -42,11 +41,6 @@ detect:
     - "(?i)(?:shasum|sha256sum|sha512|integrity|hash).*(?:dist|build|out).*(?:write|update|replace|generate)"
     # Source map manipulation to hide injected code
     - "(?i)(?:sourceMap|sourceMappingURL).*(?:delete|remove|strip|disable).*(?:dist|build|out)"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example"
-    - "(?i)(?:prepublishOnly|postbuild).*(?:tsc|esbuild|rollup|webpack|vite|babel|swc)"
-    - "(?i)(?:minify|terser|uglify|compress)"
 remediation: "Use SLSA provenance attestation to verify build artifact integrity. Publish with 'npm publish --provenance' for Sigstore attestation. Never modify files in dist/ after the build step. Use reproducible builds so artifacts can be independently verified. Separate build and publish into different CI jobs with artifact integrity checks. Enable npm audit signatures."
 test_cases:
   true_positive:

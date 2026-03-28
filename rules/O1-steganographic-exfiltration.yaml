@@ -29,8 +29,7 @@ mitre: AML.T0057
 # A marketing graphic may contain hundreds of kilobytes of encoded financial records.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # EXIF/metadata manipulation libraries
     - "(?i)(?:exif|piexif|Exif(?:Tool|Read|Write)|ExifImage|sharp\\.metadata|gm\\.identify)"
     - "(?i)(?:exif_read_data|exif_imagetype|iptc_parse)"
@@ -46,13 +45,6 @@ detect:
     - "(?i)(?:process\\.env|os\\.environ|getenv).*(?:writeFile|write|save|pipe).*\\.(?:png|jpg|jpeg|gif|bmp|tiff|pdf|wav|mp3)"
     # Audio steganography
     - "(?i)(?:audiosteg|wavsteg|mp3steg|audio_stego|spectro_steg)"
-  context: source_code
-  exclude_patterns:
-    - "// safe: metadata stripping"
-    - "// safe: exif removal"
-    - "exif.remove"
-    - "stripMetadata"
-    - "removeExif"
 remediation: >
   Remove all code that writes application data, user input, or secrets into image/PDF/audio
   metadata fields. If file processing is required, strip all metadata before returning files

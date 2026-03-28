@@ -31,8 +31,7 @@ mitre: AML.T0057
 # session-scoped paths, and unscoped in-memory stores.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Module-level mutable data stores (Node.js)
     - "(?i)(?:^|\\n)(?:const|let|var)\\s+(?:cache|store|data|users?Data|sessions?|history|memory|context|results?)\\s*[:=]\\s*(?:new Map|new Set|\\{\\}|\\[\\]|new \\w*Cache)"
     # Global caches without session scoping
@@ -47,14 +46,6 @@ detect:
     - "(?i)this\\.(?:cache|store|userData|history|memory|context|results?)\\s*\\[(?!.*session|.*user_?id|.*req\\.)"
     # SQLite/file-based shared DB without user isolation
     - "(?i)(?:sqlite3|better-sqlite3|sql\\.js)\\.(?:Database|open)\\s*\\([^)]*['\"](?:shared|cache|data|memory)['\"]"
-  context: source_code
-  exclude_patterns:
-    - "// safe: session-scoped"
-    - "sessionId"
-    - "userId"
-    - "req.session"
-    - "per-user"
-    - "test"
 remediation: >
   Never use module-level or global variables to cache user data. All data stores must be
   scoped to the current session or user. Use session-keyed storage (Map keyed by session ID)

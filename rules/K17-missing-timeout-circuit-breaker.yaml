@@ -18,8 +18,7 @@ mitre: AML.T0054
 # In multi-agent architectures, one hung agent can cascade into all agents.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # HTTP requests without timeout
     - "(?i)(?:fetch|axios|got|request|urllib|httpx|http\\.get|http\\.post)\\s*\\((?!.*(?:timeout|signal|AbortSignal|deadline|cancel))"
     - "(?i)(?:fetch|axios\\.(?:get|post|put|delete))\\s*\\([^)]*\\)(?!.*(?:timeout|signal))"
@@ -29,10 +28,6 @@ detect:
     - "(?i)(?:exec|execSync|spawn|subprocess\\.run|os\\.system)\\s*\\((?!.*(?:timeout|kill|maxBuffer|signal))"
     # MCP tool calls without timeout
     - "(?i)(?:callTool|invoke|tools\\/call|execute_tool)\\s*\\((?!.*(?:timeout|signal|deadline|cancel|abort))"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture"
-    - "(?i)timeout|AbortSignal|deadline|circuit[_\\s-]?breaker|retry|backoff"
 remediation: "Add timeouts to ALL external calls: HTTP requests (30s), database queries (10s), subprocess execution (60s), and MCP tool calls (30s). Implement circuit breakers that open after N consecutive failures (e.g., opossum, cockatiel). Use AbortSignal for cancellable operations. Required by EU AI Act Art. 15 and OWASP ASI08."
 test_cases:
   true_positive:

@@ -29,8 +29,7 @@ mitre: AML.T0054
 # migration directives that trick users or AI into executing commands.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Fake update notifications in tool descriptions
     - "(?i)(?:update|upgrade|migrate|switch\\s+to).*(?:npm\\s+install|pip\\s+install|npx|pnpm\\s+add).*(?:@|https?://)"
     # Tool output suggesting running install commands
@@ -45,11 +44,6 @@ detect:
     - "(?i)(?:migrate|migration|upgrade).*(?:script|tool).*(?:curl|wget|fetch|download).*https?://"
     # Self-update mechanism that downloads and replaces server code
     - "(?i)(?:self[_-]?update|auto[_-]?update|check[_-]?update).*(?:download|fetch|install|replace|overwrite).*(?:dist|build|src|index)"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example"
-    - "(?i)(?:update-notifier|npm-check-updates|ncu).*(?:import|require)"
-    - "(?i)(?:changelog|release\\s+notes|what.s\\s+new)"
 remediation: "MCP servers should not include update commands in tool descriptions or responses. Use standard package manager update mechanisms (npm update, pip install --upgrade). Never download update scripts from URLs. Implement signed update verification. AI clients should refuse to execute install commands suggested by tool responses."
 test_cases:
   true_positive:

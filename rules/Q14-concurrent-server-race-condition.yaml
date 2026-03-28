@@ -35,8 +35,7 @@ mitre: T1068
 # arXiv 2602.19555 (Feb 2026), MITRE T1068 Exploitation for Privilege Escalation
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Shared filesystem access without locking
     - "(?i)(?:read|write|modify|delete).*(?:file|path|directory)(?!.*(?:lock|mutex|semaphore|flock|atomic))"
     - "(?i)(?:fs\\.(?:readFile|writeFile|unlink|rename|chmod))(?!.*(?:lock|atomic|exclusive))"
@@ -50,10 +49,6 @@ detect:
     - "(?i)(?:fs\\.(?:readFile|writeFile)).*(?:followLinks|resolveLinks)\\s*:\\s*true"
     # File operations in temp directories (race-prone)
     - "(?i)(?:tmp|temp|tmpdir|os\\.tmpdir).*(?:write|create|exec)(?!.*(?:mkdtemp|exclusive|O_EXCL))"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example"
-    - "(?i)(?:lock|mutex|semaphore|atomic|transaction|flock)"
 remediation: "MCP servers sharing filesystem or database backends with other servers must implement proper concurrency controls. Use: (1) file locking (flock/lockfile) for filesystem operations, (2) database transactions for all read-modify-write sequences, (3) atomic file operations (O_EXCL, mkdtemp) instead of check-then-create, (4) lstat() to detect symlinks before following (CVE-2025-53109). Never assume exclusive access to shared resources — other MCP servers may be operating concurrently."
 test_cases:
   true_positive:

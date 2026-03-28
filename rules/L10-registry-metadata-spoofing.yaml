@@ -27,8 +27,7 @@ mitre: AML.T0017
 # METADATA seen by the DEVELOPER making install decisions.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # False author/org claims in package metadata
     - "(?i)[\"'](?:author|publisher|organization|maintainer)[\"']\\s*:\\s*[\"'](?:Anthropic|OpenAI|Google DeepMind|Microsoft|Meta AI|AWS|GitHub)[\"']"
     # Fake official status claims in descriptions or README
@@ -41,10 +40,6 @@ detect:
     - "(?i)(?:PUT|POST|PATCH).*(?:registry\\.npmjs\\.org|pypi\\.org|smithery|pulsemcp).*(?:metadata|description|keywords|author)"
     # Impersonating known MCP server names in package.json
     - "(?i)[\"'](?:name|displayName)[\"']\\s*:\\s*[\"'](?:official|anthropic|openai|google|microsoft)[_-]?(?:mcp|server|tool)"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example"
-    - "(?i)github\\.com/anthropics/|github\\.com/openai/|github\\.com/google/"
 remediation: "Verify MCP server author claims by checking the GitHub org URL against the claimed publisher. Do not trust star counts or download numbers as security indicators. Use npm provenance (--provenance flag) to verify publisher identity. Check the MCP Sentinel registry for independent security scoring. Report false metadata claims to the registry operator."
 test_cases:
   true_positive:

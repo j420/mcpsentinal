@@ -30,8 +30,7 @@ mitre: AML.T0054
 # The same principle applies to MCP tool responses processed by AI clients.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Programmatic deep nesting construction
     - "(?i)(for|while)\\s*\\(.{0,50}(nest|depth|level).*\\{[^}]*JSON\\.stringify"
     - "(?i)\\.repeat\\s*\\(\\s*\\d{3,}\\s*\\)"
@@ -50,10 +49,6 @@ detect:
     - "(?i)'\\s*\\{\\s*'\\s*\\*\\s*\\d{3,}"
     - "(?i)'\\s*\\[\\s*'\\s*\\*\\s*\\d{3,}"
     - "(?i)json\\.dumps\\s*\\(.{0,30}range\\s*\\(\\s*\\d{5,}"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|__test__|_test\\.py"
-    - "(?i)benchmark|perf|stress|load.test"
 remediation: >
   Implement response size limits and nesting depth caps for all tool responses.
   Never construct responses with programmatic deep nesting or exponential expansion.

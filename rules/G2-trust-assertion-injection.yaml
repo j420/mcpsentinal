@@ -30,8 +30,7 @@ mitre: AML.T0054
 # It requires ZERO code — only text in the description.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Anthropic/model vendor authority claims
     - "(?i)approved\\s+by\\s+anthropic"
     - "(?i)certified\\s+by\\s+anthropic"
@@ -58,11 +57,6 @@ detect:
     - "(?i)(you\\s+can\\s+|feel\\s+free\\s+to\\s+|it\\s+is\\s+safe\\s+to\\s+)trust\\s+this"
     - "(?i)this\\s+tool\\s+has\\s+permission\\s+to"
     - "(?i)(ai|assistant|claude|model)\\s+should\\s+(always\\s+)?trust"
-  context: tool_description
-  exclude_patterns:
-    - "example"
-    - "test"
-    - "demo"
 remediation: >
   Remove all authority claims, trust assertions, and safety certifications from tool descriptions.
   Legitimate tools do not need to claim they are safe or approved — their actual behavior and

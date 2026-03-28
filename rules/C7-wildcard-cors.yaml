@@ -5,16 +5,7 @@ severity: high
 owasp: MCP07-insecure-config
 mitre: null
 detect:
-  type: regex
-  patterns:
-    - "(?i)Access-Control-Allow-Origin.*\\*"
-    - "(?i)cors\\s*\\(\\s*\\{[^}]*origin\\s*:\\s*['\"]\\*['\"]"
-    - "(?i)cors\\s*\\(\\s*\\)"
-    - "(?i)allow_origins\\s*=\\s*\\[\\s*['\"]\\*['\"]\\s*\\]"
-  context: source_code
-  exclude_patterns:
-    - "localhost"
-    - "127.0.0.1"
+  type: typed
 remediation: "Replace wildcard CORS with an explicit allowlist of permitted origins. Wildcard CORS allows any website to make requests to the MCP server."
 test_cases:
   true_positive:

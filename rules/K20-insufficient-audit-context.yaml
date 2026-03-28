@@ -19,8 +19,7 @@ mitre: AML.T0054
 # ISO 27001 A.8.15 requires: who, what, when, where, and outcome.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # console.log/warn/error for production request handling (not structured)
     - "(?i)console\\.(log|warn|error)\\s*\\(\\s*[\"'`](?:request|handling|processing|executing|tool|invoke)"
     - "(?i)console\\.(log|warn|error)\\s*\\(\\s*(?:req|request|ctx|context)\\b"
@@ -30,11 +29,6 @@ detect:
     - "(?i)print\\s*\\(.*(?:request|handle|process|tool|invoke|execute)"
     # Logger without correlation/request ID
     - "(?i)logger\\.(info|warn|error)\\s*\\(.*(?:tool|request|handle|invoke)(?!.*(?:requestId|correlationId|traceId|spanId|agent[_\\s-]?id|user[_\\s-]?id))"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture"
-    - "(?i)requestId|correlationId|traceId|spanId|agent[_\\s-]?id|user[_\\s-]?id"
-    - "(?i)pino|winston|bunyan|structlog"
 remediation: "Use structured logging that includes all five ISO 27001 A.8.15 fields: (1) WHO — agent/user identity, (2) WHAT — tool name and operation, (3) WHEN — ISO 8601 timestamp, (4) WHERE — server ID and correlation ID, (5) OUTCOME — success/failure and result summary. Replace console.log with structured loggers (pino, winston). Add correlation IDs for request tracing across multi-agent chains."
 test_cases:
   true_positive:

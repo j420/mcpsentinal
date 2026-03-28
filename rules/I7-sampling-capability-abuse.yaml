@@ -5,31 +5,7 @@ severity: critical
 owasp: MCP01-prompt-injection
 mitre: AML.T0054
 detect:
-  type: composite
-  conditions:
-    check: sampling_abuse
-    ingestion_patterns:
-      - "fetch"
-      - "scrape"
-      - "browse"
-      - "crawl"
-      - "download"
-      - "read_url"
-      - "get_page"
-      - "http"
-      - "web"
-      - "email"
-      - "inbox"
-      - "message"
-      - "slack"
-      - "discord"
-      - "issue"
-      - "comment"
-      - "rss"
-      - "feed"
-      - "calendar"
-      - "webhook"
-  context: metadata
+  type: typed
 remediation: "Servers declaring sampling capability can request the client LLM to generate arbitrary text, amplifying attack success by 23-41% (Breaking the Protocol, arXiv 2601.17549). Combined with external content ingestion, this creates a weaponized inference loop. Remove sampling capability or implement strict content sanitization on all ingested external content."
 test_cases:
   true_positive:

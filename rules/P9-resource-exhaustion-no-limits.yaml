@@ -10,8 +10,7 @@ mitre: T1499.001
 # Kubernetes LimitRange/ResourceQuota: enforce namespace-level limits.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Docker run without resource limits (long-form detection)
     - "(?i)docker\\s+run(?!.*(?:--memory|--cpus|-m\\s|--pids-limit|--ulimit)).*(?:mcp|server|app)"
     # docker-compose without resource limits (deploy.resources absent)
@@ -28,11 +27,6 @@ detect:
     # Unlimited ulimit settings
     - "(?i)ulimit\\s+.*(?:nofile|nproc|fsize).*unlimited"
     - "(?i)--ulimit\\s+(?:nofile|nproc)\\s*=\\s*(?:-1|unlimited)"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example"
-    - "(?i)resources\\s*:\\s*\\n\\s*(?:limits|requests)"
-    - "(?i)mem_limit|cpus|memory|cpu"
 remediation: "Always set resource limits for MCP server containers: memory (--memory), CPU (--cpus), PIDs (--pids-limit), file descriptors (--ulimit nofile), and open files. In Kubernetes, set both requests and limits in the container spec. Use LimitRange and ResourceQuota at the namespace level as a safety net. Set pids.max in cgroups to prevent fork bombs. A missing PID limit allows a single tool invocation to fork-bomb the host (CVE-2025-26449 class)."
 test_cases:
   true_positive:

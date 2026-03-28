@@ -24,8 +24,7 @@ mitre: AML.T0054
 # MCP servers that pass user input as git arguments without sanitization.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Git argument injection via -- prefix
     - "(?i)git\\s+(diff|log|show|checkout|pull|push|fetch|clone).*\\$\\{?\\w"
     - "(?i)--upload-pack|--receive-pack|--exec"
@@ -39,10 +38,6 @@ detect:
     # Unsanitized git argument construction
     - "(?i)spawn.*git.*\\[.*\\$\\{|exec.*git.*\\$\\{"
     - "(?i)subprocess.*git.*format|os\\.system.*git.*\\%"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture"
-    - "(?i)sanitize|validate|allowlist|safelist"
 remediation: "Always terminate git argument lists with '--' before user-supplied paths. Never allow git_init on directories outside the configured workspace. Validate all git arguments against an allowlist. Block core.* config overrides in user-controlled inputs. See CVE-2025-68143/68144/68145 for the full attack chain."
 test_cases:
   true_positive:

@@ -30,26 +30,7 @@ mitre: AML.T0054
 # Check Point CVE-2025-59536/CVE-2026-21852
 
 detect:
-  type: composite
-  conditions:
-    check: dxt_privilege_chain
-    # Low-sensitivity ingestion capabilities (attack entry points)
-    ingestion_patterns:
-      - "(?i)(calendar|event|schedule|meeting|appointment)"
-      - "(?i)(email|mail|inbox|message|notification)"
-      - "(?i)(slack|discord|teams|chat|webhook)"
-      - "(?i)(rss|feed|news|article|blog)"
-      - "(?i)(clipboard|paste|screen|screenshot)"
-      - "(?i)(browser|web[_\\s-]?page|url|link)"
-    # High-privilege execution capabilities (attack targets)
-    execution_patterns:
-      - "(?i)(exec|spawn|shell|command|terminal|bash|sh\\s|powershell)"
-      - "(?i)(write[_\\s-]?file|create[_\\s-]?file|save[_\\s-]?file|modify[_\\s-]?file)"
-      - "(?i)(install|download|pip|npm|apt|brew)"
-      - "(?i)(git[_\\s-]?(?:clone|init|push|commit))"
-      - "(?i)(docker|container|kubernetes|kubectl)"
-      - "(?i)(ssh|scp|rsync|sftp)"
-  context: metadata
+  type: typed
 remediation: "MCP servers / Desktop Extensions must NOT combine external content ingestion (calendar, email, Slack, RSS) with local execution capabilities (shell, filesystem write, git, docker) in the same server. This enables zero-click RCE chains where attacker-crafted content in a low-sensitivity source triggers high-privilege execution. Separate ingestion and execution into isolated servers with explicit cross-server data flow controls. Reference: LayerX Claude DXT zero-click RCE (CVSS 10.0)."
 test_cases:
   true_positive:

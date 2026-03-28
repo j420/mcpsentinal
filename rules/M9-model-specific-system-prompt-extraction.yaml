@@ -31,8 +31,7 @@ mitre: AML.T0057
 # targeted attacks against specific deployments.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # System prompt extraction attempts
     - "(?i)(output|print|display|show|reveal|repeat|echo|return)\\s+(your|the|my)\\s+(system|initial|original|full|complete)\\s+(prompt|instructions|message|context|guidelines)"
     - "(?i)(what (are|were) (your|the)\\s+(system|initial|original)\\s+(instructions|prompt|guidelines|rules))"
@@ -48,10 +47,6 @@ detect:
     # Internal state extraction
     - "(?i)(how many tokens|context (window|length|size)|remaining (context|tokens|capacity))"
     - "(?i)(conversation (id|metadata|state|history length))"
-  context: tool_description
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example"
-    - "(?i)documentation|faq|help|about"
 remediation: >
   Remove instructions that request the AI to reveal its system prompt, identify
   its model version, enumerate safety boundaries, or disclose internal state.

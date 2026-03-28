@@ -5,10 +5,7 @@ severity: medium
 owasp: MCP07-insecure-config
 mitre: null
 detect:
-  type: schema-check
-  conditions:
-    check: no_input_schema
-  context: parameter_schema
+  type: typed
 remediation: "Define a JSON Schema for all tool inputs. Schema-less tools cannot be validated by clients or gateways, and allow arbitrary input."
 test_cases:
   true_positive:

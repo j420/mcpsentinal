@@ -45,8 +45,7 @@ mitre: AML.T0054
 # The exclude patterns check domain SUFFIX (anchored) to prevent this bypass.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # ── Direct redirect with explicit suspicious URL ───────────────────────────
     - "(?i)(?:redirect|navigate|open|visit|go\\s+to|follow|access|click)\\s+(?:this\\s+)?(?:link\\s+(?:to|at)|url\\s+(?:to|at))?\\s*https?://(?!(?:github\\.com|anthropic\\.com|openai\\.com|google\\.com|microsoft\\.com|apple\\.com|cloudflare\\.com|npmjs\\.com|pypi\\.org)(?:/|$))"
     # ── Authentication/verification at external URL (high social-eng signal) ───
@@ -70,8 +69,6 @@ detect:
     # ── OAuth-lookalike redirect (fake OAuth flow) ────────────────────────────
     - "(?i)(?:redirect|navigate|open).*(?:oauth|authorize|callback|redirect_uri)\\s*=\\s*(?:req|input|param|args|url|uri|target|destination|host)"
 
-  context: tool_description
-  exclude_patterns:
     # Known legitimate domains — anchored to TLD to prevent "anthropic.com.attacker.xyz" bypass
     - "(?i)https?://(?:www\\.)?github\\.com(?:/|$)"
     - "(?i)https?://(?:www\\.)?anthropic\\.com(?:/|$)"

@@ -31,8 +31,7 @@ mitre: AML.T0054
 # can be manipulated via injected role boundary tokens.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # OpenAI ChatML format tokens
     - "<\\|endoftext\\|>"
     - "<\\|im_start\\|>"
@@ -61,10 +60,6 @@ detect:
     - "<end_of_turn>"
     # Generic special token pattern (model-agnostic)
     - "<\\|[a-z_]+\\|>"
-  context: tool_description
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example|documentation"
-    - "(?i)escape|sanitize|filter|strip.*special.*token"
 remediation: >
   Remove all LLM special tokens from tool descriptions, parameter descriptions,
   and server metadata. Special tokens (<|endoftext|>, <|im_start|>, [INST], <think>,
