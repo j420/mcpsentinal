@@ -307,6 +307,15 @@ class CrossConfigTrifectaRule implements TypedRule {
 
 // ─── Register ──────────────────────────────────────────────────────────────
 
+// I2 findings are emitted by I1 (AnnotationDeceptionRule) during annotation analysis.
+// Register stub so the engine doesn't warn about missing implementation.
+class I2Stub implements TypedRule {
+  readonly id = "I2";
+  readonly name = "Missing Destructive Annotation (via I1)";
+  analyze(): TypedFinding[] { return []; }
+}
+
 registerTypedRule(new AnnotationDeceptionRule());
+registerTypedRule(new I2Stub());
 registerTypedRule(new ConsentFatigueRule());
 registerTypedRule(new CrossConfigTrifectaRule());

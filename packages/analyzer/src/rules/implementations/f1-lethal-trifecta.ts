@@ -317,5 +317,27 @@ class ExfiltrationChainRule implements TypedRule {
   }
 }
 
+// F2, F3, F6 findings are emitted by F1's analyze() as companion detections
+// from the same capability graph analysis. Register stubs so the engine
+// doesn't warn about missing TypedRule implementations.
+class F2Stub implements TypedRule {
+  readonly id = "F2";
+  readonly name = "High-Risk Capability Profile (via F1)";
+  analyze(): TypedFinding[] { return []; } // F1 emits F2 findings
+}
+class F3Stub implements TypedRule {
+  readonly id = "F3";
+  readonly name = "Data Flow Risk Source→Sink (via F1)";
+  analyze(): TypedFinding[] { return []; } // F1 emits F3 findings
+}
+class F6Stub implements TypedRule {
+  readonly id = "F6";
+  readonly name = "Circular Data Loop (via F1)";
+  analyze(): TypedFinding[] { return []; } // F1 emits F6 findings
+}
+
 registerTypedRule(new LethalTrifectaRule());
 registerTypedRule(new ExfiltrationChainRule());
+registerTypedRule(new F2Stub());
+registerTypedRule(new F3Stub());
+registerTypedRule(new F6Stub());
