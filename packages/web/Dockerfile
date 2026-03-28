@@ -17,6 +17,11 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Cache-bust: Railway sets RAILWAY_GIT_COMMIT_SHA per deploy.
+# This ensures the build step always runs fresh (no stale Docker layer cache).
+ARG RAILWAY_GIT_COMMIT_SHA
+ENV BUILD_SHA=$RAILWAY_GIT_COMMIT_SHA
+
 RUN pnpm --filter=@mcp-sentinel/web build
 
 # Ensure per-package node_modules dir exists so runner COPY never fails
