@@ -27,20 +27,6 @@ mitre: AML.T0017
 
 detect:
   type: typed
-    # Post-build file modification before publish
-    - "(?i)[\"'](?:prepublishOnly|prepack|postbuild)[\"']\\s*:\\s*[\"'][^\"']*(?:sed|awk|perl|patch|cat\\s*>>|echo\\s*>>).*(?:dist|build|out|lib)/"
-    # Appending code to built JavaScript files
-    - "(?i)(?:appendFileSync|appendFile|fs\\.writeFileSync|>>).*(?:dist/|build/|out/|lib/).*\\.(?:js|mjs|cjs)"
-    # Modifying built files between test and publish steps
-    - "(?i)(?:npm\\s+test|jest|vitest|mocha).*(?:&&|;).*(?:sed|awk|cat\\s*>>|echo\\s*>>).*(?:dist|build|lib).*(?:&&|;).*(?:npm\\s+publish|npm\\s+pack)"
-    # CI artifact download followed by modification
-    - "(?i)(?:download-artifact|actions/download).*(?:sed|awk|node|python|bash).*(?:dist|build|out)"
-    # Build cache manipulation
-    - "(?i)(?:cache|artifact).*(?:restore|download).*(?:modify|patch|inject|append|write).*(?:dist|build|out)"
-    # Checksum bypass: regenerating integrity hashes after tampering
-    - "(?i)(?:shasum|sha256sum|sha512|integrity|hash).*(?:dist|build|out).*(?:write|update|replace|generate)"
-    # Source map manipulation to hide injected code
-    - "(?i)(?:sourceMap|sourceMappingURL).*(?:delete|remove|strip|disable).*(?:dist|build|out)"
 remediation: "Use SLSA provenance attestation to verify build artifact integrity. Publish with 'npm publish --provenance' for Sigstore attestation. Never modify files in dist/ after the build step. Use reproducible builds so artifacts can be independently verified. Separate build and publish into different CI jobs with artifact integrity checks. Enable npm audit signatures."
 test_cases:
   true_positive:

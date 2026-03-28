@@ -6,32 +6,6 @@ owasp: MCP05-privilege-escalation
 mitre: null
 detect:
   type: typed
-    # Python — pickle is RCE by design
-    - "pickle\\.loads?\\s*\\("
-    - "pickle\\.Unpickler\\s*\\("
-    - "cPickle\\.loads?\\s*\\("
-    - "_pickle\\.loads?\\s*\\("
-    # Python — YAML unsafe load (executes Python objects)
-    - "yaml\\.load\\s*\\([^)]*(?!Loader\\s*=\\s*yaml\\.SafeLoader)"
-    - "yaml\\.load\\s*\\([^)]*(?!Loader\\s*=\\s*yaml\\.CSafeLoader)"
-    - "yaml\\.unsafe_load\\s*\\("
-    # Python — marshal (can execute arbitrary code)
-    - "marshal\\.loads?\\s*\\("
-    # Python — shelve with user input
-    - "shelve\\.open\\s*\\([^)]*(?:req|input|param|args|user)"
-    # Node.js — node-serialize (known RCE CVE-2017-5941)
-    - "serialize\\.unserialize\\s*\\("
-    - "require\\s*\\(['\"]node-serialize['\"]\\)"
-    # Node.js — eval-based deserialization patterns
-    - "JSON\\.parse\\s*\\([^)]+\\).*\\beval\\b"
-    # Java-style (in case of Graal/JVM MCP servers)
-    - "ObjectInputStream\\s*\\("
-    - "readObject\\s*\\("
-    # PHP unserialize
-    - "unserialize\\s*\\(\\s*(?:\\$_(?:GET|POST|REQUEST|COOKIE)|\\$(?:req|input|param))"
-    # Generic: function('...') pattern where the function evaluates its argument
-    - "Function\\s*\\(\\s*['\"][^'\"]*['\"]\\s*\\)\\s*\\("
-    - "new\\s+Function\\s*\\("
 remediation: "Never deserialize untrusted data with pickle, yaml.load, node-serialize, or ObjectInputStream. Use safe alternatives: json.loads (Python), JSON.parse (JS), yaml.safe_load (Python). For complex object serialization, use message-pack or protobuf with strict schema validation."
 test_cases:
   true_positive:

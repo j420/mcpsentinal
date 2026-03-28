@@ -24,17 +24,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # Health/status endpoints exposing system info
-    - "(?i)(app\\.get|router\\.get|server\\.route).*[\"'](/health/detailed|/debug|/status/full|/metrics|/info|/env)[\"']"
-    - "(?i)os\\.(platform|arch|release|cpus|totalmem|freemem|hostname|networkInterfaces)\\s*\\("
-    - "(?i)(process\\.env|process\\.memoryUsage|process\\.uptime|process\\.version).*res\\.(json|send)"
-    - "(?i)res\\.(json|send).*(?:os\\.|process\\.|require\\([\"']os[\"']\\))"
-    # Exposing internal paths and database info
-    - "(?i)(database[_\\s-]?path|db[_\\s-]?path|data[_\\s-]?dir).*res\\.(json|send)"
-    - "(?i)res\\.(json|send).*(?:__dirname|__filename|process\\.cwd)"
-    # Python equivalents
-    - "(?i)(platform\\.system|platform\\.release|platform\\.machine|psutil).*(?:jsonify|json\\.dumps|Response)"
-    - "(?i)(?:jsonify|json\\.dumps).*(?:platform\\.|psutil\\.|os\\.environ)"
 remediation: "Remove detailed system information from health endpoints. Health checks should return only { status: 'ok' } with no system details. If monitoring data is needed, protect endpoints with authentication and restrict to internal networks. See CVE-2026-29787."
 test_cases:
   true_positive:

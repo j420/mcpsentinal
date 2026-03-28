@@ -31,25 +31,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # Soft hyphens inserted within words to break tokenization
-    - "\\w+\\u00AD\\w+"
-    # Word joiner (U+2060) used to prevent merging at specific points
-    - "\\w+\\u2060\\w+"
-    # Combining characters inserted mid-word to disrupt token boundaries
-    - "\\w+[\\u0300-\\u036F]\\w+"
-    # Non-breaking spaces within compound safety keywords
-    - "(?i)(ig|ign)\\u00A0(nore|ore)"
-    - "(?i)(ins|in)\\u00A0(truct|struct)"
-    - "(?i)(sys|sy)\\u00A0(tem|stem)"
-    - "(?i)(ex|exe)\\u00A0(ec|cute)"
-    # Excessive combining diacritical marks (token count inflation)
-    - "[\\u0300-\\u036F]{3,}"
-    # Mixed-script word fragments targeting BPE boundaries
-    - "[a-zA-Z]+[\\u0400-\\u04FF][a-zA-Z]+"
-    - "[a-zA-Z]+[\\u0370-\\u03FF][a-zA-Z]+"
-    # Excessive use of rare combining marks that force byte-level fallback
-    - "[\\u0E00-\\u0E7F][a-zA-Z]"
-    - "[a-zA-Z][\\u0E00-\\u0E7F]"
 remediation: >
   Normalize all tool description text to NFC Unicode form and strip combining
   characters that are not part of legitimate natural language content. The

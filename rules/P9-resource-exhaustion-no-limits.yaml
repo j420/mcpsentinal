@@ -11,22 +11,6 @@ mitre: T1499.001
 
 detect:
   type: typed
-    # Docker run without resource limits (long-form detection)
-    - "(?i)docker\\s+run(?!.*(?:--memory|--cpus|-m\\s|--pids-limit|--ulimit)).*(?:mcp|server|app)"
-    # docker-compose without resource limits (deploy.resources absent)
-    - "(?i)(?:image|build)\\s*:[\\s\\S]{0,300}(?:ports|volumes)(?!.*(?:mem_limit|cpus|deploy|resources))"
-    # Fork bomb patterns in source
-    - "(?i)while\\s*\\(?\\s*(?:true|1)\\s*\\)?\\s*(?:do|\\{)\\s*(?:fork|spawn|exec|child_process)"
-    - "(?i)for\\s*\\(\\s*;\\s*;\\s*\\)\\s*(?:fork|spawn|new\\s+Thread)"
-    # Unbounded file creation (inode/disk exhaustion)
-    - "(?i)(?:for|while)\\s*[^}]*(?:fs\\.writeFile|open\\s*\\([^)]*[\"']w|createWriteStream)(?!.*(?:limit|max|count|quota))"
-    # Kubernetes container without resource limits
-    - "(?i)containers\\s*:\\s*\\n(?:(?!resources\\s*:)[\\s\\S]){0,500}(?:image|name)\\s*:"
-    # No PID limits (fork bomb protection)
-    - "(?i)--pids-limit\\s*[=:]?\\s*(?:-1|0|unlimited)"
-    # Unlimited ulimit settings
-    - "(?i)ulimit\\s+.*(?:nofile|nproc|fsize).*unlimited"
-    - "(?i)--ulimit\\s+(?:nofile|nproc)\\s*=\\s*(?:-1|unlimited)"
 remediation: "Always set resource limits for MCP server containers: memory (--memory), CPU (--cpus), PIDs (--pids-limit), file descriptors (--ulimit nofile), and open files. In Kubernetes, set both requests and limits in the container spec. Use LimitRange and ResourceQuota at the namespace level as a safety net. Set pids.max in cgroups to prevent fork bombs. A missing PID limit allows a single tool invocation to fork-bomb the host (CVE-2025-26449 class)."
 test_cases:
   true_positive:

@@ -18,16 +18,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # Tokens with no expiry
-    - "(?i)(token|jwt|api[_\\s-]?key|access[_\\s-]?token).*(?:no[_\\s-]?expir|never[_\\s-]?expire|expire.*null|expire.*-1)"
-    - "(?i)(expiresIn|expires_in|ttl|max[_\\s-]?age)\\s*[:=]\\s*(?:null|undefined|Infinity|0|false)"
-    # Very long token lifetimes (>30 days in seconds)
-    - "(?i)(expiresIn|expires_in|ttl)\\s*[:=]\\s*[\"']?(?:[3-9]\\d{6,}|\\d{8,})[\"']?"
-    - "(?i)(expiresIn|expires_in|ttl)\\s*[:=]\\s*[\"']?(?:365|730|3650)[_\\s]?d"
-    # Missing refresh token implementation
-    - "(?i)(access[_\\s-]?token|bearer).*(?:store|save|cache|persist)(?!.*(?:refresh|rotate|expir|ttl|renew))"
-    # Hardcoded tokens used directly (no rotation possible)
-    - "(?i)(API_KEY|TOKEN|SECRET)\\s*[:=]\\s*[\"'][A-Za-z0-9_\\-]{20,}[\"'](?!.*(?:rotate|refresh|renew|vault|ssm|secret.?manager))"
 remediation: "Use short-lived tokens (1 hour max) with refresh token rotation. Implement token expiry validation on every request. Store tokens in secure credential managers (AWS SSM, HashiCorp Vault) instead of hardcoding. Required by ISO 27001 A.8.24 (cryptographic controls) and OWASP ASI03."
 test_cases:
   true_positive:

@@ -6,19 +6,6 @@ owasp: MCP02-tool-poisoning
 mitre: AML.T0054
 detect:
   type: typed
-    # Cyrillic lookalikes for Latin (most common homoglyph attack vector)
-    # а(U+0430) е(U+0435) о(U+043E) р(U+0440) с(U+0441) у(U+0443) х(U+0445) — visually identical to a e o p c y x
-    - "[\\u0430\\u0435\\u043E\\u0440\\u0441\\u0443\\u0445\\u0456\\u0457\\u0458\\u0410\\u0415\\u041E\\u0420\\u0421\\u0425]"
-    # Greek lookalikes: Α(U+0391) Β(U+0392) Ε(U+0395) Ζ(U+0396) Η(U+0397) Ι(U+0399) Κ(U+039A) Μ(U+039C) Ν(U+039D) Ο(U+039F) Ρ(U+03A1) Τ(U+03A4) Υ(U+03A5) Χ(U+03A7) ο(U+03BF) ν(U+03BD)
-    - "[\\u0391\\u0392\\u0395\\u0396\\u0397\\u0399\\u039A\\u039C\\u039D\\u039F\\u03A1\\u03A4\\u03A5\\u03A7\\u03BF\\u03BD]"
-    # Mathematical Alphanumerics (Unicode bold/italic/script variants of A-Z, a-z, 0-9)
-    - "[\\uD835][\\uDC00-\\uDFFF]"
-    # Fullwidth Latin (U+FF01–U+FF5E) — visually similar to ASCII but different codepoints
-    - "[\\uFF01-\\uFF5E]"
-    # Dotless i (U+0131) and similar single-char lookalikes used in tool names
-    - "[\\u0131\\u0406\\u04CF\\u1D0A\\u1D1C\\u1D20\\u1D21]"
-    # Confusable punctuation: "smart quotes" used to wrap injection content
-    - "[\\u2018\\u2019\\u201C\\u201D\\u2032\\u2033](?:system|ignore|override|instructions?|forget)"
 remediation: "Tool names and descriptions must use only ASCII characters (U+0020–U+007E). Unicode homoglyphs in tool names are a primary vector for tool shadowing attacks where a Cyrillic 'a' is visually indistinguishable from a Latin 'a' but creates a different tool identity."
 test_cases:
   true_positive:

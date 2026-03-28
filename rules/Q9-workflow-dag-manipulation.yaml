@@ -34,19 +34,6 @@ mitre: AML.T0058
 
 detect:
   type: typed
-    # MCP tools that modify workflow/graph state
-    - "(?i)(?:add|remove|modify|update|insert|delete)[_\\s]?(?:node|edge|step|task|stage)"
-    - "(?i)(?:graph|workflow|pipeline|dag).*(?:modify|update|mutate|alter|change)"
-    - "(?i)(?:modify|update|alter|change).*(?:graph|workflow|pipeline|dag|execution[_\\s]?order)"
-    # LangGraph-specific state manipulation
-    - "(?i)(?:StateGraph|CompiledGraph|MessageGraph).*(?:add_node|add_edge|add_conditional)"
-    - "(?i)(?:state|graph)[_\\s]?(?:update|modify|patch|mutation).*(?:tool|mcp)"
-    # Execution routing manipulation
-    - "(?i)(?:next[_\\s]?(?:step|node|agent)|route[_\\s]?to|redirect[_\\s]?to|skip[_\\s]?(?:step|node|validation))"
-    - "(?i)(?:bypass|skip|disable).*(?:approval|validation|safety|check|gate|guard)"
-    # AutoGen/CrewAI execution order manipulation
-    - "(?i)(?:GroupChat|TaskDAG|crew).*(?:modify|update|reorder|alter)"
-    - "(?i)(?:execution[_\\s]?order|task[_\\s]?priority|agent[_\\s]?order).*(?:set|change|override)"
 remediation: "MCP tools must NOT modify agentic workflow graphs, execution order, or routing during runtime. Workflow structure should be immutable once execution begins. If dynamic workflow modification is required, implement: (1) approval gates that require human confirmation before graph mutations, (2) integrity checks that validate the workflow graph against a known-good baseline after each step, (3) audit logging of all graph modifications with rollback capability. Reference: arXiv 2602.19555, Trend Micro subgraph impersonation attack (2026)."
 test_cases:
   true_positive:

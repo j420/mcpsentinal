@@ -19,18 +19,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # Direct log file deletion
-    - "(?i)(unlink|rm|remove|delete).*\\b(log|audit|trace|event)[_\\s-]?(file|path|dir)"
-    - "(?i)\\b(log|audit|trace)[_\\s-]?(file|path).*(?:unlink|remove|delete|rm\\b)"
-    # Log file truncation
-    - "(?i)(truncate|empty|clear|purge).*\\b(log|audit|trace|event)[_\\s-]?(file|path)"
-    - "(?i)\\b(log|audit)[_\\s-]?(file|path).*(?:truncate|writeFileSync\\s*\\(.*[\"'][\"'])"
-    # Overwriting logs with empty content
-    - "(?i)writeFile(?:Sync)?\\s*\\(.*(?:log|audit).*[\"']\\s*[\"']"
-    - "(?i)open\\s*\\(.*(?:log|audit).*[\"']w[\"']\\s*\\)"
-    # Python log file manipulation
-    - "(?i)os\\.(?:remove|unlink)\\s*\\(.*(?:log|audit)"
-    - "(?i)shutil\\.rmtree\\s*\\(.*(?:log|audit)"
 remediation: "Never delete or truncate audit logs programmatically. Implement log rotation with retention policies instead. Logs should be append-only and written to a tamper-evident store. Required by ISO 27001 A.8.15 (log protection) and EU AI Act Art. 12 (record-keeping)."
 test_cases:
   true_positive:

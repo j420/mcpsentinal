@@ -6,16 +6,6 @@ owasp: MCP01-prompt-injection
 mitre: AML.T0054
 detect:
   type: typed
-    # Log message containing unsanitized tool output or external data
-    - "(?i)(?:notifications/message|sendLogMessage|send_log_message|log_message)\\s*\\(.*(?:result|output|response|data|body|content)\\s*[,\\)]"
-    # Log data field from user/tool input
-    - "(?i)(?:logging|log)\\s*(?:\\.|\\[)\\s*(?:['\"])?(?:data|message)(?:['\"])?\\s*(?:\\])?.\\s*=\\s*(?:(?:req|params|result|output|tool|response)\\.)"
-    # Template literal in log message with external data
-    - "(?i)(?:log|logger|logging)\\s*\\.\\s*(?:info|warn|error|debug|notice|alert)\\s*\\(\\s*`[^`]*\\$\\{(?:result|output|response|tool|data|content)\\."
-    # Python: log with unsanitized content
-    - "(?i)(?:logger|logging)\\s*\\.\\s*(?:info|warning|error|debug)\\s*\\(\\s*(?:f\"|f').*(?:result|output|response|tool_output|content)"
-    # MCP logging capability with uncontrolled data
-    - "(?i)server\\.(?:sendLoggingMessage|send_logging_message)\\s*\\(.*(?:level|data)\\s*[:=]\\s*(?:(?:req|params|result|output)\\.)"
 remediation: "Sanitize all dynamic content before including in MCP log messages. MCP logging notifications (notifications/message) are displayed in client UIs — injection payloads in log data can influence AI behavior if the client processes logs as context. Strip control characters, ANSI escape codes, newlines, and prompt injection patterns from log content. Use structured logging with separate data fields."
 test_cases:
   true_positive:

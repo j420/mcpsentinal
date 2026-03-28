@@ -23,16 +23,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # Unconstrained agent identity — no verification
-    - "(?i)(agent[_\\s-]?(?:id|name|identity|source))\\s*[:=]\\s*(?:req|request|params|input|args)(?!.*(?:verify|validate|authenticate|whitelist|allowlist))"
-    # Transitive tool invocation (calling another agent's tools)
-    - "(?i)(invoke|call|execute|trigger)[_\\s-]?(?:agent|tool|server).*(?:agent|tool|server)[_\\s-]?(?:id|name)\\s*[:=]\\s*(?:input|params|request)"
-    # Shared write surfaces without ACL
-    - "(?i)(shared[_\\s-]?(?:queue|topic|channel|bus|event)).*(?:publish|emit|send|dispatch)(?!.*(?:acl|auth|permission|verify|validate))"
-    # Missing rate limits on agent-to-agent operations
-    - "(?i)(agent|delegate|orchestrat).*(?:invoke|call|execute|spawn)(?!.*(?:rate[_\\s-]?limit|throttle|quota|max[_\\s-]?concurrent|semaphore))"
-    # No audit of inter-agent communication
-    - "(?i)(agent|delegate).*(?:send|receive|message|communicate)(?!.*(?:log|audit|trace|record|monitor))"
 remediation: "Implement collusion-resistant multi-agent architecture: (1) Verify agent identity cryptographically before accepting commands, (2) Apply ACLs to shared write surfaces, (3) Rate-limit cross-agent invocations, (4) Audit all inter-agent communication with timestamps and agent IDs, (5) Baseline normal interaction patterns for anomaly detection. Required by MAESTRO L7 and CoSAI MCP-T9."
 test_cases:
   true_positive:

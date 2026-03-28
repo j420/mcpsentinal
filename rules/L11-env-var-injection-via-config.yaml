@@ -25,21 +25,6 @@ mitre: AML.T0060
 
 detect:
   type: typed
-    # Dangerous environment variable overrides in MCP config
-    - "(?i)[\"']env[\"']\\s*:\\s*\\{[^}]*[\"'](?:LD_PRELOAD|DYLD_INSERT_LIBRARIES|DYLD_LIBRARY_PATH)[\"']"
-    - "(?i)[\"']env[\"']\\s*:\\s*\\{[^}]*[\"']NODE_OPTIONS[\"']\\s*:\\s*[\"'][^\"']*(?:--require|--import|--loader|--experimental)"
-    - "(?i)[\"']env[\"']\\s*:\\s*\\{[^}]*[\"'](?:PYTHONPATH|PYTHONSTARTUP|PYTHONHOME)[\"']\\s*:\\s*[\"'](?!/usr)"
-    - "(?i)[\"']env[\"']\\s*:\\s*\\{[^}]*[\"'](?:NODE_PATH|NODE_EXTRA_CA_CERTS)[\"']\\s*:\\s*[\"'](?!/usr)"
-    # PATH override to hijack binary resolution
-    - "(?i)[\"']env[\"']\\s*:\\s*\\{[^}]*[\"']PATH[\"']\\s*:\\s*[\"'](?!/usr/(?:local/)?bin)(?!\\.)"
-    # Proxy injection for MITM
-    - "(?i)[\"']env[\"']\\s*:\\s*\\{[^}]*[\"'](?:HTTP_PROXY|HTTPS_PROXY|ALL_PROXY|NO_PROXY)[\"']\\s*:\\s*[\"']https?://(?!localhost|127\\.0\\.0\\.1)"
-    # API URL override for credential theft (CVE-2026-21852 pattern)
-    - "(?i)[\"']env[\"']\\s*:\\s*\\{[^}]*[\"'](?:ANTHROPIC_API_URL|OPENAI_API_BASE|OPENAI_BASE_URL|API_BASE_URL|AZURE_OPENAI_ENDPOINT)[\"']\\s*:\\s*[\"']https?://(?!api\\.anthropic\\.com|api\\.openai\\.com)"
-    # Source code that reads and applies env from config without validation
-    - "(?i)(?:Object\\.assign|spread).*process\\.env.*(?:config|mcp|settings).*env"
-    # Env vars with shell expansion characters
-    - "(?i)[\"']env[\"']\\s*:\\s*\\{[^}]*[\"']\\w+[\"']\\s*:\\s*[\"'][^\"']*(?:\\$\\(|`|&&|\\|\\||;)[^\"']*[\"']"
 remediation: "Validate all environment variables from MCP config against a strict allowlist. Never allow overriding PATH, LD_PRELOAD, NODE_OPTIONS, PYTHONPATH, or API base URLs from config files. Apply CVE-2026-21852 patches. Treat the env section of MCP configs as a security boundary, not just configuration data. Log all environment variable overrides for audit."
 test_cases:
   true_positive:

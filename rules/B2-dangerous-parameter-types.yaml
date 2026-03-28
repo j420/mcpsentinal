@@ -6,7 +6,6 @@ owasp: MCP03-command-injection
 mitre: null
 detect:
   type: typed
-  exclude_patterns: []
 remediation: "Parameters that accept file paths, URLs, commands, or SQL should have strict validation: allowlists, path normalization, URL scheme restrictions, or parameterized queries."
 test_cases:
   true_positive:

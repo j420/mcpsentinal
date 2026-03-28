@@ -90,56 +90,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # Role override / instruction injection (classic injection directives)
-    - "(?i)ignore\\s+(?:previous|above|all|prior|your)\\s+(?:instructions?|prompts?|rules?|constraints?|guidelines?)"
-    - "(?i)you\\s+are\\s+now\\s+(?:a|an|the)\\s+(?:\\w+\\s+){0,5}(?:agent|assistant|model|ai|system|bot)"
-    - "(?i)from\\s+now\\s+on[,\\s]+you\\s+(?:must|will|should|are\\s+required\\s+to)"
-    - "(?i)(?:new|updated|revised|changed)\\s+(?:system\\s+)?(?:instructions?|directives?|rules?|persona|role)\\s*[:\\-]"
-    - "(?i)(?:disregard|forget|override|bypass|disable)\\s+(?:your|all|any|previous)\\s+(?:instructions?|rules?|safety|guidelines?|restrictions?)"
-
-    # LLM special tokens injected into version/name/instructions fields
-    # These are chat template delimiters that AI models process as structural tokens
-    - "<\\|(?:system|user|assistant|im_start|im_end|endoftext|begin_of_text|end_of_text)\\|>"
-    - "\\[INST\\]|\\[/INST\\]|<<SYS>>|<</SYS>>"
-    - "###\\s*(?:System|Instruction|Human|Assistant|Prompt)\\s*[:\\n]"
-    - "<(?:system|human|assistant|s|/s)\\s*>"
-    - "(?i)<\\|(?:eot_id|start_header_id|end_header_id)\\|>"
-
-    # Unicode control character injection (invisible in most UIs, processed by LLMs)
-    # RTL override makes text visually appear reversed while the LLM reads original order
-    - "\\u202E|\\u202D|\\u202C|\\u202B|\\u202A"
-    # Zero-width characters used to hide payloads from visual inspection
-    - "\\u200B|\\u200C|\\u200D|\\uFEFF|\\u2060"
-    # Unicode tag characters (U+E0000–U+E007F block) — NOTE: YAML \uXXXX only handles
-    # 4-hex-digit BMP codepoints; supplementary plane detection requires engine-level
-    # /u flag support with \u{E0000} syntax. Pattern omitted to prevent false positives.
-    # The zero-width and RTL patterns above cover the practical injection surface.
-    # Null bytes and control characters in metadata fields
-    - "\\u0000|\\u0001|\\u0002|\\u0003|\\u0004|\\u0005|\\u0006|\\u0007"
-
-    # Base64-encoded instruction payloads (A9 covers tool descriptions; this covers init fields)
-    # Flags sequences ≥20 chars that look like base64 — suspicious in name/version/instructions
-    - "(?<![A-Za-z0-9+/])[A-Za-z0-9+/]{32,}={0,2}(?![A-Za-z0-9+/])"
-
-    # Authority/trust escalation claims (G2 covers tool descriptions; this covers init fields)
-    - "(?i)(?:approved|certified|verified|authorized|endorsed)\\s+by\\s+(?:anthropic|openai|google|microsoft|apple)"
-    - "(?i)official\\s+(?:anthropic|openai|google|microsoft)\\s+(?:server|assistant|integration)"
-
-    # Capability escalation in instructions field
-    - "(?i)(?:never|do\\s+not|don'?t)\\s+(?:ask|request|require|prompt)\\s+(?:the\\s+)?user\\s+for\\s+(?:confirmation|permission|approval)"
-    - "(?i)execute\\s+(?:all|any)\\s+(?:tool\\s+)?(?:calls?|commands?|requests?)\\s+(?:automatically|without\\s+confirmation|silently)"
-
-    # Prompt delimiter injection (trying to escape from metadata context into system prompt)
-    - "(?i)---+\\s*(?:system|instructions?|prompt|rules?)\\s*---+"
-    - "(?i)=====+\\s*(?:new|updated)\\s+(?:system|instructions?)\\s*=====+"
-    - "(?i)\\*\\*\\*+\\s*(?:important|critical|urgent)\\s+(?:system|override)\\s*\\*\\*\\*+"
-
-    # Legitimate use cases that might superficially match
-    - "// safe:"
-    - "test server"
-    - "example"
-    - "mock"
-
 remediation: >
   Prompt injection was detected in MCP initialize response fields (serverInfo.name,
   serverInfo.version, or server instructions). These fields are processed by AI clients

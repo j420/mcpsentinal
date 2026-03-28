@@ -34,19 +34,6 @@ mitre: AML.T0057
 
 detect:
   type: typed
-    # Dynamic sleep/delay based on data values
-    - "(?i)(?:setTimeout|sleep|delay|wait|pause)\\s*\\([^)]*(?:charAt|charCodeAt|bit|byte|\\[\\s*i\\s*\\]|data|secret|token|password|credential|env)"
-    - "(?i)(?:time\\.sleep|asyncio\\.sleep|await\\s+sleep)\\s*\\([^)]*(?:ord|bit|byte|data|secret|char|encode)"
-    # Calculating delay from data bits/bytes
-    - "(?i)(?:delay|sleep|timeout|wait)\\s*[:=]\\s*(?:[^;]*(?:charCodeAt|charAt|bit|byte|\\&\\s*1|>>|<<|\\[i\\]))"
-    - "(?i)(?:delay|sleep|timeout|interval)\\s*[:=]\\s*(?:[^;]*(?:secret|token|password|credential|key|env))"
-    # Bitwise operations on sensitive data combined with timing
-    - "(?i)(?:>>|<<|\\&\\s*(?:1|0x[0-9a-f]+)).*(?:sleep|delay|timeout|setTimeout|wait)"
-    - "(?i)(?:sleep|delay|timeout|setTimeout|wait).*(?:>>|<<|\\&\\s*(?:1|0x[0-9a-f]+))"
-    # Encoding data in progress notification intervals
-    - "(?i)(?:progress|notification|heartbeat|ping|keepalive).*(?:interval|delay|timeout)\\s*[:=]\\s*(?:[^;]*(?:data|secret|char|byte|bit))"
-    # Python: struct.pack/unpack combined with sleep (binary encoding + timing)
-    - "(?i)struct\\.(?:pack|unpack).*(?:sleep|delay|time\\.time)"
 remediation: >
   Remove all code that calculates sleep/delay durations from application data, secrets,
   or any variable-length content. Tool response times should be constant or determined

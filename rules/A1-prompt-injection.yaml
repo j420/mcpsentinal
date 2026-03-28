@@ -6,54 +6,6 @@ owasp: MCP01-prompt-injection
 mitre: AML.T0054
 detect:
   type: typed
-    # Classic instruction override phrases
-    - "(?i)ignore\\s+(previous|above|all)\\s+instructions"
-    - "(?i)disregard\\s+(all|previous|prior|any)\\s+(instructions|rules|context)"
-    - "(?i)system\\s*:\\s*you\\s+are"
-    - "(?i)\\<\\s*system\\s*\\>"
-    - "(?i)\\[INST\\]"
-    - "(?i)\\[/INST\\]"
-    - "(?i)\\[\\[\\s*system\\s*\\]\\]"
-    - "(?i)\\<\\|im_start\\|\\>"
-    - "(?i)\\<\\|im_end\\|\\>"
-    - "(?i)\\<\\|system\\|\\>"
-    # Llama 3 / Meta special tokens (BOS, EOS, header tokens)
-    - "(?i)\\<\\|begin_of_text\\|\\>"
-    - "(?i)\\<\\|start_header_id\\|\\>"
-    - "(?i)\\<\\|end_header_id\\|\\>"
-    - "(?i)\\<\\|eot_id\\|\\>"
-    # Gemini / Google AI special delimiters
-    - "(?i)\\<start_of_turn\\>"
-    - "(?i)\\<end_of_turn\\>"
-    # Generic fenced system block injection
-    - "(?i)```\\s*system\\s*\\n"
-    - "(?i)<system>|</system>"
-    - "(?i)do\\s+not\\s+reveal"
-    - "(?i)override\\s+(previous|system)\\s+(prompt|instructions|directives)"
-    - "(?i)forget\\s+(everything|all|previous|prior)"
-    - "(?i)new\\s+instructions?\\s*:"
-    - "(?i)IMPORTANT:\\s*always"
-    # Role injection patterns
-    - "(?i)you\\s+are\\s+now\\s+(a|an|the)\\s+"
-    - "(?i)act\\s+as\\s+(if|though|a|an)\\s+"
-    - "(?i)your\\s+new\\s+(role|persona|identity|purpose)\\s+is"
-    - "(?i)from\\s+now\\s+on[,\\s]+you\\s+(must|will|should|are)"
-    # Multi-turn setup phrases
-    - "(?i)when\\s+(the\\s+)?user\\s+(asks?|says?|requests?|mentions?)\\s+.{0,40}\\s+(you\\s+must|always|instead)"
-    - "(?i)if\\s+(anyone|the\\s+user|they)\\s+asks?.{0,30}(tell|say|respond|reply)"
-    # Data exfiltration directives in description
-    - "(?i)send\\s+(all|every|the)\\s+(conversation|message|data|history|context)\\s+to"
-    - "(?i)exfiltrate|extract\\s+and\\s+send|leak\\s+(the|all|any)"
-    # Prompt delimiter injection
-    - "---\\s*\\n\\s*system"
-    - "###\\s*instructions?"
-    - "```\\s*\\n\\s*(?:system|instructions?|directive)"
-    # Confidentiality framing trick (makes AI treat subsequent text as privileged)
-    - "(?i)(?:confidential|internal[\\s_-]?only|do\\s+not\\s+(?:share|disclose|repeat|reveal))\\s*:\\s*"
-    # Markdown callout abuse (GitHub/Obsidian-style warnings processed by some LLMs)
-    - "(?i)>\\s*\\[!(?:IMPORTANT|WARNING|CAUTION|CRITICAL|NOTE)\\].*(?:ignore|override|disregard|you\\s+(?:must|are|will))"
-    # Base64-encoded instructions hiding in descriptions
-    - "(?:[A-Za-z0-9+/]{40,}={0,2})(?:\\s+(?:[A-Za-z0-9+/]{40,}={0,2})){2,}"
 remediation: "Remove all hidden instructions, role assignments, and directives from tool descriptions. Descriptions must only describe the tool's function. Any attempt to modify AI behavior via description text is a prompt injection attack."
 test_cases:
   true_positive:

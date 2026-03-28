@@ -155,7 +155,7 @@ async function main() {
   logger.info({ ruleCount: rules.length }, "MCP Sentinel Scanner starting");
 
   const server = new Server(
-    { name: "mcp-sentinel-scanner", version: "0.1.0" },
+    { name: "mcp-sentinel-scanner", version: "0.2.0" },
     { capabilities: { tools: {} } },
   );
 

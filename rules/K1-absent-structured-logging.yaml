@@ -24,15 +24,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # Servers handling requests with explicit logging disabled
-    - "(?i)(logger|logging|log)\\.(disable|silent|off|mute)\\b"
-    - "(?i)\\b(silent|quiet)\\s*[:=]\\s*(true|1|yes)"
-    - "(?i)log[_\\s-]?level\\s*[:=]\\s*[\"'](off|none|silent|disabled)[\"']"
-    # Console.log as sole logging (not structured, not persistent)
-    - "(?i)console\\.(log|warn|error)\\s*\\(.*(?:tool|request|handler|execute|invoke)"
-    # Python logging disabled
-    - "(?i)logging\\.disable\\s*\\("
-    - "(?i)logging\\.getLogger\\(\\)\\.(disabled|propagate)\\s*=\\s*(True|False)"
 remediation: "Implement structured logging (pino, winston, or equivalent) for all tool call handlers. Every tool invocation should log: timestamp, tool name, caller identity, parameters (sanitized), result status, and duration. Required by ISO 27001 A.8.15, CoSAI MCP-T12, and NIST AI RMF MEASURE 2.6."
 test_cases:
   true_positive:

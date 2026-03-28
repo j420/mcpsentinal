@@ -12,19 +12,6 @@ mitre: T1611
 
 detect:
   type: typed
-    # docker-compose.yml / docker run volume mounts
-    - "(?i)(?:volumes?|mount|bind|\\-v)\\s*[:\\-]?\\s*[\"']?/var/run/docker\\.sock"
-    - "(?i)docker\\.sock\\s*:\\s*/var/run/docker\\.sock"
-    # Dockerfile VOLUME directive
-    - "(?i)VOLUME\\s+.*docker\\.sock"
-    # Kubernetes hostPath mount
-    - "(?i)hostPath\\s*:\\s*\\n?\\s*path\\s*:\\s*[\"']?/var/run/docker\\.sock"
-    # containerd socket
-    - "(?i)(?:volumes?|mount|bind|\\-v)\\s*[:\\-]?\\s*[\"']?/run/containerd/containerd\\.sock"
-    # CRI-O socket
-    - "(?i)(?:volumes?|mount|bind|\\-v)\\s*[:\\-]?\\s*[\"']?/var/run/crio/crio\\.sock"
-    # Podman socket
-    - "(?i)(?:volumes?|mount|bind|\\-v)\\s*[:\\-]?\\s*[\"']?/run/podman/podman\\.sock"
 remediation: "Never mount the container runtime socket into MCP server containers. If Docker API access is needed, use a restricted Docker proxy (e.g., Tecnativa docker-socket-proxy) with read-only access to specific endpoints. For CI/CD use cases, prefer Docker-in-Docker (dind) with TLS or Kaniko for rootless image builds. CIS Docker Benchmark 5.4 prohibits mounting sensitive host directories."
 test_cases:
   true_positive:

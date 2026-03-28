@@ -11,27 +11,6 @@ mitre: T1557
 
 detect:
   type: typed
-    # Node.js global TLS bypass
-    - "(?i)NODE_TLS_REJECT_UNAUTHORIZED\\s*[=:]\\s*[\"']?0[\"']?"
-    - "(?i)process\\.env\\s*\\[?\\s*[\"']NODE_TLS_REJECT_UNAUTHORIZED[\"']\\s*\\]?\\s*=\\s*[\"']0[\"']"
-    # Node.js per-request TLS bypass
-    - "(?i)rejectUnauthorized\\s*:\\s*false"
-    - "(?i)reject_unauthorized\\s*[:=]\\s*(?:false|0)"
-    # Python requests/urllib3 SSL bypass
-    - "(?i)verify\\s*[:=]\\s*False"
-    - "(?i)REQUESTS_CA_BUNDLE\\s*[=:]\\s*[\"'][\"']"
-    - "(?i)CURL_CA_BUNDLE\\s*[=:]\\s*[\"'][\"']"
-    - "(?i)ssl\\.(?:_create_unverified_context|create_default_context).*check_hostname\\s*=\\s*False"
-    - "(?i)ssl_verify\\s*[:=]\\s*(?:false|0|none)"
-    # Go TLS bypass
-    - "(?i)InsecureSkipVerify\\s*:\\s*true"
-    # Java/JVM TLS bypass
-    - "(?i)TrustAllCerts|trustAllCerts|AllowAllHostnameVerifier|ALLOW_ALL_HOSTNAME_VERIFIER"
-    # curl/wget insecure flags
-    - "(?i)curl\\s+.*(?:-k|--insecure)\\s"
-    - "(?i)wget\\s+.*--no-check-certificate"
-    # Dockerfile ENV setting
-    - "(?i)ENV\\s+NODE_TLS_REJECT_UNAUTHORIZED\\s*[=]?\\s*0"
 remediation: "Never disable TLS certificate validation in MCP server code or container configuration. For self-signed certificates in development, configure proper CA trust stores: set NODE_EXTRA_CA_CERTS for Node.js, REQUESTS_CA_BUNDLE for Python, or mount CA certificates into the container trust store. In Kubernetes, use cert-manager for automated TLS certificate management. Disabling TLS validation enables man-in-the-middle attacks on all MCP server communications including tool results and credential exchanges."
 test_cases:
   true_positive:

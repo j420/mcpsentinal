@@ -22,18 +22,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # Injection payloads in enum values
-    - "(?i)\"enum\"\\s*:\\s*\\[.*(?:ignore|override|bypass|disregard)\\s+(?:previous|all|safety)"
-    - "(?i)\"enum\"\\s*:\\s*\\[.*(?:you are now|act as|new role|system prompt)"
-    # Injection in title fields
-    - "(?i)\"title\"\\s*:\\s*\"[^\"]*(?:SYSTEM|INST|ignore previous|override safety)[^\"]*\""
-    # Injection in const fields
-    - "(?i)\"const\"\\s*:\\s*\"[^\"]*(?:IMPORTANT|CRITICAL|OVERRIDE|ignore all)[^\"]*\""
-    # Shell commands hidden in default values
-    - "(?i)\"default\"\\s*:\\s*\"[^\"]*(?:curl\\s|wget\\s|nc\\s|bash\\s|sh\\s-c)[^\"]*\""
-    - "(?i)\"default\"\\s*:\\s*\"[^\"]*(?:\\|\\s*bash|;\\s*rm\\s|&&\\s*curl)[^\"]*\""
-    # Encoded payloads in any schema string field
-    - "(?i)\"(?:title|const|default|examples)\"\\s*:\\s*\"[^\"]*(?:base64|atob|eval\\(|fromCharCode)[^\"]*\""
 remediation: "Sanitize ALL JSON Schema fields, not just description. Remove instruction-like content from enum values, title, const, default, and examples fields. LLMs process the entire schema as reasoning context — every string field is a potential injection surface. See CyberArk FSP research."
 test_cases:
   true_positive:

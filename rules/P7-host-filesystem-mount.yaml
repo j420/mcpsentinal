@@ -12,25 +12,6 @@ mitre: T1611
 
 detect:
   type: typed
-    # Mounting host root filesystem
-    - "(?i)(?:volumes?|mount|bind|\\-v)\\s*[:\\-]?\\s*[\"']?/\\s*:\\s*/"
-    - "(?i)hostPath\\s*:\\s*\\n?\\s*path\\s*:\\s*[\"']?/$"
-    # Mounting sensitive host directories
-    - "(?i)(?:volumes?|mount|bind|\\-v)\\s*[:\\-]?\\s*[\"']?/etc(?:/|[\"'\\s])"
-    - "(?i)(?:volumes?|mount|bind|\\-v)\\s*[:\\-]?\\s*[\"']?/root(?:/|[\"'\\s])"
-    - "(?i)(?:volumes?|mount|bind|\\-v)\\s*[:\\-]?\\s*[\"']?/home(?:/|[\"'\\s])"
-    - "(?i)(?:volumes?|mount|bind|\\-v)\\s*[:\\-]?\\s*[\"']?/proc(?:/|[\"'\\s])"
-    - "(?i)(?:volumes?|mount|bind|\\-v)\\s*[:\\-]?\\s*[\"']?/sys(?:/|[\"'\\s])"
-    - "(?i)(?:volumes?|mount|bind|\\-v)\\s*[:\\-]?\\s*[\"']?/dev(?:/|[\"'\\s])"
-    - "(?i)(?:volumes?|mount|bind|\\-v)\\s*[:\\-]?\\s*[\"']?/boot(?:/|[\"'\\s])"
-    # SSH keys directory
-    - "(?i)(?:volumes?|mount|bind|\\-v)\\s*[:\\-]?\\s*[\"']?(?:~/?\\.ssh|/root/\\.ssh|/home/[^/]+/\\.ssh)"
-    # Kubernetes hostPath at sensitive locations
-    - "(?i)hostPath\\s*:\\s*\\n?\\s*path\\s*:\\s*[\"']?(?:/etc|/root|/home|/proc|/sys|/dev|/boot)"
-    # Kubernetes hostPath with ReadWrite (not ReadOnly)
-    - "(?i)hostPath[\\s\\S]{0,100}(?:readOnly\\s*:\\s*false|type\\s*:\\s*DirectoryOrCreate)"
-    # Writable /proc/sys mounts (cgroup escape vector)
-    - "(?i)(?:mount|bind).*(?:/proc/sys|/sys/fs/cgroup).*(?:rw|readwrite)"
 remediation: "Mount only the specific data directories needed by the MCP server, never entire host filesystem trees. Use read-only mounts (ro flag) wherever possible. For Kubernetes, avoid hostPath volumes entirely — use PersistentVolumeClaims instead. CVE-2025-53109/53110 demonstrated that even Anthropic's own filesystem MCP server had root boundary bypass bugs. Enforce Kubernetes Pod Security Standards 'restricted' profile which prohibits hostPath mounts."
 test_cases:
   true_positive:

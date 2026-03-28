@@ -27,17 +27,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # Code injection in OpenAPI spec processing
-    - "(?i)(openapi|swagger).*(?:summary|description|operationId).*(?:eval|exec|require|import|__import__)"
-    - "(?i)(yaml\\.load|JSON\\.parse).*(?:openapi|swagger).*(?:template|interpolat|format|concat)"
-    # Unsanitized OpenAPI field interpolation
-    - "(?i)(?:summary|operationId|description).*\\$\\{|`.*(?:summary|operationId)"
-    - "(?i)template.*(?:operation|endpoint|route).*(?:summary|description)"
-    # OpenAPI spec parsed and used in code generation without sanitization
-    - "(?i)spec\\[?[\"'](?:summary|description|operationId)[\"']\\]?.*(?:write|generate|create|template)"
-    - "(?i)(?:write|generate|emit).*spec\\.(?:summary|description|operationId)"
-    # Direct OpenAPI field to eval/exec
-    - "(?i)eval\\(.*(?:spec|openapi|swagger)|Function\\(.*(?:spec|openapi|swagger)"
 remediation: "Sanitize all OpenAPI specification fields before using them in code generation or template interpolation. Treat summary, description, operationId, and extension fields as untrusted input. Use parameterized templates instead of string interpolation. See CVE-2026-22785/23947."
 test_cases:
   true_positive:

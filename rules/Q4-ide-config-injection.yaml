@@ -29,20 +29,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # MCP server code that writes IDE config files
-    - "(?i)(?:write|create|modify|update|save|append).*(?:\\.cursor|\\.vscode|mcp\\.json|\\.claude)"
-    - "(?i)(?:mcp\\.json|\\.cursor[/\\\\]|settings\\.json).*(?:write|fs\\.write|writeFile)"
-    # Auto-start / auto-approve patterns
-    - "(?i)(?:enableAll|auto[_\\s-]?(?:approve|start|connect|run))[_\\s]?(?:Project)?[_\\s]?(?:Mcp|MCP|mcp)"
-    - "(?i)enableAllProjectMcpServers"
-    - "(?i)enabledMcpjsonServers"
-    # Case-sensitivity bypass attempts
-    - "(?i)(?:MCP|Mcp|mCp|mcP)\\.(?:JSON|Json|jSon|jsoN)"
-    - "(?i)(?:\\.CURSOR|\\.Cursor)[/\\\\]"
-    # MCP server spawning with shell=true or similar
-    - "(?i)(?:spawn|exec|fork).*(?:npx|node|python|uvx).*(?:mcp|server).*(?:shell\\s*:\\s*true)"
-    # Tools that manipulate project-level MCP config
-    - "(?i)(?:add|install|register|configure)[_\\s]?mcp[_\\s]?server"
 remediation: "MCP servers must NOT write to IDE configuration files (.cursor/mcp.json, .vscode/settings.json, .claude/settings.local.json) without explicit, interactive user confirmation that cannot be bypassed by repository-controlled settings. CVE-2025-54135/54136 (Cursor), CVE-2025-59536 (Claude Code) demonstrated that auto-start and silent config mutation enable RCE. Implement case-normalized path validation (CVE-2025-59944). Never use enableAllProjectMcpServers in shared repositories."
 test_cases:
   true_positive:

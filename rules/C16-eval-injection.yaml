@@ -6,30 +6,6 @@ owasp: MCP03-command-injection
 mitre: AML.T0054
 detect:
   type: typed
-    # JavaScript eval with user-controlled input
-    - "eval\\s*\\(\\s*(?:req|input|param|args|body|query|user|data)"
-    - "eval\\s*\\(`[^`]*\\$\\{(?:req|input|param|args|body|query)"
-    # new Function() constructor — equivalent to eval
-    - "new\\s+Function\\s*\\([^)]*(?:req|input|param|args|body|query)"
-    - "new\\s+Function\\s*\\(`[^`]*\\$\\{(?:req|input|param|args|body)"
-    # Function constructor via bracket notation (obfuscated eval)
-    - "\\[\\s*['\"]constructor['\"]\\s*\\]\\s*\\([^)]*(?:req|input|param|args)"
-    # setTimeout/setInterval with string argument (string eval)
-    - "setTimeout\\s*\\(\\s*(?:req|input|param|args|body|query|user)"
-    - "setInterval\\s*\\(\\s*(?:req|input|param|args|body|query|user)"
-    # Python exec() / eval() with user input
-    - "(?:^|\\b)exec\\s*\\(\\s*(?:req|input|param|args|body|query|user|request|data)"
-    - "(?:^|\\b)eval\\s*\\(\\s*(?:req|input|param|args|body|query|user|request|data)"
-    # Python compile() — runs arbitrary code when followed by exec
-    - "compile\\s*\\([^)]*(?:req|input|param|args|body|user)"
-    # importlib.import_module with user input (code loading)
-    - "importlib\\.import_module\\s*\\(\\s*(?:req|input|param|args|body|user)"
-    - "__import__\\s*\\(\\s*(?:req|input|param|args|body|user)"
-    # Ruby eval
-    - "(?:Kernel\\.)?eval\\s+(?:req|input|param|args|params)"
-    # Node.js vm.runInContext with unsanitized code
-    - "vm\\.runInContext\\s*\\([^,)]*(?:req|input|param|args|body)"
-    - "vm\\.runInNewContext\\s*\\([^,)]*(?:req|input|param|args|body)"
 remediation: "Never pass user input to eval(), new Function(), exec(), or any code evaluation API. Use a proper expression parser (math.js, expr-eval, AST-based) if dynamic computation is required. If code execution is the feature (code sandbox), use a fully isolated container with no filesystem, network, or process access."
 test_cases:
   true_positive:

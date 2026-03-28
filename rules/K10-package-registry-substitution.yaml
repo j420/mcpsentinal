@@ -19,18 +19,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # .npmrc with custom registry
-    - "(?i)registry\\s*=\\s*https?://(?!registry\\.npmjs\\.org|npm\\.pkg\\.github\\.com)[^\\s]+"
-    # pip with custom index
-    - "(?i)(--index-url|--extra-index-url|index[_-]url)\\s*=?\\s*https?://(?!pypi\\.org|files\\.pythonhosted\\.org)[^\\s]+"
-    # yarn with custom registry
-    - "(?i)npmRegistryServer\\s*:\\s*[\"']https?://(?!registry\\.yarnpkg\\.com|registry\\.npmjs\\.org)[^\"']+"
-    # Go module proxy substitution
-    - "(?i)GOPROXY\\s*=\\s*(?!https://proxy\\.golang\\.org)[^\\s,]+"
-    # Maven/Gradle with custom repository that isn't Maven Central
-    - "(?i)(?:repository|repo).*url\\s*[:=]\\s*[\"']https?://(?!repo1?\\.maven\\.org|central\\.sonatype|plugins\\.gradle\\.org)[^\"']+"
-    # Generic: find-links or trusted-host pointing to custom domain
-    - "(?i)(find[_-]links|trusted[_-]host)\\s*=?\\s*https?://(?!pypi\\.org|files\\.pythonhosted\\.org)[^\\s]+"
 remediation: "Use only official package registries (registry.npmjs.org, pypi.org, proxy.golang.org) or verified enterprise mirrors (Artifactory, Nexus). Pin registry URLs in CI configuration and verify package checksums. Required by ISO 27001 A.5.21 and OWASP ASI04."
 test_cases:
   true_positive:

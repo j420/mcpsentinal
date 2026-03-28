@@ -1,7 +1,7 @@
 {
   "name": "mcp-sentinel-scanner",
-  "version": "0.1.0",
-  "description": "MCP server for security scanning — analyze any MCP server against 177 detection rules",
+  "version": "0.2.0",
+  "description": "MCP server for security scanning — analyze any MCP server against 177 detection rules with AST taint analysis, capability graph, and entropy-based secret detection",
   "type": "module",
   "main": "./dist/index.js",
   "bin": {

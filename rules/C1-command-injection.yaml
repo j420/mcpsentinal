@@ -6,41 +6,6 @@ owasp: MCP03-command-injection
 mitre: AML.T0054
 detect:
   type: typed
-    # Node.js exec variants
-    - "exec\\s*\\("
-    - "execSync\\s*\\("
-    - "child_process"
-    - "shelljs"
-    - "shell\\.exec\\s*\\("
-    # spawn with shell-injectable input (variable name heuristic)
-    - "spawnSync\\s*\\([^,)]*(?:req|input|param|args|cmd|command|query|body)"
-    - "spawn\\s*\\([^,)]*(?:req|input|param|args|cmd|command|query|body)"
-    # vm module misuse
-    - "vm\\.runInNewContext\\s*\\("
-    - "vm\\.runInThisContext\\s*\\("
-    - "new\\s+vm\\.Script\\s*\\("
-    # Template literal in exec — shell injection via string interpolation
-    - "exec\\s*\\(`[^`]*\\$\\{"
-    - "execSync\\s*\\(`[^`]*\\$\\{"
-    # Python
-    - "os\\.system\\s*\\("
-    - "os\\.popen\\s*\\("
-    - "commands\\.getoutput\\s*\\("
-    - "commands\\.getstatusoutput\\s*\\("
-    - "subprocess\\.call\\s*\\("
-    - "subprocess\\.run\\s*\\([^)]*shell\\s*=\\s*True"
-    - "subprocess\\.Popen\\s*\\([^)]*shell\\s*=\\s*True"
-    - "subprocess\\.check_output\\s*\\([^)]*shell\\s*=\\s*True"
-    - "subprocess\\.check_call\\s*\\([^)]*shell\\s*=\\s*True"
-    # eval (JS/Python)
-    - "eval\\s*\\("
-    # Ruby
-    - "system\\s*\\("
-    - "`[^`]+`"
-    # PHP
-    - "shell_exec\\s*\\("
-    - "passthru\\s*\\("
-    - "proc_open\\s*\\("
 remediation: "Replace exec()/execSync() with execFile() and pass arguments as an array, never as a string. Validate all inputs against an allowlist before use in any shell context. For subprocess.run, always pass a list and shell=False."
 test_cases:
   true_positive:

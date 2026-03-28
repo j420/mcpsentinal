@@ -38,23 +38,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # Contradictory instruction pairs
-    - "(?i)(always|must)\\s+\\w+.{5,40}(never|do not|must not)\\s+\\w+"
-    - "(?i)(never|do not)\\s+\\w+.{5,40}(always|must)\\s+\\w+"
-    # Self-referential / paradoxical statements
-    - "(?i)(this (instruction|description|statement|rule) is (false|incorrect|wrong|invalid))"
-    - "(?i)(ignore this .{0,20} if you (read|see|process|encounter) it)"
-    - "(?i)(do (not|the opposite of) what (this|these) (say|instruct|describe))"
-    # Recursive consideration demands
-    - "(?i)(before .{5,30} (reconsider|re-evaluate|think again|re-analyze))"
-    - "(?i)(reconsider whether .{5,30} reconsider)"
-    - "(?i)(consider (every|all) (possible|potential|conceivable) .{0,20}(edge case|scenario|outcome|possibility))"
-    # Exhaustive enumeration triggers
-    - "(?i)(list (all|every|each) .{0,30}(before|prior to|in order to))"
-    - "(?i)(enumerate .{0,20}(all|every|each|complete) .{0,30}(before|prior))"
-    # Infinite deliberation signals
-    - "(?i)(keep (thinking|reasoning|analyzing|considering) until .{0,30}(perfect|certain|sure|absolute))"
-    - "(?i)(do not (proceed|continue|execute|act) until (fully|completely|absolutely|100%))"
 remediation: >
   Remove contradictory instructions, self-referential paradoxes, and exhaustive
   enumeration demands from tool descriptions. These patterns induce reasoning

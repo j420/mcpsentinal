@@ -6,24 +6,6 @@ owasp: MCP05-privilege-escalation
 mitre: null
 detect:
   type: typed
-    # Direct prototype assignment from user input
-    - "(?i)\\.__proto__\\s*\\["
-    - "(?i)\\.__proto__\\s*\\."
-    - "(?i)\\[\\s*['\"]__proto__['\"]\\s*\\]"
-    # constructor.prototype manipulation
-    - "(?i)\\.constructor\\s*\\.\\s*prototype"
-    - "(?i)\\[\\s*['\"]constructor['\"]\\s*\\]\\s*\\[\\s*['\"]prototype['\"]\\s*\\]"
-    # Object.assign / merge with unsanitized user input (common pollution vector)
-    - "(?i)Object\\.assign\\s*\\(\\s*(?:this|global|config|settings|options|defaults)"
-    - "(?i)Object\\.assign\\s*\\([^,)]+,\\s*(?:req|input|param|args|body|query|data)"
-    # Deep merge utilities applied to user input — lodash merge, deepmerge, etc.
-    - "(?i)(?:_|lodash)?\\.merge\\s*\\([^,)]+,\\s*(?:req|input|param|args|body)"
-    - "(?i)deepmerge\\s*\\([^,)]+,\\s*(?:req|input|param|args|body)"
-    - "(?i)extend\\s*\\(\\s*(?:true|\\{\\}),\\s*(?:req|input|param|args|body)"
-    # JSON.parse result spread into object with prototype-accessible keys
-    - "(?i)JSON\\.parse\\s*\\([^)]+\\).*__proto__"
-    # hasOwnProperty bypass (indicator that prototype checks are being bypassed)
-    - "(?i)\\[\\s*['\"]hasOwnProperty['\"]\\s*\\]"
 remediation: "Sanitize all user-supplied keys before merging into objects. Use Object.create(null) for configuration objects to strip prototype. Validate that keys don't include '__proto__', 'constructor', or 'prototype'. Use structuredClone() for deep copying untrusted data."
 test_cases:
   true_positive:

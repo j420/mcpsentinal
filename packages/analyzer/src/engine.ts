@@ -3,6 +3,9 @@ import pino from "pino";
 import type { ServerToolPin } from "./tool-fingerprint.js";
 import { pinServerTools, diffToolPins } from "./tool-fingerprint.js";
 import { hasTypedRule, getTypedRule, type TypedFinding } from "./rules/base.js";
+// Side-effect import: registers all TypedRule implementations so the engine
+// can dispatch to them when YAML rules declare detect.type: "typed".
+import "./rules/index.js";
 import { CodeAnalyzer } from "./engines/code-analyzer.js";
 import { DescriptionAnalyzer } from "./engines/description-analyzer.js";
 import { SchemaAnalyzer } from "./engines/schema-analyzer.js";

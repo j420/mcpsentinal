@@ -6,23 +6,6 @@ owasp: MCP01-prompt-injection
 mitre: AML.T0054
 detect:
   type: typed
-    # Long base64 blocks — legitimately rare in descriptions, often used to hide instructions
-    - "(?:[A-Za-z0-9+/]{40,}={0,2})"
-    # URL-encoded sequences (more than 3 percent-encoded chars in a row is suspicious)
-    - "(?:%[0-9A-Fa-f]{2}){4,}"
-    # HTML entity encoded instructions
-    - "(?:&#[0-9]{2,4};){3,}"
-    - "(?:&(?:lt|gt|amp|quot|apos|#x[0-9a-fA-F]+);){3,}"
-    # Unicode escape sequences in bulk (U+XXXX notation)
-    - "(?:\\\\u[0-9a-fA-F]{4}){3,}"
-    # Hex-encoded strings
-    - "(?:\\\\x[0-9a-fA-F]{2}){4,}"
-    # ROT13-like obfuscation markers (common in manual obfuscation)
-    - "(?i)(?:atm|vzcbegnag|vafgehpgvba|flfgrz)"
-    # Character code array patterns (JS fromCharCode obfuscation)
-    - "(?i)(?:String\\.fromCharCode|chr\\s*\\(|charCodeAt)\\s*\\([0-9,\\s]{10,}\\)"
-    # Morse code or similar alternate encoding structures
-    - "(?:[.-]{3,}\\s){5,}"
 remediation: "Do not use any encoding (base64, URL encoding, HTML entities, hex) in tool descriptions. All descriptions must be plain human-readable text. Encoded content in descriptions is a strong indicator of an attempt to hide malicious instructions from human review while ensuring LLM processing."
 test_cases:
   true_positive:

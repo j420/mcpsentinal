@@ -25,20 +25,6 @@ mitre: AML.T0017
 
 detect:
   type: typed
-    # Overrides/resolutions forcing specific old versions
-    - "(?i)[\"'](?:overrides|resolutions|pnpm\\.overrides)[\"']\\s*:\\s*\\{[^}]*[\"'][\\w@/-]+[\"']\\s*:\\s*[\"'](?:0\\.|1\\.0|<=|<\\d)"
-    # Lockfile modification scripts
-    - "(?i)(?:sed|awk|perl|jq|node).*(?:package-lock|yarn\\.lock|pnpm-lock).*(?:version|resolved|integrity)"
-    # Force installing without lockfile integrity
-    - "(?i)(?:npm\\s+install|npm\\s+ci).*(?:--no-package-lock|--ignore-scripts|--force|--legacy-peer-deps).*(?:&&|;).*(?:npm\\s+install|npm\\s+ci)"
-    # Programmatic lockfile manipulation
-    - "(?i)(?:readFileSync|readFile).*(?:package-lock|yarn\\.lock).*(?:writeFile|replace|JSON\\.parse).*version"
-    # prefer-offline with stale cache exploitation
-    - "(?i)prefer-offline\\s*=\\s*true.*(?:cache|registry)"
-    # npm shrinkwrap manipulation (overrides package-lock.json)
-    - "(?i)npm\\s+shrinkwrap.*(?:sed|awk|modify|replace)"
-    # Downgrade indicators in CI scripts
-    - "(?i)(?:npm\\s+install|pip\\s+install|pnpm\\s+add).*(?:@0\\.|@1\\.0|==0\\.|==1\\.0|<=\\d\\.\\d\\.\\d).*(?:mcp|server|sdk)"
 remediation: "Use 'npm ci' (not 'npm install') in CI to enforce lockfile integrity. Enable npm audit signatures to verify package provenance. Pin all direct dependencies to exact versions. Use SLSA provenance verification for critical dependencies. Monitor lockfile changes in pull requests with automated diff review. Never use --force or --legacy-peer-deps in production CI."
 test_cases:
   true_positive:

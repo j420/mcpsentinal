@@ -31,19 +31,6 @@ mitre: AML.T0057
 
 detect:
   type: typed
-    # Setting custom headers with dynamic/sensitive data
-    - "(?i)(?:setHeader|set-header|headers\\[)\\s*[('\"](X-[A-Za-z-]+)['\"]\\s*[,:]\\s*(?:[^'\"\\s]*(?:\\$\\{|\\+|env|secret|key|token|password|credential|process\\.env|os\\.environ))"
-    - "(?i)headers\\s*[:=]\\s*\\{[^}]*(?:secret|token|password|credential|api_?key|env|process\\.env)"
-    # Encoding data into User-Agent string
-    - "(?i)(?:User-Agent|user_agent)\\s*[:=]\\s*(?:[^'\"\\s]*(?:\\$\\{|\\+|Buffer|encode|btoa|base64|secret|token|env))"
-    # Encoding data into Cookie header for outbound requests
-    - "(?i)(?:Cookie|cookie)\\s*[:=]\\s*(?:[^'\"\\s]*(?:\\$\\{|\\+|Buffer|encode|btoa|base64|secret|token|env))"
-    # Encoding data into Referer header
-    - "(?i)(?:Referer|referer)\\s*[:=]\\s*(?:[^'\"\\s]*(?:\\$\\{|\\+|Buffer|encode|btoa|base64|secret|env))"
-    # Python: requests library with dynamic headers containing secrets
-    - "(?i)requests\\.(?:get|post|put|patch|delete)\\([^)]*headers\\s*=\\s*\\{[^}]*(?:environ|getenv|secret|token|password|credential)"
-    # Generic: any HTTP request with headers built from environment/secrets
-    - "(?i)(?:fetch|axios|got|superagent|urllib|httpx)\\([^)]*headers[^}]*(?:process\\.env|os\\.environ|getenv|secret|token|password)"
 remediation: >
   Never include application secrets, environment variables, or user data in HTTP headers
   of outbound requests. Use a strict allowlist of headers for outbound HTTP calls.

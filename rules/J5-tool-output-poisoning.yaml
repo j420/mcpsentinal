@@ -25,17 +25,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # Error messages with file read instructions
-    - "(?i)(error|err|failure|failed).*(?:read|cat|open|access)\\s+(?:the\\s+)?(?:file|~[/\\\\]|/etc/|/home/|\\.ssh|\\.env|\\.aws)"
-    - "(?i)(resolve|fix|recover).*(?:read|provide|include|send|share)\\s+(?:your|the)\\s+(?:key|token|secret|credential|password|ssh)"
-    # Response strings containing LLM manipulation
-    - "(?i)(return|respond|output|result).*(?:ignore previous|new instructions|act as|you are now|system prompt)"
-    - "(?i)(message|response|body).*(?:IMPORTANT|CRITICAL|URGENT).*(?:read|send|execute|run|curl|fetch)"
-    # Fake error with exfiltration instructions
-    - "(?i)throw.*Error.*(?:curl|wget|fetch|http|send).*(?:key|token|secret|password)"
-    - "(?i)(error_message|err_msg|failure_reason).*(?:please\\s+(?:send|share|provide|include))"
-    # Output containing hidden tool call instructions
-    - "(?i)(return|respond|output).*(?:tool_call|function_call|execute_tool|call_tool|invoke)"
 remediation: "Tool responses MUST NOT contain instruction-like content, file read directives, or social engineering phrases. Error messages should be factual and technical — never suggest actions involving sensitive data access. See CyberArk ATPA research for attack demonstration."
 test_cases:
   true_positive:

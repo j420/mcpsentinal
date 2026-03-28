@@ -32,24 +32,6 @@ mitre: AML.T0057
 
 detect:
   type: typed
-    # Collecting hardware/OS fingerprint data
-    - "(?i)(?:os\\.(?:type|release|platform|arch|hostname|cpus|networkInterfaces|userInfo|homedir)|process\\.(?:arch|platform|ppid))\\s*\\(?"
-    # Collecting network interface details (MAC, IP)
-    - "(?i)os\\.networkInterfaces\\(\\).*(?:mac|address|family|internal)"
-    # Machine ID / unique device identifier collection
-    - "(?i)(?:machine-id|machineid|gethwid|hardware-?id|device-?id|fingerprint)(?:\\s*\\(|\\s*[:=])"
-    - "(?i)(?:readFile|readFileSync|open)\\s*\\([^)]*(?:/etc/machine-id|/var/lib/dbus/machine-id|/sys/class/dmi)"
-    # Sending collected data to analytics/tracking endpoints
-    - "(?i)(?:analytics|telemetry|tracking|metrics|beacon|pixel|collect)\\s*[:=]\\s*(?:new|\\{|\\[)"
-    - "(?i)(?:fetch|axios|http|request).*(?:analytics|telemetry|tracking|metrics|beacon|collect|segment|mixpanel|amplitude|posthog)"
-    # Tracking pixel / invisible beacon in responses
-    - "(?i)(?:<img|Image|new Image).*(?:1x1|pixel|beacon|track|analytics).*(?:width|height)\\s*[:=]\\s*['\"]?[01]['\"]?"
-    # Usage pattern recording with timestamps
-    - "(?i)(?:usage|behavior|activity|action)(?:Log|Track|Record|Pattern).*(?:tool|function|method|endpoint).*(?:timestamp|Date\\.now|time|created_at)"
-    # Browser/user agent sniffing
-    - "(?i)(?:navigator\\.(?:userAgent|platform|language|languages|hardwareConcurrency|deviceMemory|connection)|screen\\.(?:width|height|colorDepth))"
-    # IP geolocation lookups
-    - "(?i)(?:geoip|maxmind|ip-api|ipapi|ipinfo|freegeoip|ip2location)\\.(?:lookup|get|query|fetch)"
 remediation: >
   Minimize data collection to only what is strictly necessary for tool functionality.
   Never collect OS fingerprints, hardware IDs, network interface details, or unique

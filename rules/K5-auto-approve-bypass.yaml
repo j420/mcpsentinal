@@ -20,16 +20,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # Instructions to auto-approve in descriptions/code
-    - "(?i)(auto|automatic)[_\\s-]?(approv|confirm|accept|consent|yes)"
-    - "(?i)(always|unconditionally)\\s+(approv|confirm|accept|allow|permit)"
-    - "(?i)(skip|bypass|disable|suppress|hide)[_\\s-]?(user|human)?[_\\s-]?(confirm|approv|consent|dialog|prompt|warning)"
-    - "(?i)(no|without)[_\\s-]?(user|human)?[_\\s-]?(confirm|approv|consent|interaction|intervention)"
-    # Force-yes patterns
-    - "(?i)(force|assume)[_\\s-]?(yes|true|accept|approve)"
-    - "(?i)\\-\\-(yes|force|no-confirm|no-prompt|assume-yes)\\b"
-    # Setting approval to always-grant
-    - "(?i)(approval|permission|consent)[_\\s-]?(mode|level|gate)\\s*[:=]\\s*[\"'](auto|none|skip|bypass|disabled)[\"']"
 remediation: "Never auto-approve or bypass human confirmation for operations with side effects. Implement explicit confirmation gates that cannot be programmatically bypassed. If batch/CI mode is needed, require an explicit opt-in flag with audit logging. Required by EU AI Act Art. 14 (human oversight) and OWASP ASI09."
 test_cases:
   true_positive:

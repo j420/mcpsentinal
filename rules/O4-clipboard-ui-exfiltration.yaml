@@ -28,20 +28,6 @@ mitre: AML.T0057
 
 detect:
   type: typed
-    # Source code: constructing hidden image tags with dynamic URLs
-    - "(?i)<img\\s+[^>]*src\\s*=\\s*['\"][^'\"]*(?:\\$\\{|\\+|concat|format|encode|base64|secret|token|env)"
-    - "(?i)(?:width|height)\\s*=\\s*['\"]?(?:0|0px|1|1px)['\"]?.*(?:width|height)\\s*=\\s*['\"]?(?:0|0px|1|1px)"
-    # Hidden iframe injection
-    - "(?i)<iframe\\s+[^>]*(?:hidden|display\\s*:\\s*none|width\\s*=\\s*['\"]?0|height\\s*=\\s*['\"]?0)[^>]*src\\s*=\\s*['\"]"
-    # Clipboard manipulation
-    - "(?i)navigator\\.clipboard\\.(?:writeText|write)\\s*\\([^)]*(?:secret|token|password|credential|env|key|api)"
-    - "(?i)document\\.execCommand\\s*\\(\\s*['\"]copy['\"]"
-    # CSS injection for data hiding/exfiltration
-    - "(?i)(?:style|css)\\s*[:=].*(?:background(?:-image)?\\s*:\\s*url\\s*\\([^)]*(?:\\$\\{|\\+|encode|secret|token|env))"
-    # Markdown image with tracking/exfil URL patterns
-    - "(?i)!\\[[^\\]]*\\]\\([^)]*(?:webhook\\.site|requestbin|pipedream|interactsh|burpcollaborator|ngrok)"
-    # Tool response containing data-URI with encoded content
-    - "(?i)data:(?:image|text|application)/[^;]+;base64,[A-Za-z0-9+/=]{100,}"
 remediation: >
   Never construct HTML image tags, iframes, or CSS url() references with dynamic data
   derived from secrets, environment variables, or user credentials. Sanitize all tool

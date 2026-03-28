@@ -29,20 +29,6 @@ mitre: AML.T0017
 
 detect:
   type: typed
-    # Bin field registering commands that shadow common system utilities
-    - "(?i)[\"']bin[\"']\\s*:\\s*\\{[^}]*[\"'](?:ls|cat|grep|curl|wget|ssh|sudo|su|chmod|chown|rm|mv|cp|node|npm|npx|python|pip|git|docker)[\"']"
-    # Exports map blocking access to package.json
-    - "(?i)[\"']exports[\"'].*[\"']\\./package\\.json[\"']\\s*:\\s*(?:null|false|[\"'][\"'])"
-    # Conditional exports with different files for import vs require
-    - "(?i)[\"']exports[\"'].*[\"']\\.[\"'].*(?:[\"']import[\"']\\s*:\\s*[\"'][^\"']+[\"'].*[\"']require[\"']\\s*:\\s*[\"'](?!\\1)[^\"']+[\"'])"
-    # Main/module pointing to different files (potential bait-and-switch)
-    - "(?i)[\"']main[\"']\\s*:\\s*[\"']([^\"']+)[\"'].*[\"']module[\"']\\s*:\\s*[\"'](?!\\1)[^\"']+[\"'].*(?:eval|exec|spawn|fetch)"
-    # Hidden files in bin field
-    - "(?i)[\"']bin[\"']\\s*:\\s*\\{[^}]*[\"']\\w+[\"']\\s*:\\s*[\"'](?:\\./)?(?:\\.(?:hidden|tmp|cache)|__)"
-    # Exports with node condition pointing to different file than default
-    - "(?i)[\"']exports[\"'].*[\"']node[\"']\\s*:\\s*[\"']([^\"']+)[\"'].*[\"']default[\"']\\s*:\\s*[\"'](?!\\1)"
-    # Browser field overriding server-side modules
-    - "(?i)[\"']browser[\"']\\s*:\\s*\\{[^}]*[\"'](?:fs|child_process|crypto|net|http|os|path)[\"']\\s*:\\s*[\"'](?!false)"
 remediation: "Ensure all entry point fields (main, module, exports, bin, browser) reference the same code paths. Do not block access to ./package.json in the exports map. Audit bin fields for commands that shadow system utilities. Use consistent entry points across import/require conditions. Verify that conditional exports don't serve different code to different contexts."
 test_cases:
   true_positive:
