@@ -36,3 +36,5 @@ import "./implementations/cross-tool-risk-detector.js";
 import "./implementations/config-poisoning-detector.js";
 import "./implementations/secret-exfil-detector.js";
 import "./implementations/supply-chain-detector.js";
+import "./implementations/code-security-deep-detector.js";
+import "./implementations/ai-manipulation-detector.js";
