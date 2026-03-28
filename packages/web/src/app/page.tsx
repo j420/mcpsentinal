@@ -5,9 +5,13 @@ import ScannerAnimation from "../components/ScannerAnimation";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "MCP Server Security Registry",
+  title: "MCP Server Security Registry — 177 Detection Rules",
   description:
-    "Search thousands of MCP servers. Evaluate the safety of every Model Context Protocol integration before you deploy.",
+    "Search MCP servers and evaluate their security posture. 177 detection rules with AST taint analysis, capability graph, and entropy-based secret detection. Free, public, and deterministic.",
+  openGraph: {
+    title: "MCP Sentinel — MCP Server Security Registry",
+    description: "177 detection rules. AST taint analysis. Know which MCP servers are safe before they touch your agent.",
+  },
 };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3100";

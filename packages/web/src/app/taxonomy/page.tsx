@@ -1,7 +1,17 @@
 import CategoryDeepDivePanel from "@/components/CategoryDeepDivePanel";
 import { THREAT_CATS } from "@/components/cdd-data";
 
-export const metadata = { title: "Security Rule Taxonomy — MCP Sentinel" };
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Security Rule Taxonomy — 177 Detection Rules",
+  description:
+    "Browse all 177 MCP security detection rules across 17 categories. Covers prompt injection, tool poisoning, supply chain attacks, OAuth vulnerabilities, protocol edge cases, and more. Each rule maps to OWASP MCP Top 10 and MITRE ATLAS.",
+  openGraph: {
+    title: "177 MCP Security Detection Rules — MCP Sentinel",
+    description: "Browse all detection rules: prompt injection, tool poisoning, supply chain, OAuth, protocol attacks.",
+  },
+};
 
 const totalRules = THREAT_CATS.reduce(
   (sum, cat) => sum + cat.subCats.reduce((s, sc) => s + sc.rules.length, 0),

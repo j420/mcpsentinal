@@ -17,19 +17,31 @@ export const metadata: Metadata = {
     template: "%s — MCP Sentinel",
   },
   description:
-    "The world's most comprehensive security intelligence registry for MCP servers. 22,000+ servers scanned across 150+ detection rules covering prompt injection, supply chain attacks, dependency vulnerabilities, and more.",
+    "The world's most comprehensive security intelligence registry for MCP servers. 177 detection rules with AST taint analysis covering prompt injection, tool poisoning, supply chain attacks, and more.",
   keywords: [
     "MCP",
     "Model Context Protocol",
     "MCP security",
     "MCP server scanner",
+    "MCP vulnerability scanner",
     "AI security",
+    "AI agent security",
+    "agentic AI security",
     "prompt injection",
-    "OWASP",
+    "tool poisoning",
+    "MCP tool poisoning",
+    "OWASP MCP Top 10",
+    "OWASP Agentic Top 10",
     "vulnerability scanner",
-    "Claude",
-    "Anthropic",
+    "supply chain security",
+    "Claude MCP",
+    "Anthropic MCP",
+    "MCP registry",
+    "mcp-sentinel",
   ],
+  alternates: {
+    canonical: SITE_URL,
+  },
   authors: [{ name: "MCP Sentinel" }],
   creator: "MCP Sentinel",
   openGraph: {
@@ -39,7 +51,7 @@ export const metadata: Metadata = {
     url: SITE_URL,
     title: "MCP Sentinel — MCP Server Security Intelligence",
     description:
-      "22,000+ MCP servers scanned. 150+ detection rules. Know which servers are safe before they touch your agent.",
+      "177 detection rules with AST taint analysis. Know which MCP servers are safe before they touch your agent.",
     images: [
       {
         url: `${SITE_URL}/og.png`,
@@ -53,7 +65,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "MCP Sentinel — MCP Server Security Intelligence",
     description:
-      "22,000+ MCP servers scanned. 150+ detection rules. Know which servers are safe before they touch your agent.",
+      "177 detection rules with AST taint analysis. Know which MCP servers are safe before they touch your agent.",
     images: [`${SITE_URL}/og.png`],
   },
   robots: {
@@ -92,7 +104,7 @@ const organizationJsonLd = {
   url: SITE_URL,
   logo: `${SITE_URL}/logo.png`,
   description:
-    "The world's most comprehensive MCP server security intelligence registry. 22,000+ servers scanned, 150+ detection rules, zero guesswork.",
+    "The world's most comprehensive MCP server security intelligence registry. 177 detection rules, AST taint analysis, zero guesswork.",
   sameAs: ["https://github.com/mcp-sentinel"],
 };
 
@@ -188,7 +200,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <p className="footer-tagline">
                 Security intelligence for the MCP ecosystem.
                 <br />
-                150+ detection rules. Zero guesswork. No LLMs.
+                177 detection rules. AST taint analysis. Zero guesswork.
               </p>
             </div>
             <div className="footer-columns">

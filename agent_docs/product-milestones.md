@@ -58,8 +58,11 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
   - I: Protocol Surface (16), J: 2026 Threat Intelligence (7), K: Compliance & Governance (20)
   - L: Supply Chain Advanced (15), M: AI Runtime Exploitation (9), N: Protocol Edge Cases (15)
   - O: Data Privacy Attacks (10), P: Infrastructure Runtime (10), Q: Cross-Ecosystem Emergent (15)
-- [x] Analysis engine — `packages/analyzer/src/engine.ts` (4 handler types: regex, schema-check, behavioral, composite)
-- [x] Rule loader — `packages/analyzer/src/rule-loader.ts` (YAML interpretation)
+- [x] Analysis engine — `packages/analyzer/src/engine.ts` (specialized engines + 177 TypedRule dispatch)
+- [x] **ALL 177 rules migrated to TypedRules** — AST taint, capability graph, entropy, structural parsing (17 detector files, ~13K lines)
+- [x] 882 tests passing (833 analyzer + 49 red-team), 30+ per category across 14 test files
+- [x] Rule loader — `packages/analyzer/src/rule-loader.ts` (YAML metadata interpretation)
+- [x] npm package published: `mcp-sentinel-scanner@0.2.0` with all TypedRules bundled
 - [x] Tool fingerprinting — `packages/analyzer/src/tool-fingerprint.ts`
 - [x] Scoring algorithm — `packages/scorer/src/scorer.ts` (100 - penalties, lethal trifecta cap, sub-scores per category)
 - [x] MCP Connector — `packages/connector/src/connector.ts` (initialize + tools/list only, per ADR-007)
