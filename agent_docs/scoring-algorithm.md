@@ -46,19 +46,19 @@ The scorer also supports a risk-domain-based mapping via `RISK_DOMAIN_MAP`. When
 
 | Risk Domain | Sub-Score |
 |---|---|
-| `input-boundary` | `description_score` |
-| `tool-integrity` | `config_score` |
-| `code-safety` | `code_score` |
-| `data-protection` | `config_score` |
-| `identity-auth` | `config_score` |
-| `supply-chain` | `deps_score` |
+| `prompt-injection` | `description_score` |
+| `tool-poisoning` | `config_score` |
+| `code-vulnerabilities` | `code_score` |
+| `data-exfiltration` | `config_score` |
+| `authentication` | `config_score` |
+| `supply-chain-security` | `deps_score` |
 | `human-oversight` | `config_score` |
-| `observability` | `behavior_score` |
-| `multi-agent-trust` | `config_score` |
-| `protocol-security` | `config_score` |
-| `resilience` | `config_score` |
-| `infrastructure` | `config_score` |
-| `ai-exploitation` | `config_score` |
+| `audit-logging` | `behavior_score` |
+| `multi-agent-security` | `config_score` |
+| `protocol-transport` | `config_score` |
+| `denial-of-service` | `config_score` |
+| `container-runtime` | `config_score` |
+| `model-manipulation` | `config_score` |
 
 ### Special Rules
 1. **Lethal Trifecta (F1)**: If detected, total score is CAPPED at 40 regardless of other findings.

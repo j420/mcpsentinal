@@ -54,19 +54,19 @@ const CATEGORY_MAP: Record<string, keyof Pick<ScoreResult, "code_score" | "deps_
 // a risk_domain, this map determines which sub-score is penalized.
 // See rules/framework-registry.yaml for the complete domain definitions.
 const RISK_DOMAIN_MAP: Record<RiskDomain, keyof Pick<ScoreResult, "code_score" | "deps_score" | "config_score" | "description_score" | "behavior_score">> = {
-  "input-boundary": "description_score",
-  "tool-integrity": "config_score",
-  "code-safety": "code_score",
-  "data-protection": "config_score",
-  "identity-auth": "config_score",
-  "supply-chain": "deps_score",
+  "prompt-injection": "description_score",
+  "tool-poisoning": "config_score",
+  "code-vulnerabilities": "code_score",
+  "data-exfiltration": "config_score",
+  "authentication": "config_score",
+  "supply-chain-security": "deps_score",
   "human-oversight": "config_score",
-  "observability": "behavior_score",
-  "multi-agent-trust": "config_score",
-  "protocol-security": "config_score",
-  "resilience": "config_score",
-  "infrastructure": "config_score",
-  "ai-exploitation": "config_score",
+  "audit-logging": "behavior_score",
+  "multi-agent-security": "config_score",
+  "protocol-transport": "config_score",
+  "denial-of-service": "config_score",
+  "container-runtime": "config_score",
+  "model-manipulation": "config_score",
 };
 
 const OWASP_CATEGORIES = [

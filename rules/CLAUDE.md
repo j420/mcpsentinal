@@ -63,19 +63,19 @@ The 13 risk domains are derived from cross-referencing 6 compliance frameworks (
 
 | Risk Domain | Description | Rule Count | Migration Priority |
 |---|---|---|---|
-| `input-boundary` | Prompt injection via descriptions, schemas, init fields, resources | 21 | 8 |
-| `tool-integrity` | Deceptive names, annotations, namespace squatting, drift | 15 | 10 |
-| `code-safety` | Injection, traversal, SSRF, deserialization, eval | 19 | 9 |
-| `data-protection` | Exfiltration via HTTP, DNS, headers, timing, env vars | 20 | 6 |
-| `identity-auth` | OAuth, token lifecycle, credential scope, session mgmt | 9 | 5 |
-| `supply-chain` | Dependencies, CI/CD, registries, base images, config injection | 26 | 4 |
+| `prompt-injection` | Prompt injection via descriptions, schemas, init fields, resources | 21 | 8 |
+| `tool-poisoning` | Deceptive names, annotations, namespace squatting, drift | 15 | 10 |
+| `code-vulnerabilities` | Injection, traversal, SSRF, deserialization, eval | 19 | 9 |
+| `data-exfiltration` | Exfiltration via HTTP, DNS, headers, timing, env vars | 20 | 6 |
+| `authentication` | OAuth, token lifecycle, credential scope, session mgmt | 9 | 5 |
+| `supply-chain-security` | Dependencies, CI/CD, registries, base images, config injection | 26 | 4 |
 | `human-oversight` | Confirmation bypass, consent fatigue, kill switches | 7 | 1 |
-| `observability` | Logging, audit trails, monitoring context | 5 | 2 |
-| `multi-agent-trust` | Cross-agent propagation, shared memory, config poisoning | 8 | 7 |
-| `protocol-security` | JSON-RPC, transport, session, batch abuse, smuggling | 18 | 5 |
-| `resilience` | Recursion, timeouts, resource exhaustion, cost amplification | 7 | 10 |
-| `infrastructure` | Containers, sockets, filesystem, network, crypto | 10 | 3 |
-| `ai-exploitation` | Special tokens, reasoning chains, schema weaknesses | 12 | 10 |
+| `audit-logging` | Logging, audit trails, monitoring context | 5 | 2 |
+| `multi-agent-security` | Cross-agent propagation, shared memory, config poisoning | 8 | 7 |
+| `protocol-transport` | JSON-RPC, transport, session, batch abuse, smuggling | 18 | 5 |
+| `denial-of-service` | Recursion, timeouts, resource exhaustion, cost amplification | 7 | 10 |
+| `container-runtime` | Containers, sockets, filesystem, network, crypto | 10 | 3 |
+| `model-manipulation` | Special tokens, reasoning chains, schema weaknesses | 12 | 10 |
 
 Migration priority 1 = migrate first (EU AI Act deadline-driven), 10 = migrate last.
 

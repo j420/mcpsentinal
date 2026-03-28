@@ -332,19 +332,19 @@ export type FindingInput = z.infer<typeof FindingInputSchema>;
 // (OWASP MCP, OWASP ASI, CoSAI, EU AI Act, MITRE ATLAS, MAESTRO).
 // See rules/framework-registry.yaml for the complete many-to-many mapping.
 export const RiskDomain = z.enum([
-  "input-boundary",
-  "tool-integrity",
-  "code-safety",
-  "data-protection",
-  "identity-auth",
-  "supply-chain",
+  "prompt-injection",
+  "tool-poisoning",
+  "code-vulnerabilities",
+  "data-exfiltration",
+  "authentication",
+  "supply-chain-security",
   "human-oversight",
-  "observability",
-  "multi-agent-trust",
-  "protocol-security",
-  "resilience",
-  "infrastructure",
-  "ai-exploitation",
+  "audit-logging",
+  "multi-agent-security",
+  "protocol-transport",
+  "denial-of-service",
+  "container-runtime",
+  "model-manipulation",
 ]);
 export type RiskDomain = z.infer<typeof RiskDomain>;
 

@@ -20,10 +20,10 @@
 risk_domains:
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # 1. INPUT BOUNDARY
+  # 1. PROMPT INJECTION
   # ═══════════════════════════════════════════════════════════════════════════
-  input-boundary:
-    name: Input Boundary
+  prompt-injection:
+    name: Prompt Injection
     description: >
       Untrusted content that can hijack AI behavior through tool descriptions,
       parameter schemas, initialize response fields, resources, prompts, or
@@ -61,10 +61,10 @@ risk_domains:
       mitre_atlas: [AML.T0054, AML.T0054.001, AML.T0054.002, AML.T0058]
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # 2. TOOL INTEGRITY
+  # 2. TOOL POISONING
   # ═══════════════════════════════════════════════════════════════════════════
-  tool-integrity:
-    name: Tool Integrity
+  tool-poisoning:
+    name: Tool Poisoning
     description: >
       Tools that lie about what they do — deceptive names, annotations,
       descriptions, namespace squatting, or behavioral drift over time.
@@ -96,10 +96,10 @@ risk_domains:
       mitre_atlas: [AML.T0058, AML.T0058.002]
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # 3. CODE SAFETY
+  # 3. CODE VULNERABILITIES
   # ═══════════════════════════════════════════════════════════════════════════
-  code-safety:
-    name: Code Safety
+  code-vulnerabilities:
+    name: Code Vulnerabilities
     description: >
       Exploitable vulnerabilities in MCP server source code — command injection,
       path traversal, SSRF, SQL injection, deserialization, eval, prototype
@@ -135,10 +135,10 @@ risk_domains:
       mitre_atlas: [AML.T0054, AML.T0055]
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # 4. DATA PROTECTION
+  # 4. DATA EXFILTRATION
   # ═══════════════════════════════════════════════════════════════════════════
-  data-protection:
-    name: Data Protection
+  data-exfiltration:
+    name: Data Exfiltration
     description: >
       Data exfiltration paths — via HTTP, DNS, headers, timing channels,
       clipboard, environment variables, steganography, covert channels,
@@ -175,10 +175,10 @@ risk_domains:
       mitre_atlas: [AML.T0057, AML.T0062]
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # 5. IDENTITY & AUTH
+  # 5. AUTHENTICATION & IDENTITY
   # ═══════════════════════════════════════════════════════════════════════════
-  identity-auth:
-    name: Identity & Auth
+  authentication:
+    name: Authentication & Identity
     description: >
       Authentication and identity management flaws — OAuth misuse,
       token lifecycle, credential scope, session management, TOFU bypass,
@@ -204,10 +204,10 @@ risk_domains:
       mitre_atlas: [AML.T0055]
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # 6. SUPPLY CHAIN
+  # 6. SUPPLY CHAIN SECURITY
   # ═══════════════════════════════════════════════════════════════════════════
-  supply-chain:
-    name: Supply Chain
+  supply-chain-security:
+    name: Supply Chain Security
     description: >
       Build, publish, and distribution pipeline compromise — dependency
       attacks (CVE, typosquatting, malware), CI/CD poisoning, registry
@@ -277,10 +277,10 @@ risk_domains:
       mitre_atlas: []
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # 8. OBSERVABILITY
+  # 8. AUDIT & LOGGING
   # ═══════════════════════════════════════════════════════════════════════════
-  observability:
-    name: Observability
+  audit-logging:
+    name: Audit & Logging
     description: >
       Missing or compromised audit trails — absent structured logging,
       log destruction, log tampering, insufficient audit context for
@@ -302,10 +302,10 @@ risk_domains:
       mitre_atlas: []
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # 9. MULTI-AGENT TRUST
+  # 9. MULTI-AGENT SECURITY
   # ═══════════════════════════════════════════════════════════════════════════
-  multi-agent-trust:
-    name: Multi-Agent Trust
+  multi-agent-security:
+    name: Multi-Agent Security
     description: >
       Cross-agent attack propagation — config poisoning, shared memory
       injection, credential propagation between agents, collusion
@@ -330,10 +330,10 @@ risk_domains:
       mitre_atlas: [AML.T0058, AML.T0058.001]
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # 10. PROTOCOL SECURITY
+  # 10. PROTOCOL & TRANSPORT
   # ═══════════════════════════════════════════════════════════════════════════
-  protocol-security:
-    name: Protocol Security
+  protocol-transport:
+    name: Protocol & Transport
     description: >
       JSON-RPC and transport layer vulnerabilities — batch abuse,
       notification flooding, session hijacking, ID collision, race
@@ -368,10 +368,10 @@ risk_domains:
       mitre_atlas: [AML.T0061]
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # 11. RESILIENCE
+  # 11. DENIAL OF SERVICE
   # ═══════════════════════════════════════════════════════════════════════════
-  resilience:
-    name: Resilience
+  denial-of-service:
+    name: Denial of Service
     description: >
       Denial of service and resource exhaustion — unbounded recursion,
       missing timeouts, cost amplification, response bombs, excessive tool
@@ -395,10 +395,10 @@ risk_domains:
       mitre_atlas: []
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # 12. INFRASTRUCTURE
+  # 12. CONTAINER & RUNTIME
   # ═══════════════════════════════════════════════════════════════════════════
-  infrastructure:
-    name: Infrastructure
+  container-runtime:
+    name: Container & Runtime
     description: >
       Runtime environment misconfigurations — container escape vectors,
       socket mounts, host filesystem access, network isolation, privilege
@@ -425,10 +425,10 @@ risk_domains:
       mitre_atlas: [T1611, T1552]
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # 13. AI EXPLOITATION
+  # 13. MODEL MANIPULATION
   # ═══════════════════════════════════════════════════════════════════════════
-  ai-exploitation:
-    name: AI Exploitation
+  model-manipulation:
+    name: Model Manipulation
     description: >
       Model-specific attacks — special token injection, tokenizer boundary
       manipulation, reasoning chain hijacking, prompt extraction, and
