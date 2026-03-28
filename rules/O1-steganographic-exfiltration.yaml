@@ -30,21 +30,6 @@ mitre: AML.T0057
 
 detect:
   type: typed
-    # EXIF/metadata manipulation libraries
-    - "(?i)(?:exif|piexif|Exif(?:Tool|Read|Write)|ExifImage|sharp\\.metadata|gm\\.identify)"
-    - "(?i)(?:exif_read_data|exif_imagetype|iptc_parse)"
-    # Writing data into image metadata fields
-    - "(?i)(?:UserComment|ImageDescription|XPComment|Copyright|Artist|DocumentName)\\s*[:=]\\s*(?:[^'\"\\s]*(?:\\$\\{|\\+|`|req|input|param|secret|env|key|token|password|credential))"
-    # PDF metadata manipulation for data hiding
-    - "(?i)(?:PDFDocument|jsPDF|pdf-lib|PyPDF|reportlab)\\.(?:setProperties|setMetadata|setInfo|set_metadata)"
-    - "(?i)(?:setAuthor|setSubject|setKeywords|setProducer|setCreator)\\s*\\([^)]*(?:\\$\\{|\\+|env|secret|key|token|password)"
-    # LSB steganography libraries
-    - "(?i)(?:steg(?:ano)?(?:hide|encode|embed)|lsb\\.(?:hide|embed|encode)|steganography\\.(?:encode|hide))"
-    - "(?i)(?:stepic|stegano|openstego|steghide|stegsolve|steg_lsb)"
-    # Generic pattern: reading secrets then writing to image/media files
-    - "(?i)(?:process\\.env|os\\.environ|getenv).*(?:writeFile|write|save|pipe).*\\.(?:png|jpg|jpeg|gif|bmp|tiff|pdf|wav|mp3)"
-    # Audio steganography
-    - "(?i)(?:audiosteg|wavsteg|mp3steg|audio_stego|spectro_steg)"
 remediation: >
   Remove all code that writes application data, user input, or secrets into image/PDF/audio
   metadata fields. If file processing is required, strip all metadata before returning files

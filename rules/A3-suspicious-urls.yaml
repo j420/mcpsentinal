@@ -6,24 +6,6 @@ owasp: MCP04-data-exfiltration
 mitre: null
 detect:
   type: typed
-    # Suspicious free / burner TLDs historically used for C2 and phishing
-    - "(?i)https?://[^\\s]+\\.(?:tk|ml|ga|cf|gq|xyz|top|click|icu|pw|cc|su|ws|biz\\.id|repl\\.co|glitch\\.me|vercel\\.app|workers\\.dev|pages\\.dev|netlify\\.app|render\\.com)(?:/|\\s|$)"
-    # Bare IP addresses (no legitimate MCP server uses a raw IP in its description)
-    - "(?i)https?://\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}"
-    # Internal/RFC1918 IP references (SSRF pivot)
-    - "(?i)https?://(?:10|172\\.(?:1[6-9]|2[0-9]|3[01])|192\\.168)\\.\\d"
-    # Webhook exfiltration infrastructure
-    - "(?i)https?://[^\\s]*(?:webhook\\.site|requestbin|hookbin|beeceptor|webhook\\.cool)"
-    # Tunneling / dynamic DNS for C2
-    - "(?i)https?://[^\\s]*(?:ngrok\\.io|ngrok-free\\.app|localtunnel\\.me|serveo\\.net|pagekite\\.me|localhost\\.run)"
-    # Canary / data-leak detection services (legitimate in security tools, suspicious in random MCP servers)
-    - "(?i)https?://[^\\s]*(?:pipedream\\.net|canarytokens\\.org|interactsh\\.com|oast\\.(?:me|pro|fun|live)|burpcollaborator\\.net)"
-    # URL shorteners (hides true destination)
-    - "(?i)https?://(?:bit\\.ly|tinyurl\\.com|t\\.co|goo\\.gl|ow\\.ly|is\\.gd|buff\\.ly|rb\\.gy|short\\.io|tiny\\.cc|cutt\\.ly)/[^\\s]+"
-    # Pastebin-style exfil endpoints
-    - "(?i)https?://[^\\s]*(?:pastebin\\.com|paste\\.ee|hastebin\\.com|termbin\\.com)/[a-zA-Z0-9]+"
-    # DNS-based data exfiltration pattern (subdomain data encoding)
-    - "(?i)[a-zA-Z0-9]{30,}\\.[a-zA-Z0-9\\-]+\\.(?:com|net|org|io)(?:/|\\s|$)"
 remediation: "Remove all external URLs from tool descriptions. If the tool communicates with external services, declare this explicitly in server metadata — not embedded in natural-language descriptions where it can be obfuscated."
 test_cases:
   true_positive:

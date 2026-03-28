@@ -31,22 +31,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # Descriptions claiming to return protocol-formatted content
-    - "(?i)returns?\\s+(mcp|jsonrpc|json.?rpc)\\s+(message|response|protocol|format)"
-    - "(?i)output\\s+(?:is\\s+)?(?:in\\s+)?(?:mcp|json.?rpc)\\s+format"
-    - "(?i)returns?\\s+(?:a\\s+)?(?:tool\\s+call|function\\s+call|tool\\s+invocation)"
-    - "(?i)returns?\\s+(?:an?\\s+)?(?:instruction|directive|command)\\s+(?:for|to)\\s+(?:the\\s+)?(?:ai|model|assistant|agent)"
-    # Description contains actual JSON-RPC/MCP protocol structure patterns
-    - "\"jsonrpc\"\\s*:\\s*\"2\\.0\""
-    - "\"method\"\\s*:\\s*\"tools/(?:call|list|execute)\""
-    - "\"role\"\\s*:\\s*\"(?:system|assistant|tool)\""
-    # Claims the tool returns AI-processable instructions
-    - "(?i)returns?\\s+(formatted\\s+)?(ai|llm|model)\\s+(instructions?|commands?|directives?)"
-    - "(?i)output\\s+(?:will\\s+be\\s+|can\\s+be\\s+)?(?:used\\s+as\\s+|fed\\s+(?:back\\s+)?(?:to|into))\\s+(?:the\\s+)?(?:ai|model|assistant|prompt)"
-    - "(?i)(?:the\\s+)?(?:ai|model|assistant)\\s+(?:should|will|must|can)\\s+(?:use|execute|follow|process)\\s+(?:the\\s+)?(?:output|result|response)"
-    # Structured return format that could be mistaken for protocol messages
-    - "(?i)returns?\\s+(?:a\\s+)?(?:list\\s+of\\s+)?(?:follow.?up\\s+)?(?:tool\\s+calls?|function\\s+calls?)"
-    - "(?i)(?:next|subsequent|following)\\s+(?:tool\\s+calls?|actions?|steps?)\\s+(?:to\\s+execute|to\\s+run|for\\s+the\\s+agent)"
 remediation: >
   Tool descriptions must never claim that the tool returns content formatted as protocol messages,
   AI instructions, or new tool invocations. Tool output is data — it must be treated as untrusted

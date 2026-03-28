@@ -6,21 +6,6 @@ owasp: MCP07-insecure-config
 mitre: AML.T0054
 detect:
   type: typed
-    # Manual chunked encoding handling — prone to request smuggling
-    - "(?i)transfer-encoding\\s*[:=]\\s*['\"]chunked['\"](?!.*(?:express|fastify|koa|hapi|framework))"
-    - "(?i)(?:chunk|chunked)[_\\s-]?(?:parse|read|decode|process)\\s*\\(\\s*(?:req|request|socket|stream)"
-    # Content-Length and Transfer-Encoding both present (CL.TE smuggling)
-    - "(?i)(?:content-length|contentLength).*(?:transfer-encoding|transferEncoding)|(?:transfer-encoding|transferEncoding).*(?:content-length|contentLength)"
-    # Raw HTTP parsing for MCP Streamable HTTP
-    - "(?i)(?:http\\.createServer|raw[_\\s-]?(?:body|request|http))\\s*(?:=|\\().*(?:chunk|on\\s*\\(\\s*['\"]data['\"])"
-    # Python: manual chunk processing
-    - "(?i)(?:transfer.encoding|chunked).*(?:read|recv|decode)(?!.*(?:flask|django|fastapi|starlette))"
-    # Raw socket read used for HTTP parsing (CWE-444 classic)
-    - "(?i)(?:net\\.createServer|socket\\.on\\s*\\(\\s*['\"]data['\"]).*(?:split.*\\r\\n|indexOf.*\\r\\n\\r\\n)"
-    # TE.TE desync — duplicate Transfer-Encoding headers
-    - "(?i)(?:transfer-encoding|transferEncoding).*(?:transfer-encoding|transferEncoding)(?!.*(?:reject|throw|400|BadRequest))"
-    # Missing Content-Length validation for POST requests
-    - "(?i)(?:app|router)\\.post\\s*\\(.*(?:body|req\\.body)(?!.*(?:content.length|contentLength|limit|MAX_BODY))"
 remediation: "Do not implement custom HTTP chunked transfer encoding parsing — use a well-tested HTTP framework (Express, Fastify, Flask, etc.) that handles chunked encoding correctly. HTTP request smuggling via CL.TE or TE.CL desync can inject malicious JSON-RPC messages into another client's MCP session. Never allow both Content-Length and Transfer-Encoding headers simultaneously. Reference: CWE-444 (HTTP Request/Response Smuggling), Portswigger HTTP smuggling research."
 test_cases:
   true_positive:

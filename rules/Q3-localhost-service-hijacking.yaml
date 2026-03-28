@@ -29,19 +29,6 @@ mitre: T1557
 
 detect:
   type: typed
-    # Predictable/well-known MCP port bindings without origin validation
-    - "(?i)(?:listen|bind|serve).*(?:6274|6277|3100|8080|3000).*(?:localhost|127\\.0\\.0\\.1|0\\.0\\.0\\.0)"
-    - "(?i)(?:localhost|127\\.0\\.0\\.1|0\\.0\\.0\\.0).*(?:6274|6277)"
-    # Missing CORS/origin validation on localhost services
-    - "(?i)Access-Control-Allow-Origin.*\\*.*(?:localhost|127\\.0\\.0\\.1)"
-    - "(?i)cors\\s*\\(\\s*\\)(?!.*origin)"
-    - "(?i)cors.*origin\\s*:\\s*(?:true|\\*|[\"']\\*[\"'])"
-    # Stdio transport without input validation
-    - "(?i)(?:StdioServerTransport|stdio[_\\s]?transport).*(?:new|create)(?!.*(?:auth|validate|verify))"
-    # Localhost HTTP without authentication
-    - "(?i)createServer.*(?:localhost|127\\.0\\.0\\.1)(?!.*(?:auth|token|apiKey|bearer))"
-    # DNS rebinding vulnerability — no host header validation
-    - "(?i)(?:express|fastify|koa|hono).*(?:listen|server)(?!.*(?:host[_\\s]?(?:check|valid|verify)|helmet))"
 remediation: "MCP servers binding to localhost must: (1) validate the Host header to prevent DNS rebinding attacks (CVE-2025-49596), (2) set strict CORS origins instead of wildcard '*', (3) require authentication tokens even for local connections, (4) use random high ports instead of predictable defaults. For stdio transport, validate all input at the JSON-RPC level before processing. Consider using Docker MCP Gateway or similar container isolation."
 test_cases:
   true_positive:

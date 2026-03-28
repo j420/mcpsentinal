@@ -28,18 +28,6 @@ mitre: AML.T0017
 
 detect:
   type: typed
-    # False author/org claims in package metadata
-    - "(?i)[\"'](?:author|publisher|organization|maintainer)[\"']\\s*:\\s*[\"'](?:Anthropic|OpenAI|Google DeepMind|Microsoft|Meta AI|AWS|GitHub)[\"']"
-    # Fake official status claims in descriptions or README
-    - "(?i)(?:official|verified|certified|endorsed|approved)\\s+(?:by|from)\\s+(?:Anthropic|OpenAI|Google|Microsoft|Meta|AWS|GitHub)"
-    # Fake security badge URLs in README
-    - "(?i)!\\[.*(?:security|verified|certified|trusted).*\\]\\(https?://(?!shields\\.io|badgen\\.net|img\\.shields)[^)]+\\)"
-    # Programmatic star/download inflation
-    - "(?i)(?:star|unstar|follow|download).*(?:loop|setInterval|while|for\\s*\\(|cron|schedule).*(?:github|npm|pypi)"
-    # Registry API manipulation for metadata
-    - "(?i)(?:PUT|POST|PATCH).*(?:registry\\.npmjs\\.org|pypi\\.org|smithery|pulsemcp).*(?:metadata|description|keywords|author)"
-    # Impersonating known MCP server names in package.json
-    - "(?i)[\"'](?:name|displayName)[\"']\\s*:\\s*[\"'](?:official|anthropic|openai|google|microsoft)[_-]?(?:mcp|server|tool)"
 remediation: "Verify MCP server author claims by checking the GitHub org URL against the claimed publisher. Do not trust star counts or download numbers as security indicators. Use npm provenance (--provenance flag) to verify publisher identity. Check the MCP Sentinel registry for independent security scoring. Report false metadata claims to the registry operator."
 test_cases:
   true_positive:

@@ -6,22 +6,6 @@ owasp: MCP07-insecure-config
 mitre: AML.T0061
 detect:
   type: typed
-    # SSE Last-Event-ID accepted without validation
-    - "(?i)(last-event-id|lastEventId|last_event_id)\\s*[:=]\\s*(?:req\\.|headers\\.|request\\.)"
-    # EventSource reconnection without re-authentication
-    - "(?i)(?:EventSource|evtSource|eventSource|sse)\\s*(?:=\\s*new\\s+EventSource|\\.(onopen|addEventListener\\s*\\(\\s*['\"]open))(?!.*(?:auth|token|credential|withCredentials))"
-    # SSE endpoint that restores state from client-provided ID
-    - "(?i)(?:last-event-id|lastEventId).*(?:resume|restore|replay|rewind|seek)"
-    # Python SSE reconnection without auth check
-    - "(?i)(?:last_event_id|last-event-id)\\s*=\\s*(?:request\\.headers|environ)\\.get"
-    # Event IDs using sequential integers (predictable for hijacking)
-    - "(?i)(?:event[_\\s-]?id|id:\\s)\\s*[:=]\\s*(?:\\+\\+|counter|sequence|\\d+\\s*[;,])"
-    # SSE stream bound to event ID rather than authenticated session
-    - "(?i)(?:streams|connections|clients)\\s*(?:\\[|\\.)\\s*(?:lastEventId|last_event_id|eventId)(?!.*(?:session|token|auth|user))"
-    # Reconnection without origin/referrer validation
-    - "(?i)(?:EventSource|evtSource|sse).*(?:onopen|addEventListener.*open)(?!.*(?:origin|referrer|cors|validateOrigin))"
-    # SSE retry field set to aggressive interval without jitter
-    - "(?i)(?:retry:\\s*\\d{1,3}\\n|retry:\\s*['\"]\\d{1,3}['\"])"
 remediation: "Always re-authenticate on SSE reconnection. Do not trust the Last-Event-ID header as proof of session identity — an attacker who observes or guesses event IDs can hijack the reconnected stream. Bind SSE streams to authenticated sessions, not event IDs. Use cryptographically random event IDs. Reference: CVE-2025-6515 (session ID prediction in oatpp-mcp)."
 test_cases:
   true_positive:

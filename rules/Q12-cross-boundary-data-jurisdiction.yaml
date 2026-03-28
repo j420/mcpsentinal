@@ -36,18 +36,6 @@ mitre: T1020
 
 detect:
   type: typed
-    # Dynamic region/jurisdiction routing
-    - "(?i)(?:route|proxy|forward|redirect).*(?:region|jurisdiction|country|locale|geo)"
-    - "(?i)(?:region|jurisdiction|country|geo).*(?:route|proxy|forward|redirect|select|choose)"
-    # Backend selection based on data content or sensitivity
-    - "(?i)(?:if|when|switch).*(?:gdpr|pii|sensitive|personal[_\\s-]?data|eu[_\\s-]?(?:citizen|resident|data)).*(?:route|send|forward|process)"
-    - "(?i)(?:data[_\\s-]?(?:residency|sovereignty|localization|locality)).*(?:bypass|skip|ignore|override)"
-    # Cross-border data transfer without adequacy checks
-    - "(?i)(?:transfer|send|export|move).*(?:data|pii|personal).*(?:cross[_\\s-]?border|international|overseas|foreign)"
-    - "(?i)(?:adequate|adequacy|sccs|standard[_\\s-]?contractual|bcr).*(?:skip|bypass|ignore|false|disabled)"
-    # MCP servers proxying to multiple geographic endpoints
-    - "(?i)(?:endpoint|server|backend|api).*(?:us-east|eu-west|ap-southeast|cn-north|region)"
-    - "(?i)(?:process|handle).*(?:offshore|nearshore|outsource|third[_\\s-]?country)"
 remediation: "MCP servers that handle personal or sensitive data must: (1) declare the geographic regions where data is processed in tool descriptions, (2) never route data to third-country backends without GDPR adequacy decisions or Standard Contractual Clauses, (3) log all cross-border data transfers with source/destination jurisdiction for audit, (4) implement data residency enforcement that rejects requests violating localization requirements. Reference: EU AI Act Art. 12, GDPR Art. 44-49."
 test_cases:
   true_positive:

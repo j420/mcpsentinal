@@ -32,34 +32,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # OpenAI ChatML format tokens
-    - "<\\|endoftext\\|>"
-    - "<\\|im_start\\|>"
-    - "<\\|im_end\\|>"
-    - "<\\|im_sep\\|>"
-    # Generic role boundary tokens (multi-model)
-    - "<\\|system\\|>"
-    - "<\\|user\\|>"
-    - "<\\|assistant\\|>"
-    - "<\\|end\\|>"
-    # Llama/Mistral instruction format
-    - "\\[INST\\]"
-    - "\\[/INST\\]"
-    - "<<SYS>>"
-    - "<</SYS>>"
-    # DeepSeek reasoning tokens
-    - "<\\|end_of_thinking\\|>"
-    - "<\\|begin_of_thinking\\|>"
-    - "</think>"
-    - "<think>"
-    # Anthropic format markers
-    - "\\\\nHuman:"
-    - "\\\\nAssistant:"
-    # Google/Gemini markers
-    - "<start_of_turn>"
-    - "<end_of_turn>"
-    # Generic special token pattern (model-agnostic)
-    - "<\\|[a-z_]+\\|>"
 remediation: >
   Remove all LLM special tokens from tool descriptions, parameter descriptions,
   and server metadata. Special tokens (<|endoftext|>, <|im_start|>, [INST], <think>,

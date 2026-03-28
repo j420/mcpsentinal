@@ -6,22 +6,6 @@ owasp: MCP07-insecure-config
 mitre: AML.T0054
 detect:
   type: typed
-    # Server accepts any protocol version without minimum enforcement
-    - "(?i)protocolVersion\\s*[:=]\\s*(?:(?:req|params|client|request)\\.(?:protocolVersion|protocol_version|version))"
-    # Fallback to oldest protocol version without security check
-    - "(?i)(?:protocolVersion|protocol_version)\\s*[:=]\\s*['\"](?:2024-11-05|1\\.0|0\\.)['\"]"
-    # No minimum version check during handshake
-    - "(?i)(?:initialize|handleInit|on_init).*protocolVersion(?!.*(?:>=|>|minimum|MIN_VERSION|supported|SUPPORTED))"
-    # Accept client-requested version without validation
-    - "(?i)(?:serverInfo|result|response)\\s*(?:\\.|\\[)\\s*(?:['\"])?protocolVersion(?:['\"])?\\s*(?:\\])?.\\s*=\\s*(?:(?:req|params|client)\\.)"
-    # Version negotiation that always picks the lowest common version
-    - "(?i)(?:Math\\.min|min)\\s*\\(.*(?:protocolVersion|protocol_version|version).*(?:protocolVersion|protocol_version|version)"
-    # Version string comparison without semantic version parsing
-    - "(?i)(?:protocolVersion|protocol_version)\\s*(?:===?|==)\\s*(?:['\"]|(?:req|params)\\.)(?!.*(?:semver|compareVersions|satisfies))"
-    # Python: version accepted from client without minimum check
-    - "(?i)protocol_version\\s*=\\s*(?:params|request|kwargs)\\s*(?:\\.get|\\.pop|\\[).*(?:protocol.?version)(?!.*(?:MIN_|minimum|>=))"
-    # Downgrade log/warning missing — silent version negotiation
-    - "(?i)(?:protocolVersion|protocol_version)\\s*[:=]\\s*['\"](?:2024)(?!.*(?:log|warn|console|logger))"
 remediation: "Enforce a minimum protocol version during the initialize handshake. The 2024-11-05 spec lacks tool annotations, elicitation, and transport session security — downgrading to it strips safety features added in 2025-03-26 and 2025-06-18. Reject connections requesting protocol versions below your minimum supported version. Never echo back the client-requested version without validation."
 test_cases:
   true_positive:

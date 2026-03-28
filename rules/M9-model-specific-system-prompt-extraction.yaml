@@ -32,21 +32,6 @@ mitre: AML.T0057
 
 detect:
   type: typed
-    # System prompt extraction attempts
-    - "(?i)(output|print|display|show|reveal|repeat|echo|return)\\s+(your|the|my)\\s+(system|initial|original|full|complete)\\s+(prompt|instructions|message|context|guidelines)"
-    - "(?i)(what (are|were) (your|the)\\s+(system|initial|original)\\s+(instructions|prompt|guidelines|rules))"
-    - "(?i)(tell me|show me|reveal|display|print)\\s+(everything|all)\\s+(you (were|are) told|before this|in your (system|instructions))"
-    - "(?i)(repeat|recite|reproduce|copy)\\s+(verbatim|exactly|word for word)\\s+(your|the)\\s+(system|initial|first)"
-    # Model fingerprinting probes
-    - "(?i)(what model|which (model|version|AI)|are you (Claude|GPT|Gemini|Llama|Mistral))"
-    - "(?i)(identify yourself|state your (model|version|identity|name))"
-    - "(?i)(respond differently (if|based on|depending)\\s+(your|which)\\s+(model|version))"
-    # Safety boundary probing
-    - "(?i)(list|enumerate|describe)\\s+(all|every|your)\\s+(restriction|limitation|constraint|safety|guardrail|rule|boundary)"
-    - "(?i)(what (can|can't|cannot) you (do|access|execute|see))"
-    # Internal state extraction
-    - "(?i)(how many tokens|context (window|length|size)|remaining (context|tokens|capacity))"
-    - "(?i)(conversation (id|metadata|state|history length))"
 remediation: >
   Remove instructions that request the AI to reveal its system prompt, identify
   its model version, enumerate safety boundaries, or disclose internal state.

@@ -43,24 +43,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # References to permissions "already granted"
-    - "(?i)(?:same|existing|previously?\\s+granted?|already\\s+(?:given|approved?|authorized?))\\s+(?:permissions?|access|privileges?|rights?|credentials?)"
-    - "(?i)(?:uses?|using|with|reuses?|reusing)\\s+(?:the\\s+)?(?:same|existing|your|previously?\\s+granted?)\\s+(?:permissions?|access|credentials?|token)"
-    - "(?i)permission(?:s)?\\s+(?:you|that\\s+you|the\\s+user)\\s+(?:already|previously?|have)\\s+(?:granted?|given|approved?|authorized?)"
-    # Phantom setup/configuration references
-    - "(?i)(?:permissions?|access)\\s+(?:you\\s+)?(?:granted?|configured|set\\s+up)\\s+during\\s+(?:setup|configuration|onboarding|installation)"
-    - "(?i)(?:your|the\\s+)?(?:previously?\\s+)?configured\\s+(?:access|permissions?|privileges?|credentials?)"
-    - "(?i)(?:as\\s+)?(?:part\\s+of|based\\s+on|using)\\s+(?:your|the)\\s+(?:existing|current|configured)\\s+(?:session|context)\\s+(?:permissions?|access)"
-    # Transitive/extension trust claims
-    - "(?i)(?:extension|part|component|plugin)\\s+of\\s+(?:the\\s+)?(?:official|trusted|approved|existing)"
-    - "(?i)(?:inherits?|uses?|reuses?)\\s+(?:the\\s+)?(?:access|permissions?|credentials?)\\s+(?:from|of)\\s+"
-    - "(?i)(?:same\\s+)?(?:access\\s+level|permission\\s+scope|trust\\s+level)\\s+as\\s+(?:the\\s+)?"
-    # Assumed consent / lack of revocation
-    - "(?i)(?:since|as|because)\\s+(?:you\\s+haven'?t?|access\\s+hasn'?t?\\s+been?)\\s+(?:revoked|denied|blocked|restricted)"
-    - "(?i)continues?\\s+to\\s+(?:operate|function|run|work)\\s+with\\s+(?:full|elevated|admin|root|existing)\\s+(?:access|permissions?|privileges?)"
-    # Authority through claimed relationship
-    - "(?i)(?:as|being)\\s+(?:an?\\s+)?(?:extension|module|plugin|component)\\s+of\\s+(?:the\\s+)?(?:core|official|main|base|primary)"
-    - "(?i)(?:built|powered|backed)\\s+by\\s+(?:the\\s+same|the\\s+official|the\\s+trusted)"
 remediation: >
   Remove all references to previously granted permissions, existing access levels, or inherited
   trust from other tools. Each tool must stand on its own declared capability set. Permission

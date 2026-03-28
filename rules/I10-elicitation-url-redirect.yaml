@@ -46,41 +46,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # ── Direct redirect with explicit suspicious URL ───────────────────────────
-    - "(?i)(?:redirect|navigate|open|visit|go\\s+to|follow|access|click)\\s+(?:this\\s+)?(?:link\\s+(?:to|at)|url\\s+(?:to|at))?\\s*https?://(?!(?:github\\.com|anthropic\\.com|openai\\.com|google\\.com|microsoft\\.com|apple\\.com|cloudflare\\.com|npmjs\\.com|pypi\\.org)(?:/|$))"
-    # ── Authentication/verification at external URL (high social-eng signal) ───
-    - "(?i)(?:redirect|navigate|open|visit|go\\s+to)\\s+.*(?:for|to)\\s+(?:auth(?:entication|orization)?|login|sign[\\s_-]?in|verify|verification|confirm(?:ation)?)"
-    - "(?i)external\\s+(?:url|link|page|site|portal)\\s+(?:for|to)\\s+(?:auth(?:entication|orization)?|login|sign[\\s_-]?in|verify|verification|sso|oauth)"
-    # ── IP address URLs (bypasses domain allowlist filtering) ─────────────────
-    - "(?i)(?:redirect|navigate|open|visit|go\\s+to|click|follow)\\s+.*https?://\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}"
-    - "(?i)https?://(?:169\\.254|10\\.|172\\.(?:1[6-9]|2[0-9]|3[01])\\.|192\\.168\\.)\\d"
-    # ── URL shorteners in descriptions (hides true redirect destination) ───────
-    - "(?i)(?:click|visit|open|go\\s+to|navigate\\s+to|follow)\\s+.*https?://(?:bit\\.ly|tinyurl\\.com|t\\.co|goo\\.gl|ow\\.ly|is\\.gd|buff\\.ly|rb\\.gy|short\\.io|tiny\\.cc|cutt\\.ly|lnkd\\.in|aka\\.ms|youtu\\.be)/[^\\s]+"
-    # ── Inline link / click-here phishing (no URL specified — blind redirect) ──
-    - "(?i)(?:click|follow|tap)\\s+(?:this\\s+|the\\s+)?(?:link|button|here|url|href)\\s+(?:to|for)\\s+(?:auth|login|verify|confirm|complete|access|identity)"
-    # ── QR code redirect (QRLJacking phishing technique) ─────────────────────
-    - "(?i)(?:scan|use|open|capture)\\s+(?:this\\s+|the\\s+)?(?:qr[\\s_-]?code|barcode|qr\\s+image)\\s+(?:to|for)\\s+(?:auth|login|verify|confirm|access|continue|authenticate|identity)"
-    - "(?i)qr[\\s_-]?(?:code|scan|image).*(?:auth|login|verify|confirm|access|identity)"
-    # ── Data URI injection (inline executable HTML/JS) ────────────────────────
-    - "(?i)(?:redirect|open|visit|go\\s+to|navigate|click)\\s+.*data:(?:text/html|application/javascript|text/javascript)"
-    - "data:(?:text/html|application/javascript)[^\\s]*"
-    # ── Tunneling/dynamic DNS (C2-style redirect targets) ────────────────────
-    - "(?i)(?:redirect|navigate|open|visit|go\\s+to)\\s+.*(?:ngrok\\.io|ngrok-free\\.app|localtunnel\\.me|serveo\\.net|pagekite\\.me|localhost\\.run|trycloudflare\\.com)"
-    # ── OAuth-lookalike redirect (fake OAuth flow) ────────────────────────────
-    - "(?i)(?:redirect|navigate|open).*(?:oauth|authorize|callback|redirect_uri)\\s*=\\s*(?:req|input|param|args|url|uri|target|destination|host)"
-
-    # Known legitimate domains — anchored to TLD to prevent "anthropic.com.attacker.xyz" bypass
-    - "(?i)https?://(?:www\\.)?github\\.com(?:/|$)"
-    - "(?i)https?://(?:www\\.)?anthropic\\.com(?:/|$)"
-    - "(?i)https?://(?:www\\.)?openai\\.com(?:/|$)"
-    - "(?i)https?://(?:www\\.)?google\\.com(?:/|$)"
-    - "(?i)https?://(?:www\\.)?microsoft\\.com(?:/|$)"
-    - "(?i)https?://(?:www\\.)?docs\\.(?:github|anthropic|openai|google|microsoft)\\.com"
-    # Documentation/changelog references are not redirects
-    - "(?i)(?:see|read|check|view)\\s+(?:the\\s+)?(?:documentation|docs|readme|changelog|guide|tutorial|reference)\\s+at"
-    # Security tools describing QR-phishing for detection purposes
-    - "(?i)(?:detect|prevent|block|scan|test)[\\s_-](?:qr|phishing|redirect|url)"
-
 remediation: |
   MCP elicitation URL redirects must only point to pre-registered, publisher-owned domains.
   Never redirect users to arbitrary external URLs for authentication or verification.

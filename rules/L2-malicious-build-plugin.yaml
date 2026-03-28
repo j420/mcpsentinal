@@ -25,20 +25,6 @@ mitre: AML.T0017
 
 detect:
   type: typed
-    # Rollup plugins with filesystem write capabilities
-    - "(?i)(?:rollup|vite)[_-]?plugin.*(?:writeFile|fs\\.write|appendFile|createWriteStream)"
-    # esbuild plugins with network or exec capabilities
-    - "(?i)(?:esbuild|build)[_-]?plugin.*(?:execSync|spawn|child_process|fetch|http\\.request|axios)"
-    # Webpack plugins with dangerous capabilities
-    - "(?i)(?:webpack|compiler)\\.(?:hooks|plugin).*(?:exec|spawn|child_process|writeFile)"
-    # Build config loading remote code
-    - "(?i)(?:rollup|vite|webpack|esbuild)\\.config.*(?:import|require)\\s*\\(.*(?:http|https|ftp)"
-    # Plugins writing outside the build output directory (path traversal)
-    - "(?i)(?:plugin|hook).*(?:outputFile|emitFile|generateBundle).*\\.\\./\\.\\."
-    # Build-time environment variable exfiltration
-    - "(?i)(?:plugin|hook|transform).*process\\.env.*(?:fetch|http|axios|request|post)"
-    # Dynamic import of build plugins from URLs
-    - "(?i)(?:plugins|presets).*(?:import|require)\\s*\\([\"']https?://"
 remediation: "Audit all build plugins before adding them to your toolchain. Pin build plugin versions in lockfiles. Use Rollup >= 4.59.0 to mitigate CVE-2026-27606 path traversal. Isolate build steps in sandboxed containers with no network access. Never load build plugins from URLs. Review plugin source code for filesystem writes outside the output directory."
 test_cases:
   true_positive:

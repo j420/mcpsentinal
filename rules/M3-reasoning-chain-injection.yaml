@@ -38,23 +38,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # Planted chain-of-thought patterns
-    - "(?i)(let me|let's|I should|I need to|I will)\\s+(think|reason|analyze|consider|figure)"
-    - "(?i)(step\\s+\\d+|first|second|third|finally)\\s*[:.]+\\s*(skip|bypass|ignore|disable|override)"
-    # False syllogisms / logical manipulation
-    - "(?i)(since|because|given that)\\s+.{10,80}(therefore|thus|hence|it follows|consequently|so we can)"
-    - "(?i)(if .{5,60} then .{5,60} therefore)"
-    - "(?i)(this means|this implies|from this we conclude|we can deduce|it is clear that)"
-    # Reasoning hijack directives
-    - "(?i)(reasoning|thinking|analysis)\\s*:\\s*(skip|bypass|ignore|none needed|not required)"
-    - "(?i)(no\\s+(need|reason)\\s+to\\s+(verify|check|validate|confirm|question))"
-    - "(?i)(trust|assume|accept)\\s+(this|these|the)\\s+(without|implicitly)"
-    # Planted reasoning conclusions
-    - "(?i)(the correct (action|answer|response|approach) is to)\\s+(execute|run|call|invoke|allow|permit)"
-    - "(?i)(obviously|clearly|evidently|undoubtedly)\\s+(this|the|we|you)\\s+(should|must|need)"
-    # CoT termination / reasoning interruption markers
-    - "(?i)(conclusion|summary|final answer)\\s*:\\s*(execute|run|allow|bypass|skip)"
-    - "(?i)(stop thinking|end reasoning|no more analysis|skip verification)"
 remediation: >
   Remove embedded reasoning patterns, logical arguments, and chain-of-thought
   directives from tool descriptions. Tool descriptions should describe WHAT the

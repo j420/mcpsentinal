@@ -71,46 +71,6 @@ mitre: AML.T0056
 
 detect:
   type: typed
-    # 1. Redirect URI from user input — authorization code injection
-    #    Matches: redirect_uri = req.body.redirect_uri / params.redirect_uri / etc.
-    - "(?i)redirect_uri\\s*[:=]+\\s*(?:req\\.(?:body|query|params)|params\\.|body\\.|query\\.)(?:redirect_uri|redirect|uri|url|callback)"
-    - "(?i)redirect_uri\\s*[:=]+\\s*(?:request|ctx|context)\\.(?:body|query|params)(?:\\[|\\.)(?:redirect|uri|url)"
-
-    # 2. Implicit flow (response_type=token) — banned in OAuth 2.1
-    - "(?i)[\"'`]response_type[\"'`]\\s*:\\s*[\"'`]token[\"'`]"
-    - "(?i)response_type\\s*=\\s*[\"'`]token[\"'`]"
-    - "(?i)responseType\\s*[:=]+\\s*[\"'`]token[\"'`]"
-
-    # 3. Resource Owner Password Credentials (grant_type=password) — banned in OAuth 2.1
-    - "(?i)[\"'`]grant_type[\"'`]\\s*:\\s*[\"'`]password[\"'`]"
-    - "(?i)grant_type\\s*=\\s*[\"'`]password[\"'`]"
-    - "(?i)grantType\\s*[:=]+\\s*[\"'`]password[\"'`]"
-
-    # 4. OAuth token in localStorage (XSS-accessible)
-    - "(?i)localStorage\\.setItem\\s*\\([^,)]*(?:access_token|refresh_token|id_token|oauth_token|bearer_token)"
-    - "(?i)sessionStorage\\.setItem\\s*\\([^,)]*(?:access_token|refresh_token|id_token|oauth_token)"
-
-    # 5. OAuth state not validated (CSRF bypass)
-    #    Matches: state = req.query.state (without following validate/compare/equal)
-    - "(?i)(?:^|\\s)state\\s*[:=]+\\s*(?:req\\.(?:query|body)|params|body|query)(?:\\[|\\.)(?:state|oauth_state)"
-
-    # 6. Scope from user input without validation (scope escalation)
-    - "(?i)scope\\s*[:=]+\\s*(?:req\\.(?:body|query)|params|body|query)(?:\\[|\\.)scope(?!.*(?:split|includes|allowlist|whitelist|valid|check|match|permit))"
-
-    # 7. Authorization/token endpoint URL from user-controlled config (open redirect to malicious AS)
-    - "(?i)(?:authorization_endpoint|token_endpoint|userinfo_endpoint|jwks_uri)\\s*[:=]+\\s*(?:req\\.(?:body|query|params)|params\\.|body\\.)"
-
-    # Test files and documentation
-    - "// safe:"
-    - "# safe:"
-    - "test("
-    - "describe("
-    - "it("
-    - "beforeEach("
-    - "mock"
-    - "fixture"
-    - "example.com"
-
 remediation: >
   Your MCP server implements OAuth 2.0 with one or more high-severity vulnerabilities.
   Required fixes per RFC 9700 (OAuth 2.1) and OAuth Security BCP:

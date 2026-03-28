@@ -12,23 +12,6 @@ mitre: T1611
 
 detect:
   type: typed
-    # Docker --privileged flag
-    - "(?i)privileged\\s*[:=]\\s*(?:true|yes|1)"
-    - "(?i)--privileged(?:\\s|$)"
-    # Dangerous Linux capabilities (beyond K19 which checks SYS_ADMIN/SYS_PTRACE/NET_RAW/ALL)
-    - "(?i)cap[_\\s-]?add\\s*[:=]?\\s*(?:\\[\\s*)?[\"']?(?:SYS_RAWIO|SYS_MODULE|DAC_OVERRIDE|DAC_READ_SEARCH|FOWNER|MKNOD|SETUID|SETGID|SYS_CHROOT|AUDIT_WRITE|NET_ADMIN|SYS_RESOURCE|IPC_LOCK)"
-    # Kubernetes securityContext.privileged
-    - "(?i)securityContext\\s*:\\s*\\n?\\s*privileged\\s*:\\s*true"
-    # Kubernetes allowPrivilegeEscalation (should be false)
-    - "(?i)allowPrivilegeEscalation\\s*:\\s*true"
-    # Host PID namespace (enables ptrace of host processes)
-    - "(?i)(?:pid[_\\s-]?mode|hostPID)\\s*[:=]\\s*[\"']?(?:host|true)[\"']?"
-    # Host IPC namespace
-    - "(?i)(?:ipc[_\\s-]?mode|hostIPC)\\s*[:=]\\s*[\"']?(?:host|true)[\"']?"
-    # Host UTS namespace
-    - "(?i)(?:uts[_\\s-]?mode|hostUTS)\\s*[:=]\\s*[\"']?(?:host|true)[\"']?"
-    # no-new-privileges disabled
-    - "(?i)no[_\\-]?new[_\\-]?privileges\\s*[:=]\\s*(?:false|0|no)"
 remediation: "Run MCP server containers with minimal capabilities: drop ALL capabilities, add back only what is strictly needed (typically none, or NET_BIND_SERVICE for port 80/443). Set allowPrivilegeEscalation: false, hostPID: false, hostIPC: false. Never use --privileged. Apply Kubernetes Pod Security Standards 'restricted' profile. CVE-2025-23266 demonstrated that even OCI hooks can be exploited when container capabilities are too broad."
 test_cases:
   true_positive:

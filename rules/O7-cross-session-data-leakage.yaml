@@ -32,20 +32,6 @@ mitre: AML.T0057
 
 detect:
   type: typed
-    # Module-level mutable data stores (Node.js)
-    - "(?i)(?:^|\\n)(?:const|let|var)\\s+(?:cache|store|data|users?Data|sessions?|history|memory|context|results?)\\s*[:=]\\s*(?:new Map|new Set|\\{\\}|\\[\\]|new \\w*Cache)"
-    # Global caches without session scoping
-    - "(?i)(?:global|globalThis|GLOBAL)\\s*\\.\\s*(?:cache|store|data|sessions?|memory|context)"
-    # Python module-level mutable state
-    - "(?i)^(?:cache|store|data|user_data|sessions?|history|memory|context|results?)\\s*[:=]\\s*(?:dict\\(\\)|\\{\\}|\\[\\]|defaultdict|OrderedDict|LRUCache)"
-    # Shared file storage without session isolation
-    - "(?i)(?:writeFile|appendFile|open)\\s*\\([^)]*['\"](?:/tmp/|/var/|cache/|data/|shared/)(?:cache|store|data|results?|history)[^)]*['\"]"
-    # In-memory LRU/cache without session key
-    - "(?i)(?:lru_cache|functools\\.cache|cachetools|node-cache|memory-cache|lru-cache).*(?:maxAge|ttl|max_?size)"
-    # Storing user data in class/instance variable without session scoping
-    - "(?i)this\\.(?:cache|store|userData|history|memory|context|results?)\\s*\\[(?!.*session|.*user_?id|.*req\\.)"
-    # SQLite/file-based shared DB without user isolation
-    - "(?i)(?:sqlite3|better-sqlite3|sql\\.js)\\.(?:Database|open)\\s*\\([^)]*['\"](?:shared|cache|data|memory)['\"]"
 remediation: >
   Never use module-level or global variables to cache user data. All data stores must be
   scoped to the current session or user. Use session-keyed storage (Map keyed by session ID)

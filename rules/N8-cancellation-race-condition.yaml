@@ -6,22 +6,6 @@ owasp: MCP07-insecure-config
 mitre: AML.T0054
 detect:
   type: typed
-    # Cancel handler that doesn't check if operation already committed
-    - "(?i)(?:notifications/cancelled|on[_\\s-]?cancel|handleCancel|cancel_request)\\s*(?:=>|=|\\()(?!.*(?:committed|completed|finalized|atomic|transaction))"
-    # Cancel without cleanup — partial state left behind
-    - "(?i)(?:cancel|abort)\\s*(?:=>|=|\\().*(?:delete|remove|unlink|drop|truncate)(?!.*(?:rollback|cleanup|finally|catch))"
-    # Async operation cancelable mid-mutation
-    - "(?i)(?:AbortController|AbortSignal|signal\\.aborted).*(?:write|insert|update|delete|create|modify)"
-    # Python: cancellation without atomic guard
-    - "(?i)(?:asyncio\\.(?:CancelledError|shield)|task\\.cancel).*(?:write|insert|update|delete|create)"
-    # Two-phase operation without rollback on cancel between phases
-    - "(?i)(?:await|then)\\s+(?:phase[12]|step[12]|first|second).*(?:await|then)\\s+(?:phase[12]|step[12])(?!.*(?:rollback|compensate|undo|revert))"
-    # File operation cancelable without temp-file/rename atomicity
-    - "(?i)(?:writeFile|fs\\.write|createWriteStream).*(?:AbortSignal|signal|cancel)(?!.*(?:rename|tmpfile|temp|atomic))"
-    # Cancel notification processed after response already sent
-    - "(?i)(?:notifications/cancelled|onCancel).*(?:res\\.(?:json|send|end)|response\\.(?:json|send))(?!.*(?:if\\s*\\(.*sent|headersSent))"
-    # No idempotency key — re-execution after cancel may duplicate
-    - "(?i)(?:cancel|abort).*(?:retry|rerun|re-?execute|repeat)(?!.*(?:idempotency|idempotent|dedup|already_processed))"
 remediation: "Wrap mutable operations in atomic transactions. Check for committed state before processing cancellation. Use 'finally' blocks to clean up partial state on cancellation. MCP cancellation (notifications/cancelled) is advisory — the operation may have already completed. Never leave partial state from a cancelled-then-completed operation. Reference: MCP spec 2025-03-26 cancellation semantics."
 test_cases:
   true_positive:

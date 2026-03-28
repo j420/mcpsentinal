@@ -22,16 +22,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # npm postinstall with network/exec operations
-    - "(?i)[\"'](?:postinstall|preinstall|install)[\"']\\s*:\\s*[\"'][^\"']*(?:curl|wget|node\\s|python|bash|sh\\s|powershell)"
-    - "(?i)[\"'](?:postinstall|preinstall)[\"']\\s*:\\s*[\"'][^\"']*(?:http|ftp|ssh|exec|spawn|child_process)"
-    # Python setup.py with code execution
-    - "(?i)class\\s+\\w*(?:Install|PostInstall|Build)\\w*.*(?:subprocess|os\\.system|exec|urllib|requests\\.get)"
-    - "(?i)cmdclass\\s*=.*(?:install|build|develop).*(?:subprocess|os\\.system|exec)"
-    # Obfuscated postinstall scripts
-    - "(?i)[\"'](?:postinstall|preinstall)[\"']\\s*:\\s*[\"'][^\"']*(?:eval|base64|atob|Buffer\\.from|decode)"
-    # Shell script execution in install hooks
-    - "(?i)[\"'](?:postinstall|preinstall)[\"']\\s*:\\s*[\"'](?:bash|sh|zsh|cmd)\\s"
 remediation: "Remove network requests, code execution, and shell commands from install hooks. Post-install scripts should only run build/compile steps (node-gyp, tsc). Use --ignore-scripts flag during CI installations and audit all install hooks before allowing. Required by OWASP ASI04 and CoSAI MCP-T11."
 test_cases:
   true_positive:

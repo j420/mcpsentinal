@@ -25,19 +25,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # Git argument injection via -- prefix
-    - "(?i)git\\s+(diff|log|show|checkout|pull|push|fetch|clone).*\\$\\{?\\w"
-    - "(?i)--upload-pack|--receive-pack|--exec"
-    - "(?i)core\\.sshCommand|core\\.hookPath|core\\.gitProxy"
-    # git_init on sensitive directories
-    - "(?i)git\\s+init.*(\\.ssh|\\.gnupg|\\.aws|\\.config|\\.kube)"
-    - "(?i)git_init.*(\\.ssh|\\.gnupg|\\.aws|\\.config)"
-    # Malicious .git/config patterns
-    - "(?i)\\.git[/\\\\]config.*write|\\.git[/\\\\]config.*\\$"
-    - "(?i)write.*\\.git[/\\\\]config"
-    # Unsanitized git argument construction
-    - "(?i)spawn.*git.*\\[.*\\$\\{|exec.*git.*\\$\\{"
-    - "(?i)subprocess.*git.*format|os\\.system.*git.*\\%"
 remediation: "Always terminate git argument lists with '--' before user-supplied paths. Never allow git_init on directories outside the configured workspace. Validate all git arguments against an allowlist. Block core.* config overrides in user-controlled inputs. See CVE-2025-68143/68144/68145 for the full attack chain."
 test_cases:
   true_positive:

@@ -23,20 +23,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # Docker privileged mode
-    - "(?i)(privileged|--privileged)\\s*[:=]\\s*(true|yes|1)"
-    - "(?i)cap[_\\s-]?add.*(?:SYS_ADMIN|SYS_PTRACE|NET_RAW|ALL)"
-    # Disabling security profiles
-    - "(?i)(seccomp|apparmor|selinux)[_\\s-]?(profile|policy)?\\s*[:=]\\s*(?:unconfined|disabled|off|permissive)"
-    - "(?i)--security-opt\\s*(?:seccomp|apparmor|label)[:=](?:unconfined|disabled)"
-    # Mounting dangerous host paths
-    - "(?i)(?:volumes?|mount|bind).*(?:/var/run/docker\\.sock|/proc|/sys|/dev|/:/)"
-    - "(?i)(?:volume|mount).*[\"']\\s*/\\s*:\\s*/[^\"']*[\"']"
-    # Running as root without dropping
-    - "(?i)(?:USER\\s+root|user\\s*[:=]\\s*[\"']?root[\"']?)(?!.*(?:gosu|su-exec|drop|USER\\s+\\w))"
-    - "(?i)(run[_\\s-]?as[_\\s-]?root|EUID.*0|uid.*0)(?!.*(?:drop|setuid|seteuid|change.?user))"
-    # Network namespace sharing (host network)
-    - "(?i)(network[_\\s-]?mode|--net|--network)\\s*[:=]\\s*[\"']?host[\"']?"
 remediation: "Run MCP servers in sandboxed containers with: (1) No --privileged flag, (2) Minimal Linux capabilities (drop ALL, add only needed), (3) Read-only root filesystem, (4) Non-root user, (5) Seccomp/AppArmor profiles enabled, (6) No host mounts except data volumes. CoSAI warns containers alone are insufficient — add seccomp profiles. Required by CoSAI MCP-T8 and ISO 27001 A.8.22."
 test_cases:
   true_positive:

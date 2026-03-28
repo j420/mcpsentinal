@@ -6,14 +6,6 @@ owasp: MCP01-prompt-injection
 mitre: AML.T0058
 detect:
   type: typed
-    # Resource content changes not re-validated after subscription notification
-    - "(?i)(?:resources/updated|resource[_\\s-]?changed|onResourceUpdate|on_resource_update)\\s*(?:=>|=|\\().*(?:content|text|data|body)(?!.*(?:sanitize|validate|scan|check|filter))"
-    # Subscription handler that replaces content without checking for injection
-    - "(?i)(?:subscribe|watch|observe)\\s*\\(.*(?:resource|uri).*(?:callback|handler|listener|on[A-Z]).*(?:update|set|replace|assign)\\s*\\("
-    # Resource read after update without re-scanning
-    - "(?i)(?:notifications/resources/updated|resourceUpdated).*(?:readResource|read_resource|getContent|get_content)(?!.*(?:scan|analyze|validate|sanitize))"
-    # Python: subscription without content validation
-    - "(?i)(?:on_resource_updated|resource_changed|watch_resource).*(?:content|text|data)\\s*=\\s*(?:event|notification|update)\\."
 remediation: "Re-validate resource content after every subscription update notification. An attacker who controls a resource can modify its content between the initial read (which passed validation) and subsequent update notifications (which bypass validation). This is a TOCTOU vulnerability at the protocol level. Apply the same injection scanning to resource update content as to initial resource reads. Reference: MCP spec 2025-03-26 Section 6.2 (Resource subscriptions)."
 test_cases:
   true_positive:

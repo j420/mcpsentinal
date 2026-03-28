@@ -33,25 +33,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # Recursive tool call chains in descriptions
-    - "(?i)(after|when|once)\\s+(complet|finish|done|execut).{0,30}(call|invoke|use|run|trigger)\\s+(tool|function|method)\\s+"
-    - "(?i)(then|next|subsequently)\\s+(call|invoke|use|run)\\s+(this|itself|the same)"
-    - "(?i)(repeat|retry|re-?run|loop)\\s+(until|indefinitely|continuously|forever)"
-    # Response maximization demands
-    - "(?i)(list|enumerate|describe)\\s+(all|every|each|complete|exhaustive|comprehensive)\\s+.{0,30}(in (maximum|full|complete) detail)"
-    - "(?i)(maximum|max|full|complete|exhaustive)\\s+(verbosity|detail|output|response)"
-    - "(?i)(no\\s+(limit|cap|maximum|restriction)\\s+on\\s+(output|response|length|size))"
-    # Unbounded iteration patterns
-    - "(?i)(process|handle|iterate)\\s+(each|every|all)\\s+.{0,30}(one[\\s-]?(by|at)[\\s-]?one|individually|separately)"
-    - "(?i)(no\\s+(maximum|max|limit|cap)\\s+(iteration|loop|retry|attempt))"
-    # Context inflation patterns in source code
-    - "(?i)(echo|repeat|mirror|reflect)\\s+(back|input|request)\\s+(with|plus|and)\\s+(additional|extra|more)"
-    # Sampling cascade — tool requests sampling which triggers more sampling
-    - "(?i)(createMessage|sampling|generate|completion)\\s*.{0,50}(createMessage|sampling|generate|completion)"
-    # Tool output deliberately maximizes token count
-    - "(?i)(pad|expand|inflate|extend)\\s+(response|output|result)\\s+(to|with|until)\\s+(maximum|max|\\d{4,})"
-    # Recursive self-invocation pattern in tool descriptions
-    - "(?i)(call|invoke|use|run)\\s+(this\\s+tool|itself|the\\s+same\\s+tool)\\s+(again|recursively|repeatedly)"
 remediation: >
   Implement strict bounds on tool execution: maximum iterations, response size
   limits, and recursion depth caps. Never create circular tool call chains where

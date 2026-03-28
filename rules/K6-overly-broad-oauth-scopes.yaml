@@ -22,16 +22,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # Wildcard or admin scopes
-    - "(?i)scope\\s*[:=]\\s*[\"'][^\"']*(?:\\*|all|admin|root|superuser|full[_\\s-]?access)[^\"']*[\"']"
-    - "(?i)scope\\s*[:=]\\s*[\"']\\s*\\*\\s*[\"']"
-    # Overly broad permission sets
-    - "(?i)scope\\s*[:=]\\s*[\"'][^\"']*(?:write|delete|manage|execute).*(?:write|delete|manage|execute)[^\"']*[\"']"
-    # Requesting all permissions when description suggests limited use
-    - "(?i)(?:openid|profile|email).*(?:admin|write:all|manage:all|delete)"
-    # AWS/GCP/Azure overly broad role assignments
-    - "(?i)(?:iam|role|policy).*(?:AdministratorAccess|\\*:\\*|Action.*\\*)"
-    - "(?i)(?:role|permission)\\s*[:=]\\s*[\"'](?:owner|admin|superadmin|root)[\"']"
 remediation: "Request the minimum OAuth scopes needed for functionality. Use read-only scopes when write access isn't required. Break broad scopes into specific, task-scoped permissions. Use short-lived, JIT (just-in-time) credentials. Required by ISO 27001 A.5.15 (least privilege), OWASP ASI03, and CoSAI MCP-T2."
 test_cases:
   true_positive:

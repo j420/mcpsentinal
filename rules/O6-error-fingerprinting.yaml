@@ -32,18 +32,6 @@ mitre: AML.T0057
 
 detect:
   type: typed
-    # Exposing process/runtime information in responses
-    - "(?i)(?:res\\.(?:send|json)|return|response).*(?:process\\.(?:version|arch|platform|pid|uptime|memoryUsage|cpuUsage)|os\\.(?:type|release|platform|arch|hostname|cpus|totalmem|freemem|networkInterfaces|userInfo))"
-    # Exposing Python system information
-    - "(?i)(?:return|response|json\\.dumps|print).*(?:sys\\.(?:version|platform|executable|path)|platform\\.(?:system|release|machine|processor|node|version))"
-    # Constructing diagnostic/debug responses with system details
-    - "(?i)(?:diagnostics?|debug|system_?info|server_?info|health_?detailed|status_?detail)\\s*[:=]\\s*\\{[^}]*(?:version|os|arch|platform|uptime|memory|cpu|disk|hostname|pid)"
-    # Exposing database connection details in error handlers
-    - "(?i)catch\\s*\\([^)]*\\)\\s*\\{[^}]*(?:res\\.(?:send|json)|return).*(?:err(?:or)?\\.(?:message|stack|code)|connection|host|port|database)"
-    # Exposing file paths in error responses
-    - "(?i)(?:res\\.(?:send|json)|return|response).*(?:__dirname|__filename|process\\.cwd\\(\\)|path\\.resolve|path\\.join)"
-    # Health/debug endpoints exposing infrastructure
-    - "(?i)(?:app|router|server)\\.(?:get|all)\\s*\\(\\s*['\"]/?(?:debug|diagnostics|system-info|server-info|health/detailed|status/detail|_internal)"
 remediation: >
   Never expose process, OS, runtime, or database metadata in tool responses or error
   messages. Use generic error messages ("An error occurred") for production responses.

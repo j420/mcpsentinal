@@ -35,16 +35,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # Tools accepting agent identity as unchecked parameters
-    - "(?i)(?:agent[_\\s-]?id|agent[_\\s-]?name|agent[_\\s-]?role|caller[_\\s-]?agent|source[_\\s-]?agent).*(?:param|arg|input|string)"
-    - "(?i)(?:param|input|arg).*(?:agent[_\\s-]?id|agent[_\\s-]?name|agent[_\\s-]?role|caller[_\\s-]?id)"
-    # Agent identity in request/response without verification
-    - "(?i)(?:from[_\\s-]?agent|sent[_\\s-]?by|authored[_\\s-]?by|delegated[_\\s-]?by).*(?:=|:).*(?:req|param|input|body)"
-    - "(?i)(?:req|param|input|body).*(?:from[_\\s-]?agent|agent[_\\s-]?identity|agent[_\\s-]?token)"
-    # Missing cryptographic verification of agent identity
-    - "(?i)(?:trust|accept|allow).*agent.*(?:without|no|skip|bypass).*(?:verify|auth|sign|check)"
-    # Agent role/privilege claims in tool descriptions
-    - "(?i)(?:execute|run|perform).*(?:as|on[_\\s]?behalf[_\\s]?of|with[_\\s]?privileges[_\\s]?of).*(?:agent|role)"
 remediation: "MCP tools in multi-agent systems must verify agent identity cryptographically — never accept agent_id/agent_role as plain string parameters. Use cryptographic attestation (signed tokens, mTLS certificates, or capability tokens) for inter-agent communication. Implement the principle of least privilege: each agent should only be able to claim its own identity. Reference: OWASP ASI03, arXiv 2602.19555."
 test_cases:
   true_positive:

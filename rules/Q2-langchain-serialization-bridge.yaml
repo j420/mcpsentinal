@@ -28,20 +28,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # MCP server code that constructs responses with LangChain serialization markers
-    - "(?i)[\"']lc[\"']\\s*:\\s*[12]"
-    - "(?i)[\"']type[\"']\\s*:\\s*[\"'](?:constructor|secret|not_implemented)[\"']"
-    - "(?i)[\"']id[\"']\\s*:\\s*\\[\\s*[\"']langchain"
-    # MCP-to-LangChain bridge code patterns
-    - "(?i)(?:from|import)\\s+langchain.*(?:dumps|dumpd|loads|load)"
-    - "(?i)langchain.*(?:serialize|deserialize|dumps|loads).*(?:mcp|tool[_\\s]?(?:output|result|response))"
-    - "(?i)(?:mcp|tool).*(?:output|result|response).*langchain.*(?:serialize|dumps|dumpd)"
-    # LangChain tool wrapper around MCP
-    - "(?i)class\\s+\\w*MCP\\w*\\(.*(?:BaseTool|StructuredTool|Tool)\\)"
-    - "(?i)MCPToolkit.*(?:get_tools|as_tools|convert)"
-    # Vulnerable deserialization with secrets enabled
-    - "(?i)secrets_from_env\\s*=\\s*True"
-    - "(?i)load\\(.*(?:allow_dangerous|secrets)"
 remediation: "MCP tool outputs flowing into LangChain serialization pipelines must be sanitized to strip `lc` marker keys before serialization. Update LangChain to >=0.3.81 or >=1.2.5 which patches CVE-2025-68664. Never use secrets_from_env=True in production. Implement an allowlist via `allowed_objects` parameter on load()/loads(). Treat all MCP tool responses as untrusted data in LangChain deserialization contexts."
 test_cases:
   true_positive:

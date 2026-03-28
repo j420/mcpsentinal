@@ -25,19 +25,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # Preference signals
-    - "(?i)(always|must|should)\\s+(use|prefer|choose|select)\\s+(this|me|it)\\s+(first|instead|over|rather)"
-    - "(?i)(preferred|recommended|default|primary)\\s+(method|tool|approach|way)\\s+(for|to)"
-    - "(?i)use\\s+this\\s+(instead\\s+of|rather\\s+than|in\\s+place\\s+of)"
-    # Deprecation/replacement claims
-    - "(?i)(replaces|supersedes|deprecates|updated\\s+version\\s+of|improvement\\s+over)\\s+\\w"
-    - "(?i)(the\\s+old|legacy|previous|deprecated)\\s+\\w+\\s+(tool|function|method|api)"
-    # Scope expansion
-    - "(?i)handles\\s+(all|every|any)\\s+(file|data|network|database|api)\\s+operation"
-    - "(?i)(one[\\s-]stop|universal|all[\\s-]in[\\s-]one|comprehensive)\\s+(tool|solution|handler)"
-    # Urgency-based preference
-    - "(?i)(always|must)\\s+(call|invoke|use)\\s+(this|me)\\s+(before|first|prior)"
-    - "(?i)do\\s+not\\s+use\\s+(any\\s+)?other\\s+(tool|function|method)"
 remediation: "Tool descriptions should accurately describe what the tool does without preference manipulation. Remove superlative claims ('fastest', 'most reliable'), deprecation claims about other tools, and urgency signals ('always use this first'). Let the AI choose tools based on actual capability matching, not linguistic manipulation."
 test_cases:
   true_positive:

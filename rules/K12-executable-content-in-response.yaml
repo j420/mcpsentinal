@@ -19,17 +19,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # Shell commands in response strings
-    - "(?i)(return|respond|result|output|message).*[\"'`].*(?:rm\\s+-rf|chmod\\s+777|curl.*\\|\\s*(?:bash|sh)|wget.*&&)"
-    - "(?i)(return|respond|result|output).*[\"'`].*(?:sudo\\s|dd\\s+if=|mkfs|fdisk|iptables)"
-    # JavaScript execution patterns in responses
-    - "(?i)(return|respond|result|output).*[\"'`].*(?:<script|javascript:|eval\\(|new\\s+Function\\()"
-    # Python exec/eval in responses
-    - "(?i)(return|respond|result|output).*[\"'`].*(?:exec\\(|__import__|subprocess\\.call|os\\.system)"
-    # Encoded executable content
-    - "(?i)(return|respond|result|output).*(?:base64|atob|Buffer\\.from).*(?:exec|eval|system|spawn)"
-    # PowerShell in responses
-    - "(?i)(return|respond|result|output).*[\"'`].*(?:powershell|Invoke-Expression|IEX\\s|Start-Process)"
 remediation: "Tool responses must NEVER contain executable code. All tool output should be treated as data, not code. If a tool needs to suggest commands, return them as structured data with explicit labels, never as executable strings. Implement output sanitization that strips shell commands, script tags, and eval patterns. Required by CoSAI MCP-T4 and OWASP ASI02."
 test_cases:
   true_positive:

@@ -6,22 +6,6 @@ owasp: MCP07-insecure-config
 mitre: AML.T0054
 detect:
   type: typed
-    # Sequential/predictable progress tokens
-    - "(?i)(?:progressToken|progress_token|_meta\\.progressToken)\\s*[:=]\\s*(?:(?:\\+\\+|counter|sequence|seq|\\d+))"
-    # Progress notification sent without verifying token ownership
-    - "(?i)(?:sendProgress|send_progress|notifications/progress|progress\\.notify)\\s*\\(\\s*(?:(?:req|params|body|token|id)\\.)"
-    # Progress token from client input accepted without validation
-    - "(?i)(?:_meta|meta)\\s*(?:\\.|\\[)\\s*(?:['\"])?progressToken(?:['\"])?\\s*(?:\\])?\\s*(?:&&|\\|\\||\\?|!==\\s*(?:null|undefined))"
-    # Python: progress token handling
-    - "(?i)progress_token\\s*=\\s*(?:request|params|kwargs)\\s*(?:\\.get|\\.pop|\\[)"
-    # Progress percentage exceeding 100% or going negative (spoofed UI state)
-    - "(?i)(?:progress|percentage|percent)\\s*[:=]\\s*(?:(?:params|data|request)\\.(?:progress|total|current))(?!.*(?:Math\\.min|Math\\.max|clamp|0\\s*<=|<=\\s*100))"
-    # Broadcasting progress to all clients instead of the requesting client
-    - "(?i)(?:broadcast|emit|notify[_\\s-]?all|clients\\.forEach)\\s*\\(.*(?:progress|notifications/progress)"
-    # Progress total from untrusted source enabling misleading UI
-    - "(?i)(?:total|progressTotal|progress_total)\\s*[:=]\\s*(?:params|request|body|data)\\s*\\."
-    # Progress notification without request correlation
-    - "(?i)(?:sendProgress|notifications/progress)\\s*\\((?!.*(?:requestId|request_id|correlationId|tracking))"
 remediation: "Use unpredictable progress tokens (UUIDs or cryptographic random values). Validate that progress notification recipients match the original request sender. Do not accept progress tokens from untrusted input — a malicious server could inject fake progress notifications to manipulate client UI state or create timing side channels. Reference: MCP spec 2025-03-26 Section 5.1 (Progress)."
 test_cases:
   true_positive:

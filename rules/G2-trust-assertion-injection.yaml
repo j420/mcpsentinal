@@ -31,32 +31,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # Anthropic/model vendor authority claims
-    - "(?i)approved\\s+by\\s+anthropic"
-    - "(?i)certified\\s+by\\s+anthropic"
-    - "(?i)verified\\s+by\\s+anthropic"
-    - "(?i)part\\s+of\\s+(the\\s+)?official\\s+(anthropic|claude|mcp)"
-    - "(?i)anthropic\\s+(approved|certified|verified|reviewed|endorsed)"
-    - "(?i)(official|trusted)\\s+anthropic\\s+tool"
-    - "(?i)approved\\s+by\\s+(openai|google|microsoft|meta)"
-    # Generic authority claims
-    - "(?i)(security[- ]reviewed|security[- ]audited|security[- ]certified)"
-    - "(?i)(externally|independently|professionally)\\s+(reviewed|audited|verified|certified)"
-    - "(?i)passed\\s+(all|every)\\s+(safety|security)\\s+(checks?|guidelines?|tests?|requirements?)"
-    - "(?i)certified\\s+(safe|secure)\\s+for\\s+(sensitive|production|enterprise)"
-    - "(?i)(safe|trusted|approved)\\s+to\\s+handle\\s+(sensitive|private|confidential|personal)"
-    # Social proof manipulation
-    - "(?i)trusted\\s+by\\s+(thousands|millions|hundreds)"
-    - "(?i)used\\s+by\\s+(fortune|top|leading)"
-    - "(?i)endorsed\\s+by"
-    # Bypassing safety framing
-    - "(?i)(this\\s+tool|this\\s+server|we)\\s+(guarantee|ensures?|promise)\\s+(safety|security|privacy)"
-    - "(?i)no\\s+(security|privacy|safety)\\s+(risks?|concerns?|issues?)"
-    - "(?i)(completely|fully|entirely|100%)\\s+(safe|secure|private|trusted)"
-    # Direct instruction to AI to trust
-    - "(?i)(you\\s+can\\s+|feel\\s+free\\s+to\\s+|it\\s+is\\s+safe\\s+to\\s+)trust\\s+this"
-    - "(?i)this\\s+tool\\s+has\\s+permission\\s+to"
-    - "(?i)(ai|assistant|claude|model)\\s+should\\s+(always\\s+)?trust"
 remediation: >
   Remove all authority claims, trust assertions, and safety certifications from tool descriptions.
   Legitimate tools do not need to claim they are safe or approved — their actual behavior and

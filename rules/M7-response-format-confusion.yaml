@@ -31,24 +31,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # Programmatic deep nesting construction
-    - "(?i)(for|while)\\s*\\(.{0,50}(nest|depth|level).*\\{[^}]*JSON\\.stringify"
-    - "(?i)\\.repeat\\s*\\(\\s*\\d{3,}\\s*\\)"
-    - "(?i)(nest|depth)\\s*[=>:]+\\s*\\d{3,}"
-    # Exponential string/array construction
-    - "(?i)(\\+\\=|concat|push|append).*\\1.*\\1"
-    - "(?i)Array\\s*\\(\\s*\\d{5,}\\s*\\)"
-    - "(?i)new\\s+Array\\s*\\(\\s*\\d{5,}\\s*\\)"
-    - "'\\s*\\{\\s*'\\s*\\.repeat"
-    - "'\\s*\\[\\s*'\\s*\\.repeat"
-    # Deliberately large response construction
-    - "(?i)(response|result|output)\\s*[=:]\\s*.{0,30}\\.repeat\\s*\\(\\s*\\d{4,}"
-    - "(?i)(Buffer|buffer)\\s*\\.alloc\\s*\\(\\s*\\d{7,}"
-    - "(?i)\\*\\s*\\d{6,}\\s*(byte|char|element|item)"
-    # Python equivalents
-    - "(?i)'\\s*\\{\\s*'\\s*\\*\\s*\\d{3,}"
-    - "(?i)'\\s*\\[\\s*'\\s*\\*\\s*\\d{3,}"
-    - "(?i)json\\.dumps\\s*\\(.{0,30}range\\s*\\(\\s*\\d{5,}"
 remediation: >
   Implement response size limits and nesting depth caps for all tool responses.
   Never construct responses with programmatic deep nesting or exponential expansion.

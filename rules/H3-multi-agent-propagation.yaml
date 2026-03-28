@@ -89,40 +89,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-
-    # Signal 1: Tools designed to accept output FROM other agents (agentic input sinks)
-    # These tools receive data that originated from another AI model's execution
-    agentic_input_patterns:
-      - "(?i)(agent[_\\s-]?output|agent[_\\s-]?result|agent[_\\s-]?response)"
-      - "(?i)(upstream[_\\s-]?(?:agent|result|output)|previous[_\\s-]?(?:agent|step|result))"
-      - "(?i)(orchestrat(?:or|or[_\\s-]?input|or[_\\s-]?output|ion[_\\s-]?result))"
-      - "(?i)(subagent|sub[_\\s-]?agent|worker[_\\s-]?agent|child[_\\s-]?agent)"
-      - "(?i)(multi[_\\s-]?agent|agent[_\\s-]?pipeline|agent[_\\s-]?workflow|agent[_\\s-]?chain)"
-      - "(?i)(agent[_\\s-]?handoff|delegate[_\\s-]?to|pass[_\\s-]?to[_\\s-]?agent)"
-      - "(?i)(llm[_\\s-]?output|model[_\\s-]?output|ai[_\\s-]?output|ai[_\\s-]?response)"
-      - "(?i)(continue[_\\s-]?task|resume[_\\s-]?(?:task|workflow|step)|next[_\\s-]?agent)"
-      - "(?i)(step[_\\s-]?result|task[_\\s-]?output|step[_\\s-]?output|phase[_\\s-]?result)"
-
-    # Signal 2: Shared agent memory/state (cross-agent infection transmission medium)
-    # Write access to these = ability to inject into any agent that reads them
-    shared_memory_patterns:
-      - "(?i)(agent[_\\s-]?memory|shared[_\\s-]?memory|working[_\\s-]?memory)"
-      - "(?i)(agent[_\\s-]?scratchpad|scratchpad[_\\s-]?write|scratch[_\\s-]?pad)"
-      - "(?i)(agent[_\\s-]?state|shared[_\\s-]?state|global[_\\s-]?state|pipeline[_\\s-]?state)"
-      - "(?i)(agent[_\\s-]?context|shared[_\\s-]?context|execution[_\\s-]?context)"
-      - "(?i)(vector[_\\s-]?store.*write|knowledge[_\\s-]?base.*write|memory[_\\s-]?bank.*(?:write|store|save))"
-      - "(?i)(persistent[_\\s-]?(?:memory|context|state)|long[_\\s-]?term[_\\s-]?memory)"
-      - "(?i)(conversation[_\\s-]?history.*(?:write|store|save|update)|chat[_\\s-]?history.*(?:write|update))"
-
-    # Trust boundary signals that explicitly declare safe handling (reduces false positives)
-    # A tool claiming trust boundary awareness should NOT be flagged
-    trust_boundary_signals:
-      - "(?i)(trust[_\\s-]?boundary|untrusted[_\\s-]?input|sandbo(?:x|xed))"
-      - "(?i)(agent[_\\s-]?(?:auth|verify|validate|authenticate|origin))"
-      - "(?i)(sanitize[_\\s-]?agent|validate[_\\s-]?agent[_\\s-]?input|agent[_\\s-]?isolation)"
-      - "(?i)(signed[_\\s-]?(?:by|message)|verify[_\\s-]?signature|agent[_\\s-]?signature)"
-      - "(?i)(cross[_\\s-]?agent[_\\s-]?(?:policy|security|validation|check))"
-
 remediation: >
   This MCP server exposes tools designed for multi-agent architectures — either accepting
   input from other agents (agentic input sinks) or implementing shared agent memory.

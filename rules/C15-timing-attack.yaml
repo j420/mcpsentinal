@@ -6,18 +6,6 @@ owasp: MCP07-insecure-config
 mitre: null
 detect:
   type: typed
-    # Direct string equality on secrets/tokens/passwords (timing-unsafe)
-    - "(?i)(?:api_?key|token|secret|password|passwd|credential|auth)\\s*===?\\s*(?:req|input|param|args|body|header|provided|user)"
-    - "(?i)(?:req|input|param|args|body|header|provided)\\s*===?\\s*(?:api_?key|token|secret|password|passwd|credential)"
-    # Variable named after secret being compared with ==
-    - "(?i)(?:key|token|secret|password|passwd|auth|credential)\\s*[!=]=\\s*['\"][A-Za-z0-9+/=_\\-]{8,}['\"]"
-    # Python == on hmac/signature values
-    - "(?i)(?:hmac|signature|digest|mac)\\s*==\\s*(?:req|input|param|args|expected|provided)"
-    - "(?i)(?:req|input|param|args|expected|provided)\\s*==\\s*(?:hmac|signature|digest|mac)"
-    # Dangerous: comparing hash outputs with ==
-    - "(?i)(?:sha[0-9]+|md5|blake2)\\([^)]+\\)\\s*[!=]=\\s*"
-    # Missing timingSafeEqual where it should be used
-    - "(?i)verify(?:Token|Key|Secret|Password|Auth|Signature|Hmac)\\s*\\([^)]*\\)\\s*\\{[^}]*[!=]=="
 remediation: "Use crypto.timingSafeEqual() (Node.js) or hmac.compare_digest() (Python) for ALL secret/token/password comparisons. Standard string equality (===, ==) is vulnerable to timing attacks that allow attackers to determine correct values bit by bit."
 test_cases:
   true_positive:

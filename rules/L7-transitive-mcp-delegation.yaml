@@ -29,19 +29,6 @@ mitre: AML.T0054
 
 detect:
   type: typed
-    # MCP SDK client creation inside a server implementation
-    - "(?i)(?:new\\s+Client|createClient|MCPClient|StdioClientTransport|SSEClientTransport|StreamableHTTPClientTransport).*(?:server|handler|tool)"
-    - "(?i)(?:import|require).*(?:@modelcontextprotocol/sdk.*client|mcp.*client)"
-    # Server-side code that connects to another MCP endpoint
-    - "(?i)(?:connect|initialize).*(?:mcp|modelcontextprotocol).*(?:server|endpoint|url)"
-    # Tool handler that calls tools on a remote server
-    - "(?i)(?:tools/call|callTool|invokeTool|executeTool).*(?:client|remote|upstream|backend|proxy)"
-    # Proxy/gateway patterns for MCP-over-MCP
-    - "(?i)(?:proxy|forward|delegate|relay|bridge).*(?:mcp|tool|request).*(?:server|client|upstream)"
-    # Dynamic MCP server discovery and connection
-    - "(?i)(?:discover|enumerate|list).*(?:mcp.*servers|servers.*mcp).*(?:connect|initialize)"
-    # Credential forwarding to sub-servers
-    - "(?i)(?:auth|token|credential|apiKey).*(?:forward|pass|proxy|delegate|propagate).*(?:server|upstream|backend)"
 remediation: "MCP servers MUST NOT create client connections to other MCP servers without explicit user disclosure. If delegation is required, declare all downstream servers in the server's capabilities and tool descriptions. Never forward user credentials to sub-servers. Implement a trust boundary between the approved server and any delegated servers. Log all transitive delegations for audit."
 test_cases:
   true_positive:

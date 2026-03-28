@@ -37,62 +37,6 @@ mitre: AML.T0057
 
 detect:
   type: typed
-    # ── Node.js: fetch / node-fetch / cross-fetch ──────────────────────────────
-    - "(?i)\\bfetch\\s*\\(\\s*(?:req|request|input|param|params|args|url|uri|href|link|target|destination|endpoint|host|address|resource|src|source|location|proxy|callback|userUrl|user_url|externalUrl|external_url|redirectUrl|redirect_url)"
-    - "(?i)\\bfetch\\s*\\([^)]*\\$\\{[^}]*(?:url|uri|host|target|endpoint|param|input|args)[^}]*\\}"
-    # ── Node.js: axios ─────────────────────────────────────────────────────────
-    - "(?i)\\baxios\\.(?:get|post|put|delete|patch|head|options|request)\\s*\\(\\s*(?:req|request|input|param|params|args|url|uri|href|link|target|destination|endpoint|host|address|resource|src|source|proxy)"
-    - "(?i)\\baxios(?:\\.create)?\\s*\\(\\s*\\{[^}]*(?:baseURL|url)\\s*:\\s*(?:req|input|param|params|args|target|endpoint|host|source)"
-    # ── Node.js: got ───────────────────────────────────────────────────────────
-    - "(?i)\\bgot\\s*\\.?(?:get|post|put|delete|stream|extend)?\\s*\\(\\s*(?:req|request|input|param|params|args|url|uri|href|link|target|destination|endpoint|host|address|resource|src|source)"
-    - "(?i)\\bgot\\s*\\(\\s*(?:req|request|input|param|params|args|url|uri|href|link|target|destination|endpoint|host|address)"
-    # ── Node.js: superagent ────────────────────────────────────────────────────
-    - "(?i)\\bsuperagent\\.(?:get|post|put|delete|patch)\\s*\\(\\s*(?:req|request|input|param|params|args|url|uri|href|link|target|destination|endpoint|host)"
-    # ── Node.js: needle ────────────────────────────────────────────────────────
-    - "(?i)\\bneedle\\.?(?:get|post|put|delete|request)\\s*\\(\\s*(?:req|request|input|param|params|args|url|uri|href|link|target|destination|endpoint|host)"
-    # ── Node.js: http / https built-in ────────────────────────────────────────
-    - "(?i)\\bhttps?\\.(?:get|request)\\s*\\(\\s*(?:req|request|input|param|params|args|url|uri|href|link|target|destination|endpoint|host|address|resource|src|source)"
-    - "(?i)require\\s*\\(['\"](?:node:)?https?['\"]\\)[^;\\n]*\\.(?:get|request)\\s*\\([^)]*(?:input|param|args|url|uri|target|endpoint|host)"
-    # ── Python: requests ──────────────────────────────────────────────────────
-    - "(?i)\\brequests\\.(?:get|post|put|delete|patch|head|options|request)\\s*\\(\\s*(?:req|request|input|param|params|args|url|uri|href|link|target|destination|endpoint|host|address|resource|src|source)"
-    - "(?i)\\brequests\\.(?:get|post|put|delete|patch|head|options|request)\\s*\\([^)]*(?:f['\"]|\\+)[^)]*(?:url|uri|host|target|endpoint|param|input)"
-    # ── Python: httpx ─────────────────────────────────────────────────────────
-    - "(?i)\\bhttpx\\.(?:get|post|put|delete|patch|head|options|request|AsyncClient|Client)\\s*\\([^)]*(?:req|request|input|param|params|args|url|uri|href|link|target|destination|endpoint|host|address|resource|src|source)"
-    - "(?i)\\.(?:get|post|put|delete|patch|request)\\s*\\([^)]*(?:url|uri|target|endpoint|host)[^)]*(?:req|input|param|args|f['\"]|\\+)"
-    # ── Python: aiohttp ────────────────────────────────────────────────────────
-    - "(?i)\\baiohttp\\.(?:ClientSession|request|get|post)\\s*[\\(\\[]?[^)\\]]*(?:req|request|input|param|params|args|url|uri|href|link|target|destination|endpoint|host|address)"
-    - "(?i)session\\.(?:get|post|put|delete|patch|request)\\s*\\([^)]*(?:req|request|input|param|params|args|url|uri|href|target|endpoint|host)"
-    # ── Python: urllib ────────────────────────────────────────────────────────
-    - "(?i)urllib\\.request\\.urlopen\\s*\\(\\s*(?:req|request|input|param|params|args|url|uri|href|link|target|destination|endpoint|host|address|resource)"
-    - "(?i)urllib\\.request\\.urlopen\\s*\\([^)]*(?:f['\"]|%|\\+|format\\().*(?:url|uri|host|target|param|input)"
-    - "(?i)urllib2?\\.(?:urlopen|urlretrieve)\\s*\\([^)]*(?:req|request|input|param|args|url|uri|target|endpoint|host)"
-    # ── Python: httplib2 / http.client ────────────────────────────────────────
-    - "(?i)(?:httplib2\\.Http|http\\.client\\.HTTPConnection)\\s*\\([^)]*(?:req|request|input|param|args|url|uri|target|endpoint|host)"
-    # ── URL construction then fetch (indirect SSRF) ───────────────────────────
-    - "(?i)new\\s+URL\\s*\\(\\s*(?:req|request|input|param|params|args|url|uri|href|link|target|destination|endpoint|host|address|resource|src|source)"
-    - "(?i)url\\.parse\\s*\\(\\s*(?:req|request|input|param|params|args|url|uri|href|link|target|destination|endpoint|host)"
-    - "(?i)URL\\.canParse\\s*\\([^)]*(?:input|param|args|url|uri|target|endpoint|host)"
-    # ── file:// protocol SSRF (reads local filesystem via URL) ───────────────
-    - "(?i)(?:fetch|axios|got|requests|httpx|urllib|urlopen)\\s*[\\(.].*['\"]file://"
-    - "(?i)['\"`]file://(?:/|%2f)(?:etc|home|root|var|tmp|proc|dev|sys)/"
-    # ── Cloud IMDS endpoint references (indicator of SSRF targeting) ──────────
-    - "(?i)169\\.254\\.169\\.254"
-    - "(?i)metadata\\.google\\.internal"
-    - "(?i)169\\.254\\.169\\.254/(?:latest|computeMetadata|metadata/v1)"
-    - "(?i)(?:169\\.254\\.170\\.2|fd00:ec2::254)"
-    # ── Redirect following without validation (SSRF via redirect) ────────────
-    - "(?i)(?:maxRedirects|follow_redirects|followRedirect|allow_redirects)\\s*[:=]\\s*(?:true|Infinity|99|[5-9][0-9]+)"
-    - "(?i)(?:followRedirect|follow_redirects)\\s*[:=]\\s*true(?!.*(?:allowlist|whitelist|internalFilter|blockInternal))"
-
-    # Allowlist/validation patterns — these indicate SSRF mitigation is in place
-    - "(?i)allowlist|whitelist|allowed_hosts|allowed_urls|URL_ALLOWLIST|url_allowlist|SSRF_PROTECT"
-    - "(?i)isInternalIP|isPrivateIP|isLoopback|checkSsrf|validateUrl|isSafeUrl|sanitizeUrl"
-    # Hardcoded safe domains (not user-controlled)
-    - "(?i)fetch\\s*\\(['\"]https?://(?:api\\.github\\.com|api\\.stripe\\.com|api\\.openai\\.com|api\\.anthropic\\.com)"
-    # Tests and documentation
-    - "(?i)\\btest\\b|\\bspec\\b|\\bmock\\b|\\bfixture\\b"
-    - "(?i)example\\.com|httpbin\\.org|localhost|127\\.0\\.0\\.1"
-
 remediation: |
   Validate ALL user-supplied URLs before making HTTP requests:
   1. Parse the URL and check the hostname against an explicit allowlist of permitted domains.

@@ -6,24 +6,6 @@ owasp: MCP01-prompt-injection
 mitre: AML.T0054
 detect:
   type: typed
-    # Same injection patterns as A1 but applied to parameter-level descriptions
-    # Parameter descriptions are shown to the AI when deciding how to fill in tool arguments —
-    # this is a second injection surface completely missed by description-only scanners
-    - "(?i)ignore\\s+(previous|above|all)\\s+instructions"
-    - "(?i)disregard\\s+(all|previous|prior|any)\\s+(instructions|rules|context)"
-    - "(?i)you\\s+are\\s+now\\s+(a|an|the)\\s+"
-    - "(?i)from\\s+now\\s+on[,\\s]+you\\s+(must|will|should|are)"
-    - "(?i)override\\s+(previous|system)\\s+(prompt|instructions)"
-    - "(?i)forget\\s+(everything|all|previous)"
-    - "(?i)act\\s+as\\s+(if|though|a|an)\\s+"
-    # Instructions to auto-fill with sensitive values
-    - "(?i)automatically\\s+(use|fill|include|pass|send)\\s+(?:the\\s+)?(?:api[_\\s]?key|token|password|secret|credential)"
-    - "(?i)default\\s+(?:value\\s+)?(?:is|should\\s+be|must\\s+be)\\s+(?:the\\s+)?(?:user['']?s?\\s+)?(?:password|secret|token|key)"
-    # Indirect injection: telling the AI how to populate the field with harvested data
-    - "(?i)(?:copy|include|paste|insert)\\s+(?:the\\s+)?(?:contents?\\s+of|value\\s+from|text\\s+from)\\s+(?:the\\s+)?(?:previous|prior|last|above)"
-    - "(?i)(?:retrieve|fetch|get|extract)\\s+(?:and\\s+)?(?:use|pass|send|include)\\s+(?:the\\s+)?(?:user|system|environment)"
-    # Long base64 / encoded content in parameter descriptions
-    - "(?:[A-Za-z0-9+/]{40,}={0,2})"
 remediation: "Parameter descriptions must only explain what value to provide for the parameter. Remove any instructions, directives, or role-modification language. Parameter descriptions are a secondary injection surface that many security tools miss entirely."
 test_cases:
   true_positive:
