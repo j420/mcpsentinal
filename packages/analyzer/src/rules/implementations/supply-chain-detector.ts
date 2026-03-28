@@ -341,6 +341,15 @@ class RegistrySubstitutionRule implements TypedRule {
 
 // ─── Register ──────────────────────────────────────────────────────────────
 
+// L14 findings are emitted by L5 (ManifestConfusionRule) during entry point analysis.
+// Register stub so the engine doesn't warn about missing implementation.
+class L14Stub implements TypedRule {
+  readonly id = "L14";
+  readonly name = "Hidden Entry Point Mismatch (via L5)";
+  analyze(): TypedFinding[] { return []; }
+}
+
 registerTypedRule(new ManifestConfusionRule());
+registerTypedRule(new L14Stub());
 registerTypedRule(new BuildArtifactTamperingRule());
 registerTypedRule(new RegistrySubstitutionRule());
