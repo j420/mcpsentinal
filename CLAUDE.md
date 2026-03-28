@@ -118,7 +118,7 @@ test_cases:
 ```
 
 ### TypedRule implementation (detection logic):
-Detection logic lives in `packages/analyzer/src/rules/implementations/` across 17 detector files:
+Detection logic lives in `packages/analyzer/src/rules/implementations/` across 23 detector files:
 
 | Detector | Rules | Analysis Technique |
 |----------|-------|--------------------|
