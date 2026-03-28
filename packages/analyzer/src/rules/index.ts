@@ -38,3 +38,7 @@ import "./implementations/secret-exfil-detector.js";
 import "./implementations/supply-chain-detector.js";
 import "./implementations/code-security-deep-detector.js";
 import "./implementations/ai-manipulation-detector.js";
+import "./implementations/infrastructure-detector.js";
+import "./implementations/advanced-supply-chain-detector.js";
+import "./implementations/protocol-ai-runtime-detector.js";
+import "./implementations/data-privacy-cross-ecosystem-detector.js";
