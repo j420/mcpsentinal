@@ -41,6 +41,25 @@ The scorer maps rule categories to sub-scores via `CATEGORY_MAP`:
 | `infrastructure-runtime` | `config_score` |
 | `cross-ecosystem-emergent` | `config_score` |
 
+### Risk Domain Mapping (Framework-Driven)
+The scorer also supports a risk-domain-based mapping via `RISK_DOMAIN_MAP`. When rules declare a risk domain (from `rules/framework-registry.yaml`), this map determines sub-score allocation:
+
+| Risk Domain | Sub-Score |
+|---|---|
+| `input-boundary` | `description_score` |
+| `tool-integrity` | `config_score` |
+| `code-safety` | `code_score` |
+| `data-protection` | `config_score` |
+| `identity-auth` | `config_score` |
+| `supply-chain` | `deps_score` |
+| `human-oversight` | `config_score` |
+| `observability` | `behavior_score` |
+| `multi-agent-trust` | `config_score` |
+| `protocol-security` | `config_score` |
+| `resilience` | `config_score` |
+| `infrastructure` | `config_score` |
+| `ai-exploitation` | `config_score` |
+
 ### Special Rules
 1. **Lethal Trifecta (F1)**: If detected, total score is CAPPED at 40 regardless of other findings.
 2. **Cross-Config Lethal Trifecta (I13)**: Same cap at 40, but detects the trifecta distributed across multiple servers in the same client configuration.

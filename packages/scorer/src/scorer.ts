@@ -1,4 +1,4 @@
-import type { FindingInput, Severity } from "@mcp-sentinel/database";
+import type { FindingInput, Severity, RiskDomain } from "@mcp-sentinel/database";
 import pino from "pino";
 
 // Log to stderr so that stdout is clean for callers that parse it (e.g. CLI --json mode)
@@ -46,6 +46,27 @@ const CATEGORY_MAP: Record<string, keyof Pick<ScoreResult, "code_score" | "deps_
   "data-privacy-attacks": "config_score",      // O1–O10 (steganography, covert channels)
   "infrastructure-runtime": "config_score",    // P1–P10 (containers, cloud metadata)
   "cross-ecosystem-emergent": "config_score",  // Q1–Q15 (protocol bridges, IDE)
+};
+
+// ─── Risk Domain → Sub-Score Mapping ──────────────────────────────────────
+// 13 framework-driven risk domains mapped to the 5 existing sub-scores.
+// Used alongside CATEGORY_MAP for forward compatibility — when rules declare
+// a risk_domain, this map determines which sub-score is penalized.
+// See rules/framework-registry.yaml for the complete domain definitions.
+const RISK_DOMAIN_MAP: Record<RiskDomain, keyof Pick<ScoreResult, "code_score" | "deps_score" | "config_score" | "description_score" | "behavior_score">> = {
+  "input-boundary": "description_score",
+  "tool-integrity": "config_score",
+  "code-safety": "code_score",
+  "data-protection": "config_score",
+  "identity-auth": "config_score",
+  "supply-chain": "deps_score",
+  "human-oversight": "config_score",
+  "observability": "behavior_score",
+  "multi-agent-trust": "config_score",
+  "protocol-security": "config_score",
+  "resilience": "config_score",
+  "infrastructure": "config_score",
+  "ai-exploitation": "config_score",
 };
 
 const OWASP_CATEGORIES = [

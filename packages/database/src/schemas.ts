@@ -327,6 +327,27 @@ export type FindingInput = z.infer<typeof FindingInputSchema>;
 
 // ─── Detection Rule Schema ──────────────────────────────────────────────────
 
+// ─── Risk Domain Categories ─────────────────────────────────────────────────
+// 13 risk domains derived from cross-referencing 6 compliance frameworks
+// (OWASP MCP, OWASP ASI, CoSAI, EU AI Act, MITRE ATLAS, MAESTRO).
+// See rules/framework-registry.yaml for the complete many-to-many mapping.
+export const RiskDomain = z.enum([
+  "input-boundary",
+  "tool-integrity",
+  "code-safety",
+  "data-protection",
+  "identity-auth",
+  "supply-chain",
+  "human-oversight",
+  "observability",
+  "multi-agent-trust",
+  "protocol-security",
+  "resilience",
+  "infrastructure",
+  "ai-exploitation",
+]);
+export type RiskDomain = z.infer<typeof RiskDomain>;
+
 export const DetectionRuleSchema = z.object({
   id: z.string().min(1).max(50),
   name: z.string().min(1),
@@ -354,7 +375,7 @@ export const DetectionRuleSchema = z.object({
   owasp: OwaspCategory.nullable().default(null),
   mitre: z.string().nullable().default(null),
   detect: z.object({
-    type: z.enum(["regex", "ast", "schema-check", "behavioral", "composite"]),
+    type: z.enum(["regex", "ast", "typed", "schema-check", "behavioral", "composite"]),
     patterns: z.array(z.string()).optional(),
     context: z
       .enum([
