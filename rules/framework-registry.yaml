@@ -1,0 +1,458 @@
+# MCP Sentinel — Framework Registry
+# Maps 177 detection rules to 13 risk domains and 6 compliance frameworks.
+#
+# This is the many-to-many mapping that enables framework-driven compliance
+# reporting. Each rule has exactly one primary risk domain. Each risk domain
+# maps to specific controls in every framework.
+#
+# Maintained by: P11 Compliance Mapper + P4 Registry Architect
+# Last updated: 2026-03-28
+
+# ─── Frameworks Reference ───────────────────────────────────────────────────
+#
+# owasp_mcp:    OWASP MCP Top 10 (MCP01–MCP10)
+# owasp_asi:    OWASP Agentic Applications Top 10 (ASI01–ASI10), December 2025
+# cosai:        CoSAI MCP Security Threat Taxonomy (T1–T12), January 2026
+# maestro:      MAESTRO Multi-Agent Threat Model (L1–L7), CSA February 2025
+# eu_ai_act:    EU AI Act Articles 9/12/13/14/15, enforcement August 2026
+# mitre_atlas:  MITRE ATLAS v5.0 AI Techniques, October 2025 + January 2026
+
+risk_domains:
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 1. PROMPT INJECTION
+  # ═══════════════════════════════════════════════════════════════════════════
+  prompt-injection:
+    name: Prompt Injection
+    description: >
+      Untrusted content that can hijack AI behavior through tool descriptions,
+      parameter schemas, initialize response fields, resources, prompts, or
+      sampling callbacks. The core prompt injection attack surface.
+    analysis_technique: linguistic-scoring
+    migration_priority: 8
+    rules:
+      - A1   # Prompt Injection in Tool Description
+      - A5   # Description Length Anomaly
+      - A7   # Zero-Width and Invisible Character Injection
+      - A9   # Encoded or Obfuscated Instructions in Description
+      - B5   # Prompt Injection in Parameter Description
+      - G1   # Indirect Prompt Injection Gateway
+      - G2   # Trust Assertion Injection
+      - G3   # Tool Response Format Injection
+      - G4   # Context Window Saturation Attack
+      - G5   # Capability Escalation via Prior Approval
+      - H2   # Prompt Injection in Initialize Response Fields
+      - I3   # Prompt Injection in Resource Metadata
+      - I6   # Prompt Template Injection
+      - I7   # Sampling Capability Abuse
+      - J3   # Full Schema Poisoning
+      - J5   # Tool Output Poisoning Patterns
+      - J6   # Tool Preference Manipulation
+      - N4   # JSON-RPC Error Object Injection
+      - N9   # MCP Logging Protocol Injection
+      - N12  # Resource Subscription Content Mutation
+      - Q11  # Code Suggestion Poisoning via MCP
+    frameworks:
+      owasp_mcp: [MCP01]
+      owasp_asi: [ASI01, ASI06]
+      cosai: [T4]
+      maestro: [L3]
+      eu_ai_act: [Art.15]
+      mitre_atlas: [AML.T0054, AML.T0054.001, AML.T0054.002, AML.T0058]
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 2. TOOL POISONING
+  # ═══════════════════════════════════════════════════════════════════════════
+  tool-poisoning:
+    name: Tool Poisoning
+    description: >
+      Tools that lie about what they do — deceptive names, annotations,
+      descriptions, namespace squatting, or behavioral drift over time.
+      Attacks that exploit AI trust in tool metadata.
+    analysis_technique: schema-inference-and-capability-graph
+    migration_priority: 10
+    rules:
+      - A2   # Excessive Scope Claims in Description
+      - A4   # Cross-Server Tool Name Shadowing
+      - A6   # Unicode Homoglyph Attack in Tool Name
+      - A8   # Description-Capability Mismatch
+      - F2   # High-Risk Capability Profile
+      - F5   # Official Namespace Squatting
+      - G6   # Tool Behavior Drift (Rug Pull)
+      - I1   # Tool Annotation Deception
+      - I2   # Missing Destructive Tool Annotation
+      - I5   # Resource-Tool Name Shadowing
+      - I14  # Rolling Capability Drift
+      - I16  # Consent Fatigue Exploitation
+      - K12  # Executable Content in Tool Response
+      - K13  # Unsanitized Tool Output
+      - L15  # Update Notification Spoofing
+    frameworks:
+      owasp_mcp: [MCP02]
+      owasp_asi: [ASI02]
+      cosai: [T4, T6, T9]
+      maestro: [L3, L7]
+      eu_ai_act: [Art.13]
+      mitre_atlas: [AML.T0058, AML.T0058.002]
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 3. CODE VULNERABILITIES
+  # ═══════════════════════════════════════════════════════════════════════════
+  code-vulnerabilities:
+    name: Code Vulnerabilities
+    description: >
+      Exploitable vulnerabilities in MCP server source code — command injection,
+      path traversal, SSRF, SQL injection, deserialization, eval, prototype
+      pollution, timing attacks, template injection, and related CWE patterns.
+    analysis_technique: ast-taint-tracking
+    migration_priority: 9
+    rules:
+      - C1   # Command Injection
+      - C2   # Path Traversal
+      - C3   # SSRF
+      - C4   # SQL Injection
+      - C5   # Hardcoded Secrets
+      - C6   # Error Message Information Leakage
+      - C7   # Wildcard CORS
+      - C8   # No Auth on Network-Exposed Server
+      - C9   # Excessive Filesystem Scope
+      - C10  # Prototype Pollution
+      - C11  # ReDoS
+      - C12  # Unsafe Deserialization
+      - C13  # Server-Side Template Injection
+      - C14  # JWT Algorithm Confusion
+      - C15  # Timing Attack on Secret Comparison
+      - C16  # Dynamic Code Evaluation
+      - J2   # Git Argument Injection
+      - J7   # OpenAPI Specification Field Injection
+      - Q2   # LangChain Serialization Bridge Injection
+    frameworks:
+      owasp_mcp: [MCP03, MCP05, MCP07]
+      owasp_asi: [ASI02, ASI05]
+      cosai: [T3]
+      maestro: [L3]
+      eu_ai_act: [Art.15]
+      mitre_atlas: [AML.T0054, AML.T0055]
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 4. DATA EXFILTRATION
+  # ═══════════════════════════════════════════════════════════════════════════
+  data-exfiltration:
+    name: Data Exfiltration
+    description: >
+      Data exfiltration paths — via HTTP, DNS, headers, timing channels,
+      clipboard, environment variables, steganography, covert channels,
+      cross-session leakage, and cross-trust-boundary data flow.
+    analysis_technique: taint-tracking-exfil-sinks
+    migration_priority: 6
+    rules:
+      - A3   # Suspicious URLs in Tool Description
+      - F3   # Data Flow Risk — Source to Sink
+      - F7   # Multi-Step Exfiltration Chain
+      - G7   # DNS-Based Data Exfiltration Channel
+      - I4   # Dangerous Resource URI Scheme
+      - I9   # Elicitation Credential Harvesting
+      - I13  # Cross-Config Lethal Trifecta
+      - K18  # Cross-Trust-Boundary Data Flow
+      - O1   # Steganographic Data Exfiltration
+      - O2   # HTTP Header Covert Channel
+      - O3   # AI-Mediated Exfiltration via Tool Arguments
+      - O4   # Clipboard and UI Exfiltration Injection
+      - O5   # Environment Variable Harvesting
+      - O6   # Server Fingerprinting via Error Responses
+      - O7   # Cross-Session Data Leakage
+      - O8   # Timing-Based Covert Channel
+      - O9   # Ambient Credential Exploitation
+      - O10  # Privacy-Violating Telemetry
+      - P3   # Cloud Metadata Service Access
+      - Q12  # Cross-Jurisdiction Data Routing via MCP
+    frameworks:
+      owasp_mcp: [MCP04]
+      owasp_asi: [ASI06, ASI07]
+      cosai: [T5]
+      maestro: [L2, L7]
+      eu_ai_act: [Art.15]
+      mitre_atlas: [AML.T0057, AML.T0062]
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 5. AUTHENTICATION & IDENTITY
+  # ═══════════════════════════════════════════════════════════════════════════
+  authentication:
+    name: Authentication & Identity
+    description: >
+      Authentication and identity management flaws — OAuth misuse,
+      token lifecycle, credential scope, session management, TOFU bypass,
+      cross-protocol auth confusion, and agent identity impersonation.
+    analysis_technique: ast-auth-pattern-matching
+    migration_priority: 5
+    rules:
+      - E1   # No Authentication Required
+      - H1   # MCP OAuth 2.0 Insecure Implementation
+      - K6   # Overly Broad OAuth Scopes
+      - K7   # Long-Lived Tokens Without Rotation
+      - K8   # Cross-Boundary Credential Sharing
+      - I15  # Transport Session Security
+      - N14  # Trust-On-First-Use Bypass (TOFU)
+      - Q6   # Agent Identity Impersonation
+      - Q8   # Cross-Protocol Authentication Confusion
+    frameworks:
+      owasp_mcp: [MCP07]
+      owasp_asi: [ASI03]
+      cosai: [T1]
+      maestro: [L6]
+      eu_ai_act: [Art.15]
+      mitre_atlas: [AML.T0055]
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 6. SUPPLY CHAIN SECURITY
+  # ═══════════════════════════════════════════════════════════════════════════
+  supply-chain-security:
+    name: Supply Chain Security
+    description: >
+      Build, publish, and distribution pipeline compromise — dependency
+      attacks (CVE, typosquatting, malware), CI/CD poisoning, registry
+      substitution, base image risks, manifest confusion, config injection.
+    analysis_technique: structured-file-parsing
+    migration_priority: 4
+    rules:
+      - D1   # Known CVEs in Dependencies
+      - D2   # Abandoned Dependencies
+      - D3   # Typosquatting Risk
+      - D4   # Excessive Dependency Count
+      - D5   # Known Malicious Package
+      - D6   # Weak Cryptography Dependencies
+      - D7   # Dependency Confusion Attack Risk
+      - K9   # Dangerous Post-Install Hooks
+      - K10  # Package Registry Substitution
+      - K11  # Missing Server Integrity Verification
+      - L1   # GitHub Actions Tag Poisoning
+      - L2   # Malicious Build Plugin Injection
+      - L3   # Dockerfile Base Image Supply Chain Risk
+      - L4   # MCP Config File Code Injection
+      - L5   # Package Manifest Confusion
+      - L6   # Config Directory Symlink Attack
+      - L7   # Transitive MCP Server Delegation
+      - L8   # Version Rollback / Downgrade Attack
+      - L9   # CI/CD Secret Exfiltration Patterns
+      - L10  # Registry Metadata Spoofing
+      - L11  # Environment Variable Injection via Config
+      - L12  # Build Artifact Tampering
+      - L13  # Build Credential File Theft
+      - L14  # Hidden Entry Point Mismatch
+      - Q4   # IDE MCP Configuration Injection
+      - Q13  # MCP Bridge Package Supply Chain Attack
+    frameworks:
+      owasp_mcp: [MCP08, MCP10]
+      owasp_asi: [ASI04]
+      cosai: [T6, T8, T11]
+      maestro: [L4]
+      eu_ai_act: [Art.9]
+      mitre_atlas: [AML.T0017, AML.T0060]
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 7. HUMAN OVERSIGHT
+  # ═══════════════════════════════════════════════════════════════════════════
+  human-oversight:
+    name: Human Oversight
+    description: >
+      Bypassed or missing safety confirmations — auto-approve patterns,
+      consent fatigue exploitation, capability escalation without re-approval,
+      missing kill switches, trust delegation confusion.
+    analysis_technique: ast-confirmation-pattern-detection
+    migration_priority: 1
+    rules:
+      - K4   # Missing Human Confirmation for Destructive Ops
+      - K5   # Auto-Approve / Bypass Confirmation Pattern
+      - I12  # Capability Escalation Post-Initialization
+      - M5   # Tool Position Bias Exploitation
+      - M6   # Progressive Context Poisoning Enablers
+      - Q5   # MCP Gateway Trust Delegation Confusion
+      - Q15  # A2A/MCP Protocol Boundary Confusion
+    frameworks:
+      owasp_mcp: [MCP06]
+      owasp_asi: [ASI09]
+      cosai: [T2, T9]
+      maestro: [L6]
+      eu_ai_act: [Art.14]
+      mitre_atlas: []
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 8. AUDIT & LOGGING
+  # ═══════════════════════════════════════════════════════════════════════════
+  audit-logging:
+    name: Audit & Logging
+    description: >
+      Missing or compromised audit trails — absent structured logging,
+      log destruction, log tampering, insufficient audit context for
+      incident response.
+    analysis_technique: ast-logger-analysis
+    migration_priority: 2
+    rules:
+      - K1   # Absent Structured Logging
+      - K2   # Audit Trail Destruction
+      - K3   # Audit Log Tampering
+      - K20  # Insufficient Audit Context in Logging
+      - E3   # Response Time Anomaly
+    frameworks:
+      owasp_mcp: [MCP09]
+      owasp_asi: [ASI10]
+      cosai: [T12]
+      maestro: [L5]
+      eu_ai_act: [Art.12]
+      mitre_atlas: []
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 9. MULTI-AGENT SECURITY
+  # ═══════════════════════════════════════════════════════════════════════════
+  multi-agent-security:
+    name: Multi-Agent Security
+    description: >
+      Cross-agent attack propagation — config poisoning, shared memory
+      injection, credential propagation between agents, collusion
+      preconditions, lethal trifecta, workflow manipulation.
+    analysis_technique: capability-graph-cross-config
+    migration_priority: 7
+    rules:
+      - H3   # Multi-Agent Propagation Risk
+      - F1   # Lethal Trifecta
+      - F6   # Circular Data Loop
+      - J1   # Cross-Agent Configuration Poisoning
+      - K14  # Agent Credential Propagation via Shared State
+      - K15  # Multi-Agent Collusion Preconditions
+      - Q9   # Agentic Workflow DAG Manipulation
+      - Q10  # Multi-Server Capability Composition Attack
+    frameworks:
+      owasp_mcp: [MCP01, MCP04, MCP05]
+      owasp_asi: [ASI07]
+      cosai: [T9]
+      maestro: [L7]
+      eu_ai_act: [Art.14]
+      mitre_atlas: [AML.T0058, AML.T0058.001]
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 10. PROTOCOL & TRANSPORT
+  # ═══════════════════════════════════════════════════════════════════════════
+  protocol-transport:
+    name: Protocol & Transport
+    description: >
+      JSON-RPC and transport layer vulnerabilities — batch abuse,
+      notification flooding, session hijacking, ID collision, race
+      conditions, request smuggling, version downgrade, spec compliance.
+    analysis_technique: ast-jsonrpc-handler-analysis
+    migration_priority: 5
+    rules:
+      - E2   # Insecure Transport
+      - F4   # MCP Spec Non-Compliance
+      - I8   # Sampling Cost / Resource Theft
+      - I10  # Elicitation URL Redirect Risk
+      - N1   # JSON-RPC Batch Request Abuse
+      - N2   # JSON-RPC Notification Flooding
+      - N3   # JSON-RPC Request ID Collision
+      - N5   # Capability Downgrade Deception
+      - N6   # SSE Reconnection Hijacking
+      - N7   # Progress Token Prediction and Injection
+      - N8   # Cancellation Race Condition
+      - N10  # Incomplete Handshake Denial of Service
+      - N11  # Protocol Version Downgrade Attack
+      - N13  # HTTP Chunked Transfer Smuggling
+      - N15  # JSON-RPC Method Name Confusion
+      - Q1   # Dual-Protocol Schema Constraint Loss
+      - Q3   # Localhost MCP Service Hijacking
+      - Q14  # Concurrent MCP Server Race Condition
+    frameworks:
+      owasp_mcp: [MCP07]
+      owasp_asi: []
+      cosai: [T7]
+      maestro: [L4]
+      eu_ai_act: [Art.15]
+      mitre_atlas: [AML.T0061]
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 11. DENIAL OF SERVICE
+  # ═══════════════════════════════════════════════════════════════════════════
+  denial-of-service:
+    name: Denial of Service
+    description: >
+      Denial of service and resource exhaustion — unbounded recursion,
+      missing timeouts, cost amplification, response bombs, excessive tool
+      count, missing circuit breakers and sandbox enforcement.
+    analysis_technique: ast-loop-recursion-timeout-analysis
+    migration_priority: 10
+    rules:
+      - K16  # Unbounded Recursion / Missing Depth Limits
+      - K17  # Missing Timeout or Circuit Breaker
+      - K19  # Missing Runtime Sandbox Enforcement
+      - P9   # Missing Container Resource Limits
+      - M7   # Tool Response Structure Bomb
+      - M8   # Inference Cost Amplification
+      - E4   # Excessive Tool Count
+    frameworks:
+      owasp_mcp: [MCP07]
+      owasp_asi: [ASI08]
+      cosai: [T10]
+      maestro: [L4]
+      eu_ai_act: [Art.15]
+      mitre_atlas: []
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 12. CONTAINER & RUNTIME
+  # ═══════════════════════════════════════════════════════════════════════════
+  container-runtime:
+    name: Container & Runtime
+    description: >
+      Runtime environment misconfigurations — container escape vectors,
+      socket mounts, host filesystem access, network isolation, privilege
+      escalation via capabilities, TLS bypass, crypto weaknesses.
+    analysis_technique: structured-file-parsing-docker-k8s
+    migration_priority: 3
+    rules:
+      - P1   # Docker Socket Mount
+      - P2   # Dangerous Container Capabilities
+      - P4   # TLS Certificate Validation Bypass
+      - P5   # Secrets in Container Build Layers
+      - P6   # LD_PRELOAD and Shared Library Hijacking
+      - P7   # Sensitive Host Filesystem Mount
+      - P8   # Insecure Cryptographic Mode or Static IV
+      - P10  # Host Network Mode
+      - Q7   # Desktop Extension Privilege Chain
+      - I11  # Over-Privileged Root Declaration
+    frameworks:
+      owasp_mcp: [MCP07]
+      owasp_asi: []
+      cosai: [T8]
+      maestro: [L4]
+      eu_ai_act: [Art.15]
+      mitre_atlas: [T1611, T1552]
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 13. MODEL MANIPULATION
+  # ═══════════════════════════════════════════════════════════════════════════
+  model-manipulation:
+    name: Model Manipulation
+    description: >
+      Model-specific attacks — special token injection, tokenizer boundary
+      manipulation, reasoning chain hijacking, prompt extraction, and
+      schema-level weaknesses that AI agents exploit (missing validation,
+      dangerous defaults, schema-less tools, unconstrained properties).
+    analysis_technique: token-entropy-linguistic-analysis
+    migration_priority: 10
+    rules:
+      - M1   # Special Token Injection in Tool Metadata
+      - M2   # TokenBreak Boundary Manipulation
+      - M3   # Reasoning Chain Manipulation
+      - M4   # Reasoning Loop Induction
+      - M9   # Model-Specific System Prompt Extraction
+      - B1   # Missing Input Validation
+      - B2   # Dangerous Parameter Types
+      - B3   # Excessive Parameter Count
+      - B4   # Schema-less Tool
+      - B6   # Unconstrained Additional Properties
+      - B7   # Dangerous Default Parameter Values
+      - J4   # Health Endpoint Information Disclosure
+    frameworks:
+      owasp_mcp: [MCP01, MCP06, MCP07]
+      owasp_asi: [ASI01, ASI08]
+      cosai: [T4, T10]
+      maestro: [L1]
+      eu_ai_act: [Art.15]
+      mitre_atlas: [AML.T0054, AML.T0056, AML.T0058]

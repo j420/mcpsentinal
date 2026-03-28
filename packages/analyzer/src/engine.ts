@@ -199,6 +199,14 @@ export class AnalysisEngine {
     context: AnalysisContext
   ): FindingInput[] {
     switch (rule.detect.type) {
+      case "typed": {
+        const impl = getTypedRule(rule.id);
+        if (impl) {
+          return impl.analyze(context).map((f: TypedFinding) => this.toFindingInput(f));
+        }
+        logger.warn({ rule: rule.id }, "Typed rule has no TypeScript implementation — skipping");
+        return [];
+      }
       case "regex":
         return this.runRegexRule(rule, context);
       case "schema-check":

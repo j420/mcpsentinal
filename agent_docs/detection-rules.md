@@ -1,7 +1,29 @@
 # MCP Sentinel — Detection Rules Specification
 ## P8 Detection Rule Engineer Output — v4.0 (with P1 Threat Intelligence + 2026 Attack Surface)
 
-### Rule Categories
+### Risk Domain Categories (Framework-Driven)
+
+177 rules are organized into **13 risk domains** derived from cross-referencing 6 compliance frameworks. Each domain maps to specific controls in OWASP MCP Top 10, OWASP Agentic Top 10, CoSAI MCP Security, MAESTRO, EU AI Act, and MITRE ATLAS. See `rules/framework-registry.yaml` for the complete many-to-many mapping.
+
+| # | Risk Domain | Count | Frameworks | Migration Priority |
+|---|---|---|---|---|
+| 1 | **Prompt Injection** | 21 | MCP01, ASI01, CoSAI-T4, MAESTRO-L3, Art.15, AML.T0054 | 8 |
+| 2 | **Tool Poisoning** | 15 | MCP02, ASI02, CoSAI-T4/T6/T9, MAESTRO-L3/L7, Art.13 | 10 |
+| 3 | **Code Vulnerabilities** | 19 | MCP03/05/07, ASI02/05, CoSAI-T3, MAESTRO-L3, Art.15 | 9 |
+| 4 | **Data Exfiltration** | 20 | MCP04, ASI06/07, CoSAI-T5, MAESTRO-L2/L7, Art.15, AML.T0057 | 6 |
+| 5 | **Authentication & Identity** | 9 | MCP07, ASI03, CoSAI-T1, MAESTRO-L6, Art.15, AML.T0055 | 5 |
+| 6 | **Supply Chain Security** | 26 | MCP08/10, ASI04, CoSAI-T6/T8/T11, MAESTRO-L4, Art.9 | 4 |
+| 7 | **Human Oversight** | 7 | MCP06, ASI09, CoSAI-T2/T9, MAESTRO-L6, **Art.14** | **1** |
+| 8 | **Audit & Logging** | 5 | MCP09, ASI10, CoSAI-T12, MAESTRO-L5, **Art.12** | **2** |
+| 9 | **Multi-Agent Security** | 8 | MCP01/04/05, ASI07, CoSAI-T9, MAESTRO-L7, Art.14 | 7 |
+| 10 | **Protocol & Transport** | 18 | MCP07, CoSAI-T7, MAESTRO-L4, Art.15, AML.T0061 | 5 |
+| 11 | **Denial of Service** | 7 | MCP07, ASI08, CoSAI-T10, MAESTRO-L4, Art.15 | 10 |
+| 12 | **Container & Runtime** | 10 | MCP07, CoSAI-T8, MAESTRO-L4, Art.15 | 3 |
+| 13 | **Model Manipulation** | 12 | MCP01/06/07, ASI01/08, CoSAI-T4/T10, MAESTRO-L1, Art.15, AML.T0054/T0056 | 10 |
+
+Migration priority 1 = migrate first (EU AI Act August 2026 deadline), 10 = migrate last.
+
+### Legacy Rule Categories (A–Q)
 
 | Category | Code | Requires Source Code | Rule Count | Authored By |
 |----------|------|---------------------|------------|-------------|

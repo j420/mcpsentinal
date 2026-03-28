@@ -57,6 +57,28 @@ enabled: true                             # Set false to disable without deletin
 | `infrastructure-runtime` | `config_score` | P1–P10 |
 | `cross-ecosystem-emergent` | `config_score` | Q1–Q15 |
 
+## Risk Domains (Framework-Driven Categories)
+
+The 13 risk domains are derived from cross-referencing 6 compliance frameworks (OWASP MCP, OWASP ASI, CoSAI, EU AI Act, MITRE ATLAS, MAESTRO). Each rule belongs to exactly one primary risk domain. See `rules/framework-registry.yaml` for the complete mapping.
+
+| Risk Domain | Description | Rule Count | Migration Priority |
+|---|---|---|---|
+| `prompt-injection` | Prompt injection via descriptions, schemas, init fields, resources | 21 | 8 |
+| `tool-poisoning` | Deceptive names, annotations, namespace squatting, drift | 15 | 10 |
+| `code-vulnerabilities` | Injection, traversal, SSRF, deserialization, eval | 19 | 9 |
+| `data-exfiltration` | Exfiltration via HTTP, DNS, headers, timing, env vars | 20 | 6 |
+| `authentication` | OAuth, token lifecycle, credential scope, session mgmt | 9 | 5 |
+| `supply-chain-security` | Dependencies, CI/CD, registries, base images, config injection | 26 | 4 |
+| `human-oversight` | Confirmation bypass, consent fatigue, kill switches | 7 | 1 |
+| `audit-logging` | Logging, audit trails, monitoring context | 5 | 2 |
+| `multi-agent-security` | Cross-agent propagation, shared memory, config poisoning | 8 | 7 |
+| `protocol-transport` | JSON-RPC, transport, session, batch abuse, smuggling | 18 | 5 |
+| `denial-of-service` | Recursion, timeouts, resource exhaustion, cost amplification | 7 | 10 |
+| `container-runtime` | Containers, sockets, filesystem, network, crypto | 10 | 3 |
+| `model-manipulation` | Special tokens, reasoning chains, schema weaknesses | 12 | 10 |
+
+Migration priority 1 = migrate first (EU AI Act deadline-driven), 10 = migrate last.
+
 ## Valid Context Types (for `detect.context`)
 
 | Context | What Gets Scanned | Used By |

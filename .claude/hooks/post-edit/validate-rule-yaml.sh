@@ -35,7 +35,7 @@ done
 
 # Check detect.type exists
 if ! grep -qE "^\s+type:" "$FILE_PATH"; then
-  ERRORS+=("Missing 'detect.type' — must be one of: regex, schema-check, behavioral, composite")
+  ERRORS+=("Missing 'detect.type' — must be one of: typed, regex, schema-check, behavioral, composite")
 fi
 
 # Check test_cases has true_positive entries
