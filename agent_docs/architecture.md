@@ -137,6 +137,7 @@
 - Process: Two-phase analysis:
   1. **Specialized engines** (DescriptionAnalyzer, CodeAnalyzer, SchemaAnalyzer, DependencyAnalyzer, ProtocolAnalyzer) run first for rules they own
   2. **TypedRule dispatch** for rules not covered by engines — 177 TypedRules using AST taint, capability graph, entropy, structural parsing
+- Companion rule pattern: Some parent rules emit findings for multiple rule IDs (e.g. F1→F2/F3/F6, I1→I2, L5→L14). Companion rules are registered as stubs returning `[]` to prevent engine warnings — the parent rule produces their findings during its own analysis.
 - Output: `Finding[]` → findings table (with confidence scores 0.0-1.0)
 - Error handling: Per-rule error isolation (one rule failing doesn't stop others)
 - Data quality: Every finding must have rule_id, evidence, remediation, confidence

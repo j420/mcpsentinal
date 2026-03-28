@@ -247,6 +247,16 @@ Dynamic tool invocation (actually calling MCP server tools with test inputs) is 
 
 ---
 
+### Companion Rule Pattern
+
+Some parent rules emit findings for multiple rule IDs during a single analysis pass. The "child" rules are registered as stub TypedRules (returning `[]`) to prevent engine dispatch warnings — the parent rule already produces their findings. All 177/177 rules are registered.
+
+| Parent Rule | Companion Rules | Detector File |
+|-------------|----------------|---------------|
+| F1 (Lethal Trifecta) | F2, F3, F6 | `f1-lethal-trifecta.ts` |
+| I1 (Annotation Deception) | I2 | `cross-tool-risk-detector.ts` |
+| L5 (Manifest Confusion) | L14 | `supply-chain-detector.ts` |
+
 ### Engine Implementation Status
 
 | Check Type | Handler | Status |

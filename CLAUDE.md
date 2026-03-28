@@ -246,6 +246,14 @@ allow both `paths` and `paths-ignore` on the same event trigger.
 ### [RESOLVED] Railway "Failed to find Server Action" on Redeploy
 Fixed: Added `generateBuildId()` to `next.config.ts` (unique build ID per deploy) and
 `RAILWAY_GIT_COMMIT_SHA` build ARG to Dockerfile (busts Docker layer cache).
+
+### [RESOLVED] Companion Rules Missing TypedRule Registration (F2, F3, F6, I2, L14)
+Five rules were emitted as "companion findings" by parent rules (F1→F2/F3/F6, I1→I2, L5→L14)
+but were never registered as standalone TypedRules. The engine logged
+"Typed rule has no TypeScript implementation — skipping" for each on every scan.
+Fixed: Registered stub TypedRules that return `[]` (parent rules already produce their findings).
+All 177/177 rules now have registered TypedRule implementations. Zero engine warnings remain.
+Pipeline audit confirmed: no rules missed during scans, all data flows intact.
 ## Current Milestone
 Read @agent_docs/product-milestones.md for the current sprint focus.
 **Active layer:** Check the milestones doc. Only work on the active layer unless explicitly told otherwise. Each layer depends on the one below it. Don't skip ahead.
