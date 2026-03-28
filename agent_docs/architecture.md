@@ -19,13 +19,14 @@
 - Decision: Shared Zod schemas define the data contract between pipeline stages.
 - Rationale: Runtime validation + TypeScript types from single source. Catches data quality issues at stage boundaries.
 
-**ADR-005: YAML detection rules interpreted by engine**
-- Decision: Detection rules stored as YAML in rules/ directory. Analyzer interprets them.
-- Rationale: Adding a rule should never require engine code changes. Rules are data.
+**ADR-005: YAML metadata + TypeScript TypedRules**
+- Decision: YAML files in rules/ define metadata only (id, severity, owasp, mitre, remediation, test_cases). All detection logic lives in TypeScript TypedRule implementations in `packages/analyzer/src/rules/implementations/`.
+- Rationale: TypeScript enables AST taint analysis, capability graph algorithms, entropy scoring, and structural parsing — techniques impossible in YAML regex. All 177 rules migrated to TypedRules.
+- History: Originally YAML regex (v0.1). Migrated to TypedRules (v0.2). Zero YAML regex patterns remain.
 
 **ADR-006: No LLM in v1 — all analysis is deterministic**
-- Decision: No LLM API calls in v1. All detection is regex, schema-check, behavioral, or composite logic.
-- Rationale: Correctness over coverage. A rule that fires 100% of the time beats an LLM that fires 80% of the time on "suspicious intent." LLM classification added in v1.1 only where a deterministic rule demonstrably fails.
+- Decision: No LLM API calls in v1. All detection is AST taint analysis, capability graph algorithms, Shannon entropy, structural parsing, and linguistic pattern scoring.
+- Rationale: Correctness over coverage. Deterministic rules produce reproducible results. LLM classification added in v1.1 only where a deterministic rule demonstrably fails.
 - Trigger: A rule category shows >5% false-positive rate in Layer 5 red team audit.
 
 **ADR-007: Never invoke MCP server tools — legal/ethical boundary**
@@ -133,10 +134,13 @@
 
 **Stage 3: Analysis (packages/analyzer)**
 - Input: Server record with tools, parameters, source code (if available)
-- Process: Run all applicable detection rules, produce findings
-- Output: `Finding[]` → findings table
+- Process: Two-phase analysis:
+  1. **Specialized engines** (DescriptionAnalyzer, CodeAnalyzer, SchemaAnalyzer, DependencyAnalyzer, ProtocolAnalyzer) run first for rules they own
+  2. **TypedRule dispatch** for rules not covered by engines — 177 TypedRules using AST taint, capability graph, entropy, structural parsing
+- Output: `Finding[]` → findings table (with confidence scores 0.0-1.0)
 - Error handling: Per-rule error isolation (one rule failing doesn't stop others)
-- Data quality: Every finding must have rule_id, evidence, remediation
+- Data quality: Every finding must have rule_id, evidence, remediation, confidence
+- Analysis infrastructure: `taint-ast.ts` (803 lines), `taint.ts` (676 lines), `capability-graph.ts` (761 lines), `module-graph.ts` (826 lines), `entropy.ts` (449 lines), `similarity.ts` (477 lines)
 
 **Stage 4: Scoring (packages/scorer)**
 - Input: Findings for a server
