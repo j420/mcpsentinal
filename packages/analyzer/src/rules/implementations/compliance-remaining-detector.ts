@@ -7,6 +7,7 @@
 import type { TypedRule, TypedFinding } from "../base.js";
 import { registerTypedRule } from "../base.js";
 import type { AnalysisContext } from "../../engine.js";
+import type { OwaspCategory } from "@mcp-sentinel/database";
 
 function isTestFile(s: string) { return /(?:__tests?__|\.(?:test|spec)\.)/.test(s); }
 function lineNum(s: string, i: number) { return s.substring(0, i).split("\n").length; }
@@ -16,7 +17,7 @@ type RCfg = {
   source: "code" | "tools" | "metadata" | "deps" | "conn";
   patterns: Array<{ regex: RegExp; desc: string }>;
   severity: "critical" | "high" | "medium" | "low";
-  owasp: string; mitre: string | null; remediation: string;
+  owasp: OwaspCategory; mitre: string | null; remediation: string;
   confidence: number;
   excludePatterns?: RegExp[];
 };
@@ -39,7 +40,7 @@ function buildRule(cfg: RCfg): TypedRule {
               rule_id: cfg.id, severity: cfg.severity,
               evidence: `${desc} at line ${line}: "${match[0].slice(0, 80)}".`,
               remediation: cfg.remediation,
-              owasp_category: cfg.owasp as any, mitre_technique: cfg.mitre,
+              owasp_category: cfg.owasp, mitre_technique: cfg.mitre,
               confidence: cfg.confidence, metadata: { analysis_type: "structural", line },
             });
             break;
@@ -58,7 +59,7 @@ function buildRule(cfg: RCfg): TypedRule {
                 rule_id: cfg.id, severity: cfg.severity,
                 evidence: `Tool "${tool.name}": ${desc}.`,
                 remediation: cfg.remediation,
-                owasp_category: cfg.owasp as any, mitre_technique: cfg.mitre,
+                owasp_category: cfg.owasp, mitre_technique: cfg.mitre,
                 confidence: cfg.confidence, metadata: { tool_name: tool.name },
               });
               break;

@@ -20,69 +20,7 @@ import { damerauLevenshtein } from "../analyzers/similarity.js";
 function isTestFile(s: string) { return /(?:__tests?__|\.(?:test|spec)\.)/.test(s); }
 function lineNum(s: string, i: number) { return s.substring(0, i).split("\n").length; }
 
-// ─── F2: High-Risk Capability Profile ─────────────────────────────────────
-
-registerTypedRule({
-  id: "F2", name: "High-Risk Capability Profile",
-  analyze(ctx) {
-    if (ctx.tools.length === 0) return [];
-    const graph = buildCapabilityGraph(ctx.tools);
-    const findings: TypedFinding[] = [];
-
-    const dangerousCombos: Array<{ caps: string[]; desc: string }> = [
-      { caps: ["executes-code", "sends-network"], desc: "code execution + network send" },
-      { caps: ["accesses-filesystem", "sends-network"], desc: "filesystem + network send" },
-      { caps: ["manages-credentials", "sends-network"], desc: "credential access + network send" },
-    ];
-
-    for (const { caps, desc } of dangerousCombos) {
-      const hasAll = caps.every(cap =>
-        graph.nodes.some(n => n.capabilities.some(c => c.capability === cap && c.confidence >= 0.5))
-      );
-      if (hasAll) {
-        findings.push({
-          rule_id: "F2", severity: "medium",
-          evidence: `Server has high-risk capability combination: ${desc}.`,
-          remediation: "Separate dangerous capability combinations into isolated servers.",
-          owasp_category: "MCP06-excessive-permissions", mitre_technique: null,
-          confidence: 0.75, metadata: { analysis_type: "capability_graph", combo: desc },
-        });
-      }
-    }
-    return findings;
-  },
-});
-
-// ─── F3: Data Flow Risk Source→Sink ───────────────────────────────────────
-
-registerTypedRule({
-  id: "F3", name: "Data Flow Risk Source→Sink",
-  analyze(ctx) {
-    if (ctx.tools.length < 2) return [];
-    const graph = buildCapabilityGraph(ctx.tools);
-    const findings: TypedFinding[] = [];
-
-    const readers = graph.nodes.filter(n =>
-      n.capabilities.some(c => (c.capability === "reads-private-data" || c.capability === "manages-credentials") && c.confidence >= 0.5)
-    );
-    const senders = graph.nodes.filter(n =>
-      n.capabilities.some(c => c.capability === "sends-network" && c.confidence >= 0.5)
-    );
-
-    if (readers.length > 0 && senders.length > 0) {
-      findings.push({
-        rule_id: "F3", severity: "high",
-        evidence:
-          `Data flow risk: readers [${readers.map(r => r.name).join(", ")}] + senders [${senders.map(s => s.name).join(", ")}]. ` +
-          `Private data can flow from read tools to network send tools.`,
-        remediation: "Add data classification. Prevent sensitive data from reaching network-facing tools.",
-        owasp_category: "MCP04-data-exfiltration", mitre_technique: "AML.T0057",
-        confidence: 0.78, metadata: { readers: readers.map(r => r.name), senders: senders.map(s => s.name) },
-      });
-    }
-    return findings;
-  },
-});
+// F2 and F3 are already handled by f1-lethal-trifecta.ts (graph-based implementation)
 
 // ─── F4: MCP Spec Non-Compliance ──────────────────────────────────────────
 
