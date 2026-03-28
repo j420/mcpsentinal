@@ -247,6 +247,46 @@ Dynamic tool invocation (actually calling MCP server tools with test inputs) is 
 
 ---
 
+### Companion Rule Pattern
+
+There are two distinct patterns for how a single detector file covers multiple rule IDs:
+
+#### 1. Stub-Registered Companion Rules (5 rules)
+
+Some parent rules emit findings for multiple rule IDs during a single `analyze()` pass. The "child" rules are registered as **stub TypedRules** (returning `[]`) to prevent engine dispatch warnings — the parent rule already produces their findings. All 177/177 rules are registered.
+
+| Parent Rule | Stub Companion Rules | Why Companion (Not Separate) | Detector File |
+|-------------|---------------------|------------------------------|---------------|
+| F1 (Lethal Trifecta) | F2, F3, F6 | F2 (capability profile), F3 (data flow), and F6 (circular loop) are detected as byproducts of F1's capability graph analysis — the same graph traversal that identifies the lethal trifecta also identifies these sub-patterns | `f1-lethal-trifecta.ts` |
+| I1 (Annotation Deception) | I2 | I2 (missing destructive annotation) is the inverse check of I1 (deceptive annotation) — both are evaluated during the same annotation inspection pass | `cross-tool-risk-detector.ts` |
+| L5 (Manifest Confusion) | L14 | L14 (bin field shadowing / exports divergence) is detected during L5's entry point analysis of package.json manifests | `supply-chain-detector.ts` |
+
+#### 2. Multi-Rule Emission (Full TypedRule Registrations)
+
+Most detector files register **multiple full TypedRule implementations** — each with its own `id`, `analyze()` method, and independent engine dispatch. These are NOT stubs; the engine dispatches each rule independently. This is a code-organization pattern (grouping related rules in one file), not a parent-child dependency.
+
+| Detector File | Rule IDs Registered | Pattern |
+|---------------|-------------------|---------|
+| `description-schema-detector.ts` | A1, A2, A3, A4, A5, A8, B1, B2, B3, B4, B5, B6, B7 | Factory (`makeRule()`) produces 13 independent TypedRules |
+| `tainted-execution-detector.ts` | C4, C12, C13, C16, K9, J2 | Parameterized `TaintBasedRule` class instantiated per rule config |
+| `code-security-deep-detector.ts` | C2, C5, C10, C14 | 4 separate TypedRule classes |
+| `code-remaining-detector.ts` | C3, C6, C7, C8, C9, C11, C15 | 7 inline TypedRule objects |
+| `dependency-behavioral-detector.ts` | D1, D2, D4, D5, D6, D7, E1, E2, E3, E4 | 10 inline TypedRule objects |
+| `ecosystem-adversarial-detector.ts` | F4, F5, G6, H1, H3 | 5 inline TypedRule objects |
+| `ai-manipulation-detector.ts` | G1, G2, G3, G5, H2 | 5 separate TypedRule classes |
+| `cross-tool-risk-detector.ts` | I1, I13, I16 (+ I2 stub) | 3 full TypedRule classes + 1 stub |
+| `protocol-surface-remaining-detector.ts` | I3–I15 (excl. I2), J3–J7 | 17 inline TypedRule objects |
+| `config-poisoning-detector.ts` | J1, L4, L11, Q4 | 4 separate TypedRule classes |
+| `secret-exfil-detector.ts` | L9, K2, G7 | 3 separate TypedRule classes |
+| `supply-chain-detector.ts` | L5, L12, K10 (+ L14 stub) | 3 full TypedRule classes + 1 stub |
+| `advanced-supply-chain-detector.ts` | L1, L2, L6, L7, L13, K3, K5, K8 | 8 separate TypedRule classes |
+| `protocol-ai-runtime-detector.ts` | M1, M3, M6, M9, N4–N15 | 13 separate TypedRule classes |
+| `infrastructure-detector.ts` | P1–P7 | 7 separate TypedRule classes |
+| `data-privacy-cross-ecosystem-detector.ts` | O1–O9, Q1–Q13 | Factory-built TypedRules |
+| `compliance-remaining-detector.ts` | K1, K4, K6, K7, K11–K20, L3, L8, L10, L15, M2, M4, M5, M7, M8, N1–N3, O4–O10, P8–P10, Q2, Q3, Q5–Q15 | Factory (`buildRule()`) produces rules from config array |
+
+Single-rule detector files: `c1-command-injection.ts` (C1), `a9-encoded-instructions.ts` (A9), `d3-typosquatting.ts` (D3), `g4-context-saturation.ts` (G4). Also `a6-unicode-homoglyph.ts` (A6 + A7 as 2 independent classes) and `f1-lethal-trifecta.ts` (F1 + F7 as 2 independent classes, plus 3 stubs).
+
 ### Engine Implementation Status
 
 | Check Type | Handler | Status |
