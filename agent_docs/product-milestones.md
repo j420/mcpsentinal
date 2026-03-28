@@ -59,8 +59,8 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
   - L: Supply Chain Advanced (15), M: AI Runtime Exploitation (9), N: Protocol Edge Cases (15)
   - O: Data Privacy Attacks (10), P: Infrastructure Runtime (10), Q: Cross-Ecosystem Emergent (15)
 - [x] Analysis engine — `packages/analyzer/src/engine.ts` (specialized engines + 177 TypedRule dispatch)
-- [x] **ALL 177 rules migrated to TypedRules** — AST taint, capability graph, entropy, structural parsing (17 detector files, ~13K lines)
-- [x] 882 tests passing (833 analyzer + 49 red-team), 30+ per category across 14 test files
+- [x] **ALL 177 rules migrated to TypedRules** — AST taint, capability graph, entropy, structural parsing (23 detector files, ~13K lines)
+- [x] 1051 tests passing (1002 analyzer + 49 red-team), 30+ per category across 16 test files
 - [x] Rule loader — `packages/analyzer/src/rule-loader.ts` (YAML metadata interpretation)
 - [x] npm package published: `mcp-sentinel-scanner@0.2.0` with all TypedRules bundled
 - [x] Tool fingerprinting — `packages/analyzer/src/tool-fingerprint.ts`
@@ -144,7 +144,7 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 - [x] Ecosystem intelligence reports — `packages/reports/src/` (generator.ts, category-breakdown.ts, ecosystem-stats.ts, trend-analysis.ts, cli.ts)
   - Category breakdown, ecosystem stats, trend analysis, CLI for report generation
 
-**Verification (2026-03-24):** All 870 tests pass across 19 test files. G1 sanitization bug fixed. Typecheck clean. CI green.
+**Verification (2026-03-28):** All 1051 tests pass across 21 test files (1002 analyzer + 49 red-team). All 177/177 TypedRules registered. Pipeline audit clean. CI green.
 
 **Success Criteria:** Detection precision >80% across all rule categories.
 
@@ -200,7 +200,7 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 | Benchmark | `packages/benchmark` | index.ts, corpus.ts, competitors.ts, ground-truth.ts, report.ts | — |
 | Reports | `packages/reports` | generator.ts, category-breakdown.ts, ecosystem-stats.ts, trend-analysis.ts, cli.ts | — |
 | CI/CD | `.github/workflows/` | ci.yml, crawl.yml, scan.yml, accuracy.yml, publish.yml | — |
-| **Total** | **16 packages** | **~300 KB of core logic** | **19 test files, 870 tests** |
+| **Total** | **16 packages** | **~300 KB of core logic** | **21 test files, 1051 tests** |
 
 ---
 

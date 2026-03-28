@@ -92,7 +92,7 @@ pnpm deploy:web                  # Deploy registry website
 - Use structured logging (pino) with correlation IDs across pipeline stages.
 - Database queries go in `packages/database/queries/` — never inline SQL in other packages.
 - All detection rules get test cases: minimum 2 true positives, 2 true negatives per rule.
-- 882 tests across 14 test files (833 analyzer + 49 red-team), 30+ per category.
+- 1051 tests across 16 test files (1002 analyzer + 49 red-team), 30+ per category.
 ## Working with Detection Rules
 Read @agent_docs/detection-rules.md before touching rules/ or packages/analyzer/.
 
@@ -237,7 +237,7 @@ All 177 detection rules now have TypeScript TypedRule implementations using AST 
 capability graph algorithms, Shannon entropy, structural parsing, and linguistic scoring.
 Zero YAML regex patterns remain. YAML files contain metadata only (`detect.type: typed`).
 Engine auto-registers all TypedRules via side-effect import in `engine.ts`.
-882 tests passing (833 analyzer + 49 red-team). npm package `mcp-sentinel-scanner@0.2.0` published.
+1051 tests passing (1002 analyzer + 49 red-team). npm package `mcp-sentinel-scanner@0.2.0` published.
 
 ### [RESOLVED] CI Workflow Invalid — paths + paths-ignore conflict
 Fixed: Removed `paths-ignore` blocks from `.github/workflows/ci.yml`. GitHub Actions does not
