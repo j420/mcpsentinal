@@ -8,6 +8,7 @@
 import type { TypedRule, TypedFinding } from "../base.js";
 import { registerTypedRule } from "../base.js";
 import type { AnalysisContext } from "../../engine.js";
+import type { OwaspCategory } from "@mcp-sentinel/database";
 import { analyzeASTTaint } from "../analyzers/taint-ast.js";
 
 function isTestFile(source: string): boolean {
@@ -24,7 +25,7 @@ function makePatternRule(config: {
   id: string;
   name: string;
   patterns: Array<{ regex: RegExp; desc: string; confidence: number }>;
-  owasp: string;
+  owasp: OwaspCategory;
   mitre: string;
   remediation: string;
   useTaint?: boolean;
@@ -54,7 +55,7 @@ function makePatternRule(config: {
                 `[AST taint] "${flow.source.expression}" (L${flow.source.line}) → ` +
                 `"${flow.sink.expression.slice(0, 50)}" (L${flow.sink.line}). ${flow.path.length} step(s).`,
               remediation: config.remediation,
-              owasp_category: config.owasp as any,
+              owasp_category: config.owasp,
               mitre_technique: config.mitre,
               confidence: flow.confidence,
               metadata: { analysis_type: "ast_taint" },
@@ -75,7 +76,7 @@ function makePatternRule(config: {
               severity: "critical",
               evidence: `${desc} at line ${line}: "${match[0].slice(0, 80)}".`,
               remediation: config.remediation,
-              owasp_category: config.owasp as any,
+              owasp_category: config.owasp,
               mitre_technique: config.mitre,
               confidence,
               metadata: { analysis_type: "structural", line },

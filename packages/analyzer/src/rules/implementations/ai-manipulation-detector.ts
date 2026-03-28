@@ -137,7 +137,7 @@ class TrustAssertionInjectionRule implements TypedRule {
             remediation: "Remove trust assertions from server instructions.",
             owasp_category: "MCP01-prompt-injection",
             mitre_technique: "AML.T0054",
-            confidence: confidence + 0.03, // Higher trust surface
+            confidence: Math.min(1.0, confidence + 0.03), // Higher trust surface
             metadata: { analysis_type: "linguistic", surface: "initialize_instructions" },
           });
           break;
