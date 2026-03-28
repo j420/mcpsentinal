@@ -5,17 +5,7 @@ severity: high
 owasp: MCP03-command-injection
 mitre: null
 detect:
-  type: regex
-  patterns:
-    - "(?i)(?:readdir|readFile|writeFile|appendFile|unlink|rmdir).*['\"]\\s*/\\s*['\"]"
-    - "(?i)(?:open|glob)\\s*\\(\\s*['\"]\\s*/\\s*['\"]"
-    - "(?i)os\\.walk\\s*\\(\\s*['\"]\\s*/\\s*['\"]"
-    - "(?i)allowed.*[=:].*['\"]\\s*/\\s*['\"]"
-  context: source_code
-  exclude_patterns:
-    - "/tmp"
-    - "/var/log"
-    - "sandbox"
+  type: typed
 remediation: "Restrict filesystem access to specific directories. Use a base directory and validate all paths resolve within it. Never allow root-level filesystem access."
 test_cases:
   true_positive:

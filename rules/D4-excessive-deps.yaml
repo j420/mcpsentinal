@@ -5,11 +5,7 @@ severity: low
 owasp: MCP08-dependency-vuln
 mitre: null
 detect:
-  type: schema-check
-  conditions:
-    check: dependency_count_exceeds
-    threshold: 50
-  context: metadata
+  type: typed
 remediation: "Reduce the number of direct dependencies. Each dependency increases the attack surface. Consider whether lighter alternatives exist."
 test_cases:
   true_positive:

@@ -24,8 +24,7 @@ mitre: AML.T0060
 # the env section is actually a code execution primitive.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Dangerous environment variable overrides in MCP config
     - "(?i)[\"']env[\"']\\s*:\\s*\\{[^}]*[\"'](?:LD_PRELOAD|DYLD_INSERT_LIBRARIES|DYLD_LIBRARY_PATH)[\"']"
     - "(?i)[\"']env[\"']\\s*:\\s*\\{[^}]*[\"']NODE_OPTIONS[\"']\\s*:\\s*[\"'][^\"']*(?:--require|--import|--loader|--experimental)"
@@ -41,10 +40,6 @@ detect:
     - "(?i)(?:Object\\.assign|spread).*process\\.env.*(?:config|mcp|settings).*env"
     # Env vars with shell expansion characters
     - "(?i)[\"']env[\"']\\s*:\\s*\\{[^}]*[\"']\\w+[\"']\\s*:\\s*[\"'][^\"']*(?:\\$\\(|`|&&|\\|\\||;)[^\"']*[\"']"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example|template"
-    - "(?i)[\"']env[\"']\\s*:\\s*\\{[^}]*[\"'](?:PORT|HOST|LOG_LEVEL|DEBUG|NODE_ENV)[\"']"
 remediation: "Validate all environment variables from MCP config against a strict allowlist. Never allow overriding PATH, LD_PRELOAD, NODE_OPTIONS, PYTHONPATH, or API base URLs from config files. Apply CVE-2026-21852 patches. Treat the env section of MCP configs as a security boundary, not just configuration data. Log all environment variable overrides for audit."
 test_cases:
   true_positive:

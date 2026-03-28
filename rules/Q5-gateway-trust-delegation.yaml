@@ -31,25 +31,7 @@ mitre: AML.T0054
 # blog (2025), OWASP ASI03 Identity & Privilege Abuse
 
 detect:
-  type: composite
-  conditions:
-    check: gateway_trust_delegation
-    # Patterns indicating MCP gateway/proxy functionality
-    gateway_patterns:
-      - "(?i)(mcp[_\\s-]?gateway|mcp[_\\s-]?proxy|mcp[_\\s-]?portal|mcp[_\\s-]?hub)"
-      - "(?i)(tool[_\\s-]?aggregat|server[_\\s-]?aggregat|multi[_\\s-]?server[_\\s-]?(?:proxy|gateway))"
-      - "(?i)(upstream[_\\s-]?(?:mcp|server)|backend[_\\s-]?(?:mcp|server))"
-      - "(?i)(proxy[_\\s-]?tool[_\\s-]?call|forward[_\\s-]?tool|relay[_\\s-]?mcp)"
-      - "(?i)(server[_\\s-]?registry|tool[_\\s-]?registry|mcp[_\\s-]?router)"
-    # Dangerous: forwarding auth tokens to backends without scoping
-    token_forwarding_patterns:
-      - "(?i)(forward|pass|relay|propagate).*(?:auth|token|credential|bearer).*(?:backend|upstream|server)"
-      - "(?i)(backend|upstream).*(?:auth|token|header).*(?:req|request|ctx|context)"
-    # Missing per-server consent/approval
-    missing_consent_patterns:
-      - "(?i)(?:auto[_\\s-]?approve|skip[_\\s-]?consent|bypass[_\\s-]?approval)"
-      - "(?i)(?:trust[_\\s-]?all|approve[_\\s-]?all).*(?:server|backend|upstream)"
-  context: metadata
+  type: typed
 remediation: "MCP gateways must implement per-backend-server consent and tool approval, not just gateway-level trust. Users must be able to see and approve individual backend servers, not just the gateway. Never forward user OAuth tokens to all backend servers — implement token scoping per backend. Apply tool description scanning (A1-A9 rules) to each backend independently. Implement gateway-level audit logging of which backend server handled each tool call."
 test_cases:
   true_positive:

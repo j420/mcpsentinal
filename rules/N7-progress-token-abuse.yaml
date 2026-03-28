@@ -5,8 +5,7 @@ severity: high
 owasp: MCP07-insecure-config
 mitre: AML.T0054
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Sequential/predictable progress tokens
     - "(?i)(?:progressToken|progress_token|_meta\\.progressToken)\\s*[:=]\\s*(?:(?:\\+\\+|counter|sequence|seq|\\d+))"
     # Progress notification sent without verifying token ownership
@@ -23,10 +22,6 @@ detect:
     - "(?i)(?:total|progressTotal|progress_total)\\s*[:=]\\s*(?:params|request|body|data)\\s*\\."
     # Progress notification without request correlation
     - "(?i)(?:sendProgress|notifications/progress)\\s*\\((?!.*(?:requestId|request_id|correlationId|tracking))"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example"
-    - "(?i)(?:validateToken|verifyProgress|crypto\\.random|uuid)"
 remediation: "Use unpredictable progress tokens (UUIDs or cryptographic random values). Validate that progress notification recipients match the original request sender. Do not accept progress tokens from untrusted input — a malicious server could inject fake progress notifications to manipulate client UI state or create timing side channels. Reference: MCP spec 2025-03-26 Section 5.1 (Progress)."
 test_cases:
   true_positive:

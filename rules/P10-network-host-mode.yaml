@@ -10,8 +10,7 @@ mitre: T1557
 # Unit42 Container Escape: host network enables ARP spoofing, mDNS scanning, service discovery.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Docker host network mode
     - "(?i)(?:network[_\\s-]?mode|--net|--network)\\s*[:=]\\s*[\"']?host[\"']?"
     - "(?i)hostNetwork\\s*:\\s*true"
@@ -27,10 +26,6 @@ detect:
     - "(?i)(?:nmap|masscan|zmap|net\\.createConnection).*(?:10\\.|172\\.(?:1[6-9]|2\\d|3[01])|192\\.168)"
     # ARP scanning from container
     - "(?i)(?:arp[_\\-]?scan|arping|arp\\.(?:request|scan))"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example"
-    - "(?i)network[_\\s-]?mode\\s*[:=]\\s*[\"']?(?:bridge|none|overlay)"
 remediation: "Never use host network mode for MCP server containers — it bypasses all network isolation, exposing host services and enabling ARP/mDNS attacks. Use bridge networking with explicit port mapping. In Kubernetes, set hostNetwork: false and apply NetworkPolicy resources to restrict both ingress and egress traffic. Implement egress controls to prevent MCP servers from scanning internal networks or reaching unintended external services."
 test_cases:
   true_positive:

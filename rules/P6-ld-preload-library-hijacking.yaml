@@ -11,8 +11,7 @@ mitre: T1574.006
 # MITRE ATT&CK T1574.006: Hijack Execution Flow: Dynamic Linker Hijacking.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # LD_PRELOAD in Dockerfiles or source code
     - "(?i)LD_PRELOAD\\s*[=:]"
     - "(?i)ENV\\s+LD_PRELOAD\\s"
@@ -28,11 +27,6 @@ detect:
     - "(?i)process_vm_(?:readv|writev)"
     # Signal injection
     - "(?i)kill\\s*\\(.*(?:user|input|param|arg).*,.*SIG"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example"
-    - "(?i)#.*LD_PRELOAD|//.*LD_PRELOAD"
-    - "(?i)/proc/self/(?:status|stat$|cgroup|mountinfo)"
 remediation: "Never set LD_PRELOAD or LD_LIBRARY_PATH in MCP server containers. These environment variables allow loading arbitrary shared libraries into every process, enabling privilege escalation and container escape (demonstrated in CVE-2025-23266). Drop the SYS_PTRACE capability to prevent process injection. Set read-only root filesystem to prevent .so file creation. Use seccomp profiles to block ptrace, process_vm_readv, and process_vm_writev syscalls."
 test_cases:
   true_positive:

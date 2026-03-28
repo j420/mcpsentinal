@@ -10,8 +10,7 @@ mitre: T1557
 # httptoolkit.com: Node.js silently disables TLS protection when rejectUnauthorized=undefined.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Node.js global TLS bypass
     - "(?i)NODE_TLS_REJECT_UNAUTHORIZED\\s*[=:]\\s*[\"']?0[\"']?"
     - "(?i)process\\.env\\s*\\[?\\s*[\"']NODE_TLS_REJECT_UNAUTHORIZED[\"']\\s*\\]?\\s*=\\s*[\"']0[\"']"
@@ -33,11 +32,6 @@ detect:
     - "(?i)wget\\s+.*--no-check-certificate"
     # Dockerfile ENV setting
     - "(?i)ENV\\s+NODE_TLS_REJECT_UNAUTHORIZED\\s*[=]?\\s*0"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example|localhost|127\\.0\\.0\\.1"
-    - "(?i)development|dev[_\\-]?only"
-    - "(?i)#.*insecure|//.*insecure"
 remediation: "Never disable TLS certificate validation in MCP server code or container configuration. For self-signed certificates in development, configure proper CA trust stores: set NODE_EXTRA_CA_CERTS for Node.js, REQUESTS_CA_BUNDLE for Python, or mount CA certificates into the container trust store. In Kubernetes, use cert-manager for automated TLS certificate management. Disabling TLS validation enables man-in-the-middle attacks on all MCP server communications including tool results and credential exchanges."
 test_cases:
   true_positive:

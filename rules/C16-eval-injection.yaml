@@ -5,8 +5,7 @@ severity: critical
 owasp: MCP03-command-injection
 mitre: AML.T0054
 detect:
-  type: regex
-  patterns:
+  type: typed
     # JavaScript eval with user-controlled input
     - "eval\\s*\\(\\s*(?:req|input|param|args|body|query|user|data)"
     - "eval\\s*\\(`[^`]*\\$\\{(?:req|input|param|args|body|query)"
@@ -31,12 +30,6 @@ detect:
     # Node.js vm.runInContext with unsanitized code
     - "vm\\.runInContext\\s*\\([^,)]*(?:req|input|param|args|body)"
     - "vm\\.runInNewContext\\s*\\([^,)]*(?:req|input|param|args|body)"
-  context: source_code
-  exclude_patterns:
-    - "// safe: static code"
-    - "// safe: trusted source"
-    - "__tests__"
-    - "spec\\."
 remediation: "Never pass user input to eval(), new Function(), exec(), or any code evaluation API. Use a proper expression parser (math.js, expr-eval, AST-based) if dynamic computation is required. If code execution is the feature (code sandbox), use a fully isolated container with no filesystem, network, or process access."
 test_cases:
   true_positive:

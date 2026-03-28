@@ -26,8 +26,7 @@ mitre: AML.T0054
 # specific to config file handling.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Creating symlinks to sensitive paths
     - "(?i)(?:symlink|symlinkSync|os\\.symlink|ln\\s+-s).*(?:/etc/|/root/|~/.ssh|/var/|/usr/|/proc/|/sys/)"
     # Following symlinks without checking (TOCTOU)
@@ -42,10 +41,6 @@ detect:
     - "(?i)(?:fs\\.stat|fs\\.statSync|os\\.stat).*(?:fs\\.readFile|fs\\.open|open)(?!.*O_NOFOLLOW|NOFOLLOW)"
     # macOS Launch Agent injection via symlink (CVE-2025-53109 exploit path)
     - "(?i)(?:symlink|link).*(?:LaunchAgents|LaunchDaemons|plist)"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example"
-    - "(?i)(?:lstat|realpathSync|realpath).*(?:isSymbolicLink|symlink)"
 remediation: "Always resolve symlinks with realpath() before path validation. Use O_NOFOLLOW flag when opening files. Check with lstat() that paths are not symlinks before reading/writing. Apply CVE-2025-53109/53110 patches for Anthropic filesystem server. Implement TOCTOU-safe file operations using fstat() on the opened file descriptor rather than stat() on the path."
 test_cases:
   true_positive:

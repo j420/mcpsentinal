@@ -5,21 +5,7 @@ severity: high
 owasp: MCP07-insecure-config
 mitre: null
 detect:
-  type: regex
-  patterns:
-    - "(?i)\\.listen\\s*\\(\\s*(?:\\d+|process\\.env\\.PORT)"
-    - "(?i)0\\.0\\.0\\.0"
-    - "(?i)host\\s*[=:]\\s*['\"]0\\.0\\.0\\.0['\"]"
-    - "(?i)INADDR_ANY"
-  context: source_code
-  exclude_patterns:
-    - "auth"
-    - "authenticate"
-    - "bearer"
-    - "jwt"
-    - "api_key"
-    - "apikey"
-    - "middleware"
+  type: typed
 remediation: "Add authentication middleware before exposing the server on a network interface. Use API keys, JWT tokens, or OAuth for authentication. Never expose MCP servers on 0.0.0.0 without auth."
 test_cases:
   true_positive:

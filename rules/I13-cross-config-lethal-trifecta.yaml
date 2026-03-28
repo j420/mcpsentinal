@@ -5,11 +5,7 @@ severity: critical
 owasp: MCP04-data-exfiltration
 mitre: AML.T0054
 detect:
-  type: composite
-  conditions:
-    check: cross_config_lethal_trifecta
-    description: "Detects the lethal trifecta (private data + untrusted content + external comms) distributed across multiple servers in the same client config. F1 only detects this within a single server. This rule requires cross-server context available in CLI mode."
-  context: metadata
+  type: typed
 remediation: "The servers in your MCP configuration collectively form a lethal trifecta — one reads private data, another ingests untrusted content, and a third sends external communications. While each server individually may be safe, together they enable cross-server data exfiltration. Separate high-risk server combinations into isolated configurations."
 test_cases:
   true_positive:

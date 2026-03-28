@@ -89,8 +89,7 @@ mitre: AML.T0054
 # - MITRE ATLAS AML.T0054: Prompt Injection via Tool Metadata
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Role override / instruction injection (classic injection directives)
     - "(?i)ignore\\s+(?:previous|above|all|prior|your)\\s+(?:instructions?|prompts?|rules?|constraints?|guidelines?)"
     - "(?i)you\\s+are\\s+now\\s+(?:a|an|the)\\s+(?:\\w+\\s+){0,5}(?:agent|assistant|model|ai|system|bot)"
@@ -135,8 +134,6 @@ detect:
     - "(?i)=====+\\s*(?:new|updated)\\s+(?:system|instructions?)\\s*=====+"
     - "(?i)\\*\\*\\*+\\s*(?:important|critical|urgent)\\s+(?:system|override)\\s*\\*\\*\\*+"
 
-  context: server_initialize_fields
-  exclude_patterns:
     # Legitimate use cases that might superficially match
     - "// safe:"
     - "test server"

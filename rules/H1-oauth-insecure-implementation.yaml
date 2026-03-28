@@ -70,8 +70,7 @@ mitre: AML.T0056
 # - OWASP ASVS v4.0, Section 3 (Session Management)
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # 1. Redirect URI from user input — authorization code injection
     #    Matches: redirect_uri = req.body.redirect_uri / params.redirect_uri / etc.
     - "(?i)redirect_uri\\s*[:=]+\\s*(?:req\\.(?:body|query|params)|params\\.|body\\.|query\\.)(?:redirect_uri|redirect|uri|url|callback)"
@@ -101,8 +100,6 @@ detect:
     # 7. Authorization/token endpoint URL from user-controlled config (open redirect to malicious AS)
     - "(?i)(?:authorization_endpoint|token_endpoint|userinfo_endpoint|jwks_uri)\\s*[:=]+\\s*(?:req\\.(?:body|query|params)|params\\.|body\\.)"
 
-  context: source_code
-  exclude_patterns:
     # Test files and documentation
     - "// safe:"
     - "# safe:"

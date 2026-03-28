@@ -5,11 +5,7 @@ severity: low
 owasp: MCP09-logging-monitoring
 mitre: null
 detect:
-  type: behavioral
-  conditions:
-    check: response_time_exceeds
-    threshold_ms: 10000
-  context: metadata
+  type: typed
 remediation: "Investigate slow response times. Unusually slow responses to tools/list may indicate heavy computation, external API calls, or resource exhaustion. Consider adding timeouts."
 test_cases:
   true_positive:

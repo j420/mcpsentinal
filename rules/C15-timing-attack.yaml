@@ -5,8 +5,7 @@ severity: high
 owasp: MCP07-insecure-config
 mitre: null
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Direct string equality on secrets/tokens/passwords (timing-unsafe)
     - "(?i)(?:api_?key|token|secret|password|passwd|credential|auth)\\s*===?\\s*(?:req|input|param|args|body|header|provided|user)"
     - "(?i)(?:req|input|param|args|body|header|provided)\\s*===?\\s*(?:api_?key|token|secret|password|passwd|credential)"
@@ -19,13 +18,6 @@ detect:
     - "(?i)(?:sha[0-9]+|md5|blake2)\\([^)]+\\)\\s*[!=]=\\s*"
     # Missing timingSafeEqual where it should be used
     - "(?i)verify(?:Token|Key|Secret|Password|Auth|Signature|Hmac)\\s*\\([^)]*\\)\\s*\\{[^}]*[!=]=="
-  context: source_code
-  exclude_patterns:
-    - "crypto.timingSafeEqual"
-    - "hmac.compare_digest"
-    - "secrets.compare_digest"
-    - "constant_time_compare"
-    - "timingSafeCompare"
 remediation: "Use crypto.timingSafeEqual() (Node.js) or hmac.compare_digest() (Python) for ALL secret/token/password comparisons. Standard string equality (===, ==) is vulnerable to timing attacks that allow attackers to determine correct values bit by bit."
 test_cases:
   true_positive:

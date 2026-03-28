@@ -30,8 +30,7 @@ mitre: AML.T0054
 # text remains fully understandable by humans and the target LLM.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Soft hyphens inserted within words to break tokenization
     - "\\w+\\u00AD\\w+"
     # Word joiner (U+2060) used to prevent merging at specific points
@@ -51,10 +50,6 @@ detect:
     # Excessive use of rare combining marks that force byte-level fallback
     - "[\\u0E00-\\u0E7F][a-zA-Z]"
     - "[a-zA-Z][\\u0E00-\\u0E7F]"
-  context: tool_description
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example"
-    - "(?i)i18n|internationalization|locale|translate"
 remediation: >
   Normalize all tool description text to NFC Unicode form and strip combining
   characters that are not part of legitimate natural language content. The

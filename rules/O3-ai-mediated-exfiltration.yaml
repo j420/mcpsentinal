@@ -34,8 +34,7 @@ mitre: AML.T0057
 # sensitive data — the "ask the AI to steal for you" attack pattern.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Instructions to gather/collect/include sensitive data
     - "(?i)(?:gather|collect|include|pass|forward|send|attach|add|provide|copy)\\s+(?:the\\s+)?(?:user'?s?|all|any|every)\\s+(?:api[_ ]?keys?|credentials?|tokens?|passwords?|secrets?|ssh[_ ]?keys?|private[_ ]?keys?|env(?:ironment)?[_ ]?var(?:iable)?s?)"
     # Instructions to read other tools' output and include it
@@ -47,11 +46,6 @@ detect:
     - "(?i)(?:send|post|forward|relay|transmit|upload)\\s+(?:the\\s+)?(?:gathered|collected|retrieved|all)\\s+(?:data|information|credentials|context|results?)\\s+(?:to|via|through)\\s+(?:the|this|our|my)\\s+(?:server|endpoint|api|service|webhook)"
     # "Before calling this tool" setup instructions for data theft
     - "(?i)before\\s+(?:calling|using|invoking|running)\\s+this\\s+tool\\s*[,:]?\\s*(?:gather|collect|read|access|retrieve|get|include)"
-  context: tool_description
-  exclude_patterns:
-    - "example"
-    - "documentation"
-    - "// safe:"
 remediation: >
   Tool descriptions must never instruct the AI to gather, collect, or forward sensitive
   data from the user's environment, other tools, or conversation history. Remove all

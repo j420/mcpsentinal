@@ -37,8 +37,7 @@ mitre: AML.T0054
 # targeted behaviors across domains.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Planted chain-of-thought patterns
     - "(?i)(let me|let's|I should|I need to|I will)\\s+(think|reason|analyze|consider|figure)"
     - "(?i)(step\\s+\\d+|first|second|third|finally)\\s*[:.]+\\s*(skip|bypass|ignore|disable|override)"
@@ -56,10 +55,6 @@ detect:
     # CoT termination / reasoning interruption markers
     - "(?i)(conclusion|summary|final answer)\\s*:\\s*(execute|run|allow|bypass|skip)"
     - "(?i)(stop thinking|end reasoning|no more analysis|skip verification)"
-  context: tool_description
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example|documentation"
-    - "(?i)tutorial|guide|how-to|walkthrough"
 remediation: >
   Remove embedded reasoning patterns, logical arguments, and chain-of-thought
   directives from tool descriptions. Tool descriptions should describe WHAT the

@@ -35,31 +35,7 @@ mitre: AML.T0057
 # OWASP ASI07 Insecure Inter-Agent Communication
 
 detect:
-  type: composite
-  conditions:
-    check: multi_server_capability_composition
-    # 7 capability categories — having 4+ in a config = composition risk
-    capability_categories:
-      reads_sensitive:
-        - "(?i)(read|query|get|fetch|select).*(?:database|db|credential|secret|key|password|token|config|env)"
-        - "(?i)(database|db|credential|secret|password|token).*(?:read|query|get|fetch)"
-      ingests_untrusted:
-        - "(?i)(web|scrape|browse|crawl|fetch|download).*(?:url|page|site|content)"
-        - "(?i)(email|mail|slack|discord|chat|webhook|rss|feed).*(?:read|get|fetch|ingest)"
-      writes_state:
-        - "(?i)(write|insert|update|store|save|put|set).*(?:database|db|file|memory|state|cache|store)"
-      reads_state:
-        - "(?i)(read|get|query|fetch|select|load).*(?:database|db|file|memory|state|cache|store)"
-      sends_external:
-        - "(?i)(send|post|upload|push|notify|email|webhook|http|request).*(?:external|remote|api|url|server)"
-        - "(?i)(external|remote|api|server).*(?:send|post|upload|push)"
-      executes_code:
-        - "(?i)(exec|run|execute|spawn|eval|shell|command|bash|script)"
-      manages_credentials:
-        - "(?i)(create|update|rotate|revoke|delete).*(?:token|credential|key|password|secret|cert)"
-    # Threshold: 4+ distinct categories = elevated composition risk
-    min_categories: 4
-  context: metadata
+  type: typed
 remediation: "This MCP server (or server configuration) combines 4+ distinct high-risk capability categories, creating emergent attack chains that no individual server analysis would detect. Even though each capability may be safe in isolation, their composition enables multi-step attacks (read sensitive data → transform → store → read → exfiltrate). Implement: (1) capability inventory across all connected MCP servers, (2) data flow analysis between servers, (3) explicit allow-listing of acceptable capability combinations, (4) monitoring for multi-step data movement patterns."
 test_cases:
   true_positive:

@@ -18,8 +18,7 @@ mitre: AML.T0054
 # (indirect injection gateway); this covers the OUTPUT side.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Passing raw file contents directly to response
     - "(?i)(?:readFile|read_file|open).*(?:return|respond|result|content|text)(?!.*(?:sanitize|escape|encode|strip|filter|validate|truncate))"
     - "(?i)(?:return|respond|result).*(?:readFile|read_file|fs\\.read)(?!.*(?:sanitize|escape|encode|strip))"
@@ -29,10 +28,6 @@ detect:
     - "(?i)(?:query|execute|select|find).*(?:return|respond|result|rows|data)(?!.*(?:sanitize|escape|encode|map|filter|select|pick))"
     # Passing raw user input through
     - "(?i)(?:req\\.body|req\\.params|req\\.query|user[_\\s-]?input).*(?:return|respond|result)(?!.*(?:sanitize|validate|escape|encode|zod|joi|yup))"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture"
-    - "(?i)sanitize|escape|encode|strip|filter|validate|truncate|allowlist"
 remediation: "Sanitize all external data before including in tool responses. Implement output encoding that neutralizes prompt injection patterns. Truncate excessively long content. Validate structure before passing database results. Apply the principle: treat all external data as untrusted, even in tool outputs. Required by CoSAI MCP-T4."
 test_cases:
   true_positive:

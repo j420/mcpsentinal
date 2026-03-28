@@ -24,8 +24,7 @@ mitre: AML.T0054
 # social engineering phrases that would manipulate an LLM.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Error messages with file read instructions
     - "(?i)(error|err|failure|failed).*(?:read|cat|open|access)\\s+(?:the\\s+)?(?:file|~[/\\\\]|/etc/|/home/|\\.ssh|\\.env|\\.aws)"
     - "(?i)(resolve|fix|recover).*(?:read|provide|include|send|share)\\s+(?:your|the)\\s+(?:key|token|secret|credential|password|ssh)"
@@ -37,10 +36,6 @@ detect:
     - "(?i)(error_message|err_msg|failure_reason).*(?:please\\s+(?:send|share|provide|include))"
     # Output containing hidden tool call instructions
     - "(?i)(return|respond|output).*(?:tool_call|function_call|execute_tool|call_tool|invoke)"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example|documentation"
-    - "(?i)logger\\.|console\\.log|debug|trace"
 remediation: "Tool responses MUST NOT contain instruction-like content, file read directives, or social engineering phrases. Error messages should be factual and technical — never suggest actions involving sensitive data access. See CyberArk ATPA research for attack demonstration."
 test_cases:
   true_positive:

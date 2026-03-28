@@ -5,16 +5,7 @@ severity: high
 owasp: MCP06-excessive-permissions
 mitre: null
 detect:
-  type: regex
-  patterns:
-    - "(?i)access\\s+(any|all|every)\\s+(file|database|system|resource)"
-    - "(?i)full\\s+(database|filesystem|system|admin)\\s+access"
-    - "(?i)unrestricted\\s+access"
-    - "(?i)root\\s+access"
-    - "(?i)sudo\\s+privileges"
-    - "(?i)can\\s+modify\\s+any"
-    - "(?i)arbitrary\\s+(file|code|command)\\s+execution"
-  context: tool_description
+  type: typed
   exclude_patterns: []
 remediation: "Limit scope claims to specific directories, databases, or resources. Follow the principle of least privilege in tool descriptions."
 test_cases:

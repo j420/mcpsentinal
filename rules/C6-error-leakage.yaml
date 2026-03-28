@@ -5,16 +5,7 @@ severity: medium
 owasp: MCP09-logging-monitoring
 mitre: null
 detect:
-  type: regex
-  patterns:
-    - "(?i)catch\\s*\\([^)]*\\)\\s*\\{[^}]*(?:throw|return).*(?:err|error)\\.(?:message|stack)"
-    - "(?i)(?:res|response)\\.(?:send|json|write)\\s*\\(.*(?:err|error)\\.(?:stack|message)"
-    - "(?i)traceback\\.format_exc"
-    - "(?i)traceback\\.print_exc"
-  context: source_code
-  exclude_patterns:
-    - "process.env.NODE_ENV.*development"
-    - "DEBUG"
+  type: typed
 remediation: "Return generic error messages to clients. Log detailed errors server-side. Never expose stack traces, file paths, or internal error details in responses."
 test_cases:
   true_positive:

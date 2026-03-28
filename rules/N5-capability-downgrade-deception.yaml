@@ -5,34 +5,7 @@ severity: critical
 owasp: MCP05-privilege-escalation
 mitre: AML.T0054
 detect:
-  type: composite
-  conditions:
-    check: capability_downgrade_deception
-    description: "Detects servers that declare minimal capabilities during initialize but have tools/code that exercise undeclared capabilities. A server advertising only 'tools' capability but accessing resources, sampling, or logging avoids capability-based security screening while operating beyond its declared scope."
-    # Tools that reference capabilities not declared
-    undeclared_capability_indicators:
-      resources:
-        - "resources/"
-        - "resource_read"
-        - "list_resources"
-        - "subscribe"
-        - "ResourceTemplate"
-      sampling:
-        - "sampling"
-        - "createMessage"
-        - "generate"
-        - "completion"
-        - "llm_call"
-      prompts:
-        - "prompts/"
-        - "get_prompt"
-        - "list_prompts"
-        - "PromptMessage"
-      logging:
-        - "log_"
-        - "set_level"
-        - "LoggingLevel"
-  context: metadata
+  type: typed
 remediation: "Declare all capabilities your server actually uses during the initialize handshake. Clients should enforce capability boundaries — if a server declares only 'tools' but its tool descriptions reference resources, prompts, or sampling, flag the mismatch. Unlike I12 (post-init escalation detected at runtime), N5 detects intentional under-declaration at static analysis time."
 test_cases:
   true_positive:

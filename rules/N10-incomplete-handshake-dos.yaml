@@ -5,8 +5,7 @@ severity: high
 owasp: MCP07-insecure-config
 mitre: AML.T0054
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Accept connection without handshake timeout
     - "(?i)(?:onConnect|on_connect|handleConnection|connectionHandler)\\s*(?:=>|=|\\()(?!.*(?:timeout|setTimeout|deadline|handshakeTimeout|HANDSHAKE_TIMEOUT))"
     # WebSocket/HTTP connection accepted without initialize deadline
@@ -23,10 +22,6 @@ detect:
     - "(?i)(?:async\\s+def\\s+handle_connection|await\\s+websocket\\.accept)\\s*\\((?!.*(?:timeout|max_connections|connection_limit))"
     # HTTP keep-alive without idle timeout for incomplete handshakes
     - "(?i)(?:keep-?alive|keepAlive)\\s*[:=]\\s*true(?!.*(?:timeout|idle|HANDSHAKE_TIMEOUT))"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example"
-    - "(?i)(?:handshakeTimeout|initTimeout|connectionTimeout|maxConnections|connection[_\\s-]?limit)"
 remediation: "Enforce a handshake timeout (recommended: 30 seconds) — terminate connections that do not complete the initialize handshake within the deadline. Limit maximum concurrent pending connections. An attacker can exhaust server connection slots by initiating MCP connections without completing the handshake (Slowloris-style attack). Reference: MCP spec 2025-03-26 lifecycle — initialize MUST complete before functional requests."
 test_cases:
   true_positive:

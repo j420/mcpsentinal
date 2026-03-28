@@ -5,8 +5,7 @@ severity: critical
 owasp: MCP01-prompt-injection
 mitre: AML.T0054
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Error message constructed from user/external input without sanitization
     - "(?i)(?:error|err)\\s*[:=]\\s*\\{[^}]*message\\s*[:=]\\s*(?:(?:req|params|body|input|data|result|response)\\.)"
     - "(?i)(?:JsonRpcError|RpcError|McpError)\\s*\\(\\s*(?:-?\\d+\\s*,\\s*)?(?:(?:req|params|body|input|data|error|e)\\.(?:message|msg|detail))"
@@ -16,10 +15,6 @@ detect:
     - "(?i)(?:error|err)\\s*[:=]\\s*\\{[^}]*message\\s*[:=]\\s*`[^`]*\\$\\{(?:req|params|body|input|data|result)\\."
     # Python: error from external data
     - "(?i)(?:McpError|JsonRpcError|RpcError)\\s*\\(\\s*(?:code\\s*=\\s*-?\\d+\\s*,\\s*)?message\\s*=\\s*(?:f\"|f'|str\\()"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example"
-    - "(?i)sanitize|escape|encode|strip|clean"
 remediation: "Never include unsanitized external input in JSON-RPC error message or data fields. Error messages are processed by AI clients as context — a malicious server can embed prompt injection payloads in error responses that the LLM treats as instructions. Use predefined error messages with error codes. Sanitize any dynamic content in error.data."
 test_cases:
   true_positive:

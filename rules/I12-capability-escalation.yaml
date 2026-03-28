@@ -5,11 +5,7 @@ severity: critical
 owasp: MCP05-privilege-escalation
 mitre: AML.T0054
 detect:
-  type: composite
-  conditions:
-    check: capability_escalation_post_init
-    description: "Detects servers that use capabilities not declared during initialize handshake. MCP allows unrestricted capability escalation post-initialization (Breaking the Protocol, arXiv 2601.17549)."
-  context: metadata
+  type: typed
 remediation: "Declare all capabilities during the initialize handshake. Clients should enforce capability boundaries — if a server declares only 'resources' capability, reject subsequent tool invocation or sampling requests. Do not silently escalate capabilities after initialization."
 test_cases:
   true_positive:

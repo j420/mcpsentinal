@@ -32,29 +32,7 @@ mitre: AML.T0058
 # 90%+ success because each individual turn appears benign.
 
 detect:
-  type: composite
-  conditions:
-    check: progressive_context_poisoning
-    signals:
-      # Tools that write to conversation/session state
-      state_writer_patterns:
-        - "(?i)(append|add|write|inject|insert|store|save|update|set)\\s+(to\\s+)?(conversation|context|session|memory|history|state|chat)"
-        - "(?i)(conversation|context|session|memory|state|chat)\\s*[._](append|add|write|push|update|set)"
-        - "(?i)(modify|alter|change|update)\\s+(the\\s+)?(system|assistant|user)\\s+(message|prompt|context)"
-      # Tools that read and write to same state (accumulation)
-      state_read_write_patterns:
-        - "(?i)(get|read|fetch|retrieve|load).{5,40}(set|write|store|save|update|append)"
-        - "(?i)(load|read)\\s+(from\\s+)?memory.{5,40}(save|write|store)\\s+(to\\s+)?memory"
-      # Future-turn targeting in descriptions
-      future_turn_patterns:
-        - "(?i)(in\\s+(the\\s+)?next|subsequent|future|following|later)\\s+(turn|call|invocation|request|interaction)"
-        - "(?i)(remember|recall|persist|carry over)\\s+(this|these|the)\\s+(for|across|between)\\s+(future|next|subsequent)"
-        - "(?i)(this\\s+(will|should|must)\\s+(be|remain|persist|stay)\\s+(in|across|between))"
-      # Memory injection keywords
-      memory_injection_patterns:
-        - "(?i)(long[\\s-]?term|persistent|permanent)\\s+(memory|storage|state|context)"
-        - "(?i)(inject|insert|embed|plant)\\s+(into|in)\\s+(memory|context|state|history)"
-  context: tool_description
+  type: typed
 remediation: >
   Tools that write to conversation state, session memory, or persistent context
   must implement strict input sanitization and should never accept free-text

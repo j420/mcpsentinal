@@ -5,8 +5,7 @@ severity: critical
 owasp: MCP05-privilege-escalation
 mitre: null
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Python — pickle is RCE by design
     - "pickle\\.loads?\\s*\\("
     - "pickle\\.Unpickler\\s*\\("
@@ -33,13 +32,6 @@ detect:
     # Generic: function('...') pattern where the function evaluates its argument
     - "Function\\s*\\(\\s*['\"][^'\"]*['\"]\\s*\\)\\s*\\("
     - "new\\s+Function\\s*\\("
-  context: source_code
-  exclude_patterns:
-    - "yaml.safe_load"
-    - "Loader=yaml.SafeLoader"
-    - "json.loads"
-    - "JSON.parse"
-    - "// safe:"
 remediation: "Never deserialize untrusted data with pickle, yaml.load, node-serialize, or ObjectInputStream. Use safe alternatives: json.loads (Python), JSON.parse (JS), yaml.safe_load (Python). For complex object serialization, use message-pack or protobuf with strict schema validation."
 test_cases:
   true_positive:

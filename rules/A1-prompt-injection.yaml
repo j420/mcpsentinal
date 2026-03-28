@@ -5,8 +5,7 @@ severity: critical
 owasp: MCP01-prompt-injection
 mitre: AML.T0054
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Classic instruction override phrases
     - "(?i)ignore\\s+(previous|above|all)\\s+instructions"
     - "(?i)disregard\\s+(all|previous|prior|any)\\s+(instructions|rules|context)"
@@ -55,12 +54,6 @@ detect:
     - "(?i)>\\s*\\[!(?:IMPORTANT|WARNING|CAUTION|CRITICAL|NOTE)\\].*(?:ignore|override|disregard|you\\s+(?:must|are|will))"
     # Base64-encoded instructions hiding in descriptions
     - "(?:[A-Za-z0-9+/]{40,}={0,2})(?:\\s+(?:[A-Za-z0-9+/]{40,}={0,2})){2,}"
-  context: tool_description
-  exclude_patterns:
-    - "security testing"
-    - "example of prompt injection"
-    - "detect prompt injection"
-    - "prevent prompt injection"
 remediation: "Remove all hidden instructions, role assignments, and directives from tool descriptions. Descriptions must only describe the tool's function. Any attempt to modify AI behavior via description text is a prompt injection attack."
 test_cases:
   true_positive:

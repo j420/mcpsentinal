@@ -31,8 +31,7 @@ mitre: AML.T0057
 # or code that intentionally exposes process/OS/runtime metadata.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Exposing process/runtime information in responses
     - "(?i)(?:res\\.(?:send|json)|return|response).*(?:process\\.(?:version|arch|platform|pid|uptime|memoryUsage|cpuUsage)|os\\.(?:type|release|platform|arch|hostname|cpus|totalmem|freemem|networkInterfaces|userInfo))"
     # Exposing Python system information
@@ -45,12 +44,6 @@ detect:
     - "(?i)(?:res\\.(?:send|json)|return|response).*(?:__dirname|__filename|process\\.cwd\\(\\)|path\\.resolve|path\\.join)"
     # Health/debug endpoints exposing infrastructure
     - "(?i)(?:app|router|server)\\.(?:get|all)\\s*\\(\\s*['\"]/?(?:debug|diagnostics|system-info|server-info|health/detailed|status/detail|_internal)"
-  context: source_code
-  exclude_patterns:
-    - "// safe: sanitized error"
-    - "NODE_ENV === 'development'"
-    - "NODE_ENV === 'test'"
-    - "process.env.DEBUG"
 remediation: >
   Never expose process, OS, runtime, or database metadata in tool responses or error
   messages. Use generic error messages ("An error occurred") for production responses.

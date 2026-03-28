@@ -5,8 +5,7 @@ severity: high
 owasp: MCP07-insecure-config
 mitre: AML.T0054
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Sending notifications without backpressure or queue bounds
     - "(?i)(?:sendNotification|send_notification|notify|emit)\\s*\\((?!.*(?:queue|throttle|rateLimit|backpressure|bounded))"
     # Notification loop without rate limiting
@@ -23,10 +22,6 @@ detect:
     - "(?i)(?:async\\s+function\\s*\\*|async\\s*\\*).*(?:yield|yield\\*)\\s*.*(?:notification|event)(?!.*(?:limit|max|count|take))"
     # Python: asyncio loop sending without throttle
     - "(?i)(?:asyncio\\.Queue|async\\s+for).*(?:put_nowait|send_notification|notify)(?!.*(?:maxsize|throttle|sleep))"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example"
-    - "(?i)rate[_\\s-]?limit|throttle|backpressure|bounded[_\\s-]?queue"
 remediation: "Implement bounded notification queues (recommended max size: 100 per subscription). Apply backpressure — when the queue is full, drop oldest notifications or pause the producer. Enforce per-client notification rate limits. JSON-RPC notifications have no response, so there is no natural flow control — servers MUST implement it explicitly."
 test_cases:
   true_positive:

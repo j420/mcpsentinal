@@ -30,8 +30,7 @@ mitre: AML.T0054
 # applied to LLM tool calling.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Descriptions claiming to return protocol-formatted content
     - "(?i)returns?\\s+(mcp|jsonrpc|json.?rpc)\\s+(message|response|protocol|format)"
     - "(?i)output\\s+(?:is\\s+)?(?:in\\s+)?(?:mcp|json.?rpc)\\s+format"
@@ -48,11 +47,6 @@ detect:
     # Structured return format that could be mistaken for protocol messages
     - "(?i)returns?\\s+(?:a\\s+)?(?:list\\s+of\\s+)?(?:follow.?up\\s+)?(?:tool\\s+calls?|function\\s+calls?)"
     - "(?i)(?:next|subsequent|following)\\s+(?:tool\\s+calls?|actions?|steps?)\\s+(?:to\\s+execute|to\\s+run|for\\s+the\\s+agent)"
-  context: tool_description
-  exclude_patterns:
-    - "example"
-    - "documentation"
-    - "explains"
 remediation: >
   Tool descriptions must never claim that the tool returns content formatted as protocol messages,
   AI instructions, or new tool invocations. Tool output is data — it must be treated as untrusted

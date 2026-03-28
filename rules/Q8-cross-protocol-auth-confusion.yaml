@@ -27,8 +27,7 @@ mitre: T1550
 # RFC 9700 OAuth Security BCP, OWASP ASI03
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Multiple auth mechanisms in same server (indicator of cross-protocol)
     - "(?i)(?:oauth|bearer).{0,100}(?:api[_\\s-]?key|x-api-key|apiKey)"
     - "(?i)(?:api[_\\s-]?key|x-api-key).{0,100}(?:oauth|bearer|access[_\\s-]?token)"
@@ -42,9 +41,6 @@ detect:
     - "(?i)(?:express|fastify|hono|koa).*(?:listen).{0,200}(?:StdioServerTransport|SSEServerTransport|StreamableHTTPServerTransport)"
     # Shared secret/token across protocol boundaries
     - "(?i)(?:shared[_\\s-]?secret|common[_\\s-]?token|global[_\\s-]?auth).*(?:mcp|rest|grpc|websocket)"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example"
 remediation: "MCP servers supporting multiple protocols must enforce authentication independently per protocol. Never reuse OAuth tokens across protocol boundaries. Implement protocol-specific middleware with explicit auth checks on every path. Audit auth coverage for all transport types (stdio, SSE, Streamable HTTP, REST). Reference: CVE-2025-6514 demonstrated that auth library vulnerabilities in MCP's OAuth layer cascade to all protocols sharing the same auth middleware."
 test_cases:
   true_positive:

@@ -21,8 +21,7 @@ mitre: AML.T0054
 # used in real-world npm attacks (ua-parser-js, event-stream, colors).
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # npm postinstall with network/exec operations
     - "(?i)[\"'](?:postinstall|preinstall|install)[\"']\\s*:\\s*[\"'][^\"']*(?:curl|wget|node\\s|python|bash|sh\\s|powershell)"
     - "(?i)[\"'](?:postinstall|preinstall)[\"']\\s*:\\s*[\"'][^\"']*(?:http|ftp|ssh|exec|spawn|child_process)"
@@ -33,10 +32,6 @@ detect:
     - "(?i)[\"'](?:postinstall|preinstall)[\"']\\s*:\\s*[\"'][^\"']*(?:eval|base64|atob|Buffer\\.from|decode)"
     # Shell script execution in install hooks
     - "(?i)[\"'](?:postinstall|preinstall)[\"']\\s*:\\s*[\"'](?:bash|sh|zsh|cmd)\\s"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture"
-    - "(?i)node-gyp|prebuild|esbuild|tsc|npx\\s+tsc|compile|cmake"
 remediation: "Remove network requests, code execution, and shell commands from install hooks. Post-install scripts should only run build/compile steps (node-gyp, tsc). Use --ignore-scripts flag during CI installations and audit all install hooks before allowing. Required by OWASP ASI04 and CoSAI MCP-T11."
 test_cases:
   true_positive:

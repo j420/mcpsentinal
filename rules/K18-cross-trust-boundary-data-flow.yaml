@@ -19,8 +19,7 @@ mitre: AML.T0054
 # The data crosses a trust boundary via a seemingly benign intermediary.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # High-sensitivity data sources feeding into external-facing outputs
     - "(?i)(?:readFile|read_file|query|select|getSecret|getCredential|getPassword).*(?:webhook|http|fetch|axios|post|send|email|slack|discord)"
     - "(?i)(?:webhook|http|fetch|axios|post|send|email).*(?:readFile|read_file|query|select|getSecret|credential|password)"
@@ -32,11 +31,6 @@ detect:
     - "(?i)(?:process\\.env|os\\.environ|config|settings).*(?:fetch|axios|http|post|send|webhook)"
     # Sensitive fields forwarded without filtering
     - "(?i)(?:ssn|social[_\\s-]?security|credit[_\\s-]?card|bank[_\\s-]?account|medical|health).*(?:return|respond|send|post|emit)"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture"
-    - "(?i)redact|mask|sanitize|filter|encrypt|hash|anonymize|tokenize"
-    - "(?i)internal|localhost|127\\.0\\.0\\.1"
 remediation: "Implement data flow taint tracking: tag data from sensitive sources (databases, credentials, files) and prevent it from flowing to external sinks (HTTP, webhooks, email) without explicit sanitization/redaction. Apply data classification and enforce boundary controls per trust level. Required by ISO 27001 A.5.14 and CoSAI MCP-T5."
 test_cases:
   true_positive:

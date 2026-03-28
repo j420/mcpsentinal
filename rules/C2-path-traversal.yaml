@@ -5,8 +5,7 @@ severity: critical
 owasp: MCP05-privilege-escalation
 mitre: null
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Direct concatenation with user input (variable name heuristic)
     - "(?i)fs\\.(read|write|append|unlink|rm|mkdir|access|stat|chmod|chown).*\\+.*(?:req|input|param|args|body|query|user)"
     - "(?i)path\\.join\\s*\\([^)]*(?:req|input|param|args|body|query|user)"
@@ -25,15 +24,6 @@ detect:
     - "(?i)open\\s*\\(\\s*(?:os\\.path\\.join|f['\"])[^)]*\\$"
     # Allowing root-level paths directly from input
     - "(?i)(?:base_?dir|root_?dir|allowed_?path)\\s*[=+].*(?:req|input|param)"
-  context: source_code
-  exclude_patterns:
-    - "path.resolve"
-    - "path.normalize"
-    - "realpath"
-    - "sanitize"
-    - "path.relative"
-    - "startsWith"
-    - "chroot"
 remediation: "Use path.resolve() to canonicalize paths, then verify the result starts with the intended base directory. Reject any input containing '..', null bytes, or encoded variants. Never concatenate user input into file paths."
 test_cases:
   true_positive:

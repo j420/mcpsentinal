@@ -5,8 +5,7 @@ severity: medium
 owasp: MCP04-data-exfiltration
 mitre: null
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Suspicious free / burner TLDs historically used for C2 and phishing
     - "(?i)https?://[^\\s]+\\.(?:tk|ml|ga|cf|gq|xyz|top|click|icu|pw|cc|su|ws|biz\\.id|repl\\.co|glitch\\.me|vercel\\.app|workers\\.dev|pages\\.dev|netlify\\.app|render\\.com)(?:/|\\s|$)"
     # Bare IP addresses (no legitimate MCP server uses a raw IP in its description)
@@ -25,13 +24,6 @@ detect:
     - "(?i)https?://[^\\s]*(?:pastebin\\.com|paste\\.ee|hastebin\\.com|termbin\\.com)/[a-zA-Z0-9]+"
     # DNS-based data exfiltration pattern (subdomain data encoding)
     - "(?i)[a-zA-Z0-9]{30,}\\.[a-zA-Z0-9\\-]+\\.(?:com|net|org|io)(?:/|\\s|$)"
-  context: tool_description
-  exclude_patterns:
-    - "example.com"
-    - "localhost"
-    - "schema.org"
-    - "json-schema.org"
-    - "modelcontextprotocol.io"
 remediation: "Remove all external URLs from tool descriptions. If the tool communicates with external services, declare this explicitly in server metadata — not embedded in natural-language descriptions where it can be obfuscated."
 test_cases:
   true_positive:

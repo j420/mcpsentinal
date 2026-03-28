@@ -19,8 +19,7 @@ mitre: AML.T0054
 # destructive operations execute without meaningful human review.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Instructions to auto-approve in descriptions/code
     - "(?i)(auto|automatic)[_\\s-]?(approv|confirm|accept|consent|yes)"
     - "(?i)(always|unconditionally)\\s+(approv|confirm|accept|allow|permit)"
@@ -31,10 +30,6 @@ detect:
     - "(?i)\\-\\-(yes|force|no-confirm|no-prompt|assume-yes)\\b"
     # Setting approval to always-grant
     - "(?i)(approval|permission|consent)[_\\s-]?(mode|level|gate)\\s*[:=]\\s*[\"'](auto|none|skip|bypass|disabled)[\"']"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example"
-    - "(?i)ci[_\\s-]?mode|batch[_\\s-]?mode|headless"
 remediation: "Never auto-approve or bypass human confirmation for operations with side effects. Implement explicit confirmation gates that cannot be programmatically bypassed. If batch/CI mode is needed, require an explicit opt-in flag with audit logging. Required by EU AI Act Art. 14 (human oversight) and OWASP ASI09."
 test_cases:
   true_positive:

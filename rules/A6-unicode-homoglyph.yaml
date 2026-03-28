@@ -5,8 +5,7 @@ severity: critical
 owasp: MCP02-tool-poisoning
 mitre: AML.T0054
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Cyrillic lookalikes for Latin (most common homoglyph attack vector)
     # а(U+0430) е(U+0435) о(U+043E) р(U+0440) с(U+0441) у(U+0443) х(U+0445) — visually identical to a e o p c y x
     - "[\\u0430\\u0435\\u043E\\u0440\\u0441\\u0443\\u0445\\u0456\\u0457\\u0458\\u0410\\u0415\\u041E\\u0420\\u0421\\u0425]"
@@ -20,11 +19,6 @@ detect:
     - "[\\u0131\\u0406\\u04CF\\u1D0A\\u1D1C\\u1D20\\u1D21]"
     # Confusable punctuation: "smart quotes" used to wrap injection content
     - "[\\u2018\\u2019\\u201C\\u201D\\u2032\\u2033](?:system|ignore|override|instructions?|forget)"
-  context: tool_description
-  exclude_patterns:
-    - "internationalization"
-    - "i18n"
-    - "multilingual"
 remediation: "Tool names and descriptions must use only ASCII characters (U+0020–U+007E). Unicode homoglyphs in tool names are a primary vector for tool shadowing attacks where a Cyrillic 'a' is visually indistinguishable from a Latin 'a' but creates a different tool identity."
 test_cases:
   true_positive:

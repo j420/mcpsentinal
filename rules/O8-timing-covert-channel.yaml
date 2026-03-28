@@ -33,8 +33,7 @@ mitre: AML.T0057
 # responses — only the TIMING carries the exfiltrated data.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Dynamic sleep/delay based on data values
     - "(?i)(?:setTimeout|sleep|delay|wait|pause)\\s*\\([^)]*(?:charAt|charCodeAt|bit|byte|\\[\\s*i\\s*\\]|data|secret|token|password|credential|env)"
     - "(?i)(?:time\\.sleep|asyncio\\.sleep|await\\s+sleep)\\s*\\([^)]*(?:ord|bit|byte|data|secret|char|encode)"
@@ -48,14 +47,6 @@ detect:
     - "(?i)(?:progress|notification|heartbeat|ping|keepalive).*(?:interval|delay|timeout)\\s*[:=]\\s*(?:[^;]*(?:data|secret|char|byte|bit))"
     # Python: struct.pack/unpack combined with sleep (binary encoding + timing)
     - "(?i)struct\\.(?:pack|unpack).*(?:sleep|delay|time\\.time)"
-  context: source_code
-  exclude_patterns:
-    - "// safe: rate limiting"
-    - "// safe: backoff"
-    - "exponentialBackoff"
-    - "retryDelay"
-    - "test"
-    - "mock"
 remediation: >
   Remove all code that calculates sleep/delay durations from application data, secrets,
   or any variable-length content. Tool response times should be constant or determined

@@ -20,8 +20,7 @@ mitre: AML.T0054
 # confirmation before execution.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Destructive operations without confirmation patterns
     - "(?i)(delete|remove|drop|truncate|destroy|purge|wipe|erase).*(?:execute|run|perform|call)(?!.*(?:confirm|approve|prompt|ask|verify|consent))"
     - "(?i)(?:execute|run|perform|call).*(?:delete|remove|drop|truncate|destroy)(?!.*(?:confirm|approve|prompt|ask|verify))"
@@ -30,11 +29,6 @@ detect:
     - "(?i)(bypass|skip|disable)[_\\s-]?(confirmation|approval|consent|verification)"
     # Force flags on destructive operations
     - "(?i)(force|no[_\\s-]?confirm|yes[_\\s-]?all|assume[_\\s-]?yes).*(?:delete|remove|drop|overwrite)"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture"
-    - "(?i)confirm|approve|prompt|consent|human.?in.?the.?loop|approval.?gate"
-    - "(?i)dry[_\\s-]?run|preview|simulate"
 remediation: "All destructive operations (delete, drop, overwrite, send) MUST include a human confirmation step. Use the MCP destructiveHint annotation to signal that client-side confirmation is required. Implement an approval gate pattern: preview changes → request confirmation → execute. Required by ISO 42001 A.9.1, EU AI Act Art. 14, and NIST AI RMF GOVERN 1.7."
 test_cases:
   true_positive:

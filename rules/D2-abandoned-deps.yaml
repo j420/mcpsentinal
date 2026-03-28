@@ -5,11 +5,7 @@ severity: medium
 owasp: MCP08-dependency-vuln
 mitre: null
 detect:
-  type: composite
-  conditions:
-    check: dependency_last_update
-    threshold_months: 12
-  context: metadata
+  type: typed
 remediation: "Replace dependencies that haven't been updated in over 12 months. Unmaintained dependencies are unlikely to receive security patches."
 test_cases:
   true_positive:

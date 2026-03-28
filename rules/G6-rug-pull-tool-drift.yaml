@@ -32,26 +32,7 @@ mitre: AML.T0054
 # when prior scan data is available.
 
 detect:
-  type: behavioral
-  conditions:
-    check: tool_behavior_drift
-    # Thresholds for what constitutes suspicious drift
-    tool_count_increase_threshold: 3       # More than 3 new tools in one scan = suspicious (lowered from 5 — real rug pulls add 3-4 tools)
-    tool_count_decrease_threshold: 2       # Tools disappearing = rug pull signal (lowered from 3 — even 2 removals after trust is established is suspicious)
-    description_change_on_critical: true   # Any description change on dangerous-capability tools = flag
-    # Tools classified as high-risk that should never silently change description
-    critical_capability_patterns:
-      - "(?i)(credential|secret|password|key|token|auth)"
-      - "(?i)(delete|remove|destroy|drop|wipe|clear|purge)"
-      - "(?i)(admin|root|sudo|privilege|escalat)"
-      - "(?i)(exec|shell|command|run|script)"
-      - "(?i)(send|email|webhook|notify|upload|post)"
-    # Server metadata that changed is suspicious
-    metadata_drift_fields:
-      - server_description
-      - server_name
-      - github_url
-  context: metadata
+  type: typed
 remediation: >
   This server has exhibited drift from its previously known-good state — a pattern consistent
   with rug pull attacks where a server gains user trust before introducing malicious changes.

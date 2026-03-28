@@ -24,8 +24,7 @@ mitre: AML.T0017
 # persists long after the initial compromise.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Dockerfile FROM using mutable tags instead of digest pinning
     - "(?i)^FROM\\s+(?!scratch)[\\w./-]+:(?:latest|stable|lts|current|slim|alpine)\\s"
     # FROM without any tag or digest (defaults to :latest)
@@ -40,11 +39,6 @@ detect:
     - "(?i)^(?!.*USER\\s+\\w)(?=.*RUN\\s)(?=.*EXPOSE\\s)"
     # Curl/wget piped to shell in Dockerfile RUN
     - "(?i)RUN\\s+.*(?:curl|wget).*\\|.*(?:bash|sh|python)"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example|template"
-    - "(?i)^FROM\\s+[\\w./-]+@sha256:[a-f0-9]{64}"
-    - "(?i)ARG\\s+(?:NODE_VERSION|PYTHON_VERSION|ALPINE_VERSION)"
 remediation: "Pin base images by digest (FROM node@sha256:abc123...) not mutable tags. Use Docker Content Trust (DCT) or Cosign to verify image signatures. Never pass secrets as build ARGs — use Docker BuildKit secrets or multi-stage builds. Add a USER directive to run as non-root. Scan images with Trivy or Docker Scout before deployment. Remove .env COPY instructions and use runtime environment injection."
 test_cases:
   true_positive:

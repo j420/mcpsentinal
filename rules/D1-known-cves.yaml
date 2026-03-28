@@ -5,10 +5,7 @@ severity: high
 owasp: MCP08-dependency-vuln
 mitre: null
 detect:
-  type: composite
-  conditions:
-    check: dependency_cve_audit
-  context: metadata
+  type: typed
 remediation: "Update dependencies to versions that patch known CVEs. Run 'npm audit fix' or 'pip-audit' to identify and resolve vulnerable dependencies."
 test_cases:
   true_positive:

@@ -42,8 +42,7 @@ mitre: AML.T0054
 # autonomous decisions without per-action user approval.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # References to permissions "already granted"
     - "(?i)(?:same|existing|previously?\\s+granted?|already\\s+(?:given|approved?|authorized?))\\s+(?:permissions?|access|privileges?|rights?|credentials?)"
     - "(?i)(?:uses?|using|with|reuses?|reusing)\\s+(?:the\\s+)?(?:same|existing|your|previously?\\s+granted?)\\s+(?:permissions?|access|credentials?|token)"
@@ -62,11 +61,6 @@ detect:
     # Authority through claimed relationship
     - "(?i)(?:as|being)\\s+(?:an?\\s+)?(?:extension|module|plugin|component)\\s+of\\s+(?:the\\s+)?(?:core|official|main|base|primary)"
     - "(?i)(?:built|powered|backed)\\s+by\\s+(?:the\\s+same|the\\s+official|the\\s+trusted)"
-  context: tool_description
-  exclude_patterns:
-    - "example"
-    - "documentation"
-    - "test"
 remediation: >
   Remove all references to previously granted permissions, existing access levels, or inherited
   trust from other tools. Each tool must stand on its own declared capability set. Permission

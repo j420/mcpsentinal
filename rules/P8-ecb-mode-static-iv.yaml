@@ -11,8 +11,7 @@ mitre: T1600
 # SlowMist: ECDSA nonce reuse enables private key extraction.
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # ECB mode usage
     - "(?i)(?:AES|DES|Blowfish|RC4)[/_\\-]?ECB"
     - "(?i)mode\\s*[:=]\\s*[\"']?(?:ECB|ecb)[\"']?"
@@ -34,11 +33,6 @@ detect:
     # Key derivation without salt
     - "(?i)pbkdf2\\s*\\(.*(?:salt\\s*[:=]\\s*[\"'][\"']|,\\s*[\"'][\"']\\s*,)"
     - "(?i)scrypt\\s*\\(.*salt\\s*[:=]\\s*[\"'][\"']"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example"
-    - "(?i)crypto\\.randomBytes|os\\.urandom|secrets\\."
-    - "(?i)GCM|CCM|SIV|Poly1305|AEAD|chacha20"
 remediation: "Use authenticated encryption modes (AES-256-GCM, ChaCha20-Poly1305) instead of ECB or unauthenticated modes. Always generate IVs/nonces using a CSPRNG (crypto.randomBytes in Node.js, os.urandom in Python, crypto/rand in Go). Never reuse nonces with the same key. Use established KDF functions (Argon2id, scrypt, PBKDF2 with >=100,000 iterations) with random salts. Never implement custom cryptography — use audited libraries."
 test_cases:
   true_positive:

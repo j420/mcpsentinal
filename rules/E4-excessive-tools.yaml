@@ -5,11 +5,7 @@ severity: medium
 owasp: MCP06-excessive-permissions
 mitre: null
 detect:
-  type: schema-check
-  conditions:
-    check: tool_count_exceeds
-    threshold: 50
-  context: metadata
+  type: typed
 remediation: "Reduce the number of tools exposed by the server. Servers with many tools are harder to audit and have a larger attack surface. Consider splitting into focused sub-servers."
 test_cases:
   true_positive:

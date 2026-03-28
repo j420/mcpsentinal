@@ -88,9 +88,7 @@ mitre: AML.T0054
 # - Anthropic: "Building effective agents" (Claude documentation, 2025)
 
 detect:
-  type: composite
-  conditions:
-    check: multi_agent_propagation_risk
+  type: typed
 
     # Signal 1: Tools designed to accept output FROM other agents (agentic input sinks)
     # These tools receive data that originated from another AI model's execution
@@ -124,8 +122,6 @@ detect:
       - "(?i)(sanitize[_\\s-]?agent|validate[_\\s-]?agent[_\\s-]?input|agent[_\\s-]?isolation)"
       - "(?i)(signed[_\\s-]?(?:by|message)|verify[_\\s-]?signature|agent[_\\s-]?signature)"
       - "(?i)(cross[_\\s-]?agent[_\\s-]?(?:policy|security|validation|check))"
-
-  context: metadata
 
 remediation: >
   This MCP server exposes tools designed for multi-agent architectures — either accepting

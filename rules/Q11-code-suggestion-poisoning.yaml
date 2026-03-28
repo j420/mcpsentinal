@@ -31,8 +31,7 @@ mitre: AML.T0054.001
 # Check Point MCPoison CVE-2025-54136
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # MCP tool responses containing code blocks with suspicious patterns
     - "(?i)(?:tool[_\\s-]?(?:output|response|result)).*(?:```|code[_\\s-]?block|snippet)"
     - "(?i)(?:return|respond|output).*(?:code[_\\s-]?(?:suggestion|completion|generation|snippet))"
@@ -47,10 +46,6 @@ detect:
     - "(?i)(?:postinstall|preinstall|prepare).*(?:script|hook|command).*(?:inject|add|modify)"
     # Tool outputs containing shell/system commands framed as "fixes"
     - "(?i)(?:to[_\\s]?fix|resolution|workaround|try[_\\s]?running).*(?:rm[_\\s]-rf|curl.*\\||wget.*\\||chmod[_\\s]777|sudo)"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example|readme"
-    - "(?i)detect|prevent|scan|check.*(?:inject|poison)"
 remediation: "MCP tool outputs flowing into IDE code suggestion contexts must be sanitized. Implement output content policies that: (1) strip hidden Unicode characters (zero-width, RTL override, tag characters), (2) detect embedded instructions targeting AI code assistants, (3) validate code blocks against security patterns before they enter the suggestion pipeline, (4) never include shell commands in tool outputs without explicit [COMMAND] markers visible to the user. Reference: IDEsaster (Dec 2025), arXiv 2509.22040."
 test_cases:
   true_positive:

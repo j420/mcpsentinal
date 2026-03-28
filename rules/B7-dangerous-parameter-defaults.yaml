@@ -5,28 +5,7 @@ severity: high
 owasp: MCP06-excessive-permissions
 mitre: null
 detect:
-  type: schema-check
-  conditions:
-    check: dangerous_parameter_defaults
-    dangerous_defaults:
-      # Filesystem defaults that open broad access
-      - { pattern: "^/$", context: "path parameters — root filesystem default" }
-      - { pattern: "^\\.\\.$", context: "path parameters — parent traversal default" }
-      - { pattern: "^~$", context: "path parameters — home dir default" }
-      - { pattern: "^\\*$", context: "glob/search — wildcard everything default" }
-      - { pattern: "^0\\.0\\.0\\.0$", context: "host binding — all interfaces default" }
-      # Permissive boolean defaults
-      - { key: "allow_overwrite", value: true }
-      - { key: "allow_delete", value: true }
-      - { key: "recursive", value: true }
-      - { key: "force", value: true }
-      - { key: "skip_auth", value: true }
-      - { key: "disable_ssl_verify", value: true }
-      - { key: "verify", value: false }
-      - { key: "safe_mode", value: false }
-      - { key: "dry_run", value: false }
-      - { key: "read_only", value: false }
-  context: parameter_schema
+  type: typed
 remediation: "Default parameter values must follow the principle of least privilege. Default to restricted paths, no recursive operations, and safe modes. Destructive operations (overwrite, delete, force) must require explicit opt-in, never default to true."
 test_cases:
   true_positive:

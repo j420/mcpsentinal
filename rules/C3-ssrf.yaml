@@ -36,8 +36,7 @@ mitre: AML.T0057
 # treq, twisted.web.client, httplib, http.client
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # ── Node.js: fetch / node-fetch / cross-fetch ──────────────────────────────
     - "(?i)\\bfetch\\s*\\(\\s*(?:req|request|input|param|params|args|url|uri|href|link|target|destination|endpoint|host|address|resource|src|source|location|proxy|callback|userUrl|user_url|externalUrl|external_url|redirectUrl|redirect_url)"
     - "(?i)\\bfetch\\s*\\([^)]*\\$\\{[^}]*(?:url|uri|host|target|endpoint|param|input|args)[^}]*\\}"
@@ -85,8 +84,6 @@ detect:
     - "(?i)(?:maxRedirects|follow_redirects|followRedirect|allow_redirects)\\s*[:=]\\s*(?:true|Infinity|99|[5-9][0-9]+)"
     - "(?i)(?:followRedirect|follow_redirects)\\s*[:=]\\s*true(?!.*(?:allowlist|whitelist|internalFilter|blockInternal))"
 
-  context: source_code
-  exclude_patterns:
     # Allowlist/validation patterns — these indicate SSRF mitigation is in place
     - "(?i)allowlist|whitelist|allowed_hosts|allowed_urls|URL_ALLOWLIST|url_allowlist|SSRF_PROTECT"
     - "(?i)isInternalIP|isPrivateIP|isLoopback|checkSsrf|validateUrl|isSafeUrl|sanitizeUrl"

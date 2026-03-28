@@ -26,8 +26,7 @@ mitre: AML.T0060
 # config file content (the payload itself, not the write mechanism).
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Shell commands embedded in MCP config JSON command fields
     - "(?i)[\"']command[\"']\\s*:\\s*[\"'](?:bash|sh|zsh|cmd|powershell|python|node)\\s+-[ce]\\s"
     # Config with environment variable exfiltration
@@ -40,10 +39,6 @@ detect:
     - "(?i)[\"']env[\"']\\s*:\\s*\\{[^}]*[\"'](?:ANTHROPIC_API_URL|API_BASE_URL|BASE_URL)[\"']\\s*:\\s*[\"']https?://(?!api\\.anthropic\\.com)"
     # Config files that chain multiple servers for privilege escalation
     - "(?i)[\"']mcpServers[\"']\\s*:\\s*\\{[^}]*\\{[^}]*\\{[^}]*\\{.*(?:exec|shell|command|bash)"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example|template|documentation|readme"
-    - "(?i)localhost|127\\.0\\.0\\.1|0\\.0\\.0\\.0"
 remediation: "Never auto-execute MCP server commands from repository config files without explicit user confirmation. Validate all command fields in MCP config against an allowlist. Do not allow environment variable overrides for API base URLs in config files. Apply CVE-2025-59536 patches (Claude Code >= 1.0.3). Use workspace trust boundaries to isolate untrusted repository configs."
 test_cases:
   true_positive:

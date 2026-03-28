@@ -5,25 +5,7 @@ severity: high
 owasp: MCP04-data-exfiltration
 mitre: null
 detect:
-  type: composite
-  conditions:
-    check: data_flow_analysis
-    source_tools:
-      - "read"
-      - "query"
-      - "get"
-      - "fetch"
-      - "list"
-      - "search"
-    sink_tools:
-      - "send"
-      - "post"
-      - "write"
-      - "upload"
-      - "email"
-      - "webhook"
-      - "notify"
-  context: metadata
+  type: typed
 remediation: "This server contains both data-reading and data-sending tools, creating a potential exfiltration path. Add data flow controls, logging, and approval workflows for cross-tool data movement."
 test_cases:
   true_positive:

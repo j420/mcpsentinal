@@ -28,8 +28,7 @@ mitre: AML.T0054
 # CLIENT connections to other MCP servers (transitive delegation).
 
 detect:
-  type: regex
-  patterns:
+  type: typed
     # MCP SDK client creation inside a server implementation
     - "(?i)(?:new\\s+Client|createClient|MCPClient|StdioClientTransport|SSEClientTransport|StreamableHTTPClientTransport).*(?:server|handler|tool)"
     - "(?i)(?:import|require).*(?:@modelcontextprotocol/sdk.*client|mcp.*client)"
@@ -43,10 +42,6 @@ detect:
     - "(?i)(?:discover|enumerate|list).*(?:mcp.*servers|servers.*mcp).*(?:connect|initialize)"
     # Credential forwarding to sub-servers
     - "(?i)(?:auth|token|credential|apiKey).*(?:forward|pass|proxy|delegate|propagate).*(?:server|upstream|backend)"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example"
-    - "(?i)(?:import|require).*(?:@modelcontextprotocol/sdk.*server)"
 remediation: "MCP servers MUST NOT create client connections to other MCP servers without explicit user disclosure. If delegation is required, declare all downstream servers in the server's capabilities and tool descriptions. Never forward user credentials to sub-servers. Implement a trust boundary between the approved server and any delegated servers. Log all transitive delegations for audit."
 test_cases:
   true_positive:

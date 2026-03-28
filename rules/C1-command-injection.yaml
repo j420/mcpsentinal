@@ -5,8 +5,7 @@ severity: critical
 owasp: MCP03-command-injection
 mitre: AML.T0054
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Node.js exec variants
     - "exec\\s*\\("
     - "execSync\\s*\\("
@@ -42,15 +41,6 @@ detect:
     - "shell_exec\\s*\\("
     - "passthru\\s*\\("
     - "proc_open\\s*\\("
-  context: source_code
-  exclude_patterns:
-    - "// safe: sanitized input"
-    - "# safe: sanitized input"
-    - "execFile\\s*\\("
-    - "execFileSync\\s*\\("
-    - "__tests__"
-    - "spec\\."
-    - "\\.test\\."
 remediation: "Replace exec()/execSync() with execFile() and pass arguments as an array, never as a string. Validate all inputs against an allowlist before use in any shell context. For subprocess.run, always pass a list and shell=False."
 test_cases:
   true_positive:

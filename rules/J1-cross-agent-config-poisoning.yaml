@@ -25,21 +25,7 @@ mitre: AML.T0054
 # → Claude connects to attacker MCP server → full RCE.
 
 detect:
-  type: regex
-  patterns:
-    - "(?i)(\\.claude[/\\\\]|claude[/\\\\]settings|claude.*config)"
-    - "(?i)(\\.cursor[/\\\\]|cursor[/\\\\]mcp\\.json)"
-    - "(?i)(\\.gemini[/\\\\]|gemini[/\\\\]settings)"
-    - "(?i)(\\.vscode[/\\\\]settings\\.json)"
-    - "(?i)(~[/\\\\]\\.mcp\\.json|\\.mcp\\.json)"
-    - "(?i)(\\.amp[/\\\\]|amp[/\\\\]settings)"
-    - "(?i)(copilot[/\\\\]config|github[/\\\\]copilot)"
-    - "(?i)(mcp[_\\s-]?config|mcpServers|mcp_servers).*write"
-    - "(?i)write.*(mcp[_\\s-]?config|mcpServers|mcp_servers)"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example|readme"
-    - "(?i)read[_\\s-]?only|get[_\\s-]?config"
+  type: typed
 remediation: "MCP servers MUST NOT write to AI agent configuration directories. If configuration management is the server's purpose, require explicit user confirmation before any write and restrict paths to the server's own config namespace. CVE-2025-53773 demonstrated this enables full RCE across agent boundaries."
 test_cases:
   true_positive:

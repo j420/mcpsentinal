@@ -5,8 +5,7 @@ severity: high
 owasp: MCP07-insecure-config
 mitre: AML.T0054
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Sequential/predictable request IDs
     - "(?i)(?:requestId|request_id|reqId|id)\\s*[:=]\\s*(?:(?:\\+\\+|\\-\\-)|(?:count|counter|sequence|seq|next))"
     - "(?i)(?:requestId|request_id|reqId)\\s*[:=]\\s*(?:0|1)\\s*[;,]"
@@ -22,10 +21,6 @@ detect:
     - "(?i)(?:requestId|request_id|id)\\s*[:=]\\s*(?:Math\\.random|Math\\.floor\\(Math\\.random)"
     # No response-to-request ID matching — accepts any response ID
     - "(?i)(?:onMessage|on_message|handleResponse)\\s*(?:=>|=|\\()(?!.*(?:pendingRequests|pending_requests|requestMap|expected_id|id\\s*===))"
-  context: source_code
-  exclude_patterns:
-    - "(?i)test|spec|mock|fixture|example"
-    - "(?i)(?:uuid|crypto\\.random|randomUUID|nanoid|cuid|ulid)"
 remediation: "Use cryptographically random or UUID-based request IDs to prevent collision attacks. Do not use sequential integers — an attacker can predict the next ID and inject a response before the legitimate server responds (response spoofing). Validate that response IDs match pending request IDs. Reference: JSON-RPC 2.0 Section 4.1 — 'id' must be unique within a session."
 test_cases:
   true_positive:

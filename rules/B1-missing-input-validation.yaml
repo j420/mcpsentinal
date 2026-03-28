@@ -5,20 +5,7 @@ severity: medium
 owasp: MCP07-insecure-config
 mitre: null
 detect:
-  type: schema-check
-  conditions:
-    check: parameter_missing_constraints
-    missing_any_of:
-      - maxLength
-      - pattern
-      - enum
-      - maximum
-      - minimum
-    applies_to_types:
-      - string
-      - number
-      - integer
-  context: parameter_schema
+  type: typed
 remediation: "Add input validation constraints to tool parameters. Use maxLength for strings, pattern for format validation, enum for known value sets, and min/max for numeric ranges."
 test_cases:
   true_positive:

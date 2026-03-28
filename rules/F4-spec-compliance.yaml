@@ -5,17 +5,7 @@ severity: low
 owasp: MCP07-insecure-config
 mitre: null
 detect:
-  type: composite
-  conditions:
-    check: spec_compliance
-    required_fields:
-      - server_name
-      - server_version
-      - protocol_version
-    recommended_fields:
-      - tool_descriptions
-      - parameter_descriptions
-  context: metadata
+  type: typed
 remediation: "Follow the MCP specification for server metadata. Include server name, version, and protocol version. Provide descriptions for all tools and parameters."
 test_cases:
   true_positive:

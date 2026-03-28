@@ -5,8 +5,7 @@ severity: critical
 owasp: MCP07-insecure-config
 mitre: null
 detect:
-  type: regex
-  patterns:
+  type: typed
     # Explicit 'none' algorithm acceptance — CVE classic
     - "(?i)algorithms?\\s*[=:]\\s*\\[?['\"]none['\"]"
     - "(?i)algorithm\\s*[=:]\\s*['\"]none['\"]"
@@ -28,16 +27,6 @@ detect:
     - "(?i)ignoreExpiration\\s*:\\s*true"
     - "(?i)verify_exp\\s*=\\s*False"
     - "(?i)check_expiration\\s*=\\s*False"
-  context: source_code
-  exclude_patterns:
-    - "RS256"
-    - "RS384"
-    - "RS512"
-    - "ES256"
-    - "ES384"
-    - "ES512"
-    - "PS256"
-    - "algorithms: ['HS"
 remediation: "Always specify the expected algorithm explicitly in jwt.verify(). Never accept 'none'. Use asymmetric algorithms (RS256, ES256) for JWTs that cross trust boundaries. Use crypto.timingSafeEqual for all secret comparisons. Set short expiry times and validate 'exp' and 'iat' claims."
 test_cases:
   true_positive:
