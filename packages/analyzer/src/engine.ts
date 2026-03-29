@@ -11,6 +11,10 @@ import { DescriptionAnalyzer } from "./engines/description-analyzer.js";
 import { SchemaAnalyzer } from "./engines/schema-analyzer.js";
 import { DependencyAnalyzer } from "./engines/dependency-analyzer.js";
 import { ProtocolAnalyzer } from "./engines/protocol-analyzer.js";
+// Phase 1 rebuild: profile-aware analysis
+import { profileServer, type ServerProfile } from "./profiler.js";
+import { annotateFindings, scoredFindings, unscoredFindings, generateProfileReport, type AnnotatedFinding, type ScoredFinding } from "./relevance.js";
+import { selectThreats, getRelevantRuleIds, type ThreatDefinition } from "./threat-model.js";
 
 // Log to stderr so that stdout is clean for callers that parse it (e.g. CLI --json mode)
 const logger = pino({ name: "analyzer:engine" }, process.stderr);
@@ -87,6 +91,22 @@ export interface AnalysisContext {
   previous_tool_pin?: ServerToolPin | null;
 }
 
+/** Result of profile-aware analysis — includes profiling, threat mapping, and relevance filtering */
+export interface ProfiledAnalysisResult {
+  /** Server capability profile with evidence */
+  profile: ServerProfile;
+  /** Threats applicable to this server */
+  threats: ThreatDefinition[];
+  /** Findings that are relevant AND meet evidence standards — these affect the score */
+  scored_findings: ScoredFinding[];
+  /** Findings that were generated but aren't relevant or don't meet evidence standards */
+  informational_findings: AnnotatedFinding[];
+  /** All findings with full annotations */
+  all_annotated: AnnotatedFinding[];
+  /** Human-readable profile report */
+  profile_report: string;
+}
+
 export class AnalysisEngine {
   private codeAnalyzer = new CodeAnalyzer();
   private descriptionAnalyzer = new DescriptionAnalyzer();
@@ -95,6 +115,86 @@ export class AnalysisEngine {
   private protocolAnalyzer = new ProtocolAnalyzer();
 
   constructor(private rules: DetectionRule[]) {}
+
+  /**
+   * Profile-aware analysis: profiles the server, selects relevant threats,
+   * runs rules, and returns annotated findings with evidence chains.
+   *
+   * This is the new recommended entry point. The original analyze() is preserved
+   * for backward compatibility and is called internally.
+   */
+  analyzeWithProfile(context: AnalysisContext): ProfiledAnalysisResult {
+    // Step 1: Profile the server
+    const profile = profileServer(context);
+    logger.info(
+      {
+        server: context.server.id,
+        capabilities: profile.capabilities
+          .filter((c) => c.confidence >= 0.5)
+          .map((c) => `${c.capability}(${(c.confidence * 100).toFixed(0)}%)`),
+        attack_surfaces: profile.attack_surfaces,
+        data_flow_pairs: profile.data_flow_pairs.length,
+      },
+      "Server profiled",
+    );
+
+    // Step 2: Select relevant threats and rule IDs
+    const threats = selectThreats(profile);
+    const relevantRuleIds = getRelevantRuleIds(profile);
+    logger.info(
+      {
+        server: context.server.id,
+        threats: threats.map((t) => t.id),
+        relevant_rules: relevantRuleIds.size,
+        total_rules: this.rules.length,
+      },
+      "Threat model selected",
+    );
+
+    // Step 3: Run ALL rules (for completeness — we still want to see everything)
+    const rawFindings = this.analyze(context);
+
+    // Step 4: Convert FindingInput to TypedFinding for annotation
+    const typedFindings: TypedFinding[] = rawFindings.map((f) => ({
+      rule_id: f.rule_id,
+      severity: f.severity,
+      evidence: f.evidence,
+      remediation: f.remediation,
+      owasp_category: f.owasp_category,
+      mitre_technique: f.mitre_technique,
+      confidence: 0.5, // Default for legacy findings without confidence
+    }));
+
+    // Step 5: Annotate findings with relevance and threat context
+    const annotated = annotateFindings(typedFindings, profile);
+
+    // Step 6: Separate scored vs. informational findings
+    const scored = scoredFindings(annotated);
+    const unscored = unscoredFindings(annotated);
+
+    // Step 7: Generate profile report
+    const profileReport = generateProfileReport(profile);
+
+    logger.info(
+      {
+        server: context.server.id,
+        total_findings: rawFindings.length,
+        scored_findings: scored.length,
+        unscored_findings: unscored.length,
+        filtered_out: rawFindings.length - scored.length,
+      },
+      "Profile-aware analysis complete",
+    );
+
+    return {
+      profile,
+      threats,
+      scored_findings: scored,
+      informational_findings: unscored,
+      all_annotated: annotated,
+      profile_report: profileReport,
+    };
+  }
 
   analyze(context: AnalysisContext): FindingInput[] {
     const findings: FindingInput[] = [];
