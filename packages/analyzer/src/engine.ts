@@ -252,11 +252,15 @@ export class AnalysisEngine {
       this.rules.filter((r) => r.detect.type === "typed" && hasTypedRule(r.id)).map((r) => r.id)
     );
 
+    let deferredToTypedRule = 0;
     for (const f of allEngineResults) {
       if (!loadedRuleIds.has(f.rule_id)) continue;
 
       // Defer to TypedRule — it produces evidence chains
-      if (typedRuleIds.has(f.rule_id)) continue;
+      if (typedRuleIds.has(f.rule_id)) {
+        deferredToTypedRule++;
+        continue;
+      }
 
       engineFindings.push({
         rule_id: f.rule_id,
@@ -300,6 +304,7 @@ export class AnalysisEngine {
         server: context.server.id,
         engine_findings: engineFindings.length,
         engine_rules: engineRuleIds.size,
+        deferred_to_typed_rule: deferredToTypedRule,
         yaml_fallback_rules: yamlRulesRun,
         total_findings: findings.length,
       },

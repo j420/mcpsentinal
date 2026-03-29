@@ -181,16 +181,33 @@ describe("scoredFindings() carries confidence to scorer", () => {
   });
 
   it("legacy rules get default confidence 0.5 (not 1.0)", () => {
-    const result = engine.analyzeWithProfile(execServer());
+    // Build an engine with C1 (typed) + a dummy legacy rule to ensure both run
+    const legacyRule: DetectionRule = {
+      id: "TEST-LEGACY",
+      name: "Test Legacy Rule",
+      category: "code-analysis",
+      severity: "medium",
+      owasp: null,
+      mitre: null,
+      detect: {
+        type: "regex",
+        context: "source_code",
+        patterns: ["exec\\("],
+      },
+      remediation: "Test remediation.",
+      enabled: true,
+    };
+    const mixedEngine = new AnalysisEngine([c1Rule, legacyRule]);
+    const result = mixedEngine.analyzeWithProfile(execServer());
 
-    // Find any non-C1 finding (from YAML/legacy rules)
-    const nonC1 = result.all_annotated.find(
-      (f) => f.rule_id !== "C1" && !f.evidence_chain
+    // The legacy regex rule should fire on the exec() call
+    const legacyFinding = result.all_annotated.find(
+      (f) => f.rule_id === "TEST-LEGACY"
     );
-    if (nonC1) {
-      // Legacy rules without evidence chains get 0.5 default
-      expect(nonC1.confidence).toBe(0.5);
-    }
+    expect(legacyFinding).toBeDefined();
+    // Legacy rules without evidence chains get 0.5 default
+    expect(legacyFinding!.confidence).toBe(0.5);
+    expect(legacyFinding!.evidence_chain).toBeNull();
   });
 });
 
@@ -247,7 +264,7 @@ describe("Full chain: C1 confidence → scorer penalty", () => {
     const fullScore = computeScore(faked, ruleCategories);
 
     // Real confidence < 1.0 → smaller penalty → higher total score
-    expect(realScore.total_score).toBeGreaterThanOrEqual(fullScore.total_score);
+    expect(realScore.total_score).toBeGreaterThan(fullScore.total_score);
 
     // The difference should be measurable (not zero)
     const c1Real = realScore.penalty_breakdown.find((p) => p.rule_id === "C1")!;
@@ -262,36 +279,24 @@ describe("Full chain: C1 confidence → scorer penalty", () => {
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe("Confidence pipeline edge cases", () => {
-  it("regex fallback finding gets lower confidence than AST finding", () => {
-    // Code with template literal in exec — AST may not trace it, falls to regex
-    const regexCtx: AnalysisContext = {
-      server: { id: "rx", name: "shell-executor", description: "Execute shell commands", github_url: null },
-      tools: [
-        { name: "run_command", description: "Execute a shell command", input_schema: { type: "object", properties: { command: { type: "string" } } } },
-      ],
-      source_code: `
-const { exec } = require("child_process");
-exec(\`ls -la \${userInput}\`);
-`,
-      dependencies: [],
-      connection_metadata: null,
-    };
-
+  it("AST-confirmed finding has higher confidence than regex-only finding", () => {
+    // The AST taint analysis (exec server with req.body → exec flow) produces
+    // evidence chains with high confidence. Compare against the baseline.
     const astResult = engine.analyzeWithProfile(execServer());
-    const regexResult = engine.analyzeWithProfile(regexCtx);
 
     const astC1 = astResult.all_annotated.find(
       (f) => f.rule_id === "C1" && f.severity === "critical"
     );
-    const regexC1 = regexResult.all_annotated.find(
-      (f) => f.rule_id === "C1" && (f.severity === "critical" || f.severity === "high")
-    );
+    // AST taint MUST fire on the exec server — this is non-negotiable
+    expect(astC1).toBeDefined();
 
-    // Both should detect something
-    if (astC1 && regexC1) {
-      // AST-confirmed should have higher confidence than regex
-      expect(astC1.confidence).toBeGreaterThan(regexC1.confidence);
-    }
+    // AST-confirmed findings have evidence chains — confidence ≥ 0.70
+    expect(astC1!.evidence_chain).toBeDefined();
+    expect(astC1!.confidence).toBeGreaterThanOrEqual(0.70);
+
+    // Regex-only fallback would produce 0.50 default confidence.
+    // AST taint must beat that threshold.
+    expect(astC1!.confidence).toBeGreaterThan(0.50);
   });
 
   it("informational findings (filtered out) do NOT appear in scored_findings", () => {
