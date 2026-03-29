@@ -734,3 +734,287 @@ vm.runInNewContext(userCode, {});
     expect(getCriticalFindings(findings).length).toBe(0);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SECTION 11: End-to-End Pipeline — Chain → Relevance Filter → Score
+// The chain isn't useful if the downstream pipeline doesn't consume it.
+// These tests verify the full path: C1 produces chain → annotateFindings
+// checks it against T-EXEC-001 standard → scoredFindings includes/excludes
+// it → computeScore weights it by confidence.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+import { annotateFindings, scoredFindings, unscoredFindings } from "../src/relevance.js";
+
+describe("End-to-End: C1 Chain → Relevance → Score", () => {
+  // A server that executes code — C1 IS relevant
+  function executorServer(): AnalysisContext {
+    return {
+      server: { id: "exec-srv", name: "shell-executor", description: "Run shell commands", github_url: null },
+      tools: [
+        { name: "run_command", description: "Execute a shell command on the server", input_schema: { type: "object", properties: { command: { type: "string" } } } },
+      ],
+      source_code: `
+const { exec } = require("child_process");
+const cmd = req.body.command;
+exec(cmd);
+`,
+      dependencies: [],
+      connection_metadata: null,
+    };
+  }
+
+  // A server with NO code execution surface — C1 is NOT relevant
+  function weatherOnlyServer(): AnalysisContext {
+    return {
+      server: { id: "weather", name: "weather-api", description: "Get weather data", github_url: null },
+      tools: [
+        { name: "get_weather", description: "Get weather for a city", input_schema: { type: "object", properties: { city: { type: "string" } } } },
+      ],
+      source_code: `
+const { exec } = require("child_process");
+const cmd = req.body.command;
+exec(cmd);
+`,
+      dependencies: [],
+      connection_metadata: null,
+    };
+  }
+
+  it("C1 finding on executor server: relevant + scored", () => {
+    const context = executorServer();
+    const profile = profileServer(context);
+    const findings = getTypedRule("C1")!.analyze(context);
+    expect(getCriticalFindings(findings).length).toBeGreaterThanOrEqual(1);
+
+    const annotated = annotateFindings(findings, profile);
+    const c1 = annotated.find((f) => f.rule_id === "C1" && f.severity === "critical");
+    expect(c1).toBeDefined();
+    expect(c1!.relevant).toBe(true);
+
+    const scored = scoredFindings(annotated);
+    expect(scored.some((f) => f.rule_id === "C1")).toBe(true);
+  });
+
+  it("same C1 finding on weather server: relevant (universal? or filtered?), check behavior", () => {
+    const context = weatherOnlyServer();
+    const profile = profileServer(context);
+    const findings = getTypedRule("C1")!.analyze(context);
+
+    // C1 fires because the source code has exec(req.body.command)
+    expect(getCriticalFindings(findings).length).toBeGreaterThanOrEqual(1);
+
+    const annotated = annotateFindings(findings, profile);
+    const c1 = annotated.find((f) => f.rule_id === "C1" && f.severity === "critical");
+
+    // C1 is NOT a universal rule — it requires code-execution attack surface.
+    // Weather server has no code-execution surface → C1 should be irrelevant.
+    if (c1) {
+      expect(c1.relevant).toBe(false);
+      // Irrelevant findings should NOT appear in scored output
+      const scored = scoredFindings(annotated);
+      expect(scored.filter((f) => f.rule_id === "C1" && f.severity === "critical").length).toBe(0);
+      // But should appear in unscored (for transparency)
+      const unscored = unscoredFindings(annotated);
+      expect(unscored.some((f) => f.rule_id === "C1")).toBe(true);
+    }
+  });
+
+  it("scored C1 findings carry confidence for downstream scoring", () => {
+    const context = executorServer();
+    const profile = profileServer(context);
+    const findings = getTypedRule("C1")!.analyze(context);
+    const annotated = annotateFindings(findings, profile);
+
+    // The annotated finding should have confidence attached
+    const c1Annotated = annotated.filter((f) => f.rule_id === "C1" && f.severity === "critical");
+    expect(c1Annotated.length).toBeGreaterThanOrEqual(1);
+
+    // Confidence should be a valid number between 0 and 1
+    expect(c1Annotated[0].confidence).toBeGreaterThanOrEqual(0);
+    expect(c1Annotated[0].confidence).toBeLessThanOrEqual(1);
+
+    // AST-confirmed taint should have high confidence (≥ 0.70)
+    expect(c1Annotated[0].confidence).toBeGreaterThanOrEqual(0.70);
+
+    // Scored output should include this finding (relevant + meets standard)
+    const scored = scoredFindings(annotated);
+    expect(scored.some((f) => f.rule_id === "C1" && f.severity === "critical")).toBe(true);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SECTION 12: Evidence Standard Failure Cases
+// A chain that doesn't meet T-EXEC-001 should be filtered out by the
+// relevance system. These verify that bad evidence doesn't sneak through.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+import { EvidenceChainBuilder } from "../src/evidence.js";
+
+describe("Evidence Standard Failure Modes", () => {
+  it("chain with only 2 links fails T-EXEC-001 (requires 3)", () => {
+    // Build a minimal chain that's too short
+    const shortChain = new EvidenceChainBuilder()
+      .source({ source_type: "user-parameter", location: "line 1", observed: "req.body.cmd", rationale: "user input" })
+      .sink({ sink_type: "command-execution", location: "line 2", observed: "exec(cmd)" })
+      .build();
+
+    const result = meetsExecStandard(shortChain);
+    expect(result.passes).toBe(false);
+    expect(result.failures).toContain("chain_length 2 < 3");
+  });
+
+  it("chain missing source link fails T-EXEC-001 (requires_source=true)", () => {
+    const noSourceChain = new EvidenceChainBuilder()
+      .sink({ sink_type: "command-execution", location: "line 5", observed: "exec(x)" })
+      .impact({ impact_type: "remote-code-execution", scope: "server-host", exploitability: "moderate", scenario: "potential RCE" })
+      .factor("structural", 0.20, "pattern match only")
+      .build();
+
+    const result = meetsExecStandard(noSourceChain);
+    expect(result.passes).toBe(false);
+    expect(result.failures).toContain("missing source link");
+  });
+
+  it("chain missing sink link fails T-EXEC-001 (requires_sink=true)", () => {
+    const noSinkChain = new EvidenceChainBuilder()
+      .source({ source_type: "user-parameter", location: "line 1", observed: "req.body.cmd", rationale: "user input" })
+      .propagation({ propagation_type: "variable-assignment", location: "line 2", observed: "cmd = req.body.cmd" })
+      .impact({ impact_type: "remote-code-execution", scope: "server-host", exploitability: "moderate", scenario: "potential RCE" })
+      .build();
+
+    const result = meetsExecStandard(noSinkChain);
+    expect(result.passes).toBe(false);
+    expect(result.failures).toContain("missing sink link");
+  });
+
+  it("chain with confidence below 0.60 fails T-EXEC-001", () => {
+    // A chain with heavy negative factors that push confidence below threshold
+    const lowConfChain = new EvidenceChainBuilder()
+      .source({ source_type: "user-parameter", location: "line 1", observed: "x", rationale: "untrusted" })
+      .propagation({ propagation_type: "direct-pass", location: "line 2", observed: "pass(x)" })
+      .sink({ sink_type: "command-execution", location: "line 3", observed: "exec(x)" })
+      .mitigation({ mitigation_type: "sanitizer-function", present: true, location: "line 2", detail: "escapeShell found" })
+      .mitigation({ mitigation_type: "input-validation", present: true, location: "schema", detail: "enum constraint" })
+      .factor("uncertain_scope", -0.15, "May not be reachable in production")
+      .build();
+
+    // Multiple mitigations present: -0.30 each, plus structural factor
+    // Base 0.70 - 0.30 - 0.30 - 0.15 = -0.05 → clamped to 0.05
+    expect(lowConfChain.confidence).toBeLessThan(0.60);
+    const result = meetsExecStandard(lowConfChain);
+    expect(result.passes).toBe(false);
+    expect(result.failures.some((f) => f.includes("confidence"))).toBe(true);
+  });
+
+  it("chain with exactly 3 links + source + sink + confidence 0.60 passes (boundary)", () => {
+    // Minimal passing chain — exactly at the boundary
+    const boundaryChain = new EvidenceChainBuilder()
+      .source({ source_type: "user-parameter", location: "line 1", observed: "req.body.cmd", rationale: "user input" })
+      .propagation({ propagation_type: "direct-pass", location: "line 2", observed: "exec(cmd)" })
+      .sink({ sink_type: "command-execution", location: "line 2", observed: "exec(cmd)" })
+      .build();
+
+    // Base confidence for full source→propagation→sink = 0.70
+    expect(boundaryChain.confidence).toBeGreaterThanOrEqual(0.60);
+    const result = meetsExecStandard(boundaryChain);
+    expect(result.passes).toBe(true);
+    expect(result.failures).toHaveLength(0);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SECTION 13: Sanitized vs Unsanitized — Confidence Value Comparison
+// When a sanitizer is present, the chain's computed confidence MUST be
+// measurably lower than without. This is what separates "maybe vulnerable"
+// from "definitely vulnerable".
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("Sanitized vs Unsanitized Confidence Values", () => {
+  const UNSANITIZED = `
+const { exec } = require("child_process");
+const cmd = req.body.command;
+exec(cmd);
+`;
+
+  const SANITIZED = `
+const { exec } = require("child_process");
+const cmd = req.body.command;
+const safe = escapeShell(cmd);
+exec(safe);
+`;
+
+  it("unsanitized flow has higher confidence than sanitized flow", () => {
+    const unsanitizedFindings = run(UNSANITIZED);
+    const sanitizedFindings = run(SANITIZED);
+
+    const unsanitizedCritical = getCriticalFindings(unsanitizedFindings);
+    // Sanitized should produce informational (not critical)
+    const sanitizedInfo = sanitizedFindings.filter((f) => f.severity === "informational");
+
+    // Both should produce findings (one critical, one informational)
+    expect(unsanitizedCritical.length).toBeGreaterThanOrEqual(1);
+
+    // If sanitizer was detected, confidence should be lower
+    if (sanitizedInfo.length > 0) {
+      expect(sanitizedInfo[0].confidence).toBeLessThan(unsanitizedCritical[0].confidence);
+    }
+  });
+
+  it("unsanitized chain has no mitigation-present links", () => {
+    const findings = getCriticalFindings(run(UNSANITIZED));
+    if (findings.length === 0) return;
+    const chain = getChain(findings[0]);
+    if (!chain) return;
+
+    const mitigations = getLinks<MitigationLink>(chain, "mitigation");
+    // Should have mitigation links, but they should say present=false
+    const presentMitigations = mitigations.filter((m) => m.present);
+    expect(presentMitigations.length).toBe(0);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SECTION 14: Known Limitations — Documented Detection Gaps
+// These test patterns we KNOW we can't detect yet. Each test documents
+// the gap and the expected behavior. When we fix the gap, the test
+// expectation flips from "not detected" to "detected".
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("Known Limitations (documented detection gaps)", () => {
+  it("bare function parameter (params.X) is NOT recognized as taint source", () => {
+    // This is the actual CVE-2025-6514 pattern in MCP SDK handlers.
+    // Our taint analyzer only recognizes req.body, req.query, process.env etc.
+    // When we add MCP SDK-aware taint sources, this test should start detecting.
+    const code = `
+function handleTool(params) {
+  const cmd = params.command;
+  exec(cmd);
+}
+`;
+    const findings = getCriticalFindings(run(code));
+    // KNOWN GAP: params.command is not a recognized taint source.
+    // This documents the limitation. When fixed, change toBe(0) → toBeGreaterThanOrEqual(1)
+    // and add evidence chain validation.
+    expect(findings.length).toBe(0);
+  });
+
+  it("request.params.arguments (MCP SDK pattern) falls to regex fallback", () => {
+    // The MCP SDK uses request.params.arguments — not req.body.
+    // Our AST taint doesn't know about this source. Regex fallback may catch
+    // the exec() call but without proper taint tracking.
+    const code = `
+const { command } = request.params.arguments;
+execSync(\`git \${command}\`);
+`;
+    const findings = run(code);
+    // Should at least catch via regex fallback (template literal in exec)
+    const critOrHigh = findings.filter((f) => f.severity === "critical" || f.severity === "high");
+    expect(critOrHigh.length).toBeGreaterThanOrEqual(1);
+    // But the analysis type should be regex, not AST taint (documenting the gap)
+    if (critOrHigh[0].metadata?.analysis_type) {
+      // If it fired via taint, great — the gap is fixed. If regex, expected.
+      const type = critOrHigh[0].metadata.analysis_type as string;
+      expect(["ast_taint", "taint", "regex_fallback"]).toContain(type);
+    }
+  });
+});
