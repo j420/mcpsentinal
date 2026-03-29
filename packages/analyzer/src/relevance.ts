@@ -10,6 +10,7 @@
  * 4. Every finding includes the threat context (why we checked, what attack it maps to)
  */
 
+import type { FindingInput } from "@mcp-sentinel/database";
 import type { TypedFinding } from "./rules/base.js";
 import type { ServerProfile } from "./profiler.js";
 import type { EvidenceChain } from "./evidence.js";
@@ -100,13 +101,7 @@ export function annotateFindings(
 
 /** A scored finding ready for database insertion and scoring.
  *  Extends FindingInput shape with confidence for weighted penalty computation. */
-export interface ScoredFinding {
-  rule_id: string;
-  severity: string;
-  evidence: string;
-  remediation: string;
-  owasp_category: string | null;
-  mitre_technique: string | null;
+export interface ScoredFinding extends FindingInput {
   /** Confidence from evidence chain or rule (0.0–1.0). Scorer scales penalty by this. */
   confidence: number;
 }
@@ -123,10 +118,10 @@ export function scoredFindings(annotated: AnnotatedFinding[]): ScoredFinding[] {
     .filter((f) => f.relevant && f.meets_evidence_standard)
     .map((f) => ({
       rule_id: f.rule_id,
-      severity: f.severity,
+      severity: f.severity as ScoredFinding["severity"],
       evidence: f.evidence,
       remediation: f.remediation,
-      owasp_category: f.owasp_category,
+      owasp_category: f.owasp_category as ScoredFinding["owasp_category"],
       mitre_technique: f.mitre_technique,
       confidence: f.confidence,
     }));
