@@ -124,6 +124,9 @@ export function scoredFindings(annotated: AnnotatedFinding[]): ScoredFinding[] {
       owasp_category: f.owasp_category as ScoredFinding["owasp_category"],
       mitre_technique: f.mitre_technique,
       confidence: f.confidence,
+      // Phase 1: Preserve structured evidence chain for database persistence.
+      // Serialized as JSONB. NULL for rules not yet upgraded to evidence chains.
+      evidence_chain: f.evidence_chain as Record<string, unknown> | null,
     }));
 }
 

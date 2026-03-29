@@ -507,8 +507,8 @@ export class DatabaseQueries {
   ): Promise<void> {
     for (const finding of findings) {
       await this.pool.query(
-        `INSERT INTO findings (server_id, scan_id, rule_id, severity, evidence, remediation, owasp_category, mitre_technique)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        `INSERT INTO findings (server_id, scan_id, rule_id, severity, evidence, remediation, owasp_category, mitre_technique, confidence, evidence_chain)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
         [
           serverId,
           scanId,
@@ -518,6 +518,8 @@ export class DatabaseQueries {
           finding.remediation,
           finding.owasp_category,
           finding.mitre_technique,
+          finding.confidence ?? 1.0,
+          finding.evidence_chain ? JSON.stringify(finding.evidence_chain) : null,
         ]
       );
     }
@@ -1325,6 +1327,114 @@ export class DatabaseQueries {
        WHERE chain_id = $1
        ORDER BY created_at ASC`,
       [chainId]
+    );
+    return result.rows;
+  }
+
+  // ─── Server Profile Operations ────────────────────────────────────────────
+
+  /**
+   * Insert a server profile for a scan. Uses ON CONFLICT to handle re-runs
+   * of the same scan (uq_sp_server_scan unique constraint).
+   * Append-only for new scans (ADR-008).
+   */
+  async insertServerProfile(input: {
+    server_id: string;
+    scan_id: string;
+    profile_type: string;
+    capabilities: unknown[];
+    attack_surfaces: string[];
+    data_flow_pairs: unknown[];
+    threats: unknown[];
+    summary: string;
+    has_source_code: boolean;
+    has_connection: boolean;
+    has_dependencies: boolean;
+    tool_count: number;
+  }): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO server_profiles (
+        server_id, scan_id, profile_type, capabilities, attack_surfaces,
+        data_flow_pairs, threats, summary, has_source_code, has_connection,
+        has_dependencies, tool_count
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      ON CONFLICT (server_id, scan_id) DO UPDATE SET
+        profile_type = EXCLUDED.profile_type,
+        capabilities = EXCLUDED.capabilities,
+        attack_surfaces = EXCLUDED.attack_surfaces,
+        data_flow_pairs = EXCLUDED.data_flow_pairs,
+        threats = EXCLUDED.threats,
+        summary = EXCLUDED.summary,
+        has_source_code = EXCLUDED.has_source_code,
+        has_connection = EXCLUDED.has_connection,
+        has_dependencies = EXCLUDED.has_dependencies,
+        tool_count = EXCLUDED.tool_count`,
+      [
+        input.server_id,
+        input.scan_id,
+        input.profile_type,
+        JSON.stringify(input.capabilities),
+        input.attack_surfaces,
+        JSON.stringify(input.data_flow_pairs),
+        JSON.stringify(input.threats),
+        input.summary,
+        input.has_source_code,
+        input.has_connection,
+        input.has_dependencies,
+        input.tool_count,
+      ]
+    );
+  }
+
+  /**
+   * Get the latest profile for a server (most recent scan).
+   * Returns null if no profile exists (server never scanned with Phase 1 pipeline).
+   */
+  async getLatestProfileForServer(serverId: string): Promise<{
+    profile_type: string;
+    capabilities: unknown[];
+    attack_surfaces: string[];
+    data_flow_pairs: unknown[];
+    threats: unknown[];
+    summary: string;
+    has_source_code: boolean;
+    has_connection: boolean;
+    has_dependencies: boolean;
+    tool_count: number;
+    created_at: Date;
+  } | null> {
+    const result = await this.pool.query(
+      `SELECT profile_type, capabilities, attack_surfaces, data_flow_pairs,
+              threats, summary, has_source_code, has_connection, has_dependencies,
+              tool_count, created_at
+       FROM server_profiles
+       WHERE server_id = $1
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [serverId]
+    );
+    return result.rows[0] ?? null;
+  }
+
+  /**
+   * Get profile history for a server — used for capability drift detection
+   * and trend analysis. Returns most recent profiles first.
+   */
+  async getProfileHistory(serverId: string, limit = 10): Promise<Array<{
+    profile_type: string;
+    capabilities: unknown[];
+    attack_surfaces: string[];
+    summary: string;
+    tool_count: number;
+    created_at: Date;
+  }>> {
+    const result = await this.pool.query(
+      `SELECT profile_type, capabilities, attack_surfaces, summary, tool_count, created_at
+       FROM server_profiles
+       WHERE server_id = $1
+       ORDER BY created_at DESC
+       LIMIT $2`,
+      [serverId, limit]
     );
     return result.rows;
   }

@@ -414,6 +414,100 @@ const MIGRATIONS = [
         WHERE exploitability_rating IN ('critical', 'high');
     `,
   },
+  {
+    id: "011_phase1_evidence_profiles",
+    sql: `
+      -- Phase 1 Evidence Chains + Server Profiles
+      --
+      -- Problem: The analyzer computes rich evidence chains (source→sink taint flows),
+      -- confidence scores (0.0-1.0 with factor breakdowns), and server profiles
+      -- (capability classification + threat models), but all of this is discarded
+      -- at the pipeline boundary. Only flat evidence text survives to the DB.
+      --
+      -- This migration adds the persistence layer for Phase 1 analysis features.
+
+      -- ─── 1. Findings: add confidence + evidence_chain ────────────────────────
+      --
+      -- confidence: REAL [0.05, 0.99] — computed from evidence chain structure.
+      --   Full source→sink taint path = 0.70 base. Pattern match only = 0.30 base.
+      --   Factors adjust up/down (mitigation present, sanitizer found, etc.).
+      --   Default 1.0 for backward compat with pre-Phase 1 findings (no chain = full confidence assumed).
+      --
+      -- evidence_chain: JSONB — the structured EvidenceChain object.
+      --   Contains: links[] (source, propagation, sink, mitigation, impact),
+      --   confidence_factors[] (factor name, adjustment, rationale),
+      --   threat_reference (CVE/paper backing the finding).
+      --   NULL for findings from rules not yet upgraded to evidence chains.
+      --   NOT indexed — queried only on server detail page, always filtered by server_id first.
+
+      ALTER TABLE findings
+        ADD COLUMN IF NOT EXISTS confidence REAL NOT NULL DEFAULT 1.0
+          CHECK (confidence >= 0.0 AND confidence <= 1.0),
+        ADD COLUMN IF NOT EXISTS evidence_chain JSONB;
+
+      -- Partial index: only index findings with evidence chains for analytics queries
+      -- ("how many findings have structured evidence?", "average confidence of chained findings")
+      CREATE INDEX IF NOT EXISTS idx_findings_has_chain
+        ON findings(server_id, confidence)
+        WHERE evidence_chain IS NOT NULL;
+
+      -- ─── 2. Server Profiles: capability classification + attack surfaces ──────
+      --
+      -- One row per scan per server. Append-only (ADR-008).
+      -- Each profile is the profiler's output for that scan — captures capabilities,
+      -- attack surfaces, data flow pairs, and which threats were selected.
+      --
+      -- Used for:
+      --   - Server detail page: "What kind of server is this?"
+      --   - Trend analysis: "Has this server's profile changed over time?"
+      --   - Aggregate analytics: "What % of servers have code-execution capability?"
+      --   - Rule relevance debugging: "Why was rule X skipped for this server?"
+      --
+      -- profile_type: a short human-readable classification derived from the top
+      --   capabilities (e.g., "filesystem + network", "database + credentials").
+      --   Stored as TEXT, not enum — profiler may produce new type combinations
+      --   as capability patterns expand. Max 200 chars.
+
+      CREATE TABLE IF NOT EXISTS server_profiles (
+        id              UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
+        server_id       UUID         NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+        scan_id         UUID         NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
+        profile_type    VARCHAR(200) NOT NULL,
+        capabilities    JSONB        NOT NULL,
+        attack_surfaces TEXT[]       NOT NULL DEFAULT '{}',
+        data_flow_pairs JSONB        NOT NULL DEFAULT '[]',
+        threats         JSONB        NOT NULL DEFAULT '[]',
+        summary         TEXT         NOT NULL,
+        has_source_code BOOLEAN      NOT NULL DEFAULT false,
+        has_connection   BOOLEAN      NOT NULL DEFAULT false,
+        has_dependencies BOOLEAN      NOT NULL DEFAULT false,
+        tool_count      INTEGER      NOT NULL DEFAULT 0,
+        created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+      );
+
+      -- Lookup by server: "latest profile for this server"
+      CREATE INDEX IF NOT EXISTS idx_sp_server_id
+        ON server_profiles(server_id);
+
+      -- Lookup by scan: "which profile was generated for this scan?"
+      CREATE INDEX IF NOT EXISTS idx_sp_scan_id
+        ON server_profiles(scan_id);
+
+      -- Analytics: "all servers with code-execution capability"
+      -- GIN index on capabilities JSONB enables @> containment queries
+      CREATE INDEX IF NOT EXISTS idx_sp_capabilities
+        ON server_profiles USING gin(capabilities);
+
+      -- Time-series: "profile changes over time"
+      CREATE INDEX IF NOT EXISTS idx_sp_created_at
+        ON server_profiles(created_at DESC);
+
+      -- Unique constraint: one profile per server per scan
+      -- (re-running analysis on the same scan should not create duplicates)
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_sp_server_scan
+        ON server_profiles(server_id, scan_id);
+    `,
+  },
 ];
 
 export async function migrate(connectionString: string): Promise<void> {
