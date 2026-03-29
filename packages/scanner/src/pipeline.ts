@@ -556,9 +556,52 @@ export class ScanPipeline {
         "Stage 6: Score computed"
       );
 
-      // ── Stage 7: Persist findings, score, close scan ──────────────────────
+      // ── Stage 7: Persist findings, profile, score, close scan ────────────
       if (findings.length > 0) {
         await this.db.insertFindings(server.id, scanId, findings);
+      }
+
+      // Persist server profile — Phase 1 capability classification + threats.
+      // Derived profile_type from top capabilities (≥0.5 confidence) for quick filtering.
+      try {
+        const topCaps = profileResult.profile.capabilities
+          .filter((c) => c.confidence >= 0.5)
+          .sort((a, b) => b.confidence - a.confidence)
+          .slice(0, 3)
+          .map((c) => c.capability);
+        const profileType = topCaps.length > 0 ? topCaps.join(" + ") : "unknown";
+
+        await this.db.insertServerProfile({
+          server_id: server.id,
+          scan_id: scanId,
+          profile_type: profileType,
+          capabilities: profileResult.profile.capabilities.map((c) => ({
+            capability: c.capability,
+            confidence: c.confidence,
+            evidence: c.evidence,
+          })),
+          attack_surfaces: profileResult.profile.attack_surfaces,
+          data_flow_pairs: profileResult.profile.data_flow_pairs,
+          threats: profileResult.threats.map((t) => ({
+            id: t.id,
+            name: t.name,
+            description: t.mcp_specific_rationale,
+            rule_ids: t.rule_ids,
+          })),
+          summary: profileResult.profile.summary,
+          has_source_code: profileResult.profile.has_source_code,
+          has_connection: profileResult.profile.has_connection_data,
+          has_dependencies: profileResult.profile.has_dependency_data,
+          tool_count: profileResult.profile.tool_count,
+        });
+        log.info({ profile_type: profileType }, "Stage 7: Server profile persisted");
+      } catch (profileErr) {
+        // Profile persistence is non-fatal — findings and scores are more important.
+        // Log and continue. This gracefully handles pre-migration databases.
+        log.warn(
+          { err: profileErr instanceof Error ? profileErr.message : String(profileErr) },
+          "Stage 7: Failed to persist server profile — non-fatal"
+        );
       }
 
       await this.db.insertScore({

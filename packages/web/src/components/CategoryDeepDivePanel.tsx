@@ -1,5 +1,7 @@
 "use client";
 import React, { useState, useMemo } from "react";
+import EvidenceChainViz from "@/components/EvidenceChainViz";
+import type { EvidenceChainData } from "@/components/EvidenceChainViz";
 import {
   CddFinding,
   FullFinding,
@@ -218,6 +220,10 @@ export default function CategoryDeepDivePanel({ findings, fullFindings }: { find
                           {f.mitre_technique && <span className="cdd-finding-mitre">{f.mitre_technique}</span>}
                         </div>
                         <div className="cdd-finding-evidence">{f.evidence}</div>
+                        <EvidenceChainViz
+                          chain={f.evidence_chain as EvidenceChainData | null | undefined}
+                          confidence={f.confidence}
+                        />
                         {f.remediation && (
                           <div className="cdd-finding-remediation">{f.remediation}</div>
                         )}

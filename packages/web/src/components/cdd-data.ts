@@ -17,6 +17,10 @@ export interface FullFinding {
   remediation: string;
   owasp_category: string | null;
   mitre_technique: string | null;
+  /** Phase 1: per-finding confidence score (0.0–1.0). Absent on pre-Phase-1 data. */
+  confidence?: number;
+  /** Phase 1: structured evidence chain. Absent on pre-Phase-1 data. */
+  evidence_chain?: Record<string, unknown> | null;
 }
 
 // ── Rule names ─────────────────────────────────────────────────────────────

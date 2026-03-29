@@ -41,7 +41,13 @@ mcp-sentinel/
 │   ├── api/                     ← Public REST API (has CLAUDE.md)
 │   ├── web/                     ← Next.js registry website (has CLAUDE.md)
 │   ├── cli/                     ← npx mcp-sentinel CLI tool (has CLAUDE.md)
-│   └── mcp-sentinel-scanner/    ← MCP server that exposes scanning as tools (has CLAUDE.md)
+│   ├── mcp-sentinel-scanner/    ← MCP server that exposes scanning as tools (has CLAUDE.md)
+│   ├── risk-matrix/             ← Cross-server capability graph + 12 risk patterns P01-P12 (has CLAUDE.md)
+│   ├── attack-graph/            ← Multi-step kill chain synthesis KC01-KC07 from risk-matrix edges (has CLAUDE.md)
+│   ├── dynamic-tester/          ← Gated dynamic tool invocation with consent + audit (has CLAUDE.md)
+│   ├── red-team/                ← 900+ adversarial fixtures across A-Q categories (has CLAUDE.md)
+│   ├── benchmark/               ← Competitive benchmark framework (has CLAUDE.md)
+│   └── reports/                 ← Ecosystem intelligence report generation (has CLAUDE.md)
 ├── docs/
 │   └── runbooks/                ← Operational runbooks: add-new-rule, new-cve-response, full-crawl
 ├── tools/
@@ -79,7 +85,7 @@ pnpm build                       # Build all packages
 pnpm deploy:web                  # Deploy registry website
 ```
 ## Architecture Principles
-1. **Pipeline, not monolith.** Data flows: Discovery → Connection → Analysis → Scoring → Publication. Each stage is a separate package with a clear contract.
+1. **Pipeline, not monolith.** Data flows: Discovery → Connection → Analysis → Scoring → Cross-Server (Risk Matrix → Attack Graph) → Publication. Each stage is a separate package with a clear contract.
 2. **Rules are metadata + TypeScript.** YAML files define rule metadata only (id, severity, OWASP/MITRE mappings, test cases). ALL 177 detection rules are implemented as TypedRules in TypeScript inside `packages/analyzer/src/rules/implementations/`. Zero YAML regex patterns remain. Detection uses AST taint analysis, capability graph algorithms, entropy-based secret detection, Levenshtein similarity, and structural parsing.
 3. **No LLM in v1.** All detection is deterministic (AST taint, capability graph, entropy, schema inference, linguistic scoring). LLM classification is v1.1 — only added where a deterministic rule demonstrably fails.
 4. **Collect everything, judge later.** Crawlers store raw metadata. Analysis is a separate pass. Never discard data because you don't have a rule for it yet.
@@ -92,7 +98,7 @@ pnpm deploy:web                  # Deploy registry website
 - Use structured logging (pino) with correlation IDs across pipeline stages.
 - Database queries go in `packages/database/queries/` — never inline SQL in other packages.
 - All detection rules get test cases: minimum 2 true positives, 2 true negatives per rule.
-- 1051 tests across 16 test files (1002 analyzer + 49 red-team), 30+ per category.
+- 1201 tests across 19 test files (1002 analyzer + 49 red-team + 150 attack-graph), 30+ per category.
 ## Working with Detection Rules
 Read @agent_docs/detection-rules.md before touching rules/ or packages/analyzer/.
 
@@ -157,6 +163,17 @@ Detection logic lives in `packages/analyzer/src/rules/implementations/` across 2
 ## Working with the Scoring Algorithm
 Read @agent_docs/scoring-algorithm.md before touching packages/scorer/.
 Score = 100 minus weighted penalty deductions. Never returns below 0 or above 100.
+## Working with the Attack Graph Engine
+Read `packages/attack-graph/CLAUDE.md` before touching packages/attack-graph/.
+
+**What it does:** Synthesizes multi-step kill chains across MCP server configurations. Takes risk-matrix edges (P01-P12) + capability nodes → matches 7 CVE-backed kill chain templates (KC01-KC07) → produces scored attack chains with narratives and mitigations.
+
+**Key constraints:**
+- Template-driven, NOT generic pathfinding — every chain matches a real-world attack pattern
+- No LLM calls — all narrative generation is deterministic (ADR-006)
+- Append-only persistence — never UPDATE attack_chains rows (ADR-008)
+- No templates without real-world precedent (CVE or published research)
+- 150 tests: 63 scoring + 74 engine + 13 narrative
 ## Git Workflow
 - Branch naming: `feat/`, `fix/`, `rule/`, `crawler/` prefixes
 - Commits: conventional commits (`feat:`, `fix:`, `rule:`, `chore:`)
@@ -237,7 +254,7 @@ All 177 detection rules now have TypeScript TypedRule implementations using AST 
 capability graph algorithms, Shannon entropy, structural parsing, and linguistic scoring.
 Zero YAML regex patterns remain. YAML files contain metadata only (`detect.type: typed`).
 Engine auto-registers all TypedRules via side-effect import in `engine.ts`.
-1051 tests passing (1002 analyzer + 49 red-team). npm package `mcp-sentinel-scanner@0.2.0` published.
+1201 tests passing (1002 analyzer + 49 red-team + 150 attack-graph). npm package `mcp-sentinel-scanner@0.2.0` published.
 
 ### [RESOLVED] CI Workflow Invalid — paths + paths-ignore conflict
 Fixed: Removed `paths-ignore` blocks from `.github/workflows/ci.yml`. GitHub Actions does not

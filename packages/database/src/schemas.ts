@@ -152,6 +152,9 @@ export const FindingSchema = z.object({
   owasp_category: OwaspCategory.nullable(),
   mitre_technique: z.string().max(100).nullable(),
   disputed: z.boolean().default(false),
+  // Phase 1: Evidence chain support (migration 011)
+  confidence: z.number().min(0).max(1).default(1.0),
+  evidence_chain: z.record(z.unknown()).nullable().default(null),
   created_at: z.coerce.date(),
 });
 export type Finding = z.infer<typeof FindingSchema>;
@@ -322,8 +325,85 @@ export const FindingInputSchema = z.object({
   remediation: z.string().min(1),
   owasp_category: OwaspCategory.nullable().default(null),
   mitre_technique: z.string().nullable().default(null),
+  // Phase 1: Optional evidence chain fields (migration 011).
+  // Optional so existing FindingInput construction sites don't need changes.
+  // Pipeline fills defaults (1.0, null) when persisting to DB.
+  confidence: z.number().min(0).max(1).optional(),
+  evidence_chain: z.record(z.unknown()).nullable().optional(),
 });
 export type FindingInput = z.infer<typeof FindingInputSchema>;
+
+// ─── Server Profile Schema ─────────────────────────────────────────────────
+
+export const ServerProfileSchema = z.object({
+  id: z.string().uuid(),
+  server_id: z.string().uuid(),
+  scan_id: z.string().uuid(),
+  profile_type: z.string().min(1).max(200),
+  capabilities: z.array(z.object({
+    capability: z.string(),
+    confidence: z.number().min(0).max(1),
+    evidence: z.array(z.object({
+      source: z.string(),
+      tool_name: z.string().nullable(),
+      detail: z.string(),
+      weight: z.number().min(0).max(1),
+    })),
+  })),
+  attack_surfaces: z.array(z.string()),
+  data_flow_pairs: z.array(z.object({
+    source_tool: z.string(),
+    sink_tool: z.string(),
+    flow_type: z.string(),
+  })),
+  threats: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string(),
+    rule_ids: z.array(z.string()),
+  })),
+  summary: z.string(),
+  has_source_code: z.boolean(),
+  has_connection: z.boolean(),
+  has_dependencies: z.boolean(),
+  tool_count: z.number().int().nonnegative(),
+  created_at: z.coerce.date(),
+});
+export type ServerProfileRecord = z.infer<typeof ServerProfileSchema>;
+
+export const ServerProfileInputSchema = z.object({
+  server_id: z.string().uuid(),
+  scan_id: z.string().uuid(),
+  profile_type: z.string().min(1).max(200),
+  capabilities: z.array(z.object({
+    capability: z.string(),
+    confidence: z.number().min(0).max(1),
+    evidence: z.array(z.object({
+      source: z.string(),
+      tool_name: z.string().nullable(),
+      detail: z.string(),
+      weight: z.number().min(0).max(1),
+    })),
+  })),
+  attack_surfaces: z.array(z.string()),
+  data_flow_pairs: z.array(z.object({
+    source_tool: z.string(),
+    sink_tool: z.string(),
+    flow_type: z.string(),
+  })),
+  threats: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string(),
+    rule_ids: z.array(z.string()),
+  })),
+  summary: z.string(),
+  has_source_code: z.boolean(),
+  has_connection: z.boolean(),
+  has_dependencies: z.boolean(),
+  tool_count: z.number().int().nonnegative(),
+});
+export type ServerProfileInput = z.infer<typeof ServerProfileInputSchema>;
 
 // ─── Detection Rule Schema ──────────────────────────────────────────────────
 

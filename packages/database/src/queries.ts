@@ -507,8 +507,8 @@ export class DatabaseQueries {
   ): Promise<void> {
     for (const finding of findings) {
       await this.pool.query(
-        `INSERT INTO findings (server_id, scan_id, rule_id, severity, evidence, remediation, owasp_category, mitre_technique)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        `INSERT INTO findings (server_id, scan_id, rule_id, severity, evidence, remediation, owasp_category, mitre_technique, confidence, evidence_chain)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
         [
           serverId,
           scanId,
@@ -518,6 +518,8 @@ export class DatabaseQueries {
           finding.remediation,
           finding.owasp_category,
           finding.mitre_technique,
+          finding.confidence ?? 1.0,
+          finding.evidence_chain ? JSON.stringify(finding.evidence_chain) : null,
         ]
       );
     }
@@ -1228,6 +1230,72 @@ export class DatabaseQueries {
   // ─── Attack Chains ─────────────────────────────────────────────────────────
 
   /**
+   * Get latest finding rule IDs for each server in a set.
+   * Used by AttackGraphEngine to populate `server_findings` for scoring.
+   * Returns only the most recent scan's findings per server.
+   */
+  async getFindingRuleIdsByServerIds(
+    serverIds: string[]
+  ): Promise<Record<string, string[]>> {
+    if (serverIds.length === 0) return {};
+
+    const result = await this.pool.query(
+      `SELECT DISTINCT ON (f.server_id, f.rule_id)
+              f.server_id, f.rule_id
+       FROM findings f
+       JOIN scans s ON f.scan_id = s.id
+       WHERE f.server_id = ANY($1::uuid[])
+         AND s.status = 'completed'
+       ORDER BY f.server_id, f.rule_id, s.completed_at DESC`,
+      [serverIds]
+    );
+
+    const map: Record<string, string[]> = {};
+    for (const row of result.rows) {
+      const existing = map[row.server_id] ?? [];
+      existing.push(row.rule_id);
+      map[row.server_id] = existing;
+    }
+    return map;
+  }
+
+  /**
+   * Get attack chains involving a specific server (appears in any step).
+   * Used by server detail page to show which kill chains this server participates in.
+   */
+  async getAttackChainsForServer(serverId: string): Promise<
+    Array<{
+      id: string;
+      chain_id: string;
+      config_id: string;
+      kill_chain_id: string;
+      kill_chain_name: string;
+      steps: unknown[];
+      exploitability_overall: number;
+      exploitability_rating: string;
+      narrative: string;
+      mitigations: unknown[];
+      owasp_refs: string[];
+      mitre_refs: string[];
+      created_at: Date;
+    }>
+  > {
+    const result = await this.pool.query(
+      `SELECT DISTINCT ON (ac.chain_id)
+              ac.id, ac.chain_id, ac.config_id,
+              ac.kill_chain_id, ac.kill_chain_name,
+              ac.steps, ac.exploitability_overall, ac.exploitability_rating,
+              ac.narrative, ac.mitigations, ac.owasp_refs, ac.mitre_refs,
+              ac.created_at
+       FROM attack_chains ac
+       WHERE ac.steps::jsonb @> $1::jsonb
+       ORDER BY ac.chain_id, ac.created_at DESC`,
+      [JSON.stringify([{ server_id: serverId }])]
+    );
+    return result.rows;
+  }
+
+  /**
    * Insert attack chains (append-only, ADR-008).
    *
    * @param configId — hash of the server ID set
@@ -1325,6 +1393,114 @@ export class DatabaseQueries {
        WHERE chain_id = $1
        ORDER BY created_at ASC`,
       [chainId]
+    );
+    return result.rows;
+  }
+
+  // ─── Server Profile Operations ────────────────────────────────────────────
+
+  /**
+   * Insert a server profile for a scan. Uses ON CONFLICT to handle re-runs
+   * of the same scan (uq_sp_server_scan unique constraint).
+   * Append-only for new scans (ADR-008).
+   */
+  async insertServerProfile(input: {
+    server_id: string;
+    scan_id: string;
+    profile_type: string;
+    capabilities: unknown[];
+    attack_surfaces: string[];
+    data_flow_pairs: unknown[];
+    threats: unknown[];
+    summary: string;
+    has_source_code: boolean;
+    has_connection: boolean;
+    has_dependencies: boolean;
+    tool_count: number;
+  }): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO server_profiles (
+        server_id, scan_id, profile_type, capabilities, attack_surfaces,
+        data_flow_pairs, threats, summary, has_source_code, has_connection,
+        has_dependencies, tool_count
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      ON CONFLICT (server_id, scan_id) DO UPDATE SET
+        profile_type = EXCLUDED.profile_type,
+        capabilities = EXCLUDED.capabilities,
+        attack_surfaces = EXCLUDED.attack_surfaces,
+        data_flow_pairs = EXCLUDED.data_flow_pairs,
+        threats = EXCLUDED.threats,
+        summary = EXCLUDED.summary,
+        has_source_code = EXCLUDED.has_source_code,
+        has_connection = EXCLUDED.has_connection,
+        has_dependencies = EXCLUDED.has_dependencies,
+        tool_count = EXCLUDED.tool_count`,
+      [
+        input.server_id,
+        input.scan_id,
+        input.profile_type,
+        JSON.stringify(input.capabilities),
+        input.attack_surfaces,
+        JSON.stringify(input.data_flow_pairs),
+        JSON.stringify(input.threats),
+        input.summary,
+        input.has_source_code,
+        input.has_connection,
+        input.has_dependencies,
+        input.tool_count,
+      ]
+    );
+  }
+
+  /**
+   * Get the latest profile for a server (most recent scan).
+   * Returns null if no profile exists (server never scanned with Phase 1 pipeline).
+   */
+  async getLatestProfileForServer(serverId: string): Promise<{
+    profile_type: string;
+    capabilities: unknown[];
+    attack_surfaces: string[];
+    data_flow_pairs: unknown[];
+    threats: unknown[];
+    summary: string;
+    has_source_code: boolean;
+    has_connection: boolean;
+    has_dependencies: boolean;
+    tool_count: number;
+    created_at: Date;
+  } | null> {
+    const result = await this.pool.query(
+      `SELECT profile_type, capabilities, attack_surfaces, data_flow_pairs,
+              threats, summary, has_source_code, has_connection, has_dependencies,
+              tool_count, created_at
+       FROM server_profiles
+       WHERE server_id = $1
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [serverId]
+    );
+    return result.rows[0] ?? null;
+  }
+
+  /**
+   * Get profile history for a server — used for capability drift detection
+   * and trend analysis. Returns most recent profiles first.
+   */
+  async getProfileHistory(serverId: string, limit = 10): Promise<Array<{
+    profile_type: string;
+    capabilities: unknown[];
+    attack_surfaces: string[];
+    summary: string;
+    tool_count: number;
+    created_at: Date;
+  }>> {
+    const result = await this.pool.query(
+      `SELECT profile_type, capabilities, attack_surfaces, summary, tool_count, created_at
+       FROM server_profiles
+       WHERE server_id = $1
+       ORDER BY created_at DESC
+       LIMIT $2`,
+      [serverId, limit]
     );
     return result.rows;
   }
