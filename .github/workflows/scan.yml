@@ -215,14 +215,13 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
-  # ── 5b. Attack Graph ──────────────────────────────────────────────────────
+  # ── 6. Attack Graph ──────────────────────────────────────────────────────
   # Multi-step kill chain synthesis (Layer 5).
-  # Consumes risk-matrix edges and capability graph to synthesize ordered
-  # attack narratives with exploitability scoring and mitigations.
-  # Depends on risk-matrix completing first (needs cross-server edges).
+  # Runs after risk-matrix to consume fresh cross-server edges and nodes.
+  # Synthesizes 7 CVE-backed kill chain templates (KC01-KC07).
   # Non-blocking: failure here does not prevent the summary from running.
   attack-graph:
-    name: Attack Graph Synthesis
+    name: Attack Chain Synthesis
     runs-on: ubuntu-latest
     needs: [risk-matrix]
     timeout-minutes: 15
@@ -239,12 +238,12 @@ jobs:
       - run: pnpm --filter=@mcp-sentinel/risk-matrix build
       - run: pnpm --filter=@mcp-sentinel/attack-graph build
 
-      - name: Synthesize attack chains
+      - name: Run attack chain synthesis
         run: pnpm attack-graph --json --with-findings
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
-  # ── 6. Pipeline summary ───────────────────────────────────────────────────
+  # ── 7. Pipeline summary ───────────────────────────────────────────────────
   # Always runs — surfaces results in the Actions UI summary tab even on
   # partial failure so operators can see which stage broke.
   summary:
@@ -286,4 +285,5 @@ jobs:
           echo "- If scan failed: check \`DATABASE_URL\` secret and network access to MCP endpoints." >> $GITHUB_STEP_SUMMARY
           echo "- If score failed: run \`pnpm score\` locally with the same \`DATABASE_URL\`." >> $GITHUB_STEP_SUMMARY
           echo "- If risk-matrix failed: run \`pnpm risk-matrix\` locally with the same \`DATABASE_URL\`." >> $GITHUB_STEP_SUMMARY
+          echo "- If attack-graph failed: run \`pnpm attack-graph\` locally with the same \`DATABASE_URL\`." >> $GITHUB_STEP_SUMMARY
           echo "- To rescan failed servers: re-run this workflow with mode = \`rescan-failed\`." >> $GITHUB_STEP_SUMMARY

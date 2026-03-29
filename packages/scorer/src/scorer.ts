@@ -82,10 +82,10 @@ const OWASP_CATEGORIES = [
   "MCP10-supply-chain",
 ];
 
-/** Finding with optional confidence for weighted scoring */
-interface FindingWithConfidence extends FindingInput {
-  confidence?: number;
-}
+/** Finding with confidence for weighted scoring.
+ *  FindingInput now includes `confidence` (default 1.0), so this type alias
+ *  exists for backward compat with callers that pass the old shape. */
+type FindingWithConfidence = FindingInput;
 
 /**
  * Compute composite security score from findings.

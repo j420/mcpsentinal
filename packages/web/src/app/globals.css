@@ -6491,3 +6491,1255 @@ code, pre, kbd {
   .scanner-score-grid { grid-template-columns: 1fr 1fr; }
   .scanner-step { flex-direction: column; gap: var(--s2); }
 }
+
+/* ============================================================
+   Server Profile Card (.sp-)
+   Displays server capability classification, attack surfaces,
+   data flow pairs, applicable threats, and analysis coverage.
+   ============================================================ */
+
+/* ── Section wrapper ───────────────────────────────────────── */
+.sp-section { margin-bottom: var(--s5); }
+
+.sp-profile-type {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  padding: 2px 8px;
+  margin-left: var(--s2);
+  text-transform: capitalize;
+}
+
+/* ── Two-column grid ───────────────────────────────────────── */
+.sp-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s6);
+  margin-bottom: var(--s5);
+}
+
+.sp-col-title {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  margin-bottom: var(--s3);
+}
+.sp-col-title-sub { margin-top: var(--s5); }
+
+/* ── Capabilities ──────────────────────────────────────────── */
+.sp-caps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+.sp-cap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--s3) var(--s4);
+  transition: box-shadow var(--t-base) var(--ease), border-color var(--t-base) var(--ease);
+}
+.sp-cap:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-md);
+}
+
+/* Capability color modifiers — left border tint */
+.sp-cap-read  { border-left: 3px solid var(--cap-read-text); }
+.sp-cap-write { border-left: 3px solid var(--cap-write-text); }
+.sp-cap-exec  { border-left: 3px solid var(--cap-exec-text); }
+.sp-cap-net   { border-left: 3px solid var(--cap-net-text); }
+.sp-cap-ingest { border-left: 3px solid var(--sev-medium); }
+.sp-cap-cred  { border-left: 3px solid var(--cap-cred-text); }
+
+.sp-cap-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  margin-bottom: var(--s1);
+}
+
+.sp-cap-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.sp-cap-conf {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+}
+.sp-cap-conf-high   { color: var(--good); }
+.sp-cap-conf-medium { color: var(--moderate); }
+.sp-cap-conf-low    { color: var(--text-3); }
+
+/* Confidence bar track + fill */
+.sp-cap-bar-track {
+  height: 3px;
+  background: var(--surface-3);
+  border-radius: var(--r-full);
+  overflow: hidden;
+  margin-bottom: var(--s1);
+}
+
+.sp-cap-bar-fill {
+  height: 100%;
+  border-radius: var(--r-full);
+  transition: width var(--t-slow) var(--ease-out);
+}
+.sp-cap-bar-high   { background: var(--good); }
+.sp-cap-bar-medium { background: var(--moderate); }
+.sp-cap-bar-low    { background: var(--text-3); }
+
+/* Evidence snippets under each capability */
+.sp-cap-evidence {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: var(--s1);
+}
+
+.sp-cap-ev-item {
+  font-size: 11px;
+  color: var(--text-3);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sp-cap-ev-more {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-3);
+}
+
+/* Secondary (low confidence) capabilities */
+.sp-secondary {
+  margin-top: var(--s3);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border);
+}
+
+.sp-secondary-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-3);
+  margin-bottom: var(--s2);
+  display: block;
+}
+
+.sp-secondary-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1);
+}
+
+.sp-secondary-chip {
+  font-size: 11px;
+  color: var(--text-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  padding: 2px 8px;
+}
+
+.sp-secondary-pct {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-3);
+}
+
+/* ── Attack Surfaces ───────────────────────────────────────── */
+.sp-surfaces {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.sp-surface {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  transition: background var(--t-fast) var(--ease);
+}
+.sp-surface:hover { background: var(--surface-2); }
+
+.sp-surface-icon { color: var(--text-3); flex-shrink: 0; }
+
+.sp-surface-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.sp-empty {
+  font-size: 12px;
+  color: var(--text-3);
+  font-style: italic;
+}
+
+/* ── Data Flow Pairs ───────────────────────────────────────── */
+.sp-flows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.sp-flow {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  font-size: 12px;
+}
+
+.sp-flow-tool {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.sp-flow-arrow {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.sp-flow-type {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-3);
+  background: var(--surface-2);
+  border-radius: var(--r-full);
+  padding: 1px 6px;
+}
+
+/* ── Threats ────────────────────────────────────────────────── */
+.sp-threats { margin-top: var(--s3); }
+
+.sp-threat-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--sev-high);
+  background: var(--sev-high-sub);
+  border: 1px solid var(--sev-high-border);
+  border-radius: var(--r-full);
+  padding: 1px 7px;
+  margin-left: var(--s2);
+}
+
+.sp-threats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--s3);
+}
+
+.sp-threat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--s3) var(--s4);
+  border-left: 3px solid var(--sev-high);
+  transition: box-shadow var(--t-base) var(--ease);
+}
+.sp-threat:hover { box-shadow: var(--shadow-md); }
+
+.sp-threat-header {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-bottom: var(--s1);
+}
+
+.sp-threat-id {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--sev-high);
+  background: var(--sev-high-sub);
+  border: 1px solid var(--sev-high-border);
+  border-radius: var(--r-sm);
+  padding: 1px 5px;
+}
+
+.sp-threat-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.sp-threat-desc {
+  font-size: 12px;
+  color: var(--text-2);
+  line-height: 1.5;
+  margin-bottom: var(--s2);
+}
+
+.sp-threat-rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.sp-threat-rule {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 1px 5px;
+}
+
+.sp-threat-rule-more {
+  color: var(--text-3);
+  font-style: italic;
+}
+
+/* ── Analysis Coverage ─────────────────────────────────────── */
+.sp-coverage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border);
+}
+
+.sp-cov-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--border);
+}
+
+.sp-cov-yes {
+  color: var(--good);
+  background: var(--good-sub);
+  border-color: var(--good-border);
+}
+
+.sp-cov-no {
+  color: var(--text-3);
+  background: var(--surface-2);
+}
+
+.sp-cov-neutral {
+  color: var(--text-2);
+  background: var(--surface-2);
+  font-family: var(--font-mono);
+}
+
+/* ── Server Profile responsive ─────────────────────────────── */
+@media (max-width: 768px) {
+  .sp-grid { grid-template-columns: 1fr; }
+  .sp-threats-grid { grid-template-columns: 1fr; }
+}
+
+
+/* ============================================================
+   Evidence Chain Visualization (.ec-)
+   Renders source→propagation→sink data flow with mitigation
+   checks, impact assessment, and inline confidence indicator.
+   ============================================================ */
+
+/* ── Chain container ───────────────────────────────────────── */
+.ec-chain {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+
+/* ── Confidence bar (inline at top of chain) ───────────────── */
+.ec-confidence,
+.ec-confidence-only {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.ec-conf-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+
+.ec-conf-bar-track {
+  flex: 1;
+  height: 5px;
+  background: var(--surface-3);
+  border-radius: var(--r-full);
+  overflow: hidden;
+  min-width: 60px;
+}
+
+.ec-conf-bar-fill {
+  height: 100%;
+  border-radius: var(--r-full);
+  transition: width var(--t-slow) var(--ease-out);
+}
+.ec-conf-high   { background: var(--good); }
+.ec-conf-medium { background: var(--moderate); }
+.ec-conf-low    { background: var(--text-3); }
+
+.ec-conf-pct {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+  min-width: 32px;
+  text-align: right;
+}
+.ec-conf-pct.ec-conf-high   { color: var(--good); }
+.ec-conf-pct.ec-conf-medium { color: var(--moderate); }
+.ec-conf-pct.ec-conf-low    { color: var(--text-3); }
+
+/* ── Standalone confidence-only (no chain) ─────────────────── */
+.ec-confidence-only {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--s2) var(--s4);
+}
+
+/* ── Data flow section ─────────────────────────────────────── */
+.ec-flow { display: flex; flex-direction: column; gap: var(--s2); }
+
+.ec-flow-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+}
+
+/* ── Timeline (vertical chain of nodes) ────────────────────── */
+.ec-timeline {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.ec-timeline-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ── SVG connector arrow between nodes ─────────────────────── */
+.ec-connector {
+  display: flex;
+  justify-content: center;
+  color: var(--text-3);
+  padding: var(--s1) 0;
+}
+
+/* ── Evidence node (base) ──────────────────────────────────── */
+.ec-node {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--s3) var(--s4);
+  position: relative;
+  transition: box-shadow var(--t-base) var(--ease);
+}
+.ec-node:hover { box-shadow: var(--shadow-md); }
+
+/* ── Node type badges ──────────────────────────────────────── */
+.ec-node-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 1px 6px;
+  border-radius: var(--r-sm);
+  margin-bottom: var(--s1);
+}
+
+.ec-badge-source {
+  color: var(--cap-read-text);
+  background: var(--cap-read);
+  border: 1px solid var(--cap-read-border);
+}
+
+.ec-badge-prop {
+  color: var(--text-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border-md);
+}
+
+.ec-badge-sink {
+  color: var(--cap-exec-text);
+  background: var(--cap-exec);
+  border: 1px solid var(--cap-exec-border);
+}
+
+.ec-badge-mit-yes {
+  color: var(--good);
+  background: var(--good-sub);
+  border: 1px solid var(--good-border);
+}
+
+.ec-badge-mit-no {
+  color: var(--sev-critical);
+  background: var(--sev-critical-sub);
+  border: 1px solid var(--sev-critical-border);
+}
+
+.ec-badge-impact {
+  color: var(--sev-high);
+  background: var(--sev-high-sub);
+  border: 1px solid var(--sev-high-border);
+}
+
+/* ── Node content ──────────────────────────────────────────── */
+.ec-node-type {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.ec-node-location {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  margin-bottom: var(--s1);
+  word-break: break-all;
+}
+
+.ec-node-observed {
+  font-size: 12px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+
+.ec-node-rationale {
+  font-size: 11px;
+  color: var(--text-3);
+  line-height: 1.4;
+  margin-top: var(--s1);
+  font-style: italic;
+}
+
+.ec-node-detail {
+  font-size: 12px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+
+/* ── Source node — green left border ───────────────────────── */
+.ec-node-source {
+  border-left: 3px solid var(--cap-read-text);
+}
+
+/* ── Propagation node — neutral left border ────────────────── */
+.ec-node-prop {
+  border-left: 3px solid var(--text-3);
+}
+
+/* ── Sink node — red left border ───────────────────────────── */
+.ec-node-sink {
+  border-left: 3px solid var(--cap-exec-text);
+}
+
+/* ── CVE precedent chip ────────────────────────────────────── */
+.ec-cve {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--sev-high);
+  background: var(--sev-high-sub);
+  border: 1px solid var(--sev-high-border);
+  border-radius: var(--r-sm);
+  padding: 1px 5px;
+  margin-top: var(--s1);
+}
+
+/* ── Mitigation nodes ──────────────────────────────────────── */
+.ec-mitigations { margin-top: var(--s1); }
+
+.ec-mit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--s2);
+  margin-top: var(--s2);
+}
+
+.ec-node-mit {
+  border-left-width: 3px;
+  border-left-style: solid;
+}
+.ec-mit-present { border-left-color: var(--good); background: var(--good-sub); }
+.ec-mit-absent  { border-left-color: var(--sev-critical); background: var(--sev-critical-sub); }
+
+/* ── Impact nodes ──────────────────────────────────────────── */
+.ec-impacts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.ec-node-impact {
+  border-left: 3px solid var(--sev-high);
+}
+
+.ec-impact-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-bottom: var(--s1);
+}
+
+.ec-impact-scope {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-2);
+  text-transform: capitalize;
+}
+
+.ec-impact-exploit {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--border);
+}
+.ec-exploit-trivial  { color: var(--sev-critical); background: var(--sev-critical-sub); border-color: var(--sev-critical-border); }
+.ec-exploit-moderate { color: var(--moderate); background: var(--moderate-sub); border-color: var(--moderate-border); }
+.ec-exploit-complex  { color: var(--good); background: var(--good-sub); border-color: var(--good-border); }
+
+/* ── Threat reference ──────────────────────────────────────── */
+.ec-reference {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  font-size: 12px;
+}
+
+.ec-ref-id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.ec-ref-title {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.ec-ref-year {
+  color: var(--text-3);
+  font-size: 11px;
+}
+
+/* ── Confidence factors collapsible ────────────────────────── */
+.ec-factors {
+  border-top: 1px solid var(--border);
+  padding-top: var(--s2);
+}
+
+.ec-factors-summary {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-3);
+  cursor: pointer;
+  padding: var(--s1) 0;
+  user-select: none;
+  list-style: none;
+}
+.ec-factors-summary::-webkit-details-marker { display: none; }
+.ec-factors-summary::before {
+  content: '\25B6';
+  display: inline-block;
+  margin-right: var(--s1);
+  font-size: 8px;
+  transition: transform var(--t-fast) var(--ease);
+}
+.ec-factors[open] .ec-factors-summary::before {
+  transform: rotate(90deg);
+}
+
+.ec-factors-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: var(--s2);
+}
+
+.ec-factor {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: 2px var(--s2);
+  font-size: 12px;
+}
+
+.ec-factor-adj {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 44px;
+  text-align: right;
+}
+.ec-factor-pos { color: var(--good); }
+.ec-factor-neg { color: var(--sev-critical); }
+
+.ec-factor-name {
+  color: var(--text-2);
+}
+
+/* ── Evidence chain responsive ─────────────────────────────── */
+@media (max-width: 768px) {
+  .ec-mit-grid { grid-template-columns: 1fr; }
+  .ec-chain { padding: var(--s3); }
+}
+
+
+/* ============================================================
+   Attack Chain Components (.ac-)
+   Kill chain listing page + server detail integration.
+   ============================================================ */
+
+/* ── Page layout ───────────────────────────────────────────── */
+.ac-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: var(--s8) var(--s6);
+}
+
+.ac-hero {
+  margin-bottom: var(--s8);
+}
+
+.ac-hero-title {
+  font-family: var(--font-body);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin-bottom: var(--s2);
+}
+
+.ac-hero-desc {
+  font-size: 14px;
+  color: var(--text-2);
+  line-height: 1.6;
+  max-width: 680px;
+  margin-bottom: var(--s5);
+}
+
+.ac-hero-stats {
+  display: flex;
+  gap: var(--s6);
+  padding: var(--s4) 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.ac-hero-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.ac-hero-stat-val {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ac-hero-stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+}
+
+/* ── Sections ──────────────────────────────────────────────── */
+.ac-section { margin-bottom: var(--s8); }
+
+.ac-section-title {
+  font-family: var(--font-body);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  margin-bottom: var(--s3);
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.ac-section-sub {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-bottom: var(--s4);
+}
+
+/* ── Template reference grid ───────────────────────────────── */
+.ac-templates-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--s3);
+}
+
+.ac-template {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--s3) var(--s4);
+  transition: box-shadow var(--t-base) var(--ease);
+}
+.ac-template:hover { box-shadow: var(--shadow-md); }
+.ac-template-active { border-left: 3px solid var(--sev-high); }
+
+.ac-template-header {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-bottom: var(--s1);
+}
+
+.ac-template-id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 1px 5px;
+}
+
+.ac-template-objective {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ac-template-count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--sev-high);
+  background: var(--sev-high-sub);
+  border: 1px solid var(--sev-high-border);
+  border-radius: var(--r-full);
+  padding: 1px 7px;
+}
+
+.ac-template-precedent {
+  font-size: 11px;
+  color: var(--text-3);
+  font-style: italic;
+}
+
+/* ── Chain list ────────────────────────────────────────────── */
+.ac-chains-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+.ac-chain {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s4) var(--s5);
+  border-left-width: 4px;
+  border-left-style: solid;
+  transition: box-shadow var(--t-base) var(--ease);
+}
+.ac-chain:hover { box-shadow: var(--shadow-md); }
+
+.ac-chain-critical { border-left-color: var(--sev-critical); background: var(--finding-critical-bg); }
+.ac-chain-high     { border-left-color: var(--sev-high); background: var(--finding-high-bg); }
+.ac-chain-medium   { border-left-color: var(--sev-medium); background: var(--finding-medium-bg); }
+.ac-chain-low      { border-left-color: var(--sev-low); background: var(--finding-low-bg); }
+
+/* ── Chain header ──────────────────────────────────────────── */
+.ac-chain-header {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  margin-bottom: var(--s3);
+}
+
+.ac-chain-rating {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: var(--r-sm);
+  border: 1px solid transparent;
+}
+.ac-rating-critical { color: var(--sev-critical); background: var(--sev-critical-sub); border-color: var(--sev-critical-border); }
+.ac-rating-high     { color: var(--sev-high);     background: var(--sev-high-sub);     border-color: var(--sev-high-border); }
+.ac-rating-medium   { color: var(--sev-medium);   background: var(--sev-medium-sub);   border-color: var(--sev-medium-border); }
+.ac-rating-low      { color: var(--sev-low);      background: var(--sev-low-sub);      border-color: var(--sev-low-border); }
+
+.ac-chain-score {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ac-chain-kc-id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 1px 5px;
+}
+
+.ac-chain-kc-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ac-chain-date {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+/* ── Step flow (horizontal chain) ──────────────────────────── */
+.ac-chain-flow {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  margin-bottom: var(--s3);
+  padding: var(--s3) 0;
+}
+
+.ac-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--s2) var(--s3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  min-width: 90px;
+  text-align: center;
+  transition: border-color var(--t-fast) var(--ease);
+}
+.ac-step-highlight {
+  border-color: var(--accent);
+  background: var(--accent-sub);
+  box-shadow: 0 0 0 2px var(--accent-ring);
+}
+
+.ac-step-role {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 1px 6px;
+  border-radius: var(--r-full);
+  border: 1px solid transparent;
+}
+.ac-role-injection_gateway { color: var(--sev-critical); background: var(--sev-critical-sub); border-color: var(--sev-critical-border); }
+.ac-role-executor          { color: var(--sev-high); background: var(--sev-high-sub); border-color: var(--sev-high-border); }
+.ac-role-exfiltrator       { color: var(--sev-high); background: var(--sev-high-sub); border-color: var(--sev-high-border); }
+.ac-role-config_writer     { color: var(--sev-critical); background: var(--sev-critical-sub); border-color: var(--sev-critical-border); }
+.ac-role-memory_writer     { color: var(--moderate); background: var(--moderate-sub); border-color: var(--moderate-border); }
+.ac-role-data_source       { color: var(--cap-read-text); background: var(--cap-read); border-color: var(--cap-read-border); }
+.ac-role-pivot             { color: var(--text-2); background: var(--surface-3); border-color: var(--border-md); }
+
+.ac-step-server {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ac-step-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.ac-step-tool {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 0 4px;
+}
+
+.ac-step-tool-more {
+  font-size: 9px;
+  color: var(--text-3);
+  font-style: italic;
+}
+
+.ac-step-arrow {
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+
+/* ── Chain narrative ───────────────────────────────────────── */
+.ac-chain-narrative {
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.6;
+  margin-bottom: var(--s3);
+}
+
+/* ── Chain tags ────────────────────────────────────────────── */
+.ac-chain-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1);
+  margin-bottom: var(--s3);
+}
+
+.ac-tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: var(--r-sm);
+  border: 1px solid transparent;
+}
+
+.ac-tag-owasp {
+  color: #2563EB;
+  background: var(--tag-owasp);
+  border-color: var(--tag-owasp-border);
+}
+
+.ac-tag-mitre {
+  color: var(--tag-mitre-text);
+  background: var(--tag-mitre);
+  border-color: var(--tag-mitre-border);
+}
+
+/* ── Chain mitigation (inline) ─────────────────────────────── */
+.ac-chain-mitigation {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  font-size: 12px;
+}
+
+.ac-mit-label {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ac-mit-action {
+  color: var(--text-2);
+}
+
+.ac-mit-effect {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: var(--r-sm);
+  border: 1px solid transparent;
+}
+.ac-mit-breaks {
+  color: var(--good);
+  background: var(--good-sub);
+  border-color: var(--good-border);
+}
+.ac-mit-reduces {
+  color: var(--moderate);
+  background: var(--moderate-sub);
+  border-color: var(--moderate-border);
+}
+
+.ac-mit-more {
+  font-size: 11px;
+  color: var(--text-3);
+  font-style: italic;
+  margin-left: auto;
+}
+
+/* ── Empty state ───────────────────────────────────────────── */
+.ac-empty {
+  text-align: center;
+  padding: var(--s12) var(--s6);
+}
+
+.ac-empty-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: var(--s2);
+}
+
+.ac-empty-desc {
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.6;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+/* ── Server detail integration ─────────────────────────────── */
+.ac-server-section { margin-bottom: var(--s5); }
+
+.ac-server-chains {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+.ac-server-chain {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  border-left-width: 4px;
+  border-left-style: solid;
+  overflow: hidden;
+}
+
+.ac-server-chain-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: 100%;
+  padding: var(--s3) var(--s4);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--t-fast) var(--ease);
+}
+.ac-server-chain-toggle:hover { background: var(--surface-hover); }
+
+.ac-server-chain-hdr {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex: 1;
+  min-width: 0;
+}
+
+.ac-server-role-badge {
+  font-size: 11px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.ac-chevron {
+  color: var(--text-3);
+  flex-shrink: 0;
+  transition: transform var(--t-fast) var(--ease);
+}
+.ac-chevron-open { transform: rotate(180deg); }
+
+.ac-server-chain-body {
+  padding: 0 var(--s4) var(--s4);
+  border-top: 1px solid var(--border);
+}
+
+/* Mitigations in server context */
+.ac-server-mitigations {
+  margin-top: var(--s3);
+  padding: var(--s3) var(--s4);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+.ac-mit-header {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: var(--s2);
+}
+
+.ac-server-mit {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  padding: var(--s1) 0;
+  font-size: 12px;
+}
+
+.ac-mit-desc {
+  color: var(--text-2);
+  line-height: 1.5;
+}
+
+/* ── Responsive ────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .ac-page { padding: var(--s4) var(--s3); }
+  .ac-hero-title { font-size: 22px; }
+  .ac-hero-stats { flex-wrap: wrap; gap: var(--s3); }
+  .ac-templates-grid { grid-template-columns: 1fr; }
+  .ac-chain-flow { flex-direction: column; align-items: stretch; }
+  .ac-step { flex-direction: row; min-width: 0; }
+  .ac-step-arrow { transform: rotate(90deg); align-self: center; }
+  .ac-chain-header { flex-direction: column; align-items: flex-start; }
+  .ac-chain-date { margin-left: 0; }
+}

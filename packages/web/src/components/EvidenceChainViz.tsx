@@ -1,371 +1,351 @@
-"use client";
 /**
- * EvidenceChainViz — Renders structured evidence chains from attack-graph
- * analysis. Shows source → propagation → sink → impact links as a visual flow.
+ * EvidenceChainViz — Renders a structured evidence chain as a visual flow.
  *
- * Props:
- *   chain — A single evidence chain object (from AttackChain.evidence or
- *           individual finding evidence). May have partial data.
- *   compact — If true, renders a condensed version (no impact details).
+ * Displays the source→propagation→sink data flow that proves a security finding,
+ * with mitigation checks and impact assessment. Each link is independently verifiable.
+ *
+ * Also includes an inline ConfidenceIndicator — the confidence bar is shown
+ * at the top of each evidence chain rather than as a separate component,
+ * because confidence is meaningless without the evidence that produced it.
+ *
+ * Server component — no client-side state needed.
+ * Gracefully renders nothing if evidence_chain is null/undefined (most findings
+ * won't have structured evidence chains until rules are progressively upgraded).
  */
 
 import React from "react";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ─── Types (matching packages/analyzer/src/evidence.ts) ──────────────────────
 
-export interface EvidenceLink {
-  type: "source" | "propagation" | "sink" | "mitigation" | "impact";
-  location?: string | null;
-  observed?: string | null;
-  rationale?: string | null;
-  source_type?: string | null;
-  propagation_type?: string | null;
-  sink_type?: string | null;
-  mitigation_type?: string | null;
-  impact_type?: string | null;
-  present?: boolean;
-  scope?: string | null;
+interface SourceLink {
+  type: "source";
+  source_type: string;
+  location: string;
+  observed: string;
+  rationale: string;
 }
 
-export interface EvidenceChain {
-  links?: EvidenceLink[] | null;
-  confidence?: number | null;
-  confidence_factors?: Array<{ factor: string; value: number; description: string }> | null;
+interface PropagationLink {
+  type: "propagation";
+  propagation_type: string;
+  location: string;
+  observed: string;
 }
 
-export interface EvidenceChainVizProps {
-  chain: EvidenceChain;
-  compact?: boolean;
+interface SinkLink {
+  type: "sink";
+  sink_type: string;
+  location: string;
+  observed: string;
+  cve_precedent?: string;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+interface MitigationLink {
+  type: "mitigation";
+  mitigation_type: string;
+  present: boolean;
+  location: string;
+  detail: string;
+}
 
-const TYPE_COLORS: Record<string, string> = {
-  source: "#dc2626",
-  propagation: "#f59e0b",
-  sink: "#7c3aed",
-  mitigation: "#059669",
-  impact: "#1d4ed8",
+interface ImpactLink {
+  type: "impact";
+  impact_type: string;
+  scope: string;
+  exploitability: string;
+  scenario: string;
+}
+
+type EvidenceLink = SourceLink | PropagationLink | SinkLink | MitigationLink | ImpactLink;
+
+interface ConfidenceFactor {
+  factor: string;
+  adjustment: number;
+  rationale: string;
+}
+
+interface ThreatReference {
+  id: string;
+  title: string;
+  url?: string;
+  year?: number;
+  relevance: string;
+}
+
+export interface EvidenceChainData {
+  links: EvidenceLink[];
+  confidence_factors: ConfidenceFactor[];
+  confidence: number;
+  threat_reference?: ThreatReference;
+}
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+const SOURCE_TYPE_LABELS: Record<string, string> = {
+  "user-parameter": "User Parameter",
+  "external-content": "External Content",
+  "file-content": "File Content",
+  "environment": "Environment",
+  "database-content": "Database Content",
+  "agent-output": "Agent Output",
+  "initialize-field": "Initialize Field",
 };
 
-const TYPE_LABELS: Record<string, string> = {
-  source: "Source",
-  propagation: "Propagation",
-  sink: "Sink",
-  mitigation: "Mitigation",
-  impact: "Impact",
+const SINK_TYPE_LABELS: Record<string, string> = {
+  "command-execution": "Command Execution",
+  "code-evaluation": "Code Evaluation",
+  "sql-execution": "SQL Execution",
+  "file-write": "File Write",
+  "network-send": "Network Send",
+  "deserialization": "Deserialization",
+  "template-render": "Template Render",
+  "credential-exposure": "Credential Exposure",
+  "config-modification": "Config Modification",
+  "privilege-grant": "Privilege Grant",
 };
 
-function truncate(s: string | null | undefined, max: number): string {
-  if (!s) return "";
+const PROPAGATION_LABELS: Record<string, string> = {
+  "direct-pass": "Direct Pass",
+  "variable-assignment": "Variable Assignment",
+  "string-concatenation": "String Concatenation",
+  "template-literal": "Template Literal",
+  "function-call": "Function Call",
+  "cross-tool-flow": "Cross-Tool Flow",
+  "schema-unconstrained": "Schema Unconstrained",
+  "description-directive": "Description Directive",
+};
+
+const IMPACT_LABELS: Record<string, string> = {
+  "remote-code-execution": "Remote Code Execution",
+  "data-exfiltration": "Data Exfiltration",
+  "credential-theft": "Credential Theft",
+  "denial-of-service": "Denial of Service",
+  "privilege-escalation": "Privilege Escalation",
+  "session-hijack": "Session Hijack",
+  "config-poisoning": "Config Poisoning",
+  "cross-agent-propagation": "Cross-Agent Propagation",
+};
+
+const EXPLOITABILITY_LABELS: Record<string, string> = {
+  trivial: "Trivial",
+  moderate: "Moderate",
+  complex: "Complex",
+};
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function confLevel(c: number): "high" | "medium" | "low" {
+  if (c >= 0.70) return "high";
+  if (c >= 0.45) return "medium";
+  return "low";
+}
+
+function truncate(s: string, max: number): string {
   if (s.length <= max) return s;
-  return s.slice(0, max - 1) + "…";
+  return s.slice(0, max) + "\u2026";
 }
 
-function linkSubtype(link: EvidenceLink): string | null {
+// ─── Sub-components ──────────────────────────────────────────────────────────
+
+function SourceNode({ link }: { link: SourceLink }) {
   return (
-    link.source_type ??
-    link.propagation_type ??
-    link.sink_type ??
-    link.mitigation_type ??
-    link.impact_type ??
-    null
+    <div className="ec-node ec-node-source">
+      <div className="ec-node-badge ec-badge-source">SOURCE</div>
+      <div className="ec-node-type">{SOURCE_TYPE_LABELS[link.source_type] ?? link.source_type}</div>
+      <div className="ec-node-location">{link.location}</div>
+      <div className="ec-node-observed">{truncate(link.observed, 120)}</div>
+      <div className="ec-node-rationale">{link.rationale}</div>
+    </div>
   );
 }
 
-function formatSubtype(raw: string): string {
-  return raw.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+function PropagationNode({ link }: { link: PropagationLink }) {
+  return (
+    <div className="ec-node ec-node-prop">
+      <div className="ec-node-badge ec-badge-prop">FLOW</div>
+      <div className="ec-node-type">{PROPAGATION_LABELS[link.propagation_type] ?? link.propagation_type}</div>
+      <div className="ec-node-location">{link.location}</div>
+      <div className="ec-node-observed">{truncate(link.observed, 100)}</div>
+    </div>
+  );
 }
 
-// ── Components ────────────────────────────────────────────────────────────────
-
-function LinkBadge({ link }: { link: EvidenceLink }) {
-  const color = TYPE_COLORS[link.type] ?? "#6b7280";
-  const label = TYPE_LABELS[link.type] ?? link.type;
-  const sub = linkSubtype(link);
-
+function SinkNode({ link }: { link: SinkLink }) {
   return (
-    <div
-      className="evidence-link-badge"
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "6px",
-        padding: "4px 10px",
-        borderRadius: "6px",
-        border: `1px solid ${color}`,
-        background: `${color}10`,
-        fontSize: "13px",
-      }}
-    >
-      <span
-        style={{
-          width: "8px",
-          height: "8px",
-          borderRadius: "50%",
-          background: color,
-          flexShrink: 0,
-        }}
-      />
-      <span style={{ fontWeight: 600, color }}>{label}</span>
-      {sub && (
-        <span style={{ color: "#6b7280", fontSize: "12px" }}>
-          {formatSubtype(sub)}
+    <div className="ec-node ec-node-sink">
+      <div className="ec-node-badge ec-badge-sink">SINK</div>
+      <div className="ec-node-type">{SINK_TYPE_LABELS[link.sink_type] ?? link.sink_type}</div>
+      <div className="ec-node-location">{link.location}</div>
+      <div className="ec-node-observed">{truncate(link.observed, 100)}</div>
+      {link.cve_precedent && (
+        <span className="ec-cve">{link.cve_precedent}</span>
+      )}
+    </div>
+  );
+}
+
+function MitigationNode({ link }: { link: MitigationLink }) {
+  return (
+    <div className={`ec-node ec-node-mit ${link.present ? "ec-mit-present" : "ec-mit-absent"}`}>
+      <div className={`ec-node-badge ${link.present ? "ec-badge-mit-yes" : "ec-badge-mit-no"}`}>
+        {link.present ? "\u2713 MITIGATED" : "\u2717 UNMITIGATED"}
+      </div>
+      <div className="ec-node-type">{link.mitigation_type.replace(/-/g, " ")}</div>
+      <div className="ec-node-detail">{link.detail}</div>
+    </div>
+  );
+}
+
+function ImpactNode({ link }: { link: ImpactLink }) {
+  return (
+    <div className="ec-node ec-node-impact">
+      <div className="ec-node-badge ec-badge-impact">IMPACT</div>
+      <div className="ec-node-type">{IMPACT_LABELS[link.impact_type] ?? link.impact_type}</div>
+      <div className="ec-impact-meta">
+        <span className="ec-impact-scope">{link.scope.replace(/-/g, " ")}</span>
+        <span className={`ec-impact-exploit ec-exploit-${link.exploitability}`}>
+          {EXPLOITABILITY_LABELS[link.exploitability] ?? link.exploitability}
         </span>
-      )}
+      </div>
+      <div className="ec-node-detail">{link.scenario}</div>
     </div>
   );
 }
 
-function LinkCard({
-  link,
-  compact,
+function renderLink(link: EvidenceLink, index: number) {
+  switch (link.type) {
+    case "source":
+      return <SourceNode key={index} link={link} />;
+    case "propagation":
+      return <PropagationNode key={index} link={link} />;
+    case "sink":
+      return <SinkNode key={index} link={link} />;
+    case "mitigation":
+      return <MitigationNode key={index} link={link} />;
+    case "impact":
+      return <ImpactNode key={index} link={link} />;
+    default:
+      return null;
+  }
+}
+
+// ─── Main Component ──────────────────────────────────────────────────────────
+
+export default function EvidenceChainViz({
+  chain,
+  confidence,
 }: {
-  link: EvidenceLink;
-  compact: boolean;
+  chain: EvidenceChainData | null | undefined;
+  /** Standalone confidence for findings without structured chains */
+  confidence?: number;
 }) {
-  const color = TYPE_COLORS[link.type] ?? "#6b7280";
+  // If there's no chain AND no separate confidence, render nothing
+  if (!chain && confidence == null) return null;
 
-  return (
-    <div
-      className="evidence-link-card"
-      style={{
-        borderLeft: `3px solid ${color}`,
-        padding: "8px 12px",
-        margin: "4px 0",
-        background: "#fafafa",
-        borderRadius: "0 6px 6px 0",
-      }}
-    >
-      <LinkBadge link={link} />
-
-      {link.location && (
-        <div style={{ marginTop: "4px", fontSize: "12px", color: "#4b5563" }}>
-          <strong>Location:</strong> {truncate(link.location, 120)}
-        </div>
-      )}
-
-      {link.observed && (
-        <div style={{ marginTop: "2px", fontSize: "12px", color: "#4b5563" }}>
-          <strong>Observed:</strong> {truncate(link.observed, 200)}
-        </div>
-      )}
-
-      {!compact && link.rationale && (
-        <div style={{ marginTop: "2px", fontSize: "12px", color: "#6b7280" }}>
-          <em>{truncate(link.rationale, 300)}</em>
-        </div>
-      )}
-
-      {link.type === "mitigation" && (
-        <div
-          style={{
-            marginTop: "2px",
-            fontSize: "12px",
-            color: link.present ? "#059669" : "#dc2626",
-            fontWeight: 600,
-          }}
-        >
-          {link.present ? "✓ Present" : "✗ Missing"}
-        </div>
-      )}
-
-      {!compact && link.type === "impact" && link.scope && (
-        <div style={{ marginTop: "2px", fontSize: "12px", color: "#1d4ed8" }}>
-          <strong>Scope:</strong> {link.scope}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function FlowArrow() {
-  return (
-    <div
-      className="evidence-flow-arrow"
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        padding: "2px 0",
-        color: "#9ca3af",
-        fontSize: "14px",
-      }}
-    >
-      ↓
-    </div>
-  );
-}
-
-function ConfidenceBar({ confidence }: { confidence: number }) {
-  const clamped = Math.min(1, Math.max(0, confidence));
-  const pct = Math.round(clamped * 100);
-  let barColor = "#059669";
-  if (clamped < 0.5) barColor = "#dc2626";
-  else if (clamped < 0.75) barColor = "#f59e0b";
-
-  return (
-    <div className="evidence-confidence-bar" style={{ marginTop: "8px" }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          fontSize: "12px",
-          color: "#6b7280",
-          marginBottom: "2px",
-        }}
-      >
-        <span>Confidence</span>
-        <span>{pct}%</span>
-      </div>
-      <div
-        style={{
-          height: "6px",
-          background: "#e5e7eb",
-          borderRadius: "3px",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            width: `${pct}%`,
-            height: "100%",
-            background: barColor,
-            borderRadius: "3px",
-            transition: "width 0.3s ease",
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
-// ── Main component ────────────────────────────────────────────────────────────
-
-export function EvidenceChainViz({ chain, compact = false }: EvidenceChainVizProps) {
-  const links = chain.links ?? [];
-  const confidence = chain.confidence ?? null;
-  const confidenceFactors = chain.confidence_factors ?? [];
-
-  if (links.length === 0) {
+  // If there's only confidence (no chain), render a minimal confidence indicator
+  if (!chain && confidence != null) {
+    const level = confLevel(confidence);
     return (
-      <div className="evidence-chain-empty" style={{ color: "#9ca3af", fontSize: "13px" }}>
-        No evidence chain available.
+      <div className="ec-confidence-only">
+        <span className="ec-conf-label">Confidence</span>
+        <div className="ec-conf-bar-track">
+          <div className={`ec-conf-bar-fill ec-conf-${level}`} style={{ width: `${Math.round(confidence * 100)}%` }} />
+        </div>
+        <span className={`ec-conf-pct ec-conf-${level}`}>{Math.round(confidence * 100)}%</span>
       </div>
     );
   }
 
-  // Separate flow links (source/propagation/sink) from metadata links
-  const flowLinks = links.filter(
-    (l) => l.type === "source" || l.type === "propagation" || l.type === "sink"
-  );
-  const mitigationLinks = links.filter((l) => l.type === "mitigation");
-  const impactLinks = links.filter((l) => l.type === "impact");
+  // Full evidence chain visualization
+  if (!chain) return null;
+
+  // Separate flow links (source, propagation, sink) from context links (mitigation, impact)
+  const flowLinks = chain.links.filter((l) => l.type === "source" || l.type === "propagation" || l.type === "sink");
+  const mitigations = chain.links.filter((l): l is MitigationLink => l.type === "mitigation");
+  const impacts = chain.links.filter((l): l is ImpactLink => l.type === "impact");
+
+  const level = confLevel(chain.confidence);
 
   return (
-    <div className="evidence-chain-viz" style={{ fontFamily: "system-ui, sans-serif" }}>
-      {/* Flow section */}
+    <div className="ec-chain">
+      {/* ── Confidence Bar ───────────────────────────────────── */}
+      <div className="ec-confidence">
+        <span className="ec-conf-label">Confidence</span>
+        <div className="ec-conf-bar-track">
+          <div className={`ec-conf-bar-fill ec-conf-${level}`} style={{ width: `${Math.round(chain.confidence * 100)}%` }} />
+        </div>
+        <span className={`ec-conf-pct ec-conf-${level}`}>{Math.round(chain.confidence * 100)}%</span>
+      </div>
+
+      {/* ── Data Flow Timeline ───────────────────────────────── */}
       {flowLinks.length > 0 && (
-        <div className="evidence-flow">
-          <div
-            style={{
-              fontSize: "11px",
-              fontWeight: 600,
-              color: "#9ca3af",
-              textTransform: "uppercase" as const,
-              letterSpacing: "0.05em",
-              marginBottom: "4px",
-            }}
-          >
-            Data Flow
+        <div className="ec-flow">
+          <div className="ec-flow-label">Evidence Chain</div>
+          <div className="ec-timeline">
+            {flowLinks.map((link, i) => (
+              <div key={i} className="ec-timeline-step">
+                {renderLink(link, i)}
+                {i < flowLinks.length - 1 && (
+                  <div className="ec-connector">
+                    <svg width="20" height="24" viewBox="0 0 20 24" fill="none">
+                      <path d="M10 0 L10 18 M5 14 L10 20 L15 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
-          {flowLinks.map((link, idx) => (
-            <React.Fragment key={`flow-${idx}`}>
-              <LinkCard link={link} compact={compact} />
-              {idx < flowLinks.length - 1 && <FlowArrow />}
-            </React.Fragment>
+        </div>
+      )}
+
+      {/* ── Mitigations ──────────────────────────────────────── */}
+      {mitigations.length > 0 && (
+        <div className="ec-mitigations">
+          <div className="ec-flow-label">Mitigation Checks</div>
+          <div className="ec-mit-grid">
+            {mitigations.map((link, i) => (
+              <MitigationNode key={i} link={link} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Impact ───────────────────────────────────────────── */}
+      {impacts.length > 0 && (
+        <div className="ec-impacts">
+          {impacts.map((link, i) => (
+            <ImpactNode key={i} link={link} />
           ))}
         </div>
       )}
 
-      {/* Mitigations */}
-      {mitigationLinks.length > 0 && (
-        <div className="evidence-mitigations" style={{ marginTop: "12px" }}>
-          <div
-            style={{
-              fontSize: "11px",
-              fontWeight: 600,
-              color: "#9ca3af",
-              textTransform: "uppercase" as const,
-              letterSpacing: "0.05em",
-              marginBottom: "4px",
-            }}
-          >
-            Mitigations
-          </div>
-          {mitigationLinks.map((link, idx) => (
-            <LinkCard key={`mit-${idx}`} link={link} compact={compact} />
-          ))}
+      {/* ── Threat Reference ─────────────────────────────────── */}
+      {chain.threat_reference && (
+        <div className="ec-reference">
+          <span className="ec-ref-id">{chain.threat_reference.id}</span>
+          <span className="ec-ref-title">{chain.threat_reference.title}</span>
+          {chain.threat_reference.year && (
+            <span className="ec-ref-year">({chain.threat_reference.year})</span>
+          )}
         </div>
       )}
 
-      {/* Impact (hidden in compact mode) */}
-      {!compact && impactLinks.length > 0 && (
-        <div className="evidence-impact" style={{ marginTop: "12px" }}>
-          <div
-            style={{
-              fontSize: "11px",
-              fontWeight: 600,
-              color: "#9ca3af",
-              textTransform: "uppercase" as const,
-              letterSpacing: "0.05em",
-              marginBottom: "4px",
-            }}
-          >
-            Impact
+      {/* ── Confidence Factor Breakdown ──────────────────────── */}
+      {chain.confidence_factors.length > 0 && (
+        <details className="ec-factors">
+          <summary className="ec-factors-summary">Confidence factors ({chain.confidence_factors.length})</summary>
+          <div className="ec-factors-list">
+            {chain.confidence_factors.map((f, i) => (
+              <div key={i} className="ec-factor">
+                <span className={`ec-factor-adj ${f.adjustment >= 0 ? "ec-factor-pos" : "ec-factor-neg"}`}>
+                  {f.adjustment >= 0 ? "+" : ""}{f.adjustment.toFixed(2)}
+                </span>
+                <span className="ec-factor-name">{f.factor}</span>
+              </div>
+            ))}
           </div>
-          {impactLinks.map((link, idx) => (
-            <LinkCard key={`impact-${idx}`} link={link} compact={compact} />
-          ))}
-        </div>
-      )}
-
-      {/* Confidence bar */}
-      {confidence !== null && <ConfidenceBar confidence={confidence} />}
-
-      {/* Confidence factors */}
-      {!compact && confidenceFactors.length > 0 && (
-        <div className="evidence-factors" style={{ marginTop: "8px" }}>
-          <div
-            style={{
-              fontSize: "11px",
-              fontWeight: 600,
-              color: "#9ca3af",
-              textTransform: "uppercase" as const,
-              letterSpacing: "0.05em",
-              marginBottom: "4px",
-            }}
-          >
-            Confidence Factors
-          </div>
-          {confidenceFactors.map((f, idx) => (
-            <div
-              key={`factor-${idx}`}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                fontSize: "12px",
-                color: "#4b5563",
-                padding: "2px 0",
-              }}
-            >
-              <span>{f.description || f.factor}</span>
-              <span style={{ fontWeight: 600 }}>{(f.value * 100).toFixed(0)}%</span>
-            </div>
-          ))}
-        </div>
+        </details>
       )}
     </div>
   );
 }
-
-export default EvidenceChainViz;

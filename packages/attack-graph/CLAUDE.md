@@ -65,23 +65,42 @@ Rating: ≥0.75 critical, ≥0.55 high, ≥0.35 medium, <0.35 low.
 | `src/engine.ts` | AttackGraphEngine — template-driven chain synthesis |
 | `src/narrative.ts` | Deterministic narrative + mitigation generation |
 | `src/index.ts` | Package exports |
+| `src/cli.ts` | CLI entry point — DB-integrated chain synthesis |
 | `src/__tests__/scoring.test.ts` | 63 scoring tests |
-| `src/__tests__/engine.test.ts` | 73 engine tests (7 KC × 8 + engine-wide) |
+| `src/__tests__/engine.test.ts` | 74 engine tests (7 KC × 8 + engine-wide + narrative coverage) |
 | `src/__tests__/narrative.test.ts` | 13 narrative + mitigation tests |
 | `src/__tests__/fixtures/` | Reusable node + edge factories |
 
 ## Database (in packages/database)
 
 - Migration: `010_attack_chains` — append-only table (ADR-008)
-- Queries: `insertAttackChains()`, `getAttackChainsForConfig()`, `getChainHistory()`
+- Queries: `insertAttackChains()`, `getAttackChainsForConfig()`, `getChainHistory()`, `getAttackChainsForServer()`, `getFindingRuleIdsByServerIds()`
 - Schema: `AttackChainSchema`, `AttackChainInputSchema`
 
 ## Commands
 
 ```bash
-pnpm test --filter=@mcp-sentinel/attack-graph   # Run all 149 tests
+pnpm test --filter=@mcp-sentinel/attack-graph   # Run all 150 tests
 pnpm --filter=@mcp-sentinel/attack-graph typecheck  # TypeScript type checking
+
+# CLI (database-integrated)
+pnpm attack-graph                    # Analyse all scored servers (up to 5000)
+pnpm attack-graph --limit=500        # Limit server set size
+pnpm attack-graph --json             # JSON output for CI
+pnpm attack-graph --dry-run          # Analyse without DB writes
+pnpm attack-graph --with-findings    # Include per-server findings for scoring boost
 ```
+
+## Pipeline Integration
+
+Runs as a post-risk-matrix step in `.github/workflows/scan.yml`:
+1. Loads scored servers from DB via `getServersWithTools()`
+2. Runs `RiskMatrixAnalyzer` inline to get fresh edges + capability nodes
+3. Optionally loads per-server findings for scoring boost (`--with-findings`)
+4. Runs `AttackGraphEngine.analyze()` to synthesize kill chains
+5. Persists chains via `insertAttackChains()` (append-only, ADR-008)
+
+Exit code = 1 if aggregate risk is "critical".
 
 ## What NOT To Do
 

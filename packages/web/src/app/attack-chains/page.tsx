@@ -1,49 +1,53 @@
-/**
- * Attack Chains — Listing page showing all detected multi-step attack chains
- * across the MCP ecosystem.
- *
- * Fetches chains from the API, grouped by aggregate risk level, with links
- * to individual server detail pages.
- */
-
 import React from "react";
-import Link from "next/link";
+import type { Metadata } from "next";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3100";
+export const metadata: Metadata = {
+  title: "Attack Chains | MCP Sentinel",
+  description:
+    "Multi-step kill chains detected across MCP server configurations. CVE-backed attack chain synthesis with exploitability scoring.",
+};
+
+export const dynamic = "force-dynamic";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3100";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface ChainStep {
-  ordinal: number;
-  server_id: string;
-  server_name: string;
-  role: string;
-}
-
 interface AttackChainSummary {
+  id: string;
   chain_id: string;
   config_id: string;
   kill_chain_id: string;
   kill_chain_name: string;
-  steps: ChainStep[];
+  steps: Array<{
+    ordinal: number;
+    server_id: string;
+    server_name: string;
+    role: string;
+  }>;
   exploitability_overall: number;
-  exploitability_rating: string;
+  exploitability_rating: "critical" | "high" | "medium" | "low";
   narrative: string;
   owasp_refs: string[];
   mitre_refs: string[];
+  mitigations: Array<{
+    action: string;
+    target_server_name: string;
+    effect: string;
+  }>;
   created_at: string;
 }
 
-// ── Data fetching ─────────────────────────────────────────────────────────────
+// ── Data ──────────────────────────────────────────────────────────────────────
 
 async function getAttackChains(): Promise<AttackChainSummary[]> {
   try {
-    const res = await fetch(`${API_BASE}/api/v1/attack-chains`, {
-      next: { revalidate: 3600 },
+    const res = await fetch(`${API_URL}/api/v1/attack-chains`, {
+      signal: AbortSignal.timeout(4000),
     });
     if (!res.ok) return [];
     const data = await res.json();
-    return data.chains ?? [];
+    return data.data ?? [];
   } catch {
     return [];
   }
@@ -51,92 +55,50 @@ async function getAttackChains(): Promise<AttackChainSummary[]> {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const RATING_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  critical: { bg: "#fef2f2", text: "#dc2626", border: "#fecaca" },
-  high: { bg: "#fffbeb", text: "#d97706", border: "#fde68a" },
-  medium: { bg: "#eff6ff", text: "#2563eb", border: "#bfdbfe" },
-  low: { bg: "#f0fdf4", text: "#16a34a", border: "#bbf7d0" },
+const RATING_LABELS: Record<string, string> = {
+  critical: "Critical",
+  high: "High",
+  medium: "Medium",
+  low: "Low",
 };
 
-function RatingBadge({ rating }: { rating: string }) {
-  const colors = RATING_COLORS[rating] ?? { bg: "#f3f4f6", text: "#6b7280", border: "#d1d5db" };
-  return (
-    <span
-      style={{
-        display: "inline-block",
-        padding: "2px 10px",
-        borderRadius: "9999px",
-        background: colors.bg,
-        color: colors.text,
-        border: `1px solid ${colors.border}`,
-        fontWeight: 700,
-        fontSize: "12px",
-        textTransform: "uppercase" as const,
-      }}
-    >
-      {rating}
-    </span>
-  );
+const KC_PRECEDENTS: Record<string, string> = {
+  KC01: "Claude Desktop 2024-Q4",
+  KC02: "CVE-2025-54135",
+  KC03: "Wiz Research 2025",
+  KC04: "Invariant Labs Jan 2026",
+  KC05: "Trail of Bits Feb 2026",
+  KC06: "DNS exfiltration research",
+  KC07: "DB privesc via MCP 2025",
+};
+
+const KC_OBJECTIVES: Record<string, string> = {
+  KC01: "Data Exfiltration",
+  KC02: "Remote Code Execution",
+  KC03: "Credential Theft",
+  KC04: "Persistent Backdoor",
+  KC05: "Remote Code Execution",
+  KC06: "Data Exfiltration",
+  KC07: "Privilege Escalation",
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  injection_gateway: "Entry Point",
+  pivot: "Pivot",
+  data_source: "Data Source",
+  executor: "Executor",
+  exfiltrator: "Exfiltrator",
+  config_writer: "Config Writer",
+  memory_writer: "Memory Writer",
+};
+
+function fmtDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 }
 
-function ExploitabilityBar({ value }: { value: number }) {
-  const clamped = Math.min(1, Math.max(0, value));
-  const pct = Math.round(clamped * 100);
-  let color = "#16a34a";
-  if (clamped >= 0.75) color = "#dc2626";
-  else if (clamped >= 0.55) color = "#d97706";
-  else if (clamped >= 0.35) color = "#2563eb";
-
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-      <div
-        style={{
-          flex: 1,
-          height: "6px",
-          background: "#e5e7eb",
-          borderRadius: "3px",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            width: `${pct}%`,
-            height: "100%",
-            background: color,
-            borderRadius: "3px",
-          }}
-        />
-      </div>
-      <span style={{ fontSize: "12px", fontWeight: 600, color, minWidth: "36px" }}>
-        {pct}%
-      </span>
-    </div>
-  );
-}
-
-function StepFlow({ steps }: { steps: ChainStep[] }) {
-  return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", alignItems: "center" }}>
-      {steps.map((step, idx) => (
-        <React.Fragment key={step.ordinal}>
-          <span
-            style={{
-              fontSize: "13px",
-              padding: "2px 6px",
-              borderRadius: "4px",
-              background: "#f3f4f6",
-              border: "1px solid #e5e7eb",
-            }}
-          >
-            {step.server_name}
-          </span>
-          {idx < steps.length - 1 && (
-            <span style={{ color: "#9ca3af", fontSize: "13px" }}>→</span>
-          )}
-        </React.Fragment>
-      ))}
-    </div>
-  );
+function fmtPct(n: number): string {
+  return `${(n * 100).toFixed(0)}%`;
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -144,149 +106,163 @@ function StepFlow({ steps }: { steps: ChainStep[] }) {
 export default async function AttackChainsPage() {
   const chains = await getAttackChains();
 
-  const critical = chains.filter((c) => c.exploitability_rating === "critical");
-  const high = chains.filter((c) => c.exploitability_rating === "high");
-  const medium = chains.filter((c) => c.exploitability_rating === "medium");
-  const low = chains.filter((c) => c.exploitability_rating === "low");
-
   return (
-    <main style={{ maxWidth: "960px", margin: "0 auto", padding: "32px 16px", fontFamily: "system-ui, sans-serif" }}>
-      <h1 style={{ fontSize: "28px", fontWeight: 800, marginBottom: "8px" }}>
-        Attack Chains
-      </h1>
-      <p style={{ color: "#6b7280", fontSize: "15px", marginBottom: "24px" }}>
-        Multi-step kill chains detected across MCP server configurations.
-        Each chain maps to a documented real-world attack with CVE or research precedent.
-      </p>
+    <div className="ac-page">
+      <nav className="sd-breadcrumb">
+        <a href="/">Home</a>
+        <span className="sd-bread-sep">/</span>
+        <span className="sd-bread-current">Attack Chains</span>
+      </nav>
 
-      {/* Stats bar */}
-      <div
-        style={{
-          display: "flex",
-          gap: "24px",
-          padding: "12px 16px",
-          background: "#f9fafb",
-          borderRadius: "8px",
-          border: "1px solid #e5e7eb",
-          marginBottom: "24px",
-          flexWrap: "wrap",
-        }}
-      >
-        <div>
-          <span style={{ fontWeight: 700, fontSize: "20px" }}>{chains.length}</span>
-          <span style={{ color: "#6b7280", marginLeft: "6px", fontSize: "14px" }}>Total Chains</span>
-        </div>
-        {critical.length > 0 && (
-          <div>
-            <span style={{ fontWeight: 700, fontSize: "20px", color: "#dc2626" }}>{critical.length}</span>
-            <span style={{ color: "#6b7280", marginLeft: "6px", fontSize: "14px" }}>Critical</span>
+      <section className="ac-hero">
+        <h1 className="ac-hero-title">Kill Chain Analysis</h1>
+        <p className="ac-hero-desc">
+          Multi-step attack chains detected across MCP server configurations.
+          Each chain is backed by a real-world CVE or published security research.
+          7 kill chain templates (KC01&ndash;KC07) with 7-factor exploitability scoring.
+        </p>
+        <div className="ac-hero-stats">
+          <div className="ac-hero-stat">
+            <span className="ac-hero-stat-val">{chains.length}</span>
+            <span className="ac-hero-stat-label">Chains Detected</span>
           </div>
-        )}
-        {high.length > 0 && (
-          <div>
-            <span style={{ fontWeight: 700, fontSize: "20px", color: "#d97706" }}>{high.length}</span>
-            <span style={{ color: "#6b7280", marginLeft: "6px", fontSize: "14px" }}>High</span>
+          <div className="ac-hero-stat">
+            <span className="ac-hero-stat-val" style={{ color: "var(--critical)" }}>
+              {chains.filter((c) => c.exploitability_rating === "critical").length}
+            </span>
+            <span className="ac-hero-stat-label">Critical</span>
           </div>
-        )}
-      </div>
-
-      {/* Chain list */}
-      {chains.length === 0 ? (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "48px",
-            color: "#9ca3af",
-            border: "1px dashed #d1d5db",
-            borderRadius: "8px",
-          }}
-        >
-          No attack chains detected yet. Run the scan pipeline to generate analysis.
+          <div className="ac-hero-stat">
+            <span className="ac-hero-stat-val" style={{ color: "var(--sev-high)" }}>
+              {chains.filter((c) => c.exploitability_rating === "high").length}
+            </span>
+            <span className="ac-hero-stat-label">High</span>
+          </div>
+          <div className="ac-hero-stat">
+            <span className="ac-hero-stat-val">7</span>
+            <span className="ac-hero-stat-label">Templates</span>
+          </div>
         </div>
-      ) : (
-        <div>
-          {[
-            { label: "Critical", items: critical },
-            { label: "High", items: high },
-            { label: "Medium", items: medium },
-            { label: "Low", items: low },
-          ]
-            .filter((group) => group.items.length > 0)
-            .map((group) => (
-              <div key={group.label} style={{ marginBottom: "24px" }}>
-                <h2 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "12px" }}>
-                  {group.label} ({group.items.length})
-                </h2>
-                {group.items.map((chain) => (
-                  <div
-                    key={chain.chain_id}
-                    style={{
-                      border: "1px solid #e5e7eb",
-                      borderRadius: "8px",
-                      padding: "16px",
-                      marginBottom: "12px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "flex-start",
-                        marginBottom: "8px",
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontWeight: 700 }}>{chain.kill_chain_name}</div>
-                        <div style={{ fontSize: "12px", color: "#6b7280" }}>
-                          {chain.kill_chain_id} &middot; {chain.chain_id.slice(0, 8)}
-                        </div>
+      </section>
+
+      {/* ── Template Reference (always visible) ─────────────────────── */}
+      <section className="ac-section">
+        <h2 className="ac-section-title">Kill Chain Templates</h2>
+        <p className="ac-section-sub">
+          Each template models a real-world multi-step attack. Chains are only
+          synthesized when the required cross-server patterns and edges are present.
+        </p>
+        <div className="ac-templates-grid">
+          {(["KC01", "KC02", "KC03", "KC04", "KC05", "KC06", "KC07"] as const).map((id) => {
+            const matchCount = chains.filter((c) => c.kill_chain_id === id).length;
+            return (
+              <div key={id} className={`ac-template ${matchCount > 0 ? "ac-template-active" : ""}`}>
+                <div className="ac-template-header">
+                  <span className="ac-template-id">{id}</span>
+                  <span className="ac-template-objective">{KC_OBJECTIVES[id]}</span>
+                  {matchCount > 0 && (
+                    <span className="ac-template-count">{matchCount}</span>
+                  )}
+                </div>
+                <div className="ac-template-precedent">{KC_PRECEDENTS[id]}</div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* ── Chain List ─────────────────────────────────────────────── */}
+      {chains.length > 0 ? (
+        <section className="ac-section">
+          <h2 className="ac-section-title">
+            Detected Chains
+            <span className="sd-section-count">{chains.length}</span>
+          </h2>
+          <div className="ac-chains-list">
+            {chains.map((chain) => (
+              <div
+                key={chain.id}
+                className={`ac-chain ac-chain-${chain.exploitability_rating}`}
+              >
+                <div className="ac-chain-header">
+                  <span className={`ac-chain-rating ac-rating-${chain.exploitability_rating}`}>
+                    {RATING_LABELS[chain.exploitability_rating] ?? chain.exploitability_rating}
+                  </span>
+                  <span className="ac-chain-score">{fmtPct(chain.exploitability_overall)}</span>
+                  <span className="ac-chain-kc-id">{chain.kill_chain_id}</span>
+                  <span className="ac-chain-kc-name">{chain.kill_chain_name}</span>
+                  <span className="ac-chain-date">{fmtDate(chain.created_at)}</span>
+                </div>
+
+                {/* Step flow */}
+                <div className="ac-chain-flow">
+                  {chain.steps.map((step, i) => (
+                    <React.Fragment key={step.ordinal}>
+                      <div className="ac-step">
+                        <span className={`ac-step-role ac-role-${step.role}`}>
+                          {ROLE_LABELS[step.role] ?? step.role}
+                        </span>
+                        <span className="ac-step-server">{step.server_name}</span>
                       </div>
-                      <RatingBadge rating={chain.exploitability_rating} />
-                    </div>
+                      {i < chain.steps.length - 1 && (
+                        <span className="ac-step-arrow">
+                          <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+                            <path d="M0 6h14M10 1l5 5-5 5" />
+                          </svg>
+                        </span>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </div>
 
-                    <p style={{ fontSize: "14px", color: "#374151", lineHeight: 1.5, margin: "0 0 8px" }}>
-                      {chain.narrative}
-                    </p>
+                {/* Narrative */}
+                <div className="ac-chain-narrative">{chain.narrative}</div>
 
-                    <div style={{ marginBottom: "8px" }}>
-                      <StepFlow steps={chain.steps} />
-                    </div>
+                {/* Tags */}
+                <div className="ac-chain-tags">
+                  {chain.owasp_refs.map((ref) => (
+                    <span key={ref} className="ac-tag ac-tag-owasp">{ref}</span>
+                  ))}
+                  {chain.mitre_refs.map((ref) => (
+                    <span key={ref} className="ac-tag ac-tag-mitre">{ref}</span>
+                  ))}
+                </div>
 
-                    <ExploitabilityBar value={chain.exploitability_overall} />
-
-                    {(chain.owasp_refs.length > 0 || chain.mitre_refs.length > 0) && (
-                      <div style={{ marginTop: "8px", display: "flex", gap: "16px", fontSize: "12px", color: "#6b7280" }}>
-                        {chain.owasp_refs.length > 0 && (
-                          <span><strong>OWASP:</strong> {chain.owasp_refs.join(", ")}</span>
-                        )}
-                        {chain.mitre_refs.length > 0 && (
-                          <span><strong>MITRE:</strong> {chain.mitre_refs.join(", ")}</span>
-                        )}
-                      </div>
+                {/* Top mitigation */}
+                {chain.mitigations.length > 0 && (
+                  <div className="ac-chain-mitigation">
+                    <span className="ac-mit-label">Fix:</span>
+                    <span className="ac-mit-action">
+                      {chain.mitigations[0].action.replace(/_/g, " ")} on{" "}
+                      <strong>{chain.mitigations[0].target_server_name}</strong>
+                    </span>
+                    <span className={`ac-mit-effect ac-mit-${chain.mitigations[0].effect === "breaks_chain" ? "breaks" : "reduces"}`}>
+                      {chain.mitigations[0].effect === "breaks_chain" ? "breaks chain" : "reduces risk"}
+                    </span>
+                    {chain.mitigations.length > 1 && (
+                      <span className="ac-mit-more">
+                        +{chain.mitigations.length - 1} more
+                      </span>
                     )}
-
-                    {/* Server links */}
-                    <div style={{ marginTop: "8px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                      {chain.steps.map((step) => (
-                        <Link
-                          key={step.server_id}
-                          href={`/servers/${step.server_name.toLowerCase().replace(/\s+/g, "-")}`}
-                          style={{
-                            fontSize: "12px",
-                            color: "#3b82f6",
-                            textDecoration: "none",
-                          }}
-                        >
-                          {step.server_name} →
-                        </Link>
-                      ))}
-                    </div>
                   </div>
-                ))}
+                )}
               </div>
             ))}
-        </div>
+          </div>
+        </section>
+      ) : (
+        <section className="ac-section">
+          <div className="ac-empty">
+            <div className="ac-empty-title">No attack chains detected</div>
+            <p className="ac-empty-desc">
+              Attack chain synthesis runs after the scan pipeline completes.
+              Chains require cross-server risk patterns (P01&ndash;P12) and matching
+              kill chain prerequisites to be detected. This is a good sign &mdash; it means
+              no multi-step attack paths were found across your server configurations.
+            </p>
+          </div>
+        </section>
       )}
-    </main>
+    </div>
   );
 }

@@ -2,55 +2,51 @@
 /**
  * EvidenceChainViz Critical Test Suite
  *
- * Comprehensive edge-case-heavy tests for the evidence chain visualization
- * component. Covers null/undefined safety (4 bug fix regressions), confidence
- * clamping, bar color thresholds, truncation boundaries, link rendering by
- * type, confidence factor display, label fallbacks, compact mode, and
- * rendering structure.
+ * Tests the main-branch EvidenceChainViz component which:
+ * - Takes { chain: EvidenceChainData | null | undefined, confidence?: number }
+ * - Uses discriminated union link types (SourceLink, PropagationLink, etc.)
+ * - Server component (no "use client"), CSS class-based rendering
+ * - confLevel thresholds: >=0.70 high, >=0.45 medium, <0.45 low
+ * - Confidence display: Math.round(confidence * 100) — NO clamping
+ * - truncate(s, max): s.slice(0, max) + "…" — no null guard (types require string)
+ * - Badges: SOURCE, FLOW, SINK, ✓ MITIGATED / ✗ UNMITIGATED, IMPACT
+ * - Confidence factors: adjustment (number) with +/- prefix, .toFixed(2)
+ * - Threat reference: id, title, optional year/url
  */
 import { describe, it, expect } from "vitest";
 import React from "react";
 import { render } from "@testing-library/react";
-import {
-  EvidenceChainViz,
-  type EvidenceChain,
-  type EvidenceLink,
-} from "../components/EvidenceChainViz";
+import EvidenceChainViz, { type EvidenceChainData } from "../components/EvidenceChainViz";
 
 // ── Fixtures ────────────────────────────────────────────────────────────────────
 
-function makeLink(overrides: Partial<EvidenceLink> = {}): EvidenceLink {
-  return {
-    type: "source",
-    location: "src/handler.ts:42",
-    observed: "req.body.input passed to exec()",
-    rationale: "User-controlled input flows to command execution",
-    source_type: "user-parameter",
-    ...overrides,
-  };
-}
-
-function makeChain(overrides: Partial<EvidenceChain> = {}): EvidenceChain {
+function makeChain(overrides: Partial<EvidenceChainData> = {}): EvidenceChainData {
   return {
     links: [
-      makeLink({ type: "source", source_type: "user-parameter" }),
-      makeLink({
+      {
+        type: "source",
+        source_type: "user-parameter",
+        location: "src/handler.ts:42",
+        observed: "req.body.input passed to exec()",
+        rationale: "User-controlled input flows to command execution",
+      },
+      {
         type: "propagation",
         propagation_type: "variable-assignment",
         location: "src/handler.ts:45",
         observed: "const cmd = input",
-      }),
-      makeLink({
+      },
+      {
         type: "sink",
         sink_type: "command-execution",
         location: "src/handler.ts:48",
         observed: "exec(cmd)",
-      }),
+      },
     ],
     confidence: 0.92,
     confidence_factors: [
-      { factor: "ast_taint", value: 0.95, description: "AST-confirmed taint flow" },
-      { factor: "hop_count", value: 0.85, description: "2-hop propagation" },
+      { factor: "ast_taint", adjustment: 0.15, rationale: "AST-confirmed taint flow" },
+      { factor: "hop_count", adjustment: -0.10, rationale: "2-hop propagation" },
     ],
     ...overrides,
   };
@@ -61,226 +57,109 @@ function makeChain(overrides: Partial<EvidenceChain> = {}): EvidenceChain {
 // ═════════════════════════════════════════════════════════════════════════════════
 
 describe("null/undefined handling", () => {
-  it("chain with no links ({}) renders 'No evidence chain available'", () => {
-    const { container } = render(<EvidenceChainViz chain={{}} />);
-    expect(container.textContent).toContain("No evidence chain available");
-  });
-
-  it("chain with links=null renders 'No evidence chain available'", () => {
-    const { container } = render(<EvidenceChainViz chain={{ links: null }} />);
-    expect(container.textContent).toContain("No evidence chain available");
-  });
-
-  it("chain with links=undefined renders 'No evidence chain available'", () => {
+  it("chain=null, confidence=undefined → renders nothing (null)", () => {
     const { container } = render(
-      <EvidenceChainViz chain={{ links: undefined }} />
+      <EvidenceChainViz chain={null} />
     );
-    expect(container.textContent).toContain("No evidence chain available");
+    expect(container.innerHTML).toBe("");
   });
 
-  it("chain with confidence=undefined renders no confidence bar", () => {
+  it("chain=null, confidence=null → renders nothing (null)", () => {
     const { container } = render(
-      <EvidenceChainViz chain={{ links: [makeLink()] }} />
+      <EvidenceChainViz chain={null} confidence={undefined} />
     );
-    expect(container.querySelectorAll(".evidence-confidence-bar")).toHaveLength(0);
+    expect(container.innerHTML).toBe("");
   });
 
-  it("chain with confidence=null renders no confidence bar", () => {
+  it("chain=undefined, confidence=0.85 → renders minimal confidence bar only", () => {
     const { container } = render(
-      <EvidenceChainViz chain={{ links: [makeLink()], confidence: null }} />
+      <EvidenceChainViz chain={undefined} confidence={0.85} />
     );
-    expect(container.querySelectorAll(".evidence-confidence-bar")).toHaveLength(0);
+    expect(container.textContent).toContain("85%");
+    expect(container.textContent).toContain("Confidence");
+    // Should NOT render full chain sections
+    expect(container.querySelector(".ec-chain")).toBeNull();
+    expect(container.querySelector(".ec-confidence-only")).not.toBeNull();
   });
 
-  it("chain with confidence=0 renders '0%' (0 is valid, not null)", () => {
+  it("chain=null, confidence=0 → renders '0%' (0 is valid, not null)", () => {
     const { container } = render(
-      <EvidenceChainViz chain={{ links: [makeLink()], confidence: 0 }} />
+      <EvidenceChainViz chain={null} confidence={0} />
     );
     expect(container.textContent).toContain("0%");
-    expect(container.querySelectorAll(".evidence-confidence-bar")).toHaveLength(1);
-  });
-
-  it("chain with only confidence (no links) renders 'No evidence chain' — empty links triggers early return before ConfidenceBar", () => {
-    const { container } = render(
-      <EvidenceChainViz chain={{ links: [], confidence: 0.85 }} />
-    );
-    // Early return on empty links means NO confidence bar rendered
-    expect(container.textContent).toContain("No evidence chain available");
-    expect(container.querySelectorAll(".evidence-confidence-bar")).toHaveLength(0);
   });
 });
 
 // ═════════════════════════════════════════════════════════════════════════════════
-// BUG FIX 1 regression: chain.links null safety
+// Confidence display
 // ═════════════════════════════════════════════════════════════════════════════════
 
-describe("BUG FIX 1 regression: chain.links null safety", () => {
-  it("does NOT crash when links is null (previously threw TypeError on .filter)", () => {
-    expect(() =>
-      render(<EvidenceChainViz chain={{ links: null }} />)
-    ).not.toThrow();
-  });
-
-  it("chain={ links: null, confidence_factors: [], confidence: 0.5 } renders without crash", () => {
-    const { container } = render(
-      <EvidenceChainViz
-        chain={{ links: null, confidence_factors: [], confidence: 0.5 }}
-      />
-    );
-    expect(container.textContent).toContain("No evidence chain available");
-  });
-});
-
-// ═════════════════════════════════════════════════════════════════════════════════
-// BUG FIX 3 regression: confidence_factors null safety
-// ═════════════════════════════════════════════════════════════════════════════════
-
-describe("BUG FIX 3 regression: confidence_factors null safety", () => {
-  it("renders without crash when confidence_factors is null", () => {
-    expect(() =>
-      render(
-        <EvidenceChainViz
-          chain={{ links: [makeLink()], confidence_factors: null, confidence: 0.5 }}
-        />
-      )
-    ).not.toThrow();
-  });
-
-  it("does not render 'Confidence Factors' section when null", () => {
-    const { container } = render(
-      <EvidenceChainViz
-        chain={{ links: [makeLink()], confidence_factors: null }}
-      />
-    );
-    expect(container.textContent).not.toContain("Confidence Factors");
-  });
-
-  it("does not render 'Confidence Factors' section when empty array", () => {
-    const { container } = render(
-      <EvidenceChainViz
-        chain={{ links: [makeLink()], confidence_factors: [] }}
-      />
-    );
-    expect(container.textContent).not.toContain("Confidence Factors");
-  });
-});
-
-// ═════════════════════════════════════════════════════════════════════════════════
-// Confidence clamping
-// ═════════════════════════════════════════════════════════════════════════════════
-
-describe("confidence clamping", () => {
+describe("confidence display", () => {
   it("confidence=0.0 → '0%'", () => {
-    const { container } = render(
-      <EvidenceChainViz chain={{ links: [makeLink()], confidence: 0.0 }} />
-    );
+    const chain = makeChain({ confidence: 0.0 });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
     expect(container.textContent).toContain("0%");
   });
 
   it("confidence=1.0 → '100%'", () => {
-    const { container } = render(
-      <EvidenceChainViz chain={{ links: [makeLink()], confidence: 1.0 }} />
-    );
+    const chain = makeChain({ confidence: 1.0 });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
     expect(container.textContent).toContain("100%");
   });
 
   it("confidence=0.5 → '50%'", () => {
-    const { container } = render(
-      <EvidenceChainViz chain={{ links: [makeLink()], confidence: 0.5 }} />
-    );
+    const chain = makeChain({ confidence: 0.5 });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
     expect(container.textContent).toContain("50%");
   });
 
-  it("confidence=1.5 → clamped to '100%' (not '150%')", () => {
-    const { container } = render(
-      <EvidenceChainViz chain={{ links: [makeLink()], confidence: 1.5 }} />
-    );
-    expect(container.textContent).toContain("100%");
-    expect(container.textContent).not.toContain("150%");
+  it("confidence=1.5 → '150%' (NO clamping in this version)", () => {
+    const chain = makeChain({ confidence: 1.5 });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
+    // Math.round(1.5 * 100) = 150 — this component does NOT clamp
+    expect(container.textContent).toContain("150%");
   });
 
-  it("confidence=-0.3 → clamped to '0%' (not '-30%')", () => {
-    const { container } = render(
-      <EvidenceChainViz chain={{ links: [makeLink()], confidence: -0.3 }} />
-    );
-    expect(container.textContent).toContain("0%");
-    expect(container.textContent).not.toContain("-30%");
+  it("confidence=-0.3 → '-30%' (NO clamping)", () => {
+    const chain = makeChain({ confidence: -0.3 });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
+    expect(container.textContent).toContain("-30%");
   });
 
-  it("confidence=NaN → renders 'NaN%' (Math.round(NaN*100) = NaN)", () => {
-    const { container } = render(
-      <EvidenceChainViz chain={{ links: [makeLink()], confidence: NaN }} />
-    );
-    // Math.min(1, Math.max(0, NaN)) = NaN, Math.round(NaN * 100) = NaN
+  it("confidence=NaN → 'NaN%'", () => {
+    const chain = makeChain({ confidence: NaN });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
     expect(container.textContent).toContain("NaN%");
   });
 });
 
 // ═════════════════════════════════════════════════════════════════════════════════
-// Confidence bar color thresholds
+// Confidence levels (confLevel thresholds)
 // ═════════════════════════════════════════════════════════════════════════════════
 
-describe("confidence bar color thresholds", () => {
-  // jsdom normalizes hex colors to rgb() format in element.style.
-  // We verify the bar color by checking the text percentage (which maps to a
-  // specific color) and that the bar section renders correctly.
-  // The ConfidenceBar component uses: <0.5 → red, <0.75 → amber, >=0.75 → green
-
-  it("confidence=0.49 → renders '49%' with red bar (clamped < 0.5)", () => {
-    const { container } = render(
-      <EvidenceChainViz chain={{ links: [makeLink()], confidence: 0.49 }} />
-    );
-    expect(container.textContent).toContain("49%");
-    // Verify the bar fill div has rgb(220, 38, 38) = #dc2626
-    const barSection = container.querySelector(".evidence-confidence-bar");
-    expect(barSection).not.toBeNull();
-    const fills = barSection!.querySelectorAll("div div div") as NodeListOf<HTMLElement>;
-    const colors = Array.from(fills).map((el) => el.style.background);
-    expect(colors.some((c) => c === "rgb(220, 38, 38)" || c === "#dc2626")).toBe(true);
+describe("confidence levels", () => {
+  it("confidence=0.70 → 'high' class", () => {
+    const chain = makeChain({ confidence: 0.70 });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
+    expect(container.querySelector(".ec-conf-high")).not.toBeNull();
   });
 
-  it("confidence=0.50 → renders '50%' with amber bar (>= 0.5, < 0.75)", () => {
-    const { container } = render(
-      <EvidenceChainViz chain={{ links: [makeLink()], confidence: 0.50 }} />
-    );
-    expect(container.textContent).toContain("50%");
-    const barSection = container.querySelector(".evidence-confidence-bar");
-    const fills = barSection!.querySelectorAll("div div div") as NodeListOf<HTMLElement>;
-    const colors = Array.from(fills).map((el) => el.style.background);
-    expect(colors.some((c) => c === "rgb(245, 158, 11)" || c === "#f59e0b")).toBe(true);
+  it("confidence=0.69 → 'medium' class", () => {
+    const chain = makeChain({ confidence: 0.69 });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
+    expect(container.querySelector(".ec-conf-medium")).not.toBeNull();
   });
 
-  it("confidence=0.70 → renders '70%' with amber bar (>= 0.5, < 0.75)", () => {
-    const { container } = render(
-      <EvidenceChainViz chain={{ links: [makeLink()], confidence: 0.70 }} />
-    );
-    expect(container.textContent).toContain("70%");
-    const barSection = container.querySelector(".evidence-confidence-bar");
-    const fills = barSection!.querySelectorAll("div div div") as NodeListOf<HTMLElement>;
-    const colors = Array.from(fills).map((el) => el.style.background);
-    expect(colors.some((c) => c === "rgb(245, 158, 11)" || c === "#f59e0b")).toBe(true);
+  it("confidence=0.45 → 'medium' class", () => {
+    const chain = makeChain({ confidence: 0.45 });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
+    expect(container.querySelector(".ec-conf-medium")).not.toBeNull();
   });
 
-  it("confidence=0.74 → renders '74%' with amber bar (< 0.75)", () => {
-    const { container } = render(
-      <EvidenceChainViz chain={{ links: [makeLink()], confidence: 0.74 }} />
-    );
-    expect(container.textContent).toContain("74%");
-    const barSection = container.querySelector(".evidence-confidence-bar");
-    const fills = barSection!.querySelectorAll("div div div") as NodeListOf<HTMLElement>;
-    const colors = Array.from(fills).map((el) => el.style.background);
-    expect(colors.some((c) => c === "rgb(245, 158, 11)" || c === "#f59e0b")).toBe(true);
-  });
-
-  it("confidence=0.75 → renders '75%' with green bar (>= 0.75)", () => {
-    const { container } = render(
-      <EvidenceChainViz chain={{ links: [makeLink()], confidence: 0.75 }} />
-    );
-    expect(container.textContent).toContain("75%");
-    const barSection = container.querySelector(".evidence-confidence-bar");
-    const fills = barSection!.querySelectorAll("div div div") as NodeListOf<HTMLElement>;
-    const colors = Array.from(fills).map((el) => el.style.background);
-    expect(colors.some((c) => c === "rgb(5, 150, 105)" || c === "#059669")).toBe(true);
+  it("confidence=0.44 → 'low' class", () => {
+    const chain = makeChain({ confidence: 0.44 });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
+    expect(container.querySelector(".ec-conf-low")).not.toBeNull();
   });
 });
 
@@ -288,20 +167,18 @@ describe("confidence bar color thresholds", () => {
 // Chain with empty links array
 // ═════════════════════════════════════════════════════════════════════════════════
 
-describe("chain with empty links array", () => {
-  it("renders 'No evidence chain available', no flow/mitigations/impacts", () => {
-    const { container } = render(
-      <EvidenceChainViz
-        chain={{ links: [], confidence_factors: [], confidence: 0.5 }}
-      />
-    );
-    expect(container.textContent).toContain("No evidence chain available");
-    // Early return means no sections rendered at all
-    expect(container.textContent).not.toContain("Data Flow");
-    expect(container.textContent).not.toContain("Mitigations");
-    expect(container.textContent).not.toContain("Impact");
-    // Confidence bar NOT rendered because early return
-    expect(container.querySelectorAll(".evidence-confidence-bar")).toHaveLength(0);
+describe("chain with empty links", () => {
+  it("empty links → renders confidence bar but no flow/mitigations/impacts", () => {
+    const chain = makeChain({ links: [], confidence: 0.5 });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
+    // Confidence bar still renders
+    expect(container.textContent).toContain("50%");
+    // No flow timeline
+    expect(container.querySelector(".ec-flow")).toBeNull();
+    // No mitigations
+    expect(container.querySelector(".ec-mitigations")).toBeNull();
+    // No impacts
+    expect(container.querySelector(".ec-impacts")).toBeNull();
   });
 });
 
@@ -310,170 +187,161 @@ describe("chain with empty links array", () => {
 // ═════════════════════════════════════════════════════════════════════════════════
 
 describe("link rendering by type", () => {
-  it("source link → renders 'Source' badge + subtype", () => {
-    const { container } = render(
-      <EvidenceChainViz
-        chain={{ links: [makeLink({ type: "source", source_type: "user-parameter" })] }}
-      />
-    );
-    expect(container.textContent).toContain("Source");
+  it("source link → renders 'SOURCE' badge, source_type label, location, observed, rationale", () => {
+    const chain = makeChain({
+      links: [{
+        type: "source",
+        source_type: "user-parameter",
+        location: "src/index.ts:10",
+        observed: "user input flows",
+        rationale: "Direct user input",
+      }],
+    });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
+    expect(container.textContent).toContain("SOURCE");
     expect(container.textContent).toContain("User Parameter");
+    expect(container.textContent).toContain("src/index.ts:10");
+    expect(container.textContent).toContain("user input flows");
+    expect(container.textContent).toContain("Direct user input");
   });
 
-  it("propagation link → renders 'Propagation' badge", () => {
-    const { container } = render(
-      <EvidenceChainViz
-        chain={{
-          links: [
-            makeLink({ type: "propagation", propagation_type: "variable-assignment", source_type: null }),
-          ],
-        }}
-      />
-    );
-    expect(container.textContent).toContain("Propagation");
+  it("propagation link → renders 'FLOW' badge, propagation_type label", () => {
+    const chain = makeChain({
+      links: [{
+        type: "propagation",
+        propagation_type: "variable-assignment",
+        location: "src/a.ts:5",
+        observed: "const x = input",
+      }],
+    });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
+    expect(container.textContent).toContain("FLOW");
     expect(container.textContent).toContain("Variable Assignment");
   });
 
-  it("sink link → renders 'Sink' badge + subtype", () => {
-    const { container } = render(
-      <EvidenceChainViz
-        chain={{
-          links: [makeLink({ type: "sink", sink_type: "command-execution", source_type: null })],
-        }}
-      />
-    );
-    expect(container.textContent).toContain("Sink");
+  it("sink link → renders 'SINK' badge, sink_type label, optional CVE tag", () => {
+    const chain = makeChain({
+      links: [{
+        type: "sink",
+        sink_type: "command-execution",
+        location: "src/b.ts:20",
+        observed: "exec(input)",
+        cve_precedent: "CVE-2025-12345",
+      }],
+    });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
+    expect(container.textContent).toContain("SINK");
     expect(container.textContent).toContain("Command Execution");
+    expect(container.textContent).toContain("CVE-2025-12345");
   });
 
-  it("mitigation link (present=true) → renders '✓ Present'", () => {
-    const { container } = render(
-      <EvidenceChainViz
-        chain={{
-          links: [
-            makeLink({
-              type: "mitigation",
-              mitigation_type: "input-validation",
-              present: true,
-            }),
-          ],
-        }}
-      />
-    );
-    expect(container.textContent).toContain("✓ Present");
+  it("sink link without cve_precedent → no CVE tag, no crash", () => {
+    const chain = makeChain({
+      links: [{
+        type: "sink",
+        sink_type: "sql-execution",
+        location: "src/c.ts:5",
+        observed: "query(input)",
+      }],
+    });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
+    expect(container.textContent).toContain("SINK");
+    expect(container.querySelector(".ec-cve")).toBeNull();
   });
 
-  it("mitigation link (present=false) → renders '✗ Missing'", () => {
-    const { container } = render(
-      <EvidenceChainViz
-        chain={{
-          links: [
-            makeLink({
-              type: "mitigation",
-              mitigation_type: "input-validation",
-              present: false,
-            }),
-          ],
-        }}
-      />
-    );
-    expect(container.textContent).toContain("✗ Missing");
+  it("mitigation link (present=true) → renders '✓ MITIGATED'", () => {
+    const chain = makeChain({
+      links: [{
+        type: "mitigation",
+        mitigation_type: "input-validation",
+        present: true,
+        location: "src/d.ts:10",
+        detail: "Input is validated",
+      }],
+    });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
+    expect(container.textContent).toContain("✓ MITIGATED");
+    expect(container.querySelector(".ec-mit-present")).not.toBeNull();
   });
 
-  it("impact link → renders 'Impact' badge + scope in full mode", () => {
-    const { container } = render(
-      <EvidenceChainViz
-        chain={{
-          links: [
-            makeLink({
-              type: "impact",
-              impact_type: "remote-code-execution",
-              scope: "server-host",
-            }),
-          ],
-        }}
-        compact={false}
-      />
-    );
-    expect(container.textContent).toContain("Impact");
-    expect(container.textContent).toContain("server-host");
+  it("mitigation link (present=false) → renders '✗ UNMITIGATED'", () => {
+    const chain = makeChain({
+      links: [{
+        type: "mitigation",
+        mitigation_type: "input-validation",
+        present: false,
+        location: "src/d.ts:10",
+        detail: "No validation found",
+      }],
+    });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
+    expect(container.textContent).toContain("✗ UNMITIGATED");
+    expect(container.querySelector(".ec-mit-absent")).not.toBeNull();
   });
 
-  it("unknown link type → renders without crash, uses raw type as label", () => {
-    const unknownLink = { type: "unknown" as any } as EvidenceLink;
+  it("impact link → renders 'IMPACT' badge, impact_type, scope, exploitability, scenario", () => {
+    const chain = makeChain({
+      links: [{
+        type: "impact",
+        impact_type: "remote-code-execution",
+        scope: "server-host",
+        exploitability: "trivial",
+        scenario: "Attacker gains shell access",
+      }],
+    });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
+    expect(container.textContent).toContain("IMPACT");
+    expect(container.textContent).toContain("Remote Code Execution");
+    expect(container.textContent).toContain("server host"); // scope with - replaced by space
+    expect(container.textContent).toContain("Trivial");
+    expect(container.textContent).toContain("Attacker gains shell access");
+  });
+
+  it("unknown link type → renders nothing (no crash)", () => {
+    const chain = makeChain({
+      links: [{ type: "unknown" as any }],
+    });
     expect(() =>
-      render(<EvidenceChainViz chain={{ links: [unknownLink] }} />)
+      render(<EvidenceChainViz chain={chain} />)
     ).not.toThrow();
   });
 });
 
 // ═════════════════════════════════════════════════════════════════════════════════
-// BUG FIX 2 regression: truncation safety
+// Truncation
 // ═════════════════════════════════════════════════════════════════════════════════
 
-describe("BUG FIX 2 regression: truncation safety", () => {
-  it("link.observed=null → no 'Observed:' rendered (conditional render)", () => {
-    const { container } = render(
-      <EvidenceChainViz chain={{ links: [makeLink({ observed: null })] }} />
-    );
-    expect(container.textContent).not.toContain("Observed:");
-  });
-
-  it("link.observed=undefined → no 'Observed:' rendered", () => {
-    const { container } = render(
-      <EvidenceChainViz chain={{ links: [makeLink({ observed: undefined })] }} />
-    );
-    expect(container.textContent).not.toContain("Observed:");
-  });
-
-  it("link.observed='' → no 'Observed:' rendered (falsy empty string)", () => {
-    const { container } = render(
-      <EvidenceChainViz chain={{ links: [makeLink({ observed: "" })] }} />
-    );
-    expect(container.textContent).not.toContain("Observed:");
-  });
-
-  it("link.observed='x'.repeat(250) → truncated with '…' (max=200)", () => {
-    const longStr = "x".repeat(250);
-    const { container } = render(
-      <EvidenceChainViz chain={{ links: [makeLink({ observed: longStr })] }} />
-    );
+describe("truncation", () => {
+  it("observed on source link: 'x'.repeat(200) → truncated at 120 chars + '…'", () => {
+    const chain = makeChain({
+      links: [{
+        type: "source",
+        source_type: "user-parameter",
+        location: "a.ts:1",
+        observed: "x".repeat(200),
+        rationale: "test",
+      }],
+    });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
     const text = container.textContent ?? "";
-    // Original 250-char string should NOT be present
-    expect(text).not.toContain(longStr);
-    // Truncated: 199 chars + "…"
-    expect(text).toContain("…");
+    expect(text).not.toContain("x".repeat(200)); // truncated
+    expect(text).toContain("…"); // has ellipsis
+    expect(text).toContain("x".repeat(120)); // first 120 chars present
   });
 
-  it("link.observed='x'.repeat(50) → not truncated, no '…'", () => {
-    const shortStr = "x".repeat(50);
-    const { container } = render(
-      <EvidenceChainViz chain={{ links: [makeLink({ observed: shortStr })] }} />
-    );
-    const text = container.textContent ?? "";
-    expect(text).toContain(shortStr);
-    // No truncation ellipsis for the observed value
-  });
-
-  it("link.location='x'.repeat(150) → truncated at max=120", () => {
-    const longLoc = "x".repeat(150);
-    const { container } = render(
-      <EvidenceChainViz chain={{ links: [makeLink({ location: longLoc })] }} />
-    );
-    const text = container.textContent ?? "";
-    expect(text).not.toContain(longLoc);
-    expect(text).toContain("…");
-  });
-
-  it("link.rationale=null → no rationale rendered", () => {
-    const { container } = render(
-      <EvidenceChainViz
-        chain={{ links: [makeLink({ rationale: null })] }}
-        compact={false}
-      />
-    );
-    // rationale text should not be present (but other fields still render)
-    expect(container.textContent).toContain("Source"); // badge still renders
+  it("observed on source link: 'x'.repeat(50) → not truncated", () => {
+    const short = "x".repeat(50);
+    const chain = makeChain({
+      links: [{
+        type: "source",
+        source_type: "user-parameter",
+        location: "a.ts:1",
+        observed: short,
+        rationale: "test",
+      }],
+    });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
+    expect(container.textContent).toContain(short);
   });
 });
 
@@ -482,324 +350,253 @@ describe("BUG FIX 2 regression: truncation safety", () => {
 // ═════════════════════════════════════════════════════════════════════════════════
 
 describe("confidence factor display", () => {
-  it("factor with value 0.95 → shows '95%'", () => {
-    const chain = makeChain();
-    const { container } = render(
-      <EvidenceChainViz chain={chain} compact={false} />
-    );
-    expect(container.textContent).toContain("95%");
+  it("factor with positive adjustment → '+0.15'", () => {
+    const chain = makeChain({
+      confidence_factors: [
+        { factor: "ast_taint", adjustment: 0.15, rationale: "AST confirmed" },
+      ],
+    });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
+    expect(container.textContent).toContain("+0.15");
   });
 
-  it("factor with value 0.10 → shows '10%'", () => {
-    const { container } = render(
-      <EvidenceChainViz
-        chain={{
-          links: [makeLink()],
-          confidence: 0.5,
-          confidence_factors: [
-            { factor: "f1", value: 0.10, description: "Low factor" },
-          ],
-        }}
-        compact={false}
-      />
-    );
-    expect(container.textContent).toContain("10%");
+  it("factor with negative adjustment → '-0.10'", () => {
+    const chain = makeChain({
+      confidence_factors: [
+        { factor: "hop_count", adjustment: -0.10, rationale: "Long chain" },
+      ],
+    });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
+    expect(container.textContent).toContain("-0.10");
   });
 
-  it("factor with value 0 → shows '0%'", () => {
-    const { container } = render(
-      <EvidenceChainViz
-        chain={{
-          links: [makeLink()],
-          confidence: 0.5,
-          confidence_factors: [
-            { factor: "f1", value: 0, description: "Zero factor" },
-          ],
-        }}
-        compact={false}
-      />
-    );
-    expect(container.textContent).toContain("0%");
+  it("factor with adjustment=0 → '+0.00'", () => {
+    const chain = makeChain({
+      confidence_factors: [
+        { factor: "neutral", adjustment: 0, rationale: "Neutral" },
+      ],
+    });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
+    expect(container.textContent).toContain("+0.00");
   });
 
-  it("5 factors → all 5 rendered", () => {
+  it("5 factors → all rendered", () => {
     const factors = Array.from({ length: 5 }, (_, i) => ({
-      factor: `f${i}`,
-      value: 0.5 + i * 0.1,
-      description: `Factor ${i}`,
+      factor: `factor_${i}`,
+      adjustment: i * 0.05,
+      rationale: `Rationale ${i}`,
     }));
-    const { container } = render(
-      <EvidenceChainViz
-        chain={{ links: [makeLink()], confidence: 0.5, confidence_factors: factors }}
-        compact={false}
-      />
-    );
+    const chain = makeChain({ confidence_factors: factors });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
     for (const f of factors) {
-      expect(container.textContent).toContain(f.description);
+      expect(container.textContent).toContain(f.factor);
     }
   });
 
-  it("0 factors → no 'Confidence Factors' section", () => {
-    const { container } = render(
-      <EvidenceChainViz
-        chain={{ links: [makeLink()], confidence: 0.5, confidence_factors: [] }}
-        compact={false}
-      />
-    );
-    expect(container.textContent).not.toContain("Confidence Factors");
-  });
-
-  it("factor with empty description → falls back to factor name", () => {
-    const { container } = render(
-      <EvidenceChainViz
-        chain={{
-          links: [makeLink()],
-          confidence: 0.5,
-          confidence_factors: [
-            { factor: "custom_factor_name", value: 0.7, description: "" },
-          ],
-        }}
-        compact={false}
-      />
-    );
-    // Component uses: f.description || f.factor
-    expect(container.textContent).toContain("custom_factor_name");
+  it("0 factors → details section not rendered", () => {
+    const chain = makeChain({ confidence_factors: [] });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
+    expect(container.querySelector(".ec-factors")).toBeNull();
   });
 });
 
 // ═════════════════════════════════════════════════════════════════════════════════
-// Label fallbacks (formatSubtype)
+// Threat reference
+// ═════════════════════════════════════════════════════════════════════════════════
+
+describe("threat reference", () => {
+  it("with full threat_reference (id, title, year, url) → all rendered", () => {
+    const chain = makeChain({
+      threat_reference: {
+        id: "CVE-2025-12345",
+        title: "Command Injection in MCP",
+        year: 2025,
+        url: "https://example.com",
+        relevance: "Direct match",
+      },
+    });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
+    expect(container.textContent).toContain("CVE-2025-12345");
+    expect(container.textContent).toContain("Command Injection in MCP");
+    expect(container.textContent).toContain("(2025)");
+  });
+
+  it("with threat_reference missing year → no year span", () => {
+    const chain = makeChain({
+      threat_reference: {
+        id: "CWE-78",
+        title: "OS Command Injection",
+        relevance: "Pattern match",
+      },
+    });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
+    expect(container.textContent).toContain("CWE-78");
+    expect(container.querySelector(".ec-ref-year")).toBeNull();
+  });
+
+  it("without threat_reference → section not rendered", () => {
+    const chain = makeChain();
+    const { container } = render(<EvidenceChainViz chain={chain} />);
+    expect(container.querySelector(".ec-reference")).toBeNull();
+  });
+
+  it("with threat_reference but year=0 → year is falsy, no year span", () => {
+    const chain = makeChain({
+      threat_reference: {
+        id: "TEST-001",
+        title: "Test",
+        year: 0,
+        relevance: "Test",
+      },
+    });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
+    // year=0 is falsy, so {chain.threat_reference.year && ...} won't render
+    expect(container.querySelector(".ec-ref-year")).toBeNull();
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════════
+// Label fallbacks
 // ═════════════════════════════════════════════════════════════════════════════════
 
 describe("label fallbacks", () => {
-  it("unknown source_type 'custom-source' → renders 'Custom Source'", () => {
-    const { container } = render(
-      <EvidenceChainViz
-        chain={{ links: [makeLink({ type: "source", source_type: "custom-source" })] }}
-      />
-    );
-    expect(container.textContent).toContain("Custom Source");
+  it("unknown source_type 'custom-source' → renders raw 'custom-source'", () => {
+    const chain = makeChain({
+      links: [{
+        type: "source",
+        source_type: "custom-source",
+        location: "a.ts:1",
+        observed: "test",
+        rationale: "test",
+      }],
+    });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
+    expect(container.textContent).toContain("custom-source");
   });
 
-  it("unknown sink_type 'custom-sink' → renders 'Custom Sink'", () => {
-    const { container } = render(
-      <EvidenceChainViz
-        chain={{ links: [makeLink({ type: "sink", sink_type: "custom-sink", source_type: null })] }}
-      />
-    );
-    expect(container.textContent).toContain("Custom Sink");
+  it("unknown sink_type 'custom-sink' → renders raw 'custom-sink'", () => {
+    const chain = makeChain({
+      links: [{
+        type: "sink",
+        sink_type: "custom-sink",
+        location: "a.ts:1",
+        observed: "test",
+      }],
+    });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
+    expect(container.textContent).toContain("custom-sink");
   });
 
   it("known source_type 'user-parameter' → renders 'User Parameter'", () => {
-    const { container } = render(
-      <EvidenceChainViz
-        chain={{ links: [makeLink({ type: "source", source_type: "user-parameter" })] }}
-      />
-    );
+    const chain = makeChain({
+      links: [{
+        type: "source",
+        source_type: "user-parameter",
+        location: "a.ts:1",
+        observed: "test",
+        rationale: "test",
+      }],
+    });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
     expect(container.textContent).toContain("User Parameter");
   });
-
-  it("propagation_type 'variable-assignment' → renders 'Variable Assignment'", () => {
-    const { container } = render(
-      <EvidenceChainViz
-        chain={{
-          links: [
-            makeLink({
-              type: "propagation",
-              propagation_type: "variable-assignment",
-              source_type: null,
-            }),
-          ],
-        }}
-      />
-    );
-    expect(container.textContent).toContain("Variable Assignment");
-  });
-
-  it("subtype with underscores 'taint_propagation_flow' → 'Taint Propagation Flow'", () => {
-    const { container } = render(
-      <EvidenceChainViz
-        chain={{
-          links: [
-            makeLink({
-              type: "propagation",
-              propagation_type: "taint_propagation_flow",
-              source_type: null,
-            }),
-          ],
-        }}
-      />
-    );
-    expect(container.textContent).toContain("Taint Propagation Flow");
-  });
-
-  it("link with all subtype fields null → renders badge without subtype text", () => {
-    const link: EvidenceLink = {
-      type: "source",
-      source_type: null,
-      propagation_type: null,
-      sink_type: null,
-      mitigation_type: null,
-      impact_type: null,
-    };
-    const { container } = render(
-      <EvidenceChainViz chain={{ links: [link] }} />
-    );
-    expect(container.textContent).toContain("Source");
-    // No crash, no subtype text
-  });
 });
 
 // ═════════════════════════════════════════════════════════════════════════════════
-// Compact vs full mode
+// Flow timeline structure
 // ═════════════════════════════════════════════════════════════════════════════════
 
-describe("compact vs full mode", () => {
-  it("compact hides rationale", () => {
-    const chain: EvidenceChain = {
-      links: [makeLink({ rationale: "Detailed rationale text here" })],
-    };
-    const { container: compact } = render(
-      <EvidenceChainViz chain={chain} compact />
-    );
-    expect(compact.textContent).not.toContain("Detailed rationale text here");
-
-    const { container: full } = render(
-      <EvidenceChainViz chain={chain} compact={false} />
-    );
-    expect(full.textContent).toContain("Detailed rationale text here");
-  });
-
-  it("compact hides impact section entirely", () => {
-    const chain: EvidenceChain = {
-      links: [
-        makeLink({
-          type: "impact",
-          impact_type: "rce",
-          scope: "full-system",
-        }),
-      ],
-    };
-    const { container } = render(<EvidenceChainViz chain={chain} compact />);
-    expect(container.textContent).not.toContain("Impact");
-    expect(container.textContent).not.toContain("full-system");
-  });
-
-  it("compact hides confidence factors", () => {
-    const chain = makeChain();
-    const { container } = render(<EvidenceChainViz chain={chain} compact />);
-    expect(container.textContent).not.toContain("Confidence Factors");
-    expect(container.textContent).not.toContain("AST-confirmed taint flow");
-  });
-
-  it("full mode shows all sections", () => {
-    const chain: EvidenceChain = {
-      links: [
-        makeLink({ type: "source", rationale: "Full mode rationale" }),
-        makeLink({ type: "impact", impact_type: "data-theft", scope: "org-wide" }),
-      ],
-      confidence: 0.8,
-      confidence_factors: [
-        { factor: "f1", value: 0.9, description: "Full mode factor" },
-      ],
-    };
-    const { container } = render(
-      <EvidenceChainViz chain={chain} compact={false} />
-    );
-    expect(container.textContent).toContain("Full mode rationale");
-    expect(container.textContent).toContain("org-wide");
-    expect(container.textContent).toContain("Full mode factor");
-    expect(container.textContent).toContain("Confidence Factors");
-  });
-});
-
-// ═════════════════════════════════════════════════════════════════════════════════
-// Flow arrows
-// ═════════════════════════════════════════════════════════════════════════════════
-
-describe("flow arrows", () => {
-  it("3 flow links → 2 arrows (n-1)", () => {
+describe("flow timeline structure", () => {
+  it("3 flow links → rendered with connectors between them", () => {
     const chain = makeChain();
     const { container } = render(<EvidenceChainViz chain={chain} />);
-    const arrows = container.querySelectorAll(".evidence-flow-arrow");
-    expect(arrows).toHaveLength(2);
+    const connectors = container.querySelectorAll(".ec-connector");
+    // 3 flow links → 2 connectors (n-1)
+    expect(connectors).toHaveLength(2);
   });
 
-  it("1 flow link → 0 arrows", () => {
-    const { container } = render(
-      <EvidenceChainViz chain={{ links: [makeLink({ type: "source" })] }} />
-    );
-    const arrows = container.querySelectorAll(".evidence-flow-arrow");
-    expect(arrows).toHaveLength(0);
-  });
-
-  it("2 flow + 1 mitigation + 1 impact → 1 arrow (only between flow links)", () => {
-    const chain: EvidenceChain = {
-      links: [
-        makeLink({ type: "source" }),
-        makeLink({ type: "sink" }),
-        makeLink({ type: "mitigation", present: true }),
-        makeLink({ type: "impact", scope: "test" }),
-      ],
-    };
+  it("1 flow link → 0 connectors", () => {
+    const chain = makeChain({
+      links: [{
+        type: "source",
+        source_type: "user-parameter",
+        location: "a.ts:1",
+        observed: "test",
+        rationale: "test",
+      }],
+    });
     const { container } = render(<EvidenceChainViz chain={chain} />);
-    const arrows = container.querySelectorAll(".evidence-flow-arrow");
-    expect(arrows).toHaveLength(1);
+    const connectors = container.querySelectorAll(".ec-connector");
+    expect(connectors).toHaveLength(0);
+  });
+
+  it("mixed: 2 flow + 1 mitigation + 1 impact → only 1 connector (flow links only)", () => {
+    const chain = makeChain({
+      links: [
+        { type: "source", source_type: "user-parameter", location: "a.ts:1", observed: "test", rationale: "test" },
+        { type: "sink", sink_type: "command-execution", location: "b.ts:2", observed: "exec()" },
+        { type: "mitigation", mitigation_type: "validation", present: true, location: "c.ts:3", detail: "present" },
+        { type: "impact", impact_type: "remote-code-execution", scope: "host", exploitability: "trivial", scenario: "shell" },
+      ],
+    });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
+    const connectors = container.querySelectorAll(".ec-connector");
+    expect(connectors).toHaveLength(1); // only between 2 flow links
   });
 });
 
 // ═════════════════════════════════════════════════════════════════════════════════
-// Section rendering structure
+// Section rendering
 // ═════════════════════════════════════════════════════════════════════════════════
 
-describe("section rendering structure", () => {
-  it("chain with only mitigation links → 'Mitigations' header, no 'Data Flow'", () => {
-    const { container } = render(
-      <EvidenceChainViz
-        chain={{
-          links: [
-            makeLink({ type: "mitigation", mitigation_type: "sanitizer", present: true }),
-          ],
-        }}
-      />
-    );
-    expect(container.textContent).toContain("Mitigations");
-    expect(container.textContent).not.toContain("Data Flow");
+describe("section rendering", () => {
+  it("chain with only mitigation links → mitigations section, no flow", () => {
+    const chain = makeChain({
+      links: [{
+        type: "mitigation",
+        mitigation_type: "sanitizer",
+        present: true,
+        location: "a.ts:1",
+        detail: "Sanitizer present",
+      }],
+    });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
+    expect(container.querySelector(".ec-mitigations")).not.toBeNull();
+    expect(container.querySelector(".ec-flow")).toBeNull();
   });
 
-  it("chain with only impact links → 'Impact' in full mode, no 'Data Flow'", () => {
-    const { container } = render(
-      <EvidenceChainViz
-        chain={{
-          links: [makeLink({ type: "impact", impact_type: "rce", scope: "host" })],
-        }}
-        compact={false}
-      />
-    );
-    expect(container.textContent).toContain("Impact");
-    expect(container.textContent).not.toContain("Data Flow");
+  it("chain with only impact links → impacts section, no flow", () => {
+    const chain = makeChain({
+      links: [{
+        type: "impact",
+        impact_type: "data-exfiltration",
+        scope: "org",
+        exploitability: "moderate",
+        scenario: "Data leak",
+      }],
+    });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
+    expect(container.querySelector(".ec-impacts")).not.toBeNull();
+    expect(container.querySelector(".ec-flow")).toBeNull();
   });
 
-  it("chain with all 5 link types → all sections render", () => {
-    const chain: EvidenceChain = {
+  it("chain with all link types → all sections render", () => {
+    const chain = makeChain({
       links: [
-        makeLink({ type: "source" }),
-        makeLink({ type: "propagation" }),
-        makeLink({ type: "sink" }),
-        makeLink({ type: "mitigation", present: false }),
-        makeLink({ type: "impact", scope: "network" }),
+        { type: "source", source_type: "user-parameter", location: "a.ts:1", observed: "input", rationale: "user" },
+        { type: "propagation", propagation_type: "direct-pass", location: "b.ts:2", observed: "pass" },
+        { type: "sink", sink_type: "command-execution", location: "c.ts:3", observed: "exec()" },
+        { type: "mitigation", mitigation_type: "validation", present: false, location: "d.ts:4", detail: "missing" },
+        { type: "impact", impact_type: "remote-code-execution", scope: "host", exploitability: "trivial", scenario: "shell" },
       ],
-      confidence: 0.8,
-      confidence_factors: [{ factor: "f1", value: 0.8, description: "Test" }],
-    };
-    const { container } = render(
-      <EvidenceChainViz chain={chain} compact={false} />
-    );
-    expect(container.textContent).toContain("Data Flow");
-    expect(container.textContent).toContain("Mitigations");
-    expect(container.textContent).toContain("Impact");
-    expect(container.textContent).toContain("80%");
-    expect(container.textContent).toContain("Confidence Factors");
+      threat_reference: { id: "CVE-2025-1", title: "Test", year: 2025, relevance: "direct" },
+    });
+    const { container } = render(<EvidenceChainViz chain={chain} />);
+    expect(container.querySelector(".ec-flow")).not.toBeNull();
+    expect(container.querySelector(".ec-mitigations")).not.toBeNull();
+    expect(container.querySelector(".ec-impacts")).not.toBeNull();
+    expect(container.querySelector(".ec-reference")).not.toBeNull();
+    expect(container.querySelector(".ec-confidence")).not.toBeNull();
   });
 });
 
@@ -808,94 +605,30 @@ describe("section rendering structure", () => {
 // ═════════════════════════════════════════════════════════════════════════════════
 
 describe("edge cases", () => {
-  it("50 links → no crash (performance)", () => {
-    const links = Array.from({ length: 50 }, (_, i) =>
-      makeLink({
-        type: i % 3 === 0 ? "source" : i % 3 === 1 ? "propagation" : "sink",
-        location: `file.ts:${i}`,
-        observed: `Step ${i}`,
-      })
-    );
-    expect(() =>
-      render(<EvidenceChainViz chain={{ links }} />)
-    ).not.toThrow();
+  it("50 links → no crash", () => {
+    const links = Array.from({ length: 50 }, (_, i) => ({
+      type: "source" as const,
+      source_type: "user-parameter",
+      location: `file.ts:${i}`,
+      observed: `Step ${i}`,
+      rationale: "test",
+    }));
+    const chain = makeChain({ links });
+    expect(() => render(<EvidenceChainViz chain={chain} />)).not.toThrow();
   });
 
-  it("link with every optional field null → renders badge only, no crash", () => {
-    const link: EvidenceLink = {
-      type: "source",
-      location: null,
-      observed: null,
-      rationale: null,
-      source_type: null,
-      propagation_type: null,
-      sink_type: null,
-      mitigation_type: null,
-      impact_type: null,
-      present: undefined,
-      scope: null,
-    };
+  it("confidence-only mode renders percentage", () => {
     const { container } = render(
-      <EvidenceChainViz chain={{ links: [link] }} />
+      <EvidenceChainViz chain={undefined} confidence={0.73} />
     );
-    expect(container.textContent).toContain("Source");
-    // No Location/Observed/rationale text
-    expect(container.textContent).not.toContain("Location:");
-    expect(container.textContent).not.toContain("Observed:");
+    expect(container.textContent).toContain("73%");
   });
 
-  it("chain with links but no confidence → no confidence bar", () => {
+  it("full chain renders confidence from chain, not from prop", () => {
+    const chain = makeChain({ confidence: 0.88 });
     const { container } = render(
-      <EvidenceChainViz chain={{ links: [makeLink()] }} />
+      <EvidenceChainViz chain={chain} confidence={0.50} />
     );
-    expect(container.querySelectorAll(".evidence-confidence-bar")).toHaveLength(0);
-    expect(container.textContent).toContain("Source"); // links still render
-  });
-
-  it("renders link locations and observations correctly", () => {
-    const chain = makeChain();
-    const { container } = render(<EvidenceChainViz chain={chain} />);
-    expect(container.textContent).toContain("src/handler.ts:42");
-    expect(container.textContent).toContain("exec(cmd)");
-  });
-
-  it("renders Mitigations section header for mitigation links", () => {
-    const { container } = render(
-      <EvidenceChainViz
-        chain={{
-          links: [makeLink({ type: "mitigation", mitigation_type: "sanitizer" })],
-        }}
-      />
-    );
-    expect(container.textContent).toContain("Mitigations");
-  });
-});
-
-// ═════════════════════════════════════════════════════════════════════════════════
-// Threat reference behavior (via confidence factors, not a separate field)
-// ═════════════════════════════════════════════════════════════════════════════════
-
-describe("confidence factor edge cases", () => {
-  it("factor value exactly 1.0 → '100%'", () => {
-    const { container } = render(
-      <EvidenceChainViz
-        chain={{
-          links: [makeLink()],
-          confidence: 0.5,
-          confidence_factors: [
-            { factor: "max_factor", value: 1.0, description: "Maximum" },
-          ],
-        }}
-        compact={false}
-      />
-    );
-    // factor value * 100 = 100, toFixed(0) = "100"
-    expect(container.textContent).toContain("100%");
-  });
-
-  it("renders 92% for confidence 0.92", () => {
-    const chain = makeChain({ confidence: 0.92 });
-    const { container } = render(<EvidenceChainViz chain={chain} />);
-    expect(container.textContent).toContain("92%");
+    expect(container.textContent).toContain("88%");
   });
 });
