@@ -98,7 +98,8 @@ export function annotateFindings(
   });
 }
 
-/** A scored finding ready for database insertion (matches FindingInput shape) */
+/** A scored finding ready for database insertion and scoring.
+ *  Extends FindingInput shape with confidence for weighted penalty computation. */
 export interface ScoredFinding {
   rule_id: string;
   severity: string;
@@ -106,6 +107,8 @@ export interface ScoredFinding {
   remediation: string;
   owasp_category: string | null;
   mitre_technique: string | null;
+  /** Confidence from evidence chain or rule (0.0–1.0). Scorer scales penalty by this. */
+  confidence: number;
 }
 
 /**
@@ -113,6 +116,7 @@ export interface ScoredFinding {
  *
  * Only findings that are BOTH relevant AND meet the evidence standard
  * are included in the scored output. Others are preserved as informational.
+ * Confidence is preserved so the scorer can weight penalties accordingly.
  */
 export function scoredFindings(annotated: AnnotatedFinding[]): ScoredFinding[] {
   return annotated
@@ -124,6 +128,7 @@ export function scoredFindings(annotated: AnnotatedFinding[]): ScoredFinding[] {
       remediation: f.remediation,
       owasp_category: f.owasp_category,
       mitre_technique: f.mitre_technique,
+      confidence: f.confidence,
     }));
 }
 

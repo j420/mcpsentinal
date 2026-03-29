@@ -151,22 +151,15 @@ export class AnalysisEngine {
       "Threat model selected",
     );
 
-    // Step 3: Run ALL rules (for completeness — we still want to see everything)
-    const rawFindings = this.analyze(context);
+    // Step 3: Run ALL rules via analyzeRich() — preserves confidence + metadata
+    // from TypedRules (e.g., C1's AST taint confidence of 0.95 and evidence chains).
+    // Legacy YAML rules get default confidence 0.5.
+    const richFindings = this.analyzeRich(context);
 
-    // Step 4: Convert FindingInput to TypedFinding for annotation
-    const typedFindings: TypedFinding[] = rawFindings.map((f) => ({
-      rule_id: f.rule_id,
-      severity: f.severity,
-      evidence: f.evidence,
-      remediation: f.remediation,
-      owasp_category: f.owasp_category,
-      mitre_technique: f.mitre_technique,
-      confidence: 0.5, // Default for legacy findings without confidence
-    }));
-
-    // Step 5: Annotate findings with relevance and threat context
-    const annotated = annotateFindings(typedFindings, profile);
+    // Step 4: Annotate findings with relevance and threat context
+    // annotateFindings() uses evidence_chain from metadata when available,
+    // preserving the real confidence computed by the rule.
+    const annotated = annotateFindings(richFindings, profile);
 
     // Step 6: Separate scored vs. informational findings
     const scored = scoredFindings(annotated);
@@ -178,10 +171,10 @@ export class AnalysisEngine {
     logger.info(
       {
         server: context.server.id,
-        total_findings: rawFindings.length,
+        total_findings: richFindings.length,
         scored_findings: scored.length,
         unscored_findings: unscored.length,
-        filtered_out: rawFindings.length - scored.length,
+        filtered_out: richFindings.length - scored.length,
       },
       "Profile-aware analysis complete",
     );
@@ -197,14 +190,30 @@ export class AnalysisEngine {
   }
 
   analyze(context: AnalysisContext): FindingInput[] {
-    const findings: FindingInput[] = [];
+    return this.analyzeRich(context).map((f) => ({
+      rule_id: f.rule_id,
+      severity: f.severity as FindingInput["severity"],
+      evidence: f.evidence,
+      remediation: f.remediation,
+      owasp_category: f.owasp_category as FindingInput["owasp_category"],
+      mitre_technique: f.mitre_technique,
+    }));
+  }
+
+  /**
+   * Internal enriched analysis — preserves confidence and metadata from
+   * TypedRules and engines. Used by analyzeWithProfile() to avoid losing
+   * evidence chain data through FindingInput conversion.
+   */
+  private analyzeRich(context: AnalysisContext): TypedFinding[] {
+    const findings: TypedFinding[] = [];
 
     // ── Phase 1: Specialized engines (real analysis) ──
     // Each engine owns a category and does actual program analysis,
     // structural inference, or linguistic analysis — not regex.
     // Only include findings for rules that are actually loaded.
     const loadedRuleIds = new Set(this.rules.map((r) => r.id));
-    const engineFindings: FindingInput[] = [];
+    const engineFindings: TypedFinding[] = [];
     const engineRuleIds = new Set<string>();
 
     const allEngineResults: Array<{
@@ -233,12 +242,33 @@ export class AnalysisEngine {
     try { allEngineResults.push(...this.protocolAnalyzer.analyze(context)); }
     catch (err) { logger.error({ err }, "ProtocolAnalyzer error"); }
 
-    // Filter to only rules that are loaded, then convert
+    // Filter to only rules that are loaded, then convert to TypedFinding.
+    // When a rule is loaded as detect.type="typed" AND has a TypedRule
+    // implementation, skip the engine finding and let the TypedRule run
+    // in Phase 2 — TypedRules produce structured evidence chains that
+    // the older engines don't. This ensures confidence and evidence_chain
+    // data survive through the pipeline.
+    const typedRuleIds = new Set(
+      this.rules.filter((r) => r.detect.type === "typed" && hasTypedRule(r.id)).map((r) => r.id)
+    );
+
     for (const f of allEngineResults) {
-      if (loadedRuleIds.has(f.rule_id)) {
-        engineFindings.push(this.toFindingInput(f as Parameters<typeof this.toFindingInput>[0]));
-        engineRuleIds.add(f.rule_id);
-      }
+      if (!loadedRuleIds.has(f.rule_id)) continue;
+
+      // Defer to TypedRule — it produces evidence chains
+      if (typedRuleIds.has(f.rule_id)) continue;
+
+      engineFindings.push({
+        rule_id: f.rule_id,
+        severity: f.severity as TypedFinding["severity"],
+        evidence: f.evidence,
+        remediation: f.remediation,
+        owasp_category: f.owasp_category as TypedFinding["owasp_category"],
+        mitre_technique: f.mitre_technique,
+        confidence: f.confidence ?? 0.5,
+        metadata: f.metadata,
+      });
+      engineRuleIds.add(f.rule_id);
     }
 
     findings.push(...engineFindings);
@@ -279,48 +309,43 @@ export class AnalysisEngine {
     return findings;
   }
 
-  private toFindingInput(f: {
-    rule_id: string;
-    severity: string;
-    evidence: string;
-    remediation: string;
-    owasp_category: string | null;
-    mitre_technique: string | null;
-  }): FindingInput {
-    return {
-      rule_id: f.rule_id,
-      severity: f.severity as FindingInput["severity"],
-      evidence: f.evidence,
-      remediation: f.remediation,
-      owasp_category: f.owasp_category as FindingInput["owasp_category"],
-      mitre_technique: f.mitre_technique,
-    };
-  }
-
   private runRule(
     rule: DetectionRule,
     context: AnalysisContext
-  ): FindingInput[] {
+  ): TypedFinding[] {
     switch (rule.detect.type) {
       case "typed": {
         const impl = getTypedRule(rule.id);
         if (impl) {
-          return impl.analyze(context).map((f: TypedFinding) => this.toFindingInput(f));
+          return impl.analyze(context);
         }
         logger.warn({ rule: rule.id }, "Typed rule has no TypeScript implementation — skipping");
         return [];
       }
       case "regex":
-        return this.runRegexRule(rule, context);
+        return this.enrichFindings(this.runRegexRule(rule, context));
       case "schema-check":
-        return this.runSchemaCheckRule(rule, context);
+        return this.enrichFindings(this.runSchemaCheckRule(rule, context));
       case "behavioral":
-        return this.runBehavioralRule(rule, context);
+        return this.enrichFindings(this.runBehavioralRule(rule, context));
       case "composite":
-        return this.runCompositeRule(rule, context);
+        return this.enrichFindings(this.runCompositeRule(rule, context));
       default:
         return [];
     }
+  }
+
+  /** Wrap legacy FindingInput from YAML rules with default confidence (0.5) */
+  private enrichFindings(findings: FindingInput[]): TypedFinding[] {
+    return findings.map((f) => ({
+      rule_id: f.rule_id,
+      severity: f.severity as TypedFinding["severity"],
+      evidence: f.evidence,
+      remediation: f.remediation,
+      owasp_category: f.owasp_category as TypedFinding["owasp_category"],
+      mitre_technique: f.mitre_technique,
+      confidence: 0.5,
+    }));
   }
 
   private runRegexRule(
