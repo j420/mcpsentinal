@@ -66,7 +66,7 @@ Rating: ≥0.75 critical, ≥0.55 high, ≥0.35 medium, <0.35 low.
 | `src/narrative.ts` | Deterministic narrative + mitigation generation |
 | `src/index.ts` | Package exports |
 | `src/__tests__/scoring.test.ts` | 63 scoring tests |
-| `src/__tests__/engine.test.ts` | 73 engine tests (7 KC × 8 + engine-wide) |
+| `src/__tests__/engine.test.ts` | 74 engine tests (7 KC × 8 + engine-wide + narrative coverage) |
 | `src/__tests__/narrative.test.ts` | 13 narrative + mitigation tests |
 | `src/__tests__/fixtures/` | Reusable node + edge factories |
 
@@ -79,7 +79,7 @@ Rating: ≥0.75 critical, ≥0.55 high, ≥0.35 medium, <0.35 low.
 ## Commands
 
 ```bash
-pnpm test --filter=@mcp-sentinel/attack-graph   # Run all 149 tests
+pnpm test --filter=@mcp-sentinel/attack-graph   # Run all 150 tests
 pnpm --filter=@mcp-sentinel/attack-graph typecheck  # TypeScript type checking
 ```
 
