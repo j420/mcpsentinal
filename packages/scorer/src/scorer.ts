@@ -82,19 +82,25 @@ const OWASP_CATEGORIES = [
   "MCP10-supply-chain",
 ];
 
+/** Finding with optional confidence for weighted scoring */
+interface FindingWithConfidence extends FindingInput {
+  confidence?: number;
+}
+
 /**
  * Compute composite security score from findings.
  *
  * Algorithm:
  * - Start at 100
- * - Subtract weighted penalties per finding
+ * - Subtract weighted penalties per finding, scaled by confidence when available
+ *   (confidence 0.95 → full penalty, confidence 0.50 → half penalty)
  * - Each category (code, deps, config, description, behavior) starts at 100
  *   and is reduced independently
  * - Lethal trifecta (F1) caps total score at 40
  * - Score never goes below 0 or above 100
  */
 export function computeScore(
-  findings: FindingInput[],
+  findings: FindingInput[] | FindingWithConfidence[],
   ruleCategories: Record<string, string>
 ): ScoreResult {
   const categoryScores = {
@@ -113,7 +119,12 @@ export function computeScore(
   const owaspHits = new Set<string>();
 
   for (const finding of findings) {
-    const penalty = SEVERITY_WEIGHTS[finding.severity] || 0;
+    const basePenalty = SEVERITY_WEIGHTS[finding.severity] || 0;
+    // Scale penalty by confidence: high-confidence findings pay full price,
+    // low-confidence findings pay proportionally less.
+    // Default confidence is 1.0 (full penalty) for backward compatibility.
+    const confidence = (finding as FindingWithConfidence).confidence ?? 1.0;
+    const penalty = Math.round(basePenalty * confidence * 100) / 100;
     totalPenalty += penalty;
 
     penalties.push({

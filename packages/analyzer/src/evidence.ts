@@ -165,6 +165,8 @@ export interface ThreatReference {
   title: string;
   /** URL to the reference */
   url?: string;
+  /** Year of publication (matches ThreatIntelReference in threat-model.ts) */
+  year?: number;
   /** How this finding relates to the reference */
   relevance: string;
 }
