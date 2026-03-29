@@ -168,7 +168,7 @@ describe("getAttackChainsForServer", () => {
     await db.getAttackChainsForServer("test-uuid");
 
     const [sql] = (pool.query as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(sql).toContain("DISTINCT ON (chain_id)");
+    expect(sql).toContain("DISTINCT ON (ac.chain_id)");
   });
 
   it("orders by chain_id, created_at DESC for newest-first per chain_id", async () => {
@@ -177,7 +177,7 @@ describe("getAttackChainsForServer", () => {
     await db.getAttackChainsForServer("test-uuid");
 
     const [sql] = (pool.query as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(sql).toContain("ORDER BY chain_id, created_at DESC");
+    expect(sql).toContain("ORDER BY ac.chain_id, ac.created_at DESC");
   });
 
   it("returns correct shape with all fields", async () => {
