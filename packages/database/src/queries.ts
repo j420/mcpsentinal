@@ -1230,6 +1230,72 @@ export class DatabaseQueries {
   // ─── Attack Chains ─────────────────────────────────────────────────────────
 
   /**
+   * Get latest finding rule IDs for each server in a set.
+   * Used by AttackGraphEngine to populate `server_findings` for scoring.
+   * Returns only the most recent scan's findings per server.
+   */
+  async getFindingRuleIdsByServerIds(
+    serverIds: string[]
+  ): Promise<Record<string, string[]>> {
+    if (serverIds.length === 0) return {};
+
+    const result = await this.pool.query(
+      `SELECT DISTINCT ON (f.server_id, f.rule_id)
+              f.server_id, f.rule_id
+       FROM findings f
+       JOIN scans s ON f.scan_id = s.id
+       WHERE f.server_id = ANY($1::uuid[])
+         AND s.status = 'completed'
+       ORDER BY f.server_id, f.rule_id, s.completed_at DESC`,
+      [serverIds]
+    );
+
+    const map: Record<string, string[]> = {};
+    for (const row of result.rows) {
+      const existing = map[row.server_id] ?? [];
+      existing.push(row.rule_id);
+      map[row.server_id] = existing;
+    }
+    return map;
+  }
+
+  /**
+   * Get attack chains involving a specific server (appears in any step).
+   * Used by server detail page to show which kill chains this server participates in.
+   */
+  async getAttackChainsForServer(serverId: string): Promise<
+    Array<{
+      id: string;
+      chain_id: string;
+      config_id: string;
+      kill_chain_id: string;
+      kill_chain_name: string;
+      steps: unknown[];
+      exploitability_overall: number;
+      exploitability_rating: string;
+      narrative: string;
+      mitigations: unknown[];
+      owasp_refs: string[];
+      mitre_refs: string[];
+      created_at: Date;
+    }>
+  > {
+    const result = await this.pool.query(
+      `SELECT DISTINCT ON (ac.chain_id)
+              ac.id, ac.chain_id, ac.config_id,
+              ac.kill_chain_id, ac.kill_chain_name,
+              ac.steps, ac.exploitability_overall, ac.exploitability_rating,
+              ac.narrative, ac.mitigations, ac.owasp_refs, ac.mitre_refs,
+              ac.created_at
+       FROM attack_chains ac
+       WHERE ac.steps::jsonb @> $1::jsonb
+       ORDER BY ac.chain_id, ac.created_at DESC`,
+      [JSON.stringify([{ server_id: serverId }])]
+    );
+    return result.rows;
+  }
+
+  /**
    * Insert attack chains (append-only, ADR-008).
    *
    * @param configId — hash of the server ID set

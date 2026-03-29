@@ -5,6 +5,8 @@ import CategoryDeepDivePanel from "@/components/CategoryDeepDivePanel";
 import type { CddFinding } from "@/components/cdd-data";
 import ServerProfileCard from "@/components/ServerProfileCard";
 import type { ServerProfileData } from "@/components/ServerProfileCard";
+import AttackChainCard from "@/components/AttackChainCard";
+import type { AttackChainItem } from "@/components/AttackChainCard";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +59,8 @@ interface ServerDetail {
   owasp_coverage?: Record<string, boolean>;
   /** Phase 1: server capability profile. Absent until API serves Phase 1 data. */
   profile?: ServerProfileData | null;
+  /** Attack chains involving this server. Absent until API serves attack chain data. */
+  attack_chains?: AttackChainItem[] | null;
 }
 
 // ── Data Fetching ─────────────────────────────────────────────────────────────
@@ -269,6 +273,12 @@ export default async function ServerDetailPage({
 
       {/* ── Server Profile (Phase 1 — renders nothing if profile absent) ── */}
       <ServerProfileCard profile={server.profile ?? null} />
+
+      {/* ── Attack Chains (renders nothing if no chains) ──── */}
+      <AttackChainCard
+        chains={server.attack_chains ?? null}
+        currentServerId={server.id}
+      />
 
       {/* ── Tools ──────────────────────────────────────────── */}
       {tools.length > 0 && (
