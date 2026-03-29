@@ -202,11 +202,12 @@ describe("scanToolOutput", () => {
     const zwsOutput = "normal text\u200Bwith zero\u200Bwidth spaces hidden";
     const result = scanToolOutput("sneaky_tool", zwsOutput, SRV);
     expect(Array.isArray(result)).toBe(true);
-    // If A7 fires, severity should be critical
+    // A7 should fire — zero-width spaces detected in tool description
     const a7 = result.find((f) => f.rule_id === "A7");
-    if (a7) {
-      expect(a7.severity).toBe("critical");
-    }
+    expect(a7).toBeDefined();
+    // Scattered ZWS without a hidden message between them → high severity
+    // (critical is reserved for ZWS patterns that encode hidden messages)
+    expect(["critical", "high"]).toContain(a7!.severity);
   });
 
   it("handles base64-encoded payload in output (A9)", () => {
