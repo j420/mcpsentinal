@@ -143,7 +143,11 @@ export const KC03: KillChainTemplate = {
     },
   ],
   required_patterns: ["P02"],
-  required_edge_types: ["credential_chain", "exfiltration_chain"],
+  // Only credential_chain is strictly required from P02.
+  // exfiltration_chain may come from a different pattern (P06, P12)
+  // or may not be emitted if P02 only flags the credential access.
+  // Edge verification (Step 4) ensures servers are actually connected.
+  required_edge_types: ["credential_chain"],
   base_likelihood: 0.75,
   base_impact: 0.90,
   owasp: ["MCP04", "MCP07"],

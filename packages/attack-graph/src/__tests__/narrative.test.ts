@@ -10,7 +10,7 @@
 import { describe, it, expect } from "vitest";
 import { generateNarrative, generateMitigations } from "../narrative.js";
 import { KC01, KC02, KC04, KC05, KC07 } from "../kill-chains.js";
-import { webScraper, fileManager, webhookSender, configWriter, codeRunner } from "./fixtures/nodes.js";
+
 import type { AttackStep, CapabilityNode } from "../types.js";
 
 function makeStep(
@@ -113,8 +113,7 @@ describe("generateMitigations", () => {
       makeStep(2, "file-manager", "data_source"),
       makeStep(3, "webhook-sender", "exfiltrator"),
     ];
-    const nodes = [webScraper(), fileManager(), webhookSender()];
-    const mitigations = generateMitigations(KC01, steps, nodes);
+    const mitigations = generateMitigations(KC01, steps);
 
     const breakerIdx = mitigations.findIndex((m) => m.effect === "breaks_chain");
     const reducerIdx = mitigations.findIndex((m) => m.effect === "reduces_risk");
@@ -129,7 +128,7 @@ describe("generateMitigations", () => {
       makeStep(1, "web-scraper", "injection_gateway"),
       makeStep(2, "file-manager", "data_source"),
     ];
-    const mitigations = generateMitigations(KC01, steps, [webScraper(), fileManager()]);
+    const mitigations = generateMitigations(KC01, steps);
 
     const removeMitigation = mitigations.find(
       (m) => m.action === "remove_server" && m.target_server_name === "web-scraper"
@@ -145,7 +144,7 @@ describe("generateMitigations", () => {
       makeStep(1, "config-writer", "config_writer"),
       makeStep(2, "code-runner", "executor"),
     ];
-    const mitigations = generateMitigations(KC02, steps, [configWriter(), codeRunner()]);
+    const mitigations = generateMitigations(KC02, steps);
 
     const confirmMitigation = mitigations.find(
       (m) => m.action === "add_confirmation" && m.target_server_name === "code-runner"
@@ -158,7 +157,7 @@ describe("generateMitigations", () => {
       makeStep(1, "file-manager", "data_source"),
       makeStep(2, "webhook-sender", "exfiltrator"),
     ];
-    const mitigations = generateMitigations(KC01, steps, [fileManager(), webhookSender()]);
+    const mitigations = generateMitigations(KC01, steps);
 
     const restrictMitigation = mitigations.find(
       (m) => m.action === "restrict_capability" && m.target_server_name === "webhook-sender"
@@ -173,7 +172,7 @@ describe("generateMitigations", () => {
       makeStep(2, "file-manager", "data_source"),
       makeStep(3, "webhook-sender", "exfiltrator"),
     ];
-    const mitigations = generateMitigations(KC01, steps, [webScraper(), fileManager(), webhookSender()]);
+    const mitigations = generateMitigations(KC01, steps);
 
     // Check no exact duplicates (same server + action)
     const keys = mitigations.map((m) => `${m.target_server_id}:${m.action}`);
@@ -187,7 +186,7 @@ describe("generateMitigations", () => {
       makeStep(3, "webhook-sender", "exfiltrator"),
     ];
     const serverIds = new Set(steps.map((s) => s.server_id));
-    const mitigations = generateMitigations(KC01, steps, [webScraper(), fileManager(), webhookSender()]);
+    const mitigations = generateMitigations(KC01, steps);
 
     for (const m of mitigations) {
       expect(serverIds.has(m.target_server_id)).toBe(true);
@@ -200,7 +199,7 @@ describe("generateMitigations", () => {
       makeStep(2, "file-manager", "data_source"),
       makeStep(3, "webhook-sender", "exfiltrator"),
     ];
-    const mitigations = generateMitigations(KC01, steps, [webScraper(), fileManager(), webhookSender()]);
+    const mitigations = generateMitigations(KC01, steps);
 
     const maxOrdinal = Math.max(...steps.map((s) => s.ordinal));
     for (const m of mitigations) {

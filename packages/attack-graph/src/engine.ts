@@ -22,13 +22,12 @@
 import { createHash } from "crypto";
 import { ALL_KILL_CHAINS, hasRequiredPatterns, hasRequiredEdgeTypes } from "./kill-chains.js";
 import { computeExploitability } from "./scoring.js";
-import { generateNarrative, generateMitigations } from "./narrative.js";
+import { generateNarrative, generateMitigations, getStepNarrative } from "./narrative.js";
 import type {
   AttackGraphInput,
   AttackGraphReport,
   AttackChain,
   AttackStep,
-  AttackRole,
   CapabilityNode,
   Capability,
   RiskEdge,
@@ -65,7 +64,9 @@ export class AttackGraphEngine {
     for (const template of ALL_KILL_CHAINS) {
       if (allChains.length >= MAX_CHAINS) break;
 
-      // Step 1: Prerequisite check
+      // Step 1: Prerequisite check (coarse global filter — verifies edge types
+      // exist SOMEWHERE in the config, not between specific chain servers.
+      // Per-chain edge verification happens in Step 4.)
       if (!hasRequiredPatterns(template, patterns_detected)) continue;
       if (!hasRequiredEdgeTypes(template, edges)) continue;
 
@@ -117,7 +118,7 @@ export class AttackGraphEngine {
 
         // Step 7: Narrate
         const narrative = generateNarrative(template, steps);
-        const mitigations = generateMitigations(template, steps, nodes);
+        const mitigations = generateMitigations(template, steps);
 
         // Generate deterministic chain ID
         const chainId = createHash("sha256")
@@ -293,7 +294,7 @@ function buildSteps(
       capabilities_used: capsUsed,
       tools_involved: [], // populated later if tool-level data available
       edge_to_next: idx < chainEdges.length ? chainEdges[idx] : null,
-      narrative: "", // populated by generateNarrative
+      narrative: getStepNarrative(role.role, node.server_name),
     };
   });
 }

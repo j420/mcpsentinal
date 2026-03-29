@@ -16,7 +16,6 @@ import type {
   AttackRole,
   KillChainTemplate,
   Mitigation,
-  CapabilityNode,
 } from "./types.js";
 
 // ── Role narrative templates ───────────────────────────────────────────────────
@@ -52,6 +51,15 @@ const OBJECTIVE_DESC: Record<string, string> = {
   privilege_escalation:
     "The attacker's goal is to escalate from limited read-only access to full administrative privileges over databases and systems.",
 };
+
+/**
+ * Get the narrative fragment for a single attack step.
+ * Used by engine.ts to populate AttackStep.narrative.
+ */
+export function getStepNarrative(role: AttackRole, serverName: string): string {
+  const fn = ROLE_NARRATIVES[role];
+  return fn ? fn(serverName) : `"${serverName}" acts as ${role}.`;
+}
 
 // ── Narrative generation ───────────────────────────────────────────────────────
 
@@ -119,9 +127,8 @@ export function generateNarrative(
  *   - data_source: add auth or restrict scope
  */
 export function generateMitigations(
-  template: KillChainTemplate,
+  _template: KillChainTemplate,
   steps: AttackStep[],
-  nodes: CapabilityNode[]
 ): Mitigation[] {
   const mitigations: Mitigation[] = [];
   const seen = new Set<string>();

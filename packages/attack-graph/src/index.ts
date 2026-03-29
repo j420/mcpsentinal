@@ -27,7 +27,7 @@ export {
   computeEdgeSeverity,
   scoreToRating,
 } from "./scoring.js";
-export { generateNarrative, generateMitigations } from "./narrative.js";
+export { generateNarrative, generateMitigations, getStepNarrative } from "./narrative.js";
 export type {
   AttackGraphInput,
   AttackGraphReport,

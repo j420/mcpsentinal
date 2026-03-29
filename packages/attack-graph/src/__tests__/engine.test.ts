@@ -70,19 +70,30 @@ describe("KC01: Indirect Injection → Data Exfiltration", () => {
   });
 
   // True Negatives
-  it("TN1: missing network sender → no chain", () => {
+  it("TN1: missing network sender → no chain (role unfillable)", () => {
     const report = engine.analyze({
       nodes: [webScraper(), fileManager()],
-      edges: [makeEdge("web-scraper", "file-manager", "injection_path", "critical")],
+      // Provide both required edge types so hasRequiredEdgeTypes passes —
+      // the test specifically validates that the ROLE check (no sends-network
+      // server) blocks the chain, not that a prerequisite check blocks it.
+      edges: [
+        makeEdge("web-scraper", "file-manager", "injection_path", "critical"),
+        makeEdge("file-manager", "web-scraper", "exfiltration_chain", "critical"),
+      ],
       patterns_detected: ["P01"],
     });
     expect(report.chains.filter((c) => c.kill_chain_id === "KC01")).toHaveLength(0);
   });
 
-  it("TN2: missing injection gateway → no chain", () => {
+  it("TN2: missing injection gateway → no chain (role unfillable)", () => {
     const report = engine.analyze({
       nodes: [fileManager(), webhookSender()],
-      edges: [makeEdge("file-manager", "webhook-sender", "exfiltration_chain", "critical")],
+      // Provide both required edge types so prerequisite passes —
+      // validates that the ROLE check (no injection gateway) blocks the chain.
+      edges: [
+        makeEdge("file-manager", "webhook-sender", "exfiltration_chain", "critical"),
+        makeEdge("webhook-sender", "file-manager", "injection_path", "critical"),
+      ],
       patterns_detected: ["P01"],
     });
     expect(report.chains.filter((c) => c.kill_chain_id === "KC01")).toHaveLength(0);
@@ -788,6 +799,22 @@ describe("engine-wide behavior", () => {
       // Pattern IDs should be from KC01's required_patterns that were detected
       for (const pid of kc01.evidence.pattern_ids) {
         expect(["P01", "P03", "P09"]).toContain(pid);
+      }
+    }
+  });
+
+  it("every step has a non-empty narrative", () => {
+    const report = engine.analyze({
+      nodes: [webScraper(), fileManager(), webhookSender()],
+      edges: kc01Edges(),
+      patterns_detected: ["P01"],
+    });
+
+    expect(report.chains.length).toBeGreaterThan(0);
+    for (const chain of report.chains) {
+      for (const step of chain.steps) {
+        expect(step.narrative).toBeTruthy();
+        expect(step.narrative.length).toBeGreaterThan(0);
       }
     }
   });
