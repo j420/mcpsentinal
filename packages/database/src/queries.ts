@@ -1228,6 +1228,70 @@ export class DatabaseQueries {
   // ─── Attack Chains ─────────────────────────────────────────────────────────
 
   /**
+   * Get finding rule IDs grouped by server ID.
+   * Used to enrich attack chains with single-server findings.
+   */
+  async getFindingRuleIdsByServerIds(
+    serverIds: string[]
+  ): Promise<Record<string, string[]>> {
+    if (serverIds.length === 0) return {};
+
+    const result = await this.pool.query(
+      `SELECT DISTINCT ON (server_id, rule_id) server_id, rule_id
+       FROM findings
+       WHERE server_id = ANY($1::uuid[])
+       ORDER BY server_id, rule_id`,
+      [serverIds]
+    );
+
+    const grouped: Record<string, string[]> = {};
+    for (const row of result.rows) {
+      const existing = grouped[row.server_id];
+      if (existing) {
+        existing.push(row.rule_id);
+      } else {
+        grouped[row.server_id] = [row.rule_id];
+      }
+    }
+    return grouped;
+  }
+
+  /**
+   * Get attack chains that involve a specific server.
+   * Uses JSONB containment to find chains where any step references the server.
+   * Returns the most recent chain per chain_id (deduplication).
+   */
+  async getAttackChainsForServer(serverId: string): Promise<
+    Array<{
+      id: string;
+      chain_id: string;
+      config_id: string;
+      kill_chain_id: string;
+      kill_chain_name: string;
+      steps: unknown[];
+      exploitability_overall: number;
+      exploitability_rating: string;
+      narrative: string;
+      mitigations: unknown[];
+      owasp_refs: string[];
+      mitre_refs: string[];
+      created_at: Date;
+    }>
+  > {
+    const result = await this.pool.query(
+      `SELECT DISTINCT ON (chain_id)
+              id, chain_id, config_id, kill_chain_id, kill_chain_name,
+              steps, exploitability_overall, exploitability_rating,
+              narrative, mitigations, owasp_refs, mitre_refs, created_at
+       FROM attack_chains
+       WHERE steps::jsonb @> $1::jsonb
+       ORDER BY chain_id, created_at DESC`,
+      [JSON.stringify([{ server_id: serverId }])]
+    );
+    return result.rows;
+  }
+
+  /**
    * Insert attack chains (append-only, ADR-008).
    *
    * @param configId — hash of the server ID set
