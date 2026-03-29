@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import CategoryDeepDivePanel from "@/components/CategoryDeepDivePanel";
 import type { CddFinding } from "@/components/cdd-data";
+import ServerProfileCard from "@/components/ServerProfileCard";
+import type { ServerProfileData } from "@/components/ServerProfileCard";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +20,10 @@ interface Finding {
   remediation: string;
   owasp_category: string | null;
   mitre_technique: string | null;
+  /** Phase 1: per-finding confidence score (0.0–1.0). Absent on pre-Phase-1 data. */
+  confidence?: number;
+  /** Phase 1: structured evidence chain proving the finding. Absent on pre-Phase-1 data. */
+  evidence_chain?: Record<string, unknown> | null;
 }
 
 interface Tool {
@@ -49,6 +55,8 @@ interface ServerDetail {
   tools: Tool[];
   findings: Finding[];
   owasp_coverage?: Record<string, boolean>;
+  /** Phase 1: server capability profile. Absent until API serves Phase 1 data. */
+  profile?: ServerProfileData | null;
 }
 
 // ── Data Fetching ─────────────────────────────────────────────────────────────
@@ -258,6 +266,9 @@ export default async function ServerDetailPage({
           </div>
         </section>
       )}
+
+      {/* ── Server Profile (Phase 1 — renders nothing if profile absent) ── */}
+      <ServerProfileCard profile={server.profile ?? null} />
 
       {/* ── Tools ──────────────────────────────────────────── */}
       {tools.length > 0 && (

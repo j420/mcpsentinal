@@ -6491,3 +6491,745 @@ code, pre, kbd {
   .scanner-score-grid { grid-template-columns: 1fr 1fr; }
   .scanner-step { flex-direction: column; gap: var(--s2); }
 }
+
+/* ============================================================
+   Server Profile Card (.sp-)
+   Displays server capability classification, attack surfaces,
+   data flow pairs, applicable threats, and analysis coverage.
+   ============================================================ */
+
+/* ── Section wrapper ───────────────────────────────────────── */
+.sp-section { margin-bottom: var(--s5); }
+
+.sp-profile-type {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  padding: 2px 8px;
+  margin-left: var(--s2);
+  text-transform: capitalize;
+}
+
+/* ── Two-column grid ───────────────────────────────────────── */
+.sp-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s6);
+  margin-bottom: var(--s5);
+}
+
+.sp-col-title {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  margin-bottom: var(--s3);
+}
+.sp-col-title-sub { margin-top: var(--s5); }
+
+/* ── Capabilities ──────────────────────────────────────────── */
+.sp-caps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+.sp-cap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--s3) var(--s4);
+  transition: box-shadow var(--t-base) var(--ease), border-color var(--t-base) var(--ease);
+}
+.sp-cap:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-md);
+}
+
+/* Capability color modifiers — left border tint */
+.sp-cap-read  { border-left: 3px solid var(--cap-read-text); }
+.sp-cap-write { border-left: 3px solid var(--cap-write-text); }
+.sp-cap-exec  { border-left: 3px solid var(--cap-exec-text); }
+.sp-cap-net   { border-left: 3px solid var(--cap-net-text); }
+.sp-cap-ingest { border-left: 3px solid var(--sev-medium); }
+.sp-cap-cred  { border-left: 3px solid var(--cap-cred-text); }
+
+.sp-cap-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  margin-bottom: var(--s1);
+}
+
+.sp-cap-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.sp-cap-conf {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+}
+.sp-cap-conf-high   { color: var(--good); }
+.sp-cap-conf-medium { color: var(--moderate); }
+.sp-cap-conf-low    { color: var(--text-3); }
+
+/* Confidence bar track + fill */
+.sp-cap-bar-track {
+  height: 3px;
+  background: var(--surface-3);
+  border-radius: var(--r-full);
+  overflow: hidden;
+  margin-bottom: var(--s1);
+}
+
+.sp-cap-bar-fill {
+  height: 100%;
+  border-radius: var(--r-full);
+  transition: width var(--t-slow) var(--ease-out);
+}
+.sp-cap-bar-high   { background: var(--good); }
+.sp-cap-bar-medium { background: var(--moderate); }
+.sp-cap-bar-low    { background: var(--text-3); }
+
+/* Evidence snippets under each capability */
+.sp-cap-evidence {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: var(--s1);
+}
+
+.sp-cap-ev-item {
+  font-size: 11px;
+  color: var(--text-3);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sp-cap-ev-more {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-3);
+}
+
+/* Secondary (low confidence) capabilities */
+.sp-secondary {
+  margin-top: var(--s3);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border);
+}
+
+.sp-secondary-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-3);
+  margin-bottom: var(--s2);
+  display: block;
+}
+
+.sp-secondary-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1);
+}
+
+.sp-secondary-chip {
+  font-size: 11px;
+  color: var(--text-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  padding: 2px 8px;
+}
+
+.sp-secondary-pct {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-3);
+}
+
+/* ── Attack Surfaces ───────────────────────────────────────── */
+.sp-surfaces {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.sp-surface {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  transition: background var(--t-fast) var(--ease);
+}
+.sp-surface:hover { background: var(--surface-2); }
+
+.sp-surface-icon { color: var(--text-3); flex-shrink: 0; }
+
+.sp-surface-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.sp-empty {
+  font-size: 12px;
+  color: var(--text-3);
+  font-style: italic;
+}
+
+/* ── Data Flow Pairs ───────────────────────────────────────── */
+.sp-flows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.sp-flow {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  font-size: 12px;
+}
+
+.sp-flow-tool {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.sp-flow-arrow {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.sp-flow-type {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-3);
+  background: var(--surface-2);
+  border-radius: var(--r-full);
+  padding: 1px 6px;
+}
+
+/* ── Threats ────────────────────────────────────────────────── */
+.sp-threats { margin-top: var(--s3); }
+
+.sp-threat-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--sev-high);
+  background: var(--sev-high-sub);
+  border: 1px solid var(--sev-high-border);
+  border-radius: var(--r-full);
+  padding: 1px 7px;
+  margin-left: var(--s2);
+}
+
+.sp-threats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--s3);
+}
+
+.sp-threat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--s3) var(--s4);
+  border-left: 3px solid var(--sev-high);
+  transition: box-shadow var(--t-base) var(--ease);
+}
+.sp-threat:hover { box-shadow: var(--shadow-md); }
+
+.sp-threat-header {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-bottom: var(--s1);
+}
+
+.sp-threat-id {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--sev-high);
+  background: var(--sev-high-sub);
+  border: 1px solid var(--sev-high-border);
+  border-radius: var(--r-sm);
+  padding: 1px 5px;
+}
+
+.sp-threat-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.sp-threat-desc {
+  font-size: 12px;
+  color: var(--text-2);
+  line-height: 1.5;
+  margin-bottom: var(--s2);
+}
+
+.sp-threat-rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.sp-threat-rule {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 1px 5px;
+}
+
+.sp-threat-rule-more {
+  color: var(--text-3);
+  font-style: italic;
+}
+
+/* ── Analysis Coverage ─────────────────────────────────────── */
+.sp-coverage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border);
+}
+
+.sp-cov-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--border);
+}
+
+.sp-cov-yes {
+  color: var(--good);
+  background: var(--good-sub);
+  border-color: var(--good-border);
+}
+
+.sp-cov-no {
+  color: var(--text-3);
+  background: var(--surface-2);
+}
+
+.sp-cov-neutral {
+  color: var(--text-2);
+  background: var(--surface-2);
+  font-family: var(--font-mono);
+}
+
+/* ── Server Profile responsive ─────────────────────────────── */
+@media (max-width: 768px) {
+  .sp-grid { grid-template-columns: 1fr; }
+  .sp-threats-grid { grid-template-columns: 1fr; }
+}
+
+
+/* ============================================================
+   Evidence Chain Visualization (.ec-)
+   Renders source→propagation→sink data flow with mitigation
+   checks, impact assessment, and inline confidence indicator.
+   ============================================================ */
+
+/* ── Chain container ───────────────────────────────────────── */
+.ec-chain {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+
+/* ── Confidence bar (inline at top of chain) ───────────────── */
+.ec-confidence,
+.ec-confidence-only {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.ec-conf-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+
+.ec-conf-bar-track {
+  flex: 1;
+  height: 5px;
+  background: var(--surface-3);
+  border-radius: var(--r-full);
+  overflow: hidden;
+  min-width: 60px;
+}
+
+.ec-conf-bar-fill {
+  height: 100%;
+  border-radius: var(--r-full);
+  transition: width var(--t-slow) var(--ease-out);
+}
+.ec-conf-high   { background: var(--good); }
+.ec-conf-medium { background: var(--moderate); }
+.ec-conf-low    { background: var(--text-3); }
+
+.ec-conf-pct {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+  min-width: 32px;
+  text-align: right;
+}
+.ec-conf-pct.ec-conf-high   { color: var(--good); }
+.ec-conf-pct.ec-conf-medium { color: var(--moderate); }
+.ec-conf-pct.ec-conf-low    { color: var(--text-3); }
+
+/* ── Standalone confidence-only (no chain) ─────────────────── */
+.ec-confidence-only {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--s2) var(--s4);
+}
+
+/* ── Data flow section ─────────────────────────────────────── */
+.ec-flow { display: flex; flex-direction: column; gap: var(--s2); }
+
+.ec-flow-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+}
+
+/* ── Timeline (vertical chain of nodes) ────────────────────── */
+.ec-timeline {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.ec-timeline-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ── SVG connector arrow between nodes ─────────────────────── */
+.ec-connector {
+  display: flex;
+  justify-content: center;
+  color: var(--text-3);
+  padding: var(--s1) 0;
+}
+
+/* ── Evidence node (base) ──────────────────────────────────── */
+.ec-node {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--s3) var(--s4);
+  position: relative;
+  transition: box-shadow var(--t-base) var(--ease);
+}
+.ec-node:hover { box-shadow: var(--shadow-md); }
+
+/* ── Node type badges ──────────────────────────────────────── */
+.ec-node-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 1px 6px;
+  border-radius: var(--r-sm);
+  margin-bottom: var(--s1);
+}
+
+.ec-badge-source {
+  color: var(--cap-read-text);
+  background: var(--cap-read);
+  border: 1px solid var(--cap-read-border);
+}
+
+.ec-badge-prop {
+  color: var(--text-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border-md);
+}
+
+.ec-badge-sink {
+  color: var(--cap-exec-text);
+  background: var(--cap-exec);
+  border: 1px solid var(--cap-exec-border);
+}
+
+.ec-badge-mit-yes {
+  color: var(--good);
+  background: var(--good-sub);
+  border: 1px solid var(--good-border);
+}
+
+.ec-badge-mit-no {
+  color: var(--sev-critical);
+  background: var(--sev-critical-sub);
+  border: 1px solid var(--sev-critical-border);
+}
+
+.ec-badge-impact {
+  color: var(--sev-high);
+  background: var(--sev-high-sub);
+  border: 1px solid var(--sev-high-border);
+}
+
+/* ── Node content ──────────────────────────────────────────── */
+.ec-node-type {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.ec-node-location {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  margin-bottom: var(--s1);
+  word-break: break-all;
+}
+
+.ec-node-observed {
+  font-size: 12px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+
+.ec-node-rationale {
+  font-size: 11px;
+  color: var(--text-3);
+  line-height: 1.4;
+  margin-top: var(--s1);
+  font-style: italic;
+}
+
+.ec-node-detail {
+  font-size: 12px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+
+/* ── Source node — green left border ───────────────────────── */
+.ec-node-source {
+  border-left: 3px solid var(--cap-read-text);
+}
+
+/* ── Propagation node — neutral left border ────────────────── */
+.ec-node-prop {
+  border-left: 3px solid var(--text-3);
+}
+
+/* ── Sink node — red left border ───────────────────────────── */
+.ec-node-sink {
+  border-left: 3px solid var(--cap-exec-text);
+}
+
+/* ── CVE precedent chip ────────────────────────────────────── */
+.ec-cve {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--sev-high);
+  background: var(--sev-high-sub);
+  border: 1px solid var(--sev-high-border);
+  border-radius: var(--r-sm);
+  padding: 1px 5px;
+  margin-top: var(--s1);
+}
+
+/* ── Mitigation nodes ──────────────────────────────────────── */
+.ec-mitigations { margin-top: var(--s1); }
+
+.ec-mit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--s2);
+  margin-top: var(--s2);
+}
+
+.ec-node-mit {
+  border-left-width: 3px;
+  border-left-style: solid;
+}
+.ec-mit-present { border-left-color: var(--good); background: var(--good-sub); }
+.ec-mit-absent  { border-left-color: var(--sev-critical); background: var(--sev-critical-sub); }
+
+/* ── Impact nodes ──────────────────────────────────────────── */
+.ec-impacts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.ec-node-impact {
+  border-left: 3px solid var(--sev-high);
+}
+
+.ec-impact-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-bottom: var(--s1);
+}
+
+.ec-impact-scope {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-2);
+  text-transform: capitalize;
+}
+
+.ec-impact-exploit {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--border);
+}
+.ec-exploit-trivial  { color: var(--sev-critical); background: var(--sev-critical-sub); border-color: var(--sev-critical-border); }
+.ec-exploit-moderate { color: var(--moderate); background: var(--moderate-sub); border-color: var(--moderate-border); }
+.ec-exploit-complex  { color: var(--good); background: var(--good-sub); border-color: var(--good-border); }
+
+/* ── Threat reference ──────────────────────────────────────── */
+.ec-reference {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  font-size: 12px;
+}
+
+.ec-ref-id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.ec-ref-title {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.ec-ref-year {
+  color: var(--text-3);
+  font-size: 11px;
+}
+
+/* ── Confidence factors collapsible ────────────────────────── */
+.ec-factors {
+  border-top: 1px solid var(--border);
+  padding-top: var(--s2);
+}
+
+.ec-factors-summary {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-3);
+  cursor: pointer;
+  padding: var(--s1) 0;
+  user-select: none;
+  list-style: none;
+}
+.ec-factors-summary::-webkit-details-marker { display: none; }
+.ec-factors-summary::before {
+  content: '\25B6';
+  display: inline-block;
+  margin-right: var(--s1);
+  font-size: 8px;
+  transition: transform var(--t-fast) var(--ease);
+}
+.ec-factors[open] .ec-factors-summary::before {
+  transform: rotate(90deg);
+}
+
+.ec-factors-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: var(--s2);
+}
+
+.ec-factor {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: 2px var(--s2);
+  font-size: 12px;
+}
+
+.ec-factor-adj {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 44px;
+  text-align: right;
+}
+.ec-factor-pos { color: var(--good); }
+.ec-factor-neg { color: var(--sev-critical); }
+
+.ec-factor-name {
+  color: var(--text-2);
+}
+
+/* ── Evidence chain responsive ─────────────────────────────── */
+@media (max-width: 768px) {
+  .ec-mit-grid { grid-template-columns: 1fr; }
+  .ec-chain { padding: var(--s3); }
+}
