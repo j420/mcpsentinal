@@ -37,8 +37,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import pino from "pino";
 import type { DatabaseQueries, Server } from "@mcp-sentinel/database";
-import { AnalysisEngine, loadRules, getRulesVersion } from "@mcp-sentinel/analyzer";
-import type { AnalysisContext } from "@mcp-sentinel/analyzer";
+import { AnalysisEngine, loadRules, getRulesVersion, generateProfileReport } from "@mcp-sentinel/analyzer";
+import type { AnalysisContext, ProfiledAnalysisResult } from "@mcp-sentinel/analyzer";
 import { MCPConnector } from "@mcp-sentinel/connector";
 import { computeScore } from "@mcp-sentinel/scorer";
 import { DynamicTester } from "@mcp-sentinel/dynamic-tester";
@@ -428,10 +428,24 @@ export class ScanPipeline {
         declared_capabilities: protocolCapabilities ?? null,
       };
 
-      // ── Stage 5: Run all detection rules ──────────────────────────────────
-      log.info({ rules: "all", tools: toolsForAnalysis.length }, "Stage 5: Running analysis engine");
-      const findings = engine.analyze(context);
-      log.info({ findings: findings.length }, "Stage 5: Analysis complete");
+      // ── Stage 5: Profile-aware analysis ─────────────────────────────────
+      // Profile the server first (infer capabilities, select threats), then run
+      // all rules, then filter to relevant findings that meet evidence standards.
+      log.info({ rules: "all", tools: toolsForAnalysis.length }, "Stage 5: Running profile-aware analysis");
+      const profileResult = engine.analyzeWithProfile(context);
+      // Convert scored findings to FindingInput shape for downstream scoring + persistence.
+      // Only relevant findings that meet evidence standards are included here.
+      const findings = profileResult.scored_findings as unknown as Parameters<typeof computeScore>[0];
+      log.info(
+        {
+          total_raw: profileResult.all_annotated.length,
+          scored: findings.length,
+          informational: profileResult.informational_findings.length,
+          attack_surfaces: profileResult.profile.attack_surfaces,
+          threats: profileResult.threats.map((t) => t.id),
+        },
+        "Stage 5: Profile-aware analysis complete",
+      );
 
       // ── Stage 5b: Dynamic tool invocation (gated, consent required) ────────
       // Only runs when --dynamic is set and a live endpoint exists.

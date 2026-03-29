@@ -24,6 +24,7 @@ import { registerTypedRule } from "../base.js";
 import type { AnalysisContext } from "../../engine.js";
 import { analyzeASTTaint, type ASTTaintFlow } from "../analyzers/taint-ast.js";
 import { analyzeTaint, type TaintFlow } from "../analyzers/taint.js";
+import { EvidenceChainBuilder } from "../../evidence.js";
 
 const RULE_ID = "C1";
 const RULE_NAME = "Command Injection (Taint-Aware)";
@@ -101,6 +102,7 @@ class CommandInjectionRule implements TypedRule {
             confidence: flow.confidence * 0.3,
           });
         } else {
+          const chain = this.buildASTEvidenceChain(flow);
           findings.push({
             rule_id: RULE_ID,
             severity: "critical",
@@ -116,6 +118,7 @@ class CommandInjectionRule implements TypedRule {
               sink_line: flow.sink.line,
               path_length: flow.path.length,
               path_steps: flow.path.map((s) => `${s.type}: ${s.expression}`),
+              evidence_chain: chain,
             },
           });
         }
@@ -145,6 +148,7 @@ class CommandInjectionRule implements TypedRule {
             confidence: flow.confidence * 0.3,
           });
         } else {
+          const chain = this.buildTaintEvidenceChain(flow);
           findings.push({
             rule_id: RULE_ID,
             severity: "critical",
@@ -159,6 +163,7 @@ class CommandInjectionRule implements TypedRule {
               source_line: flow.source.line,
               sink_line: flow.sink.line,
               propagation_length: flow.propagation_chain.length,
+              evidence_chain: chain,
             },
           });
         }
@@ -178,6 +183,32 @@ class CommandInjectionRule implements TypedRule {
           const lineText = context.source_code.split("\n")[line - 1] || "";
           if (SAFE_PATTERNS.some((p) => p.test(lineText))) continue;
 
+          const chain = new EvidenceChainBuilder()
+            .source({
+              source_type: "user-parameter",
+              location: `line ${line}`,
+              observed: match[0].slice(0, 80),
+              rationale: "Regex pattern detected potential user input in command context",
+            })
+            .sink({
+              sink_type: "command-execution",
+              location: `line ${line}`,
+              observed: desc,
+            })
+            .impact({
+              impact_type: "remote-code-execution",
+              scope: "server-host",
+              exploitability: "moderate",
+              scenario: `Potential command injection via ${desc} — taint analysis could not confirm, manual review needed`,
+            })
+            .factor("regex_only", -0.15, "No taint analysis confirmation — regex pattern match only")
+            .reference({
+              id: "T-EXEC-001",
+              title: "Command injection in MCP servers",
+              relevance: "Pattern matches known command injection vectors in MCP server code",
+            })
+            .build();
+
           findings.push({
             rule_id: RULE_ID,
             severity: "high", // Lower than taint-confirmed critical
@@ -192,6 +223,7 @@ class CommandInjectionRule implements TypedRule {
               analysis_type: "regex_fallback",
               line,
               pattern: desc,
+              evidence_chain: chain,
             },
           });
           break; // One finding per fallback pattern
@@ -221,6 +253,125 @@ class CommandInjectionRule implements TypedRule {
       `AST-confirmed data flow with ${flow.path.length} intermediate step(s). ` +
       `Confidence: ${(flow.confidence * 100).toFixed(0)}%.`
     );
+  }
+
+  private buildASTEvidenceChain(flow: ASTTaintFlow) {
+    const builder = new EvidenceChainBuilder()
+      .source({
+        source_type: "user-parameter",
+        location: `line ${flow.source.line}:${flow.source.column}`,
+        observed: flow.source.expression,
+        rationale: `Untrusted ${flow.source.category} source enters here`,
+      });
+
+    for (const step of flow.path) {
+      builder.propagation({
+        propagation_type: step.type === "assignment" || step.type === "destructure" ? "variable-assignment"
+          : step.type === "template_embed" ? "template-literal"
+          : step.type === "return_value" || step.type === "callback_arg" || step.type === "parameter_binding" ? "function-call"
+          : "direct-pass",
+        location: `line ${step.line}`,
+        observed: step.expression.slice(0, 80),
+      });
+    }
+
+    builder.sink({
+      sink_type: flow.sink.category === "vm_escape" ? "code-evaluation" : "command-execution",
+      location: `line ${flow.sink.line}:${flow.sink.column}`,
+      observed: flow.sink.expression.slice(0, 80),
+      cve_precedent: "CVE-2025-6514",
+    });
+
+    if (flow.sanitized && flow.sanitizer_name) {
+      builder.mitigation({
+        mitigation_type: "sanitizer-function",
+        present: true,
+        location: `in taint path`,
+        detail: `Sanitizer "${flow.sanitizer_name}" found — verify it handles all edge cases`,
+      });
+    } else {
+      builder.mitigation({
+        mitigation_type: "input-validation",
+        present: false,
+        location: `between source (L${flow.source.line}) and sink (L${flow.sink.line})`,
+        detail: "No sanitizer or validation found in the data flow path",
+      });
+    }
+
+    builder
+      .impact({
+        impact_type: "remote-code-execution",
+        scope: "server-host",
+        exploitability: flow.path.length <= 1 ? "trivial" : "moderate",
+        scenario: `Attacker provides crafted input via ${flow.source.category} → flows through ${flow.path.length} step(s) → reaches ${flow.sink.category} sink → arbitrary command execution on server host`,
+      })
+      .factor("ast_confirmed", 0.15, "AST-based taint tracking confirmed data flow")
+      .reference({
+        id: "CVE-2025-6514",
+        title: "mcp-remote OS command injection (CVSS 9.6)",
+        relevance: "Same attack pattern: user input reaching exec() without sanitization in MCP server",
+      });
+
+    return builder.build();
+  }
+
+  private buildTaintEvidenceChain(flow: TaintFlow) {
+    const builder = new EvidenceChainBuilder()
+      .source({
+        source_type: "user-parameter",
+        location: `line ${flow.source.line}`,
+        observed: flow.source.expression,
+        rationale: `Untrusted ${flow.source.category} source enters here`,
+      });
+
+    for (const step of flow.propagation_chain) {
+      builder.propagation({
+        propagation_type: step.type === "assignment" || step.type === "destructure" ? "variable-assignment"
+          : step.type === "string_concat" ? "string-concatenation"
+          : step.type === "function_return" ? "function-call"
+          : "direct-pass",
+        location: `line ${step.line}`,
+        observed: `${step.to} (via ${step.type})`,
+      });
+    }
+
+    builder.sink({
+      sink_type: "command-execution",
+      location: `line ${flow.sink.line}`,
+      observed: flow.sink.expression.slice(0, 80),
+      cve_precedent: "CVE-2025-68143",
+    });
+
+    if (flow.sanitized && flow.sanitizer) {
+      builder.mitigation({
+        mitigation_type: "sanitizer-function",
+        present: true,
+        location: `line ${flow.sanitizer.line}`,
+        detail: `Sanitizer "${flow.sanitizer.expression}" found in path`,
+      });
+    } else {
+      builder.mitigation({
+        mitigation_type: "input-validation",
+        present: false,
+        location: `between source (L${flow.source.line}) and sink (L${flow.sink.line})`,
+        detail: "No sanitizer or validation found in the data flow path",
+      });
+    }
+
+    builder
+      .impact({
+        impact_type: "remote-code-execution",
+        scope: "server-host",
+        exploitability: flow.propagation_chain.length <= 1 ? "trivial" : "moderate",
+        scenario: `Attacker input via ${flow.source.category} → ${flow.propagation_chain.length} propagation step(s) → command execution sink → arbitrary command execution`,
+      })
+      .reference({
+        id: "CVE-2025-68143",
+        title: "Anthropic mcp-server-git argument injection chain",
+        relevance: "Same pattern: input propagation to command execution in MCP server context",
+      });
+
+    return builder.build();
   }
 
   private formatTaintEvidence(flow: TaintFlow, sanitized: boolean): string {

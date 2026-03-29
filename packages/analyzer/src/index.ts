@@ -1,4 +1,4 @@
-export { AnalysisEngine, type AnalysisContext } from "./engine.js";
+export { AnalysisEngine, type AnalysisContext, type ProfiledAnalysisResult } from "./engine.js";
 export { loadRules, getRulesVersion } from "./rule-loader.js";
 export {
   fingerprintTool,
@@ -18,6 +18,47 @@ export {
   getAllTypedRules,
   hasTypedRule,
 } from "./rules/index.js";
+
+// Phase 1 rebuild: Profile-aware analysis
+export {
+  profileServer,
+  type ServerProfile,
+  type ServerCapability,
+  type InferredCapability,
+  type AttackSurface,
+  type DataFlowPair,
+} from "./profiler.js";
+
+export {
+  EvidenceChainBuilder,
+  renderEvidenceNarrative,
+  type EvidenceChain,
+  type EvidenceLink,
+  type SourceLink,
+  type PropagationLink,
+  type SinkLink,
+  type MitigationLink,
+  type ImpactLink,
+  type ThreatReference,
+} from "./evidence.js";
+
+export {
+  THREAT_REGISTRY,
+  selectThreats,
+  getRelevantRuleIds,
+  getEvidenceStandard,
+  type ThreatDefinition,
+  type EvidenceStandard,
+} from "./threat-model.js";
+
+export {
+  annotateFindings,
+  scoredFindings,
+  unscoredFindings,
+  generateProfileReport,
+  type AnnotatedFinding,
+  type ScoredFinding,
+} from "./relevance.js";
 
 // Analysis toolkits (available for use by other packages)
 export { shannonEntropy, classifyContent, slidingWindowEntropy } from "./rules/analyzers/entropy.js";

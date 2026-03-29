@@ -9,7 +9,7 @@ import { computeScore } from "@mcp-sentinel/scorer";
 import { RiskMatrixAnalyzer } from "@mcp-sentinel/risk-matrix";
 import { DynamicTester } from "@mcp-sentinel/dynamic-tester";
 import type { DynamicReport } from "@mcp-sentinel/dynamic-tester";
-import type { AnalysisContext } from "@mcp-sentinel/analyzer";
+import type { AnalysisContext, ProfiledAnalysisResult } from "@mcp-sentinel/analyzer";
 import { z } from "zod";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
@@ -862,8 +862,9 @@ async function runScan(args: string[]): Promise<never> {
     declared_capabilities: enumResult.declared_capabilities ?? null,
   };
 
-  // ── Step 3: Run rules + score ─────────────────────────────────────────────
-  let findings = engine.analyze(context);
+  // ── Step 3: Profile-aware analysis + score ────────────────────────────────
+  const profileResult = engine.analyzeWithProfile(context);
+  let findings = profileResult.scored_findings;
 
   // Optionally filter to a single rule for focused testing
   if (filterRule) {
@@ -874,7 +875,12 @@ async function runScan(args: string[]): Promise<never> {
   const scoreResult = computeScore(findings, ruleCategories);
 
   if (!jsonOutput) {
-    console.log(`          ✓ Analysis complete — ${findings.length} finding(s)\n`);
+    const rawCount = profileResult.all_annotated.length;
+    const filteredOut = rawCount - profileResult.scored_findings.length;
+    console.log(`          ✓ Analysis complete — ${findings.length} finding(s) (${filteredOut} filtered as irrelevant)\n`);
+    if (profileResult.profile.attack_surfaces.length > 0) {
+      console.log(`          Attack surfaces: ${profileResult.profile.attack_surfaces.join(", ")}`);
+    }
   }
 
   // ── Output ────────────────────────────────────────────────────────────────
@@ -893,6 +899,15 @@ async function runScan(args: string[]): Promise<never> {
         config: scoreResult.config_score,
         description: scoreResult.description_score,
         behavior: scoreResult.behavior_score,
+      },
+      profile: {
+        attack_surfaces: profileResult.profile.attack_surfaces,
+        capabilities: profileResult.profile.capabilities
+          .filter((c) => c.confidence >= 0.5)
+          .map((c) => ({ capability: c.capability, confidence: Math.round(c.confidence * 100) / 100 })),
+        threats_checked: profileResult.threats.map((t) => t.id),
+        total_raw_findings: profileResult.all_annotated.length,
+        filtered_as_irrelevant: profileResult.all_annotated.length - profileResult.scored_findings.length,
       },
       findings_count: findings.length,
       findings: findings.map((f) => ({
@@ -1204,7 +1219,8 @@ async function runCheck(cliArgs: CLIArgs): Promise<never> {
         : null,
     };
 
-    const findings = engine.analyze(context);
+    const profileResult = engine.analyzeWithProfile(context);
+    const findings = profileResult.scored_findings;
     const score = computeScore(findings, ruleCategories);
 
     const result: ScanResult = {
