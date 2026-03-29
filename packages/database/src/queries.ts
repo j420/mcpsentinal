@@ -1225,6 +1225,110 @@ export class DatabaseQueries {
     return result.rows[0] ?? null;
   }
 
+  // ─── Attack Chains ─────────────────────────────────────────────────────────
+
+  /**
+   * Insert attack chains (append-only, ADR-008).
+   *
+   * @param configId — hash of the server ID set
+   * @param chains — array of attack chain records to persist
+   */
+  async insertAttackChains(
+    configId: string,
+    chains: Array<{
+      chain_id: string;
+      kill_chain_id: string;
+      kill_chain_name: string;
+      steps: unknown[];
+      exploitability_overall: number;
+      exploitability_rating: string;
+      exploitability_factors: unknown[];
+      narrative: string;
+      mitigations: unknown[];
+      owasp_refs: string[];
+      mitre_refs: string[];
+      evidence: unknown;
+    }>
+  ): Promise<void> {
+    for (const chain of chains) {
+      await this.pool.query(
+        `INSERT INTO attack_chains
+           (chain_id, config_id, kill_chain_id, kill_chain_name,
+            steps, exploitability_overall, exploitability_rating,
+            exploitability_factors, narrative, mitigations,
+            owasp_refs, mitre_refs, evidence)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+        [
+          chain.chain_id,
+          configId,
+          chain.kill_chain_id,
+          chain.kill_chain_name,
+          JSON.stringify(chain.steps),
+          chain.exploitability_overall,
+          chain.exploitability_rating,
+          JSON.stringify(chain.exploitability_factors),
+          chain.narrative,
+          JSON.stringify(chain.mitigations),
+          chain.owasp_refs,
+          chain.mitre_refs,
+          JSON.stringify(chain.evidence),
+        ]
+      );
+    }
+  }
+
+  /**
+   * Get attack chains for a config. Returns most recent analysis first.
+   */
+  async getAttackChainsForConfig(configId: string): Promise<
+    Array<{
+      id: string;
+      chain_id: string;
+      kill_chain_id: string;
+      kill_chain_name: string;
+      steps: unknown[];
+      exploitability_overall: number;
+      exploitability_rating: string;
+      narrative: string;
+      mitigations: unknown[];
+      owasp_refs: string[];
+      mitre_refs: string[];
+      created_at: Date;
+    }>
+  > {
+    const result = await this.pool.query(
+      `SELECT id, chain_id, kill_chain_id, kill_chain_name,
+              steps, exploitability_overall, exploitability_rating,
+              narrative, mitigations, owasp_refs, mitre_refs, created_at
+       FROM attack_chains
+       WHERE config_id = $1
+       ORDER BY created_at DESC`,
+      [configId]
+    );
+    return result.rows;
+  }
+
+  /**
+   * Get chain history for trend analysis.
+   * Returns all occurrences of a specific chain_id over time.
+   */
+  async getChainHistory(chainId: string): Promise<
+    Array<{
+      exploitability_overall: number;
+      exploitability_rating: string;
+      created_at: Date;
+    }>
+  > {
+    const result = await this.pool.query(
+      `SELECT exploitability_overall, exploitability_rating, created_at
+       FROM attack_chains
+       WHERE chain_id = $1
+       ORDER BY created_at ASC`,
+      [chainId]
+    );
+    return result.rows;
+  }
+
   // ─── Helpers ───────────────────────────────────────────────────────────────
 
   private slugify(name: string): string {

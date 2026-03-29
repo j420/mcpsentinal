@@ -104,6 +104,31 @@ importers:
         specifier: ^2.0.0
         version: 2.1.9(@types/node@25.5.0)
 
+  packages/attack-graph:
+    dependencies:
+      '@mcp-sentinel/database':
+        specifier: workspace:*
+        version: link:../database
+      '@mcp-sentinel/risk-matrix':
+        specifier: workspace:*
+        version: link:../risk-matrix
+      pino:
+        specifier: ^9.0.0
+        version: 9.14.0
+      zod:
+        specifier: ^3.23.0
+        version: 3.25.76
+    devDependencies:
+      tsx:
+        specifier: ^4.19.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.5.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@25.5.0)
+
   packages/benchmark:
     dependencies:
       '@mcp-sentinel/analyzer':
