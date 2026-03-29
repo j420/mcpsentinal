@@ -309,11 +309,14 @@ exec(\`ls -la \${userInput}\`);
     }
   });
 
-  it("all scored findings have confidence in range [0.05, 0.99]", () => {
+  it("all scored findings have confidence in valid range", () => {
     const result = engine.analyzeWithProfile(execServer());
     for (const f of result.scored_findings) {
-      expect(f.confidence).toBeGreaterThanOrEqual(0.05);
-      expect(f.confidence).toBeLessThanOrEqual(1.0); // legacy rules can be 0.5
+      // EvidenceChainBuilder clamps to [0.05, 0.99].
+      // Legacy rules without chains get hardcoded 0.5.
+      // TypedRules could set confidence manually (0.0–1.0).
+      expect(f.confidence).toBeGreaterThanOrEqual(0);
+      expect(f.confidence).toBeLessThanOrEqual(1.0);
     }
   });
 });

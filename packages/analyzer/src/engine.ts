@@ -161,11 +161,11 @@ export class AnalysisEngine {
     // preserving the real confidence computed by the rule.
     const annotated = annotateFindings(richFindings, profile);
 
-    // Step 6: Separate scored vs. informational findings
+    // Step 5: Separate scored vs. informational findings
     const scored = scoredFindings(annotated);
     const unscored = unscoredFindings(annotated);
 
-    // Step 7: Generate profile report
+    // Step 6: Generate profile report
     const profileReport = generateProfileReport(profile);
 
     logger.info(
