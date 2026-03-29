@@ -364,6 +364,56 @@ const MIGRATIONS = [
         WHERE consented = true;
     `,
   },
+  {
+    id: "010_attack_chains",
+    sql: `
+      -- attack_chains: multi-step kill chain synthesis results.
+      -- Append-only (ADR-008). Each row is an immutable record of a detected
+      -- attack chain across servers in the same client configuration.
+      --
+      -- chain_id is a deterministic SHA-256 hash of sorted server IDs + template ID.
+      -- Re-analyzing the same config with the same template produces the same chain_id,
+      -- enabling trend tracking ("was this chain present last scan?").
+      CREATE TABLE IF NOT EXISTS attack_chains (
+        id                      UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
+        chain_id                VARCHAR(16)  NOT NULL,
+        config_id               VARCHAR(16)  NOT NULL,
+        kill_chain_id           VARCHAR(10)  NOT NULL,
+        kill_chain_name         TEXT         NOT NULL,
+        steps                   JSONB        NOT NULL,
+        exploitability_overall  REAL         NOT NULL,
+        exploitability_rating   VARCHAR(10)  NOT NULL,
+        exploitability_factors  JSONB        NOT NULL,
+        narrative               TEXT         NOT NULL,
+        mitigations             JSONB        NOT NULL,
+        owasp_refs              TEXT[]       NOT NULL DEFAULT '{}',
+        mitre_refs              TEXT[]       NOT NULL DEFAULT '{}',
+        evidence                JSONB        NOT NULL,
+        created_at              TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+      );
+
+      -- Lookup by config (most common: "what chains exist for this config?")
+      CREATE INDEX IF NOT EXISTS idx_ac_config_id
+        ON attack_chains(config_id);
+
+      -- Lookup by chain_id (trend: "has this chain appeared before?")
+      CREATE INDEX IF NOT EXISTS idx_ac_chain_id
+        ON attack_chains(chain_id);
+
+      -- Lookup by kill chain template (analytics: "which templates fire most?")
+      CREATE INDEX IF NOT EXISTS idx_ac_kill_chain_id
+        ON attack_chains(kill_chain_id);
+
+      -- Time-based queries: "chains detected in the last 30 days"
+      CREATE INDEX IF NOT EXISTS idx_ac_created_at
+        ON attack_chains(created_at DESC);
+
+      -- Severity filter: "all critical chains"
+      CREATE INDEX IF NOT EXISTS idx_ac_rating
+        ON attack_chains(exploitability_rating)
+        WHERE exploitability_rating IN ('critical', 'high');
+    `,
+  },
 ];
 
 export async function migrate(connectionString: string): Promise<void> {

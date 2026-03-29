@@ -26,6 +26,7 @@ export type {
   RiskPattern,
   RiskMatrixReport,
   Capability,
+  EdgeType,
 } from "./types.js";
 
 // ── Severity ordering ─────────────────────────────────────────────────────────

@@ -430,6 +430,44 @@ export const DynamicTestResultSchema = z.object({
 });
 export type DynamicTestResult = z.infer<typeof DynamicTestResultSchema>;
 
+// ─── Attack Chain Schema ────────────────────────────────────────────────────
+
+export const AttackChainSchema = z.object({
+  id: z.string().uuid(),
+  chain_id: z.string().max(16),
+  config_id: z.string().max(16),
+  kill_chain_id: z.string().max(10),
+  kill_chain_name: z.string(),
+  steps: z.array(z.unknown()),
+  exploitability_overall: z.number().min(0).max(1),
+  exploitability_rating: z.enum(["critical", "high", "medium", "low"]),
+  exploitability_factors: z.array(z.unknown()),
+  narrative: z.string(),
+  mitigations: z.array(z.unknown()),
+  owasp_refs: z.array(z.string()),
+  mitre_refs: z.array(z.string()),
+  evidence: z.unknown(),
+  created_at: z.date(),
+});
+export type AttackChainRecord = z.infer<typeof AttackChainSchema>;
+
+export const AttackChainInputSchema = z.object({
+  chain_id: z.string().max(16),
+  config_id: z.string().max(16),
+  kill_chain_id: z.string().max(10),
+  kill_chain_name: z.string(),
+  steps: z.array(z.unknown()),
+  exploitability_overall: z.number().min(0).max(1),
+  exploitability_rating: z.enum(["critical", "high", "medium", "low"]),
+  exploitability_factors: z.array(z.unknown()),
+  narrative: z.string(),
+  mitigations: z.array(z.unknown()),
+  owasp_refs: z.array(z.string()),
+  mitre_refs: z.array(z.string()),
+  evidence: z.unknown(),
+});
+export type AttackChainInput = z.infer<typeof AttackChainInputSchema>;
+
 // ─── API Response Schemas ────────────────────────────────────────────────────
 
 export const ServerListQuerySchema = z.object({
