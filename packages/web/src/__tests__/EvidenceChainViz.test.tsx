@@ -299,7 +299,7 @@ describe("link rendering by type", () => {
 
   it("unknown link type → renders nothing (no crash)", () => {
     const chain = makeChain({
-      links: [{ type: "unknown" as any }],
+      links: [{ type: "unknown" } as unknown as EvidenceChainData["links"][number]],
     });
     expect(() =>
       render(<EvidenceChainViz chain={chain} />)
