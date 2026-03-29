@@ -50,35 +50,40 @@ registerTypedRule(makeRule("A1", "Prompt Injection in Tool Description", (ctx) =
     const desc = tool.description || "";
     if (desc.length < 10) continue;
 
-    let totalWeight = 0;
-    const matched: string[] = [];
+    const matchedSignals: string[] = [];
+    const matchedWeights: number[] = [];
 
     for (const { regex, desc: patternDesc, weight } of INJECTION_PATTERNS) {
       regex.lastIndex = 0;
       if (regex.test(desc)) {
-        totalWeight += weight;
-        matched.push(patternDesc);
+        matchedSignals.push(patternDesc);
+        matchedWeights.push(weight);
       }
     }
 
-    // Noisy-OR aggregation: probability of injection
-    if (totalWeight > 0) {
-      const confidence = Math.min(0.98, totalWeight / (totalWeight + 1));
+    // Noisy-OR aggregation: P(injection) = 1 - Π(1 - wᵢ) for each matched signal.
+    // Each weight represents the independent probability that the matched pattern
+    // indicates prompt injection. Noisy-OR combines them correctly:
+    //   Single 0.95-weight match → 0.95 confidence (canonical injection phrases)
+    //   Two matches combine multiplicatively: 1-(1-0.95)(1-0.82) = 0.991
+    if (matchedSignals.length > 0) {
+      const noisyOR = 1 - matchedWeights.reduce((product, w) => product * (1 - w), 1);
+      const confidence = Math.min(0.98, noisyOR);
 
       if (confidence >= 0.50) {
         findings.push({
           rule_id: "A1",
           severity: confidence >= 0.80 ? "critical" : confidence >= 0.60 ? "high" : "medium",
           evidence:
-            `Tool "${tool.name}" description (${desc.length} chars) contains ${matched.length} injection signal(s): ` +
-            `[${matched.join(", ")}]. Combined confidence: ${(confidence * 100).toFixed(0)}%.`,
+            `Tool "${tool.name}" description (${desc.length} chars) contains ${matchedSignals.length} injection signal(s): ` +
+            `[${matchedSignals.join(", ")}]. Combined confidence: ${(confidence * 100).toFixed(0)}%.`,
           remediation:
             "Remove behavioral directives from tool descriptions. Descriptions should only explain " +
             "what the tool does, not instruct the AI how to behave.",
           owasp_category: "MCP01-prompt-injection",
           mitre_technique: "AML.T0054",
           confidence,
-          metadata: { analysis_type: "linguistic_scoring", tool_name: tool.name, signals: matched },
+          metadata: { analysis_type: "linguistic_scoring", tool_name: tool.name, signals: matchedSignals },
         });
       }
     }
