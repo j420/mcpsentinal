@@ -13,6 +13,8 @@
  * won't have structured evidence chains until rules are progressively upgraded).
  */
 
+import React from "react";
+
 // ─── Types (matching packages/analyzer/src/evidence.ts) ──────────────────────
 
 interface SourceLink {

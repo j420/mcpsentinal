@@ -8,8 +8,8 @@
  *   4. Deterministic output (same inputs → same output)
  */
 import { describe, it, expect } from "vitest";
-import { generateNarrative, generateMitigations } from "../narrative.js";
-import { KC01, KC02, KC04, KC05, KC07 } from "../kill-chains.js";
+import { generateNarrative, generateMitigations, getStepNarrative } from "../narrative.js";
+import { KC01, KC02, KC03, KC04, KC05, KC06, KC07 } from "../kill-chains.js";
 
 import type { AttackStep, CapabilityNode } from "../types.js";
 
@@ -208,5 +208,183 @@ describe("generateMitigations", () => {
         expect(o).toBeLessThanOrEqual(maxOrdinal);
       }
     }
+  });
+});
+
+describe("KC03: Credential Harvesting Chain narrative", () => {
+  const steps = [
+    makeStep(1, "credential-store", "data_source"),
+    makeStep(2, "webhook-sender", "exfiltrator"),
+  ];
+
+  it("narrative contains 'credential' from OBJECTIVE_DESC credential_theft", () => {
+    const narrative = generateNarrative(KC03, steps);
+    expect(narrative.toLowerCase()).toContain("credential");
+  });
+
+  it("narrative contains all server names", () => {
+    const narrative = generateNarrative(KC03, steps);
+    expect(narrative).toContain("credential-store");
+    expect(narrative).toContain("webhook-sender");
+  });
+
+  it("narrative contains step count '2-step chain'", () => {
+    const narrative = generateNarrative(KC03, steps);
+    expect(narrative).toContain("2-step chain");
+  });
+
+  it("narrative contains 'unauthorized access' or 'persistent' from OBJECTIVE_DESC", () => {
+    const narrative = generateNarrative(KC03, steps);
+    const lower = narrative.toLowerCase();
+    expect(lower.includes("unauthorized access") || lower.includes("persistent")).toBe(true);
+  });
+
+  it("each step has non-empty narrative fragment via getStepNarrative", () => {
+    for (const step of steps) {
+      const fragment = getStepNarrative(step.role, step.server_name);
+      expect(fragment.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("narrative mentions precedent 'Wiz Research'", () => {
+    const narrative = generateNarrative(KC03, steps);
+    expect(narrative).toContain("Wiz Research");
+  });
+});
+
+describe("KC06: Multi-Hop Data Exfiltration narrative", () => {
+  const steps = [
+    makeStep(1, "credential-store", "data_source"),
+    makeStep(2, "code-runner", "pivot"),
+    makeStep(3, "webhook-sender", "exfiltrator"),
+  ];
+
+  it("narrative contains 'steal sensitive data' or 'exfiltration' from OBJECTIVE_DESC", () => {
+    const narrative = generateNarrative(KC06, steps);
+    const lower = narrative.toLowerCase();
+    expect(lower.includes("steal sensitive data") || lower.includes("exfiltration")).toBe(true);
+  });
+
+  it("narrative contains 'transform' or 'relay' or 'encoding' from pivot step", () => {
+    const narrative = generateNarrative(KC06, steps);
+    const lower = narrative.toLowerCase();
+    expect(lower.includes("transform") || lower.includes("relay") || lower.includes("encoding")).toBe(true);
+  });
+
+  it("narrative contains all 3 server names", () => {
+    const narrative = generateNarrative(KC06, steps);
+    expect(narrative).toContain("credential-store");
+    expect(narrative).toContain("code-runner");
+    expect(narrative).toContain("webhook-sender");
+  });
+
+  it("narrative mentions step count '3-step chain'", () => {
+    const narrative = generateNarrative(KC06, steps);
+    expect(narrative).toContain("3-step chain");
+  });
+
+  it("each step has non-empty narrative fragment via getStepNarrative", () => {
+    for (const step of steps) {
+      const fragment = getStepNarrative(step.role, step.server_name);
+      expect(fragment.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("narrative mentions precedent 'DNS exfiltration'", () => {
+    const narrative = generateNarrative(KC06, steps);
+    expect(narrative).toContain("DNS exfiltration");
+  });
+});
+
+describe("KC03: Credential Harvesting mitigation completeness", () => {
+  const steps = [
+    makeStep(1, "credential-store", "data_source"),
+    makeStep(2, "webhook-sender", "exfiltrator"),
+  ];
+  const mitigations = generateMitigations(KC03, steps);
+
+  it("data_source role produces add_auth mitigation (reduces_risk)", () => {
+    const authMitigation = mitigations.find(
+      (m) => m.action === "add_auth" && m.target_server_name === "credential-store"
+    );
+    expect(authMitigation).toBeDefined();
+    expect(authMitigation!.effect).toBe("reduces_risk");
+  });
+
+  it("exfiltrator role produces restrict_capability mitigation (breaks_chain)", () => {
+    const restrictMitigation = mitigations.find(
+      (m) => m.action === "restrict_capability" && m.target_server_name === "webhook-sender"
+    );
+    expect(restrictMitigation).toBeDefined();
+    expect(restrictMitigation!.effect).toBe("breaks_chain");
+  });
+
+  it("exfiltrator role produces add_confirmation mitigation (reduces_risk)", () => {
+    const confirmMitigation = mitigations.find(
+      (m) => m.action === "add_confirmation" && m.target_server_name === "webhook-sender"
+    );
+    expect(confirmMitigation).toBeDefined();
+    expect(confirmMitigation!.effect).toBe("reduces_risk");
+  });
+
+  it("all mitigations reference valid server IDs from the chain", () => {
+    const serverIds = new Set(steps.map((s) => s.server_id));
+    for (const m of mitigations) {
+      expect(serverIds.has(m.target_server_id)).toBe(true);
+    }
+  });
+
+  it("chain-breakers come before risk-reducers", () => {
+    const breakerIdx = mitigations.findIndex((m) => m.effect === "breaks_chain");
+    const reducerIdx = mitigations.findIndex((m) => m.effect === "reduces_risk");
+
+    if (breakerIdx >= 0 && reducerIdx >= 0) {
+      expect(breakerIdx).toBeLessThan(reducerIdx);
+    }
+  });
+});
+
+describe("KC06: Multi-Hop Data Exfiltration mitigation completeness", () => {
+  const steps = [
+    makeStep(1, "credential-store", "data_source"),
+    makeStep(2, "code-runner", "pivot"),
+    makeStep(3, "webhook-sender", "exfiltrator"),
+  ];
+  const mitigations = generateMitigations(KC06, steps);
+
+  it("pivot server produces add_confirmation mitigation (reduces_risk)", () => {
+    const confirmMitigation = mitigations.find(
+      (m) => m.action === "add_confirmation" && m.target_server_name === "code-runner"
+    );
+    expect(confirmMitigation).toBeDefined();
+    expect(confirmMitigation!.effect).toBe("reduces_risk");
+  });
+
+  it("exfiltrator produces restrict_capability (breaks_chain)", () => {
+    const restrictMitigation = mitigations.find(
+      (m) => m.action === "restrict_capability" && m.target_server_name === "webhook-sender"
+    );
+    expect(restrictMitigation).toBeDefined();
+    expect(restrictMitigation!.effect).toBe("breaks_chain");
+  });
+
+  it("data_source produces add_auth (reduces_risk)", () => {
+    const authMitigation = mitigations.find(
+      (m) => m.action === "add_auth" && m.target_server_name === "credential-store"
+    );
+    expect(authMitigation).toBeDefined();
+    expect(authMitigation!.effect).toBe("reduces_risk");
+  });
+
+  it("all mitigations reference valid server IDs from the chain", () => {
+    const serverIds = new Set(steps.map((s) => s.server_id));
+    for (const m of mitigations) {
+      expect(serverIds.has(m.target_server_id)).toBe(true);
+    }
+  });
+
+  it("no duplicate mitigations (same server+action)", () => {
+    const keys = mitigations.map((m) => `${m.target_server_id}:${m.action}`);
+    expect(new Set(keys).size).toBe(keys.length);
   });
 });
