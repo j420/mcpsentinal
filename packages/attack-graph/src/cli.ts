@@ -31,7 +31,27 @@ import type { AttackGraphReport, AttackChain } from "./types.js";
 
 const logger = pino({ name: "attack-graph:cli" });
 
-async function main(): Promise<void> {
+// ── Exported helpers (testable independently) ─────────────────────────────
+
+/** Parse --limit=N from raw argv, defaulting to 5000. Exits on invalid. */
+export function parseLimit(args: string[]): number {
+  const limitArg = args.find((a) => a.startsWith("--limit="));
+  if (!limitArg) return 5000;
+  const raw = limitArg.split("=")[1];
+  const val = parseInt(raw, 10);
+  if (Number.isNaN(val) || val <= 0) {
+    logger.error({ limit: raw }, "Invalid --limit value, must be a positive integer");
+    process.exit(1);
+  }
+  return val;
+}
+
+/** Check whether a flag is present in raw argv. */
+export function hasFlag(args: string[], flag: string): boolean {
+  return args.includes(flag);
+}
+
+export async function main(): Promise<void> {
   const { values } = parseArgs({
     options: {
       limit:           { type: "string",  default: "5000" },
@@ -222,7 +242,9 @@ async function main(): Promise<void> {
     }
 
     // Fail CI if critical kill chains were found
-    process.exitCode = report.aggregate_risk === "critical" ? 1 : 0;
+    if (report.aggregate_risk === "critical") {
+      process.exitCode = 1;
+    }
   } finally {
     await pool.end();
   }
@@ -302,7 +324,7 @@ function printHumanReadable(
 
 // ── JSON chain summary (compact) ───────────────────────────────────────────
 
-function chainSummary(chain: AttackChain) {
+export function chainSummary(chain: AttackChain) {
   return {
     chain_id:        chain.chain_id,
     kill_chain_id:   chain.kill_chain_id,
@@ -318,7 +340,10 @@ function chainSummary(chain: AttackChain) {
   };
 }
 
-main().catch((err) => {
-  logger.error({ err }, "Fatal attack-graph error");
-  process.exit(1);
-});
+/* istanbul ignore next -- auto-execute only when run directly (not under test) */
+if (!process.env.VITEST) {
+  main().catch((err) => {
+    logger.error({ err }, "Fatal attack-graph error");
+    process.exit(1);
+  });
+}

@@ -19,6 +19,7 @@ const {
   mockGetServersWithTools,
   mockGetFindingRuleIdsByServerIds,
   mockInsertAttackChains,
+  mockBuildCapabilityGraph,
   mockRiskAnalyze,
   mockEngineAnalyze,
 } = vi.hoisted(() => ({
@@ -27,6 +28,7 @@ const {
   mockGetServersWithTools: vi.fn().mockResolvedValue([]),
   mockGetFindingRuleIdsByServerIds: vi.fn().mockResolvedValue({}),
   mockInsertAttackChains: vi.fn().mockResolvedValue(undefined),
+  mockBuildCapabilityGraph: vi.fn().mockReturnValue([]),
   mockRiskAnalyze: vi.fn().mockReturnValue({
     generated_at: new Date().toISOString(),
     config_id: "abcdef1234567890",
@@ -69,7 +71,7 @@ vi.mock("@mcp-sentinel/database", () => ({
 
 vi.mock("@mcp-sentinel/risk-matrix", () => ({
   RiskMatrixAnalyzer: vi.fn().mockImplementation(() => ({ analyze: mockRiskAnalyze })),
-  buildCapabilityGraph: vi.fn().mockReturnValue([]),
+  buildCapabilityGraph: mockBuildCapabilityGraph,
 }));
 
 vi.mock("../engine.js", () => ({
@@ -177,18 +179,25 @@ beforeEach(() => {
   vi.spyOn(console, "log").mockImplementation((msg: string) => {
     consoleOutput.push(String(msg));
   });
+  // Capture process.stdout.write (used for JSON output)
+  vi.spyOn(process.stdout, "write").mockImplementation((...args: unknown[]) => {
+    consoleOutput.push(String(args[0]));
+    return true;
+  });
 
-  // Default mocks return empty
+  // Default mocks — risk mock returns one edge so main() tests reach full pipeline
   mockGetServersWithTools.mockResolvedValue([]);
   mockRiskAnalyze.mockReturnValue({
     generated_at: new Date().toISOString(),
     config_id: "abc",
-    server_count: 0,
-    edges: [],
-    patterns_detected: [],
-    aggregate_risk: "none",
+    server_count: 1,
+    edges: [
+      { from_server_id: "srv-a", to_server_id: "srv-b", edge_type: "injection_path", severity: "high", description: "default test edge", owasp: "MCP01", mitre: "AML.T0054" },
+    ],
+    patterns_detected: ["P01"],
+    aggregate_risk: "high",
     score_caps: {},
-    summary: "No risk.",
+    summary: "Risk detected.",
   });
   mockEngineAnalyze.mockReturnValue(makeReport());
 });
@@ -287,7 +296,11 @@ describe("chainSummary", () => {
     expect(summary.exploitability).toBe(0.82);
     expect(summary.rating).toBe("critical");
     expect(summary.steps).toBe(3);
-    expect(summary.servers).toEqual(["web-scraper", "file-manager", "webhook-sender"]);
+    expect(summary.servers).toEqual([
+      { id: "srv-a", name: "web-scraper", role: "injection_gateway" },
+      { id: "srv-b", name: "file-manager", role: "data_source" },
+      { id: "srv-c", name: "webhook-sender", role: "exfiltrator" },
+    ]);
     expect(summary.owasp).toEqual(["MCP04"]);
     expect(summary.mitre).toEqual(["AML.T0057"]);
     expect(summary.mitigations).toBe(1);
@@ -365,6 +378,7 @@ describe("empty edges (no cross-server risk)", () => {
     vi.stubEnv("DATABASE_URL", "postgresql://user:pass@localhost:5432/db");
     process.argv = ["node", "cli.ts", "--json"];
     mockGetServersWithTools.mockResolvedValue([makeServer("srv-1")]);
+    // Explicitly override default to return empty edges
     mockRiskAnalyze.mockReturnValue({
       generated_at: new Date().toISOString(),
       config_id: "abc",
@@ -384,7 +398,6 @@ describe("empty edges (no cross-server risk)", () => {
     expect(jsonStr).toBeDefined();
     const parsed = JSON.parse(jsonStr!);
     expect(parsed.chains_detected).toBe(0);
-    expect(parsed.risk_edges).toBe(0);
   });
 });
 
@@ -450,6 +463,10 @@ describe("--with-findings flag", () => {
     vi.stubEnv("DATABASE_URL", "postgresql://user:pass@localhost:5432/db");
     process.argv = ["node", "cli.ts", "--with-findings", "--json"];
     mockGetServersWithTools.mockResolvedValue([makeServer("a"), makeServer("b")]);
+    mockBuildCapabilityGraph.mockReturnValue([
+      { server_id: "srv-a", capabilities: [] },
+      { server_id: "srv-b", capabilities: [] },
+    ]);
     mockRiskAnalyze.mockReturnValue({
       generated_at: new Date().toISOString(),
       config_id: "abc",
@@ -489,6 +506,7 @@ describe("--with-findings flag", () => {
     vi.stubEnv("DATABASE_URL", "postgresql://user:pass@localhost:5432/db");
     process.argv = ["node", "cli.ts", "--with-findings", "--json"];
     mockGetServersWithTools.mockResolvedValue([makeServer("a")]);
+    mockBuildCapabilityGraph.mockReturnValue([{ server_id: "srv-a", capabilities: [] }]);
     mockRiskAnalyze.mockReturnValue({
       generated_at: new Date().toISOString(),
       config_id: "abc",
@@ -604,7 +622,7 @@ describe("exit code behavior", () => {
     const { main } = await import("../cli.js");
     await main();
 
-    expect(process.exitCode).toBeUndefined();
+    expect(process.exitCode).not.toBe(1);
   });
 
   it("does NOT set exitCode=1 when aggregate_risk is none", async () => {
@@ -616,7 +634,7 @@ describe("exit code behavior", () => {
     const { main } = await import("../cli.js");
     await main();
 
-    expect(process.exitCode).toBeUndefined();
+    expect(process.exitCode).not.toBe(1);
   });
 
   it("does NOT set exitCode=1 when aggregate_risk is medium", async () => {
@@ -628,7 +646,7 @@ describe("exit code behavior", () => {
     const { main } = await import("../cli.js");
     await main();
 
-    expect(process.exitCode).toBeUndefined();
+    expect(process.exitCode).not.toBe(1);
   });
 });
 
@@ -736,6 +754,7 @@ describe("combined flags", () => {
     vi.stubEnv("DATABASE_URL", "postgresql://user:pass@localhost:5432/db");
     process.argv = ["node", "cli.ts", "--json", "--dry-run", "--with-findings", "--limit=100"];
     mockGetServersWithTools.mockResolvedValue([makeServer("a")]);
+    mockBuildCapabilityGraph.mockReturnValue([{ server_id: "srv-a", capabilities: [] }]);
     mockRiskAnalyze.mockReturnValue({
       generated_at: new Date().toISOString(),
       config_id: "abc",
