@@ -236,12 +236,38 @@ registerTypedRule({
       regex.lastIndex = 0;
       const match = regex.exec(ctx.source_code);
       if (match) {
+        const line = lineNum(ctx.source_code, match.index);
+        const c7Chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "file-content",
+            location: `line ${line}`,
+            observed: match[0].slice(0, 80),
+            rationale: "CORS configuration allows requests from any origin, enabling cross-origin attacks",
+          })
+          .propagation({
+            propagation_type: "direct-pass",
+            location: `line ${line}`,
+            observed: `${desc} detected in source code`,
+          })
+          .sink({
+            sink_type: "network-send",
+            location: `line ${line}`,
+            observed: `${desc}: "${match[0].slice(0, 60)}"`,
+          })
+          .factor("structural_match", -0.02, `CORS wildcard pattern: ${desc}`)
+          .verification({
+            step_type: "inspect-description",
+            instruction: `Review CORS configuration at line ${line}`,
+            target: `source:line ${line}`,
+            expected_observation: desc,
+          })
+          .build();
         findings.push({
           rule_id: "C7", severity: "high",
-          evidence: `${desc} at line ${lineNum(ctx.source_code, match.index)}: "${match[0].slice(0, 60)}".`,
+          evidence: `${desc} at line ${line}: "${match[0].slice(0, 60)}".`,
           remediation: "Set specific allowed origins. Never use '*' with credentials.",
           owasp_category: "MCP07-insecure-config", mitre_technique: null,
-          confidence: 0.88, metadata: { analysis_type: "structural" },
+          confidence: 0.88, metadata: { analysis_type: "structural", evidence_chain: c7Chain },
         });
         break;
       }
@@ -262,12 +288,38 @@ registerTypedRule({
       // Check if auth middleware is present nearby
       const hasAuth = /(?:auth|authenticate|verify|passport|jwt|bearer|apiKey|session)/i.test(ctx.source_code);
       if (!hasAuth) {
+        const line = lineNum(ctx.source_code, match.index);
+        const c8Chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "file-content",
+            location: `line ${line}`,
+            observed: match[0].slice(0, 80),
+            rationale: "Server binds to all network interfaces (0.0.0.0) without authentication",
+          })
+          .propagation({
+            propagation_type: "direct-pass",
+            location: `line ${line}`,
+            observed: "No auth/authenticate/jwt/bearer/apiKey middleware detected in source",
+          })
+          .sink({
+            sink_type: "network-send",
+            location: `line ${line}`,
+            observed: "Unauthenticated network service exposed on all interfaces",
+          })
+          .factor("structural_match", 0.05, "Binding to 0.0.0.0 without any visible auth middleware")
+          .verification({
+            step_type: "inspect-description",
+            instruction: `Check line ${line} for network binding and search for auth middleware`,
+            target: `source:line ${line}`,
+            expected_observation: "Server listens on 0.0.0.0 with no authentication",
+          })
+          .build();
         findings.push({
           rule_id: "C8", severity: "high",
-          evidence: `Listening on 0.0.0.0 at line ${lineNum(ctx.source_code, match.index)} without visible auth middleware.`,
+          evidence: `Listening on 0.0.0.0 at line ${line} without visible auth middleware.`,
           remediation: "Add authentication middleware. Or bind to 127.0.0.1 if the service is internal-only.",
           owasp_category: "MCP07-insecure-config", mitre_technique: null,
-          confidence: 0.75, metadata: { analysis_type: "structural" },
+          confidence: 0.75, metadata: { analysis_type: "structural", evidence_chain: c8Chain },
         });
       }
     }
@@ -291,12 +343,38 @@ registerTypedRule({
       regex.lastIndex = 0;
       const match = regex.exec(ctx.source_code);
       if (match) {
+        const line = lineNum(ctx.source_code, match.index);
+        const c9Chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "file-content",
+            location: `line ${line}`,
+            observed: match[0].slice(0, 80),
+            rationale: "Code grants filesystem access starting from root '/' — maximum privilege",
+          })
+          .propagation({
+            propagation_type: "direct-pass",
+            location: `line ${line}`,
+            observed: `${desc} — root path used as base for filesystem operations`,
+          })
+          .sink({
+            sink_type: "file-write",
+            location: `line ${line}`,
+            observed: `${desc}: "${match[0].slice(0, 60)}"`,
+          })
+          .factor("structural_match", 0.15, `Root filesystem access: ${desc}`)
+          .verification({
+            step_type: "inspect-description",
+            instruction: `Review filesystem scope at line ${line}`,
+            target: `source:line ${line}`,
+            expected_observation: desc,
+          })
+          .build();
         findings.push({
           rule_id: "C9", severity: "high",
-          evidence: `${desc} at line ${lineNum(ctx.source_code, match.index)}: "${match[0].slice(0, 60)}".`,
+          evidence: `${desc} at line ${line}: "${match[0].slice(0, 60)}".`,
           remediation: "Restrict filesystem access to a specific directory. Never use '/' as base path.",
           owasp_category: "MCP05-privilege-escalation", mitre_technique: "AML.T0054",
-          confidence: 0.85, metadata: { analysis_type: "structural" },
+          confidence: 0.85, metadata: { analysis_type: "structural", evidence_chain: c9Chain },
         });
         break;
       }
@@ -325,12 +403,40 @@ registerTypedRule({
       regex.lastIndex = 0;
       const match = regex.exec(ctx.source_code);
       if (match) {
+        const line = lineNum(ctx.source_code, match.index);
+        const conf = desc.includes("user input") ? 0.90 : 0.75;
+        const c11Chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "file-content",
+            location: `line ${line}`,
+            observed: match[0].slice(0, 80),
+            rationale: "Regular expression pattern vulnerable to catastrophic backtracking or injection",
+          })
+          .propagation({
+            propagation_type: "direct-pass",
+            location: `line ${line}`,
+            observed: `${desc} detected in source code`,
+          })
+          .impact({
+            impact_type: "denial-of-service",
+            scope: "server-host",
+            exploitability: desc.includes("user input") ? "trivial" : "moderate",
+            scenario: `ReDoS via ${desc} at line ${line} can hang the server with crafted input`,
+          })
+          .factor("structural_match", conf - 0.70, `ReDoS pattern: ${desc}`)
+          .verification({
+            step_type: "inspect-description",
+            instruction: `Review regex pattern at line ${line} for catastrophic backtracking`,
+            target: `source:line ${line}`,
+            expected_observation: desc,
+          })
+          .build();
         findings.push({
           rule_id: "C11", severity: "high",
-          evidence: `${desc} at line ${lineNum(ctx.source_code, match.index)}: "${match[0].slice(0, 60)}".`,
+          evidence: `${desc} at line ${line}: "${match[0].slice(0, 60)}".`,
           remediation: "Never construct RegExp from user input. Use re2 or regex bounds. Avoid (a+)+ patterns.",
           owasp_category: "MCP07-insecure-config", mitre_technique: null,
-          confidence: desc.includes("user input") ? 0.90 : 0.75, metadata: { analysis_type: "structural" },
+          confidence: conf, metadata: { analysis_type: "structural", evidence_chain: c11Chain },
         });
         break;
       }
@@ -360,12 +466,38 @@ registerTypedRule({
       regex.lastIndex = 0;
       const match = regex.exec(ctx.source_code);
       if (match) {
+        const line = lineNum(ctx.source_code, match.index);
+        const c15Chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "user-parameter",
+            location: `line ${line}`,
+            observed: match[0].slice(0, 100),
+            rationale: "User-supplied value compared against secret using timing-vulnerable === operator",
+          })
+          .propagation({
+            propagation_type: "direct-pass",
+            location: `line ${line}`,
+            observed: `${desc}`,
+          })
+          .sink({
+            sink_type: "credential-exposure",
+            location: `line ${line}`,
+            observed: `Secret comparison with === leaks secret length via timing side-channel`,
+          })
+          .factor("structural_match", 0.15, `Timing-vulnerable comparison: ${desc}`)
+          .verification({
+            step_type: "inspect-description",
+            instruction: `Check line ${line} for timing-safe comparison (timingSafeEqual or compare_digest)`,
+            target: `source:line ${line}`,
+            expected_observation: desc,
+          })
+          .build();
         findings.push({
           rule_id: "C15", severity: "high",
-          evidence: `${desc} at line ${lineNum(ctx.source_code, match.index)}: "${match[0].slice(0, 80)}".`,
+          evidence: `${desc} at line ${line}: "${match[0].slice(0, 80)}".`,
           remediation: "Use crypto.timingSafeEqual() for Node.js or hmac.compare_digest() for Python.",
           owasp_category: "MCP07-insecure-config", mitre_technique: null,
-          confidence: 0.85, metadata: { analysis_type: "structural" },
+          confidence: 0.85, metadata: { analysis_type: "structural", evidence_chain: c15Chain },
         });
         break;
       }
