@@ -8,6 +8,7 @@
 import type { TypedRule, TypedFinding } from "../base.js";
 import { registerTypedRule } from "../base.js";
 import type { AnalysisContext } from "../../engine.js";
+import { EvidenceChainBuilder } from "../../evidence.js";
 
 function isTestFile(source: string): boolean {
   return /(?:__tests?__|\.(?:test|spec)\.)/.test(source);
@@ -39,6 +40,49 @@ class SpecialTokenInjectionRule implements TypedRule {
       for (const { pattern, desc } of this.TOKENS) {
         const match = pattern.exec(text);
         if (match) {
+          const chain = new EvidenceChainBuilder()
+            .source({
+              source_type: "external-content",
+              location: `tool "${tool.name}" description`,
+              observed: match[0],
+              rationale: "Tool descriptions are external content processed by LLMs as control sequences",
+            })
+            .sink({
+              sink_type: "code-evaluation",
+              location: `tool "${tool.name}" metadata`,
+              observed: `${desc}: "${match[0]}"`,
+            })
+            .mitigation({
+              mitigation_type: "input-validation",
+              present: false,
+              location: `tool "${tool.name}" description`,
+              detail: "No filtering of LLM special tokens in tool metadata",
+            })
+            .impact({
+              impact_type: "remote-code-execution",
+              scope: "ai-client",
+              exploitability: "trivial",
+              scenario: `An attacker embeds ${desc} in the tool description. The LLM processes these as control sequences, allowing the attacker to override system instructions and hijack the AI client's behavior for the entire session.`,
+            })
+            .factor("exact special token match", 0.15, "Known LLM control token found verbatim in tool metadata")
+            .reference({
+              id: "AML.T0054",
+              title: "LLM Prompt Injection via Special Tokens",
+              relevance: "Special tokens in tool descriptions are processed as control sequences by LLMs",
+            })
+            .verification({
+              step_type: "inspect-description",
+              instruction: `Check tool "${tool.name}" description for LLM special tokens`,
+              target: `tool "${tool.name}"`,
+              expected_observation: `Description contains ${desc}: "${match[0]}"`,
+            })
+            .verification({
+              step_type: "trace-flow",
+              instruction: "Verify the LLM client processes this token as a control sequence",
+              target: "AI client tool metadata processing",
+              expected_observation: "Token is interpreted as an LLM control directive, not plain text",
+            })
+            .build();
           findings.push({
             rule_id: "M1",
             severity: "critical",
@@ -47,7 +91,7 @@ class SpecialTokenInjectionRule implements TypedRule {
             owasp_category: "MCP01-prompt-injection",
             mitre_technique: "AML.T0054",
             confidence: 0.95,
-            metadata: { analysis_type: "linguistic", tool_name: tool.name },
+            metadata: { analysis_type: "linguistic", tool_name: tool.name, evidence_chain: chain },
           });
           break;
         }

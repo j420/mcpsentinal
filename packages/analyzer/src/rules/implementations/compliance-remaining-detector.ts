@@ -8,6 +8,7 @@ import type { TypedRule, TypedFinding } from "../base.js";
 import { registerTypedRule } from "../base.js";
 import type { AnalysisContext } from "../../engine.js";
 import type { OwaspCategory } from "@mcp-sentinel/database";
+import { EvidenceChainBuilder } from "../../evidence.js";
 
 function isTestFile(s: string) { return /(?:__tests?__|\.(?:test|spec)\.)/.test(s); }
 function lineNum(s: string, i: number) { return s.substring(0, i).split("\n").length; }
@@ -21,6 +22,26 @@ type RCfg = {
   confidence: number;
   excludePatterns?: RegExp[];
 };
+
+function sinkTypeForOwasp(owasp: string): "command-execution" | "code-evaluation" | "network-send" | "credential-exposure" | "config-modification" | "privilege-grant" | "file-write" {
+  if (owasp.includes("injection") || owasp.includes("command")) return "command-execution";
+  if (owasp.includes("exfiltration")) return "network-send";
+  if (owasp.includes("privilege") || owasp.includes("permission")) return "privilege-grant";
+  if (owasp.includes("supply") || owasp.includes("chain")) return "code-evaluation";
+  if (owasp.includes("logging") || owasp.includes("monitor")) return "credential-exposure";
+  if (owasp.includes("config") || owasp.includes("insecure")) return "config-modification";
+  return "code-evaluation";
+}
+
+function impactTypeForOwasp(owasp: string): "remote-code-execution" | "data-exfiltration" | "credential-theft" | "denial-of-service" | "privilege-escalation" | "config-poisoning" {
+  if (owasp.includes("injection") || owasp.includes("command")) return "remote-code-execution";
+  if (owasp.includes("exfiltration")) return "data-exfiltration";
+  if (owasp.includes("privilege") || owasp.includes("permission") || owasp.includes("identity")) return "privilege-escalation";
+  if (owasp.includes("supply") || owasp.includes("chain")) return "remote-code-execution";
+  if (owasp.includes("logging") || owasp.includes("config") || owasp.includes("insecure")) return "config-poisoning";
+  if (owasp.includes("memory") || owasp.includes("poison")) return "config-poisoning";
+  return "config-poisoning";
+}
 
 function buildRule(cfg: RCfg): TypedRule {
   return {
@@ -36,12 +57,47 @@ function buildRule(cfg: RCfg): TypedRule {
             const line = lineNum(ctx.source_code, match.index);
             const lineText = ctx.source_code.split("\n")[line - 1] || "";
             if (cfg.excludePatterns?.some(e => e.test(lineText))) continue;
+
+            const chain = new EvidenceChainBuilder()
+              .source({
+                source_type: "file-content",
+                location: `line ${line}`,
+                observed: match[0].slice(0, 100),
+                rationale:
+                  `Structural pattern analysis detected: ${desc}. Rule ${cfg.id} (${cfg.name}) ` +
+                  `identifies this code pattern as a compliance or security risk requiring remediation.`,
+              })
+              .sink({
+                sink_type: sinkTypeForOwasp(cfg.owasp),
+                location: `line ${line}`,
+                observed: `${desc}: ${match[0].slice(0, 60)}`,
+              })
+              .impact({
+                impact_type: impactTypeForOwasp(cfg.owasp),
+                scope: "connected-services",
+                exploitability: "moderate",
+                scenario:
+                  `The code pattern "${desc}" at line ${line} enables the attack or compliance ` +
+                  `violation detected by ${cfg.id} (${cfg.name}). ${cfg.remediation}`,
+              })
+              .factor("regex_only", -0.1, "Regex pattern match — structural analysis without full taint confirmation")
+              .verification({
+                step_type: "inspect-source",
+                instruction:
+                  `Review the code at line ${line}: "${match[0].slice(0, 60)}". Verify this ` +
+                  `represents a genuine ${cfg.name} risk. Check for mitigating factors: is the ` +
+                  `code in a test file, behind a feature flag, or otherwise unreachable in production?`,
+                target: `source_code:${line}`,
+                expected_observation: `${desc} — ${cfg.name} pattern confirmed in production code.`,
+              })
+              .build();
+
             findings.push({
               rule_id: cfg.id, severity: cfg.severity,
               evidence: `${desc} at line ${line}: "${match[0].slice(0, 80)}".`,
               remediation: cfg.remediation,
               owasp_category: cfg.owasp, mitre_technique: cfg.mitre,
-              confidence: cfg.confidence, metadata: { analysis_type: "structural", line },
+              confidence: cfg.confidence, metadata: { analysis_type: "structural", line, evidence_chain: chain },
             });
             break;
           }
@@ -55,12 +111,45 @@ function buildRule(cfg: RCfg): TypedRule {
           for (const { regex, desc } of cfg.patterns) {
             regex.lastIndex = 0;
             if (regex.test(text)) {
+              const chain = new EvidenceChainBuilder()
+                .source({
+                  source_type: "external-content",
+                  location: `tool: ${tool.name}`,
+                  observed: text.slice(0, 100),
+                  rationale:
+                    `Tool metadata analysis detected: ${desc}. Rule ${cfg.id} (${cfg.name}) ` +
+                    `identifies this pattern in tool name or description as a security risk.`,
+                })
+                .sink({
+                  sink_type: sinkTypeForOwasp(cfg.owasp),
+                  location: `tool: ${tool.name}`,
+                  observed: `${desc} in tool "${tool.name}"`,
+                })
+                .impact({
+                  impact_type: impactTypeForOwasp(cfg.owasp),
+                  scope: "connected-services",
+                  exploitability: "moderate",
+                  scenario:
+                    `Tool "${tool.name}" exhibits the pattern detected by ${cfg.id} (${cfg.name}): ` +
+                    `${desc}. ${cfg.remediation}`,
+                })
+                .factor("pattern_confirmed", 0.0, "Tool metadata pattern match confirmed")
+                .verification({
+                  step_type: "inspect-description",
+                  instruction:
+                    `Review tool "${tool.name}" name and description for the pattern: ${desc}. ` +
+                    `Determine if this is a legitimate tool behavior or a security risk.`,
+                  target: `tool: ${tool.name}`,
+                  expected_observation: `${desc} — ${cfg.name} pattern confirmed in tool metadata.`,
+                })
+                .build();
+
               findings.push({
                 rule_id: cfg.id, severity: cfg.severity,
                 evidence: `Tool "${tool.name}": ${desc}.`,
                 remediation: cfg.remediation,
                 owasp_category: cfg.owasp, mitre_technique: cfg.mitre,
-                confidence: cfg.confidence, metadata: { tool_name: tool.name },
+                confidence: cfg.confidence, metadata: { tool_name: tool.name, evidence_chain: chain },
               });
               break;
             }

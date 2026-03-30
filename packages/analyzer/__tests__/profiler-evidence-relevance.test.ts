@@ -575,6 +575,20 @@ describe("Threat Model", () => {
 
 describe("Relevance Filtering", () => {
   // Simulate findings from a weather server scan
+  const a1Chain = new EvidenceChainBuilder()
+    .source({ source_type: "external-content", location: "tool description", observed: "injection pattern", rationale: "Test fixture" })
+    .sink({ sink_type: "code-evaluation", location: "AI client", observed: "injection" })
+    .impact({ impact_type: "session-hijack", scope: "connected-services", exploitability: "moderate", scenario: "Test" })
+    .verification({ step_type: "inspect-description", instruction: "Review", target: "tool", expected_observation: "Injection" })
+    .build();
+
+  const c1Chain = new EvidenceChainBuilder()
+    .source({ source_type: "user-parameter", location: "source code", observed: "exec()", rationale: "Test fixture" })
+    .sink({ sink_type: "command-execution", location: "line 1", observed: "exec()" })
+    .impact({ impact_type: "remote-code-execution", scope: "server-host", exploitability: "trivial", scenario: "Test" })
+    .verification({ step_type: "inspect-source", instruction: "Review", target: "source", expected_observation: "exec" })
+    .build();
+
   const weatherFindings: TypedFinding[] = [
     {
       rule_id: "A1", // Description analysis — always relevant
@@ -584,6 +598,7 @@ describe("Relevance Filtering", () => {
       owasp_category: "MCP01-prompt-injection",
       mitre_technique: "AML.T0054",
       confidence: 0.85,
+      metadata: { evidence_chain: a1Chain },
     },
     {
       rule_id: "C1", // Command injection — NOT relevant for weather server
@@ -593,6 +608,7 @@ describe("Relevance Filtering", () => {
       owasp_category: "MCP03-command-injection",
       mitre_technique: null,
       confidence: 0.60,
+      metadata: { evidence_chain: c1Chain },
     },
   ];
 

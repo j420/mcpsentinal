@@ -16,6 +16,7 @@ import { registerTypedRule } from "../base.js";
 import type { AnalysisContext } from "../../engine.js";
 import { analyzeASTTaint } from "../analyzers/taint-ast.js";
 import { analyzeTaint } from "../analyzers/taint.js";
+import { EvidenceChainBuilder } from "../../evidence.js";
 
 // ─── Shared config path patterns ───────────────────────────────────────────
 
@@ -74,6 +75,95 @@ class CrossAgentConfigPoisoningRule implements TypedRule {
 
       for (const flow of configWriteFlows) {
         if (!flow.sanitized) {
+          const builder = new EvidenceChainBuilder()
+            .source({
+              source_type: "agent-output",
+              location: `line ${flow.source.line}:${flow.source.column}`,
+              observed: flow.source.expression,
+              rationale:
+                "Untrusted data enters from an external or agent-controlled source. In cross-agent " +
+                "architectures, output from one agent can become input to another agent's configuration " +
+                "writer — creating a lateral movement path between trust boundaries.",
+            });
+
+          for (const step of flow.path) {
+            builder.propagation({
+              propagation_type: step.type === "assignment" || step.type === "destructure" ? "variable-assignment"
+                : step.type === "template_embed" ? "template-literal"
+                : step.type === "return_value" || step.type === "callback_arg" ? "function-call"
+                : "direct-pass",
+              location: `line ${step.line}`,
+              observed: step.expression.slice(0, 80),
+            });
+          }
+
+          builder
+            .sink({
+              sink_type: "config-modification",
+              location: `line ${flow.sink.line}:${flow.sink.column}`,
+              observed: flow.sink.expression.slice(0, 80),
+              cve_precedent: "CVE-2025-53773",
+            })
+            .mitigation({
+              mitigation_type: "input-validation",
+              present: false,
+              location: `between source (L${flow.source.line}) and sink (L${flow.sink.line})`,
+              detail:
+                "No sanitization or schema validation found between the untrusted data source and the " +
+                "config file write. Agent config files (.claude/, .cursor/, mcp.json) control which MCP " +
+                "servers are loaded and auto-approved — unsanitized writes grant arbitrary code execution.",
+            })
+            .impact({
+              impact_type: "remote-code-execution",
+              scope: "other-agents",
+              exploitability: flow.path.length <= 1 ? "trivial" : "moderate",
+              scenario:
+                "A compromised upstream agent writes a malicious MCP server entry into a downstream agent's " +
+                "config file. When the downstream agent restarts, it loads the attacker-controlled server, which " +
+                "gains full code execution on the host. CVE-2025-53773 demonstrated this exact chain in GitHub Copilot.",
+            })
+            .factor("ast_confirmed", 0.15, "AST-based taint tracking confirmed data flow from source to config write")
+            .factor(
+              "config_target_identified",
+              0.1,
+              `Sink expression matches known agent config path pattern — confirmed write to agent/IDE configuration`
+            )
+            .reference({
+              id: "CVE-2025-53773",
+              title: "GitHub Copilot Cross-Agent RCE via MCP Config Injection",
+              url: "https://nvd.nist.gov/vuln/detail/CVE-2025-53773",
+              year: 2025,
+              relevance:
+                "Same attack pattern: untrusted data written to agent config file enables RCE on downstream agent. " +
+                "CVE-2025-53773 demonstrated this in GitHub Copilot through malicious .mcp.json writes.",
+            })
+            .verification({
+              step_type: "trace-flow",
+              instruction:
+                `Trace the data flow from source at line ${flow.source.line} through ${flow.path.length} ` +
+                `propagation step(s) to the config file write at line ${flow.sink.line}. Verify that no ` +
+                `sanitizer, schema validator, or allowlist filter exists between the source and the sink. ` +
+                `Check whether the written content could include arbitrary MCP server definitions.`,
+              target: `source_code:${flow.source.line}-${flow.sink.line}`,
+              expected_observation:
+                `Data flows from ${flow.source.expression} through ${flow.path.length} step(s) to a file ` +
+                `write targeting an agent config path. No validation or sanitization in the path.`,
+            })
+            .verification({
+              step_type: "check-config",
+              instruction:
+                "Identify which agent config files this code can write to (.claude/settings.json, " +
+                ".cursor/mcp.json, claude_desktop_config.json, etc.). Check whether auto-approve or " +
+                "auto-start settings could be set by the written content. Verify whether the target config " +
+                "format allows embedding shell commands in the 'command' field of server entries.",
+              target: "agent configuration file format and security boundaries",
+              expected_observation:
+                "Config file format allows arbitrary server entries with 'command' fields that execute " +
+                "shell commands. No integrity verification or user confirmation before loading new servers.",
+            });
+
+          const chain = builder.build();
+
           findings.push({
             rule_id: "J1",
             severity: "critical",
@@ -94,6 +184,7 @@ class CrossAgentConfigPoisoningRule implements TypedRule {
               analysis_type: "ast_taint",
               source_line: flow.source.line,
               sink_line: flow.sink.line,
+              evidence_chain: chain,
             },
           });
         }
@@ -112,6 +203,72 @@ class CrossAgentConfigPoisoningRule implements TypedRule {
           AGENT_CONFIG_PATHS.some((p) => p.test(line));
 
         if (writesConfig) {
+          const chain = new EvidenceChainBuilder()
+            .source({
+              source_type: "agent-output",
+              location: `line ${i + 1}`,
+              observed: line.trim().slice(0, 80),
+              rationale:
+                "Code writes to an agent configuration file path. The data source could not be confirmed " +
+                "via taint analysis, but the write target is a known agent config path that controls MCP " +
+                "server loading and execution.",
+            })
+            .sink({
+              sink_type: "config-modification",
+              location: `line ${i + 1}`,
+              observed: line.trim().slice(0, 80),
+              cve_precedent: "CVE-2025-53773",
+            })
+            .mitigation({
+              mitigation_type: "input-validation",
+              present: false,
+              location: `line ${i + 1}`,
+              detail:
+                "Taint analysis could not trace the data source, so no sanitizer verification was possible. " +
+                "Manual review is needed to confirm whether the written content comes from a trusted source.",
+            })
+            .impact({
+              impact_type: "remote-code-execution",
+              scope: "other-agents",
+              exploitability: "moderate",
+              scenario:
+                "If the written content originates from an untrusted source, an attacker can inject a malicious " +
+                "MCP server definition into the target agent's config. The next agent restart loads the attacker's " +
+                "server, granting arbitrary code execution.",
+            })
+            .factor("regex_only", -0.15, "No taint analysis confirmation — regex pattern match only, manual review needed")
+            .reference({
+              id: "CVE-2025-53773",
+              title: "GitHub Copilot Cross-Agent RCE via MCP Config Injection",
+              year: 2025,
+              relevance:
+                "Config file write targeting agent paths matches the CVE-2025-53773 attack pattern " +
+                "where malicious project files write to agent configurations.",
+            })
+            .verification({
+              step_type: "inspect-source",
+              instruction:
+                `Examine source code at line ${i + 1} to determine what data is being written to the config file. ` +
+                `Trace the data source manually — check whether it comes from user input, network responses, ` +
+                `environment variables, or hardcoded values. If the source is untrusted, this is a confirmed finding.`,
+              target: `source_code:${i + 1}`,
+              expected_observation:
+                `File write operation targeting an agent config path (.claude/, .cursor/, mcp.json). ` +
+                `Data source should be verified manually.`,
+            })
+            .verification({
+              step_type: "check-config",
+              instruction:
+                "Check whether the target config file format supports auto-approve or auto-start settings. " +
+                "Verify whether writing arbitrary content to this file could cause the agent to load and " +
+                "execute untrusted MCP servers without user confirmation.",
+              target: "target agent configuration file schema",
+              expected_observation:
+                "Config format allows server entries with 'command' fields — an attacker-controlled " +
+                "write to this file enables arbitrary command execution.",
+            })
+            .build();
+
           findings.push({
             rule_id: "J1",
             severity: "high",
@@ -124,7 +281,7 @@ class CrossAgentConfigPoisoningRule implements TypedRule {
             owasp_category: "MCP05-privilege-escalation",
             mitre_technique: "AML.T0060",
             confidence: 0.60,
-            metadata: { analysis_type: "regex_fallback", line: i + 1 },
+            metadata: { analysis_type: "regex_fallback", line: i + 1, evidence_chain: chain },
           });
           break;
         }
@@ -161,6 +318,76 @@ class MCPConfigCodeInjectionRule implements TypedRule {
         const isMCPConfig = /mcpServers|mcp\.json|mcp_config|claude_desktop/i.test(surroundingText);
 
         if (isMCPConfig) {
+          const chain = new EvidenceChainBuilder()
+            .source({
+              source_type: "external-content",
+              location: `line ${line}`,
+              observed: match[0].slice(0, 80),
+              rationale:
+                "MCP config command fields define what binary is executed when the server starts. " +
+                "Using shell interpreters (bash -c, sh -c) instead of direct binary paths enables " +
+                "shell metacharacter injection and arbitrary command chains via &&, ||, or ;.",
+            })
+            .sink({
+              sink_type: "command-execution",
+              location: `line ${line}`,
+              observed: `Shell interpreter invocation in MCP config: ${match[0].slice(0, 60)}`,
+              cve_precedent: "CVE-2025-59536",
+            })
+            .mitigation({
+              mitigation_type: "input-validation",
+              present: false,
+              location: `MCP config command field at line ${line}`,
+              detail:
+                "No command allowlist or shell metacharacter filtering applied to the config command field. " +
+                "Shell interpreters accept arbitrary command strings, bypassing any path-based restrictions.",
+            })
+            .impact({
+              impact_type: "remote-code-execution",
+              scope: "server-host",
+              exploitability: "trivial",
+              scenario:
+                "A malicious project or compromised dependency writes an MCP config entry with 'bash -c' " +
+                "as the command. The shell interprets the argument as an arbitrary command string, enabling " +
+                "data exfiltration, reverse shells, or credential theft on the host machine. CVE-2025-59536 " +
+                "demonstrated this exact vector in Claude Code config injection.",
+            })
+            .factor("shell_in_config", 0.15, "Shell interpreter explicitly invoked in config command field — high confidence")
+            .factor("mcp_config_context", 0.1, "Pattern found within MCP configuration context (mcpServers/mcp.json)")
+            .reference({
+              id: "CVE-2025-59536",
+              title: "Claude Code Config Injection via Shell Command in MCP Config",
+              year: 2025,
+              relevance:
+                "CVE-2025-59536 demonstrated that shell commands in MCP config command fields enable " +
+                "arbitrary code execution. The same pattern applies to all MCP clients that execute " +
+                "config-defined server commands.",
+            })
+            .verification({
+              step_type: "inspect-source",
+              instruction:
+                `Review the MCP config at line ${line} to confirm a shell interpreter (bash, sh, zsh, cmd, ` +
+                `powershell) is used with -c or -e flags. Check whether the command string that follows the ` +
+                `shell invocation contains dynamic content, environment variable expansion, or chained commands. ` +
+                `Verify this is production code, not test fixtures.`,
+              target: `source_code:${line}`,
+              expected_observation:
+                `Shell interpreter with execution flag found in MCP config command field. ` +
+                `The command string may contain arbitrary shell syntax.`,
+            })
+            .verification({
+              step_type: "check-config",
+              instruction:
+                "Examine how the MCP client loads and executes this config entry. Check whether the client " +
+                "validates command fields against an allowlist of permitted binaries. Verify whether the client " +
+                "uses execFile (safe — no shell) or exec/spawn with shell:true (unsafe — full shell interpretation). " +
+                "If the client passes the command through a shell, any metacharacters are exploitable.",
+              target: "MCP client server launch implementation",
+              expected_observation:
+                "Client executes config command through shell interpreter, enabling arbitrary command injection.",
+            })
+            .build();
+
           findings.push({
             rule_id: "L4",
             severity: "critical",
@@ -174,7 +401,7 @@ class MCPConfigCodeInjectionRule implements TypedRule {
             owasp_category: "MCP05-privilege-escalation",
             mitre_technique: "AML.T0060",
             confidence: 0.90,
-            metadata: { analysis_type: "structural", line },
+            metadata: { analysis_type: "structural", line, evidence_chain: chain },
           });
         }
       }
@@ -186,6 +413,80 @@ class MCPConfigCodeInjectionRule implements TypedRule {
     envExfilPattern.lastIndex = 0;
     while ((match = envExfilPattern.exec(source)) !== null) {
       const line = getLineNumber(source, match.index);
+      const envChain = new EvidenceChainBuilder()
+        .source({
+          source_type: "environment",
+          location: `line ${line}`,
+          observed: match[0].slice(0, 80),
+          rationale:
+            "Sensitive environment variables (API keys, tokens, database credentials) are referenced " +
+            "in MCP config args or command fields. These variables contain secrets that should never be " +
+            "passed as arguments to external server processes.",
+        })
+        .propagation({
+          propagation_type: "direct-pass",
+          location: `MCP config args field at line ${line}`,
+          observed: "Environment variable value is interpolated into server launch arguments, " +
+            "which are visible to the server process and may be logged or transmitted",
+        })
+        .sink({
+          sink_type: "credential-exposure",
+          location: `line ${line}`,
+          observed: `Sensitive env var in MCP config args: ${match[0].slice(0, 60)}`,
+          cve_precedent: "CVE-2026-21852",
+        })
+        .mitigation({
+          mitigation_type: "auth-check",
+          present: false,
+          location: `MCP config at line ${line}`,
+          detail:
+            "No credential management system (OAuth, secret store, encrypted config) is used. " +
+            "Secrets are passed as plain-text arguments to the MCP server process, exposing them " +
+            "to process inspection, /proc/cmdline, and server-side logging.",
+        })
+        .impact({
+          impact_type: "credential-theft",
+          scope: "connected-services",
+          exploitability: "trivial",
+          scenario:
+            "API keys and tokens passed as MCP server arguments are visible to the server process. " +
+            "A malicious or compromised MCP server can read its own arguments, exfiltrate the credentials " +
+            "to an attacker-controlled endpoint, and gain access to the victim's cloud services, databases, " +
+            "or AI provider accounts.",
+        })
+        .factor("env_var_in_args", 0.1, "Sensitive environment variable pattern detected in config args")
+        .reference({
+          id: "CVE-2026-21852",
+          title: "API Key Exfiltration via MCP Config Env Override",
+          year: 2026,
+          relevance:
+            "CVE-2026-21852 documented how sensitive environment variables passed in MCP config " +
+            "were exfiltrated by malicious servers reading their own process arguments.",
+        })
+        .verification({
+          step_type: "inspect-source",
+          instruction:
+            `Review the MCP config at line ${line} to identify which environment variables are referenced. ` +
+            `Determine whether these contain secrets (API_KEY, TOKEN, SECRET, PASSWORD, DATABASE) or ` +
+            `non-sensitive values (PORT, HOST, LOG_LEVEL). Check whether the values are passed as command-line ` +
+            `arguments (visible in process list) or as environment variables (slightly less exposed).`,
+          target: `source_code:${line}`,
+          expected_observation:
+            `Sensitive environment variable reference in MCP config args, exposing secrets to the server process.`,
+        })
+        .verification({
+          step_type: "check-config",
+          instruction:
+            "Verify whether the MCP client uses a secure credential delivery mechanism (OAuth 2.0, " +
+            "encrypted config, secret store integration) or passes secrets as plain-text arguments. " +
+            "Check if the server process could read its own command-line arguments via /proc/self/cmdline " +
+            "or process.argv to exfiltrate the credentials.",
+          target: "MCP client credential delivery mechanism",
+          expected_observation:
+            "Credentials are passed as plain-text arguments — no secure credential delivery mechanism in use.",
+        })
+        .build();
+
       findings.push({
         rule_id: "L4",
         severity: "critical",
@@ -198,7 +499,7 @@ class MCPConfigCodeInjectionRule implements TypedRule {
         owasp_category: "MCP07-insecure-config",
         mitre_technique: "AML.T0060",
         confidence: 0.85,
-        metadata: { analysis_type: "pattern", line },
+        metadata: { analysis_type: "pattern", line, evidence_chain: envChain },
       });
       break;
     }
@@ -231,6 +532,101 @@ class EnvVarInjectionRule implements TypedRule {
         const line = getLineNumber(source, match.index);
         const envName = envPattern.source.replace(/\\/g, "");
 
+        const isLibraryHijack = /LD_PRELOAD|DYLD_INSERT|DYLD_LIBRARY/i.test(envName);
+        const isCodeInjection = /NODE_OPTIONS|PYTHONPATH|PYTHONSTARTUP/i.test(envName);
+        const isAPIRedirect = /API_URL|API_BASE|OPENAI_BASE|AZURE.*ENDPOINT|HTTP_PROXY|HTTPS_PROXY|ALL_PROXY/i.test(envName);
+
+        const envChain = new EvidenceChainBuilder()
+          .source({
+            source_type: "environment",
+            location: `line ${line}`,
+            observed: `"${envName}" in MCP config env block`,
+            rationale:
+              "MCP config env blocks set environment variables for the server process at launch time. " +
+              "Certain environment variables (LD_PRELOAD, NODE_OPTIONS, ANTHROPIC_API_URL) control " +
+              "critical runtime behavior — library loading, code injection, or API endpoint routing — " +
+              "and should never be configurable from untrusted sources.",
+          })
+          .sink({
+            sink_type: isLibraryHijack ? "code-evaluation"
+              : isAPIRedirect ? "network-send"
+              : "config-modification",
+            location: `MCP server process environment at line ${line}`,
+            observed:
+              isLibraryHijack
+                ? `${envName} causes the dynamic linker to load attacker-controlled shared libraries before any other code`
+                : isCodeInjection
+                  ? `${envName} injects arbitrary code or module paths into the Node.js/Python runtime`
+                  : isAPIRedirect
+                    ? `${envName} redirects API calls to an attacker-controlled endpoint for credential interception`
+                    : `${envName} modifies critical runtime behavior of the server process`,
+            cve_precedent: "CVE-2026-21852",
+          })
+          .mitigation({
+            mitigation_type: "input-validation",
+            present: false,
+            location: `MCP config env block at line ${line}`,
+            detail:
+              "No allowlist filtering on environment variables in the config env block. Dangerous variables " +
+              "like LD_PRELOAD, NODE_OPTIONS, and API endpoint overrides should be blocked at the config " +
+              "parsing layer — they grant equivalent-to-RCE capabilities to whoever controls the config.",
+          })
+          .impact({
+            impact_type: isLibraryHijack || isCodeInjection ? "remote-code-execution" : "credential-theft",
+            scope: "server-host",
+            exploitability: "trivial",
+            scenario:
+              isLibraryHijack
+                ? `Setting ${envName} in the MCP config causes the server process's dynamic linker to load ` +
+                  `an attacker-controlled shared library (.so/.dylib) before the server's own code runs. ` +
+                  `This grants arbitrary native code execution with the server's permissions — a complete host compromise.`
+                : isCodeInjection
+                  ? `Setting ${envName} in the MCP config injects arbitrary code or module paths into the ` +
+                    `server's runtime. For NODE_OPTIONS, --require can preload malicious modules. For PYTHONPATH, ` +
+                    `attacker-controlled modules shadow legitimate imports. Both achieve arbitrary code execution.`
+                  : `Setting ${envName} in the MCP config redirects the server's API calls to an attacker-controlled ` +
+                    `proxy endpoint. All API keys, tokens, and request data are intercepted. For AI service endpoints ` +
+                    `(ANTHROPIC_API_URL, OPENAI_BASE_URL), this captures all model interactions including sensitive prompts.`,
+          })
+          .factor(
+            isLibraryHijack ? "library_hijack_var" : isCodeInjection ? "code_injection_var" : "api_redirect_var",
+            0.15,
+            `${envName} is a known dangerous environment variable in the ${isLibraryHijack ? "library hijack" : isCodeInjection ? "code injection" : "API redirect"} category`
+          )
+          .reference({
+            id: "CVE-2026-21852",
+            title: "API Key Exfiltration via MCP Config Environment Override",
+            year: 2026,
+            relevance:
+              "CVE-2026-21852 documented how MCP config env blocks were used to set dangerous environment " +
+              "variables that redirected API calls and exfiltrated credentials. The same technique applies " +
+              "to library hijack (LD_PRELOAD) and code injection (NODE_OPTIONS) variables.",
+          })
+          .verification({
+            step_type: "inspect-source",
+            instruction:
+              `Locate the env block at line ${line} and confirm that "${envName}" is set. Determine whether ` +
+              `the value is hardcoded or comes from an untrusted source (user input, network response, ` +
+              `other config file). Even hardcoded dangerous env vars are a risk if the config file can be ` +
+              `modified by untrusted code (see J1: cross-agent config poisoning).`,
+            target: `source_code:${line}`,
+            expected_observation:
+              `Environment variable "${envName}" is set in the MCP config env block. ` +
+              `This variable controls ${isLibraryHijack ? "shared library loading" : isCodeInjection ? "runtime code injection" : "API endpoint routing"}.`,
+          })
+          .verification({
+            step_type: "check-config",
+            instruction:
+              "Check whether the MCP client validates environment variables before passing them to server " +
+              "processes. Look for an allowlist of permitted env vars (PORT, HOST, LOG_LEVEL, NODE_ENV) or " +
+              "a blocklist of dangerous ones (LD_PRELOAD, NODE_OPTIONS, *_PROXY). If neither exists, any " +
+              "env var in the config is passed through to the server process without restriction.",
+            target: "MCP client env variable filtering/validation logic",
+            expected_observation:
+              "No env variable filtering — all config-defined env vars are passed to the server process.",
+          })
+          .build();
+
         findings.push({
           rule_id: "L11",
           severity: "critical",
@@ -245,7 +641,7 @@ class EnvVarInjectionRule implements TypedRule {
           owasp_category: "MCP07-insecure-config",
           mitre_technique: "AML.T0060",
           confidence: 0.90,
-          metadata: { analysis_type: "pattern", line, env_var: envName },
+          metadata: { analysis_type: "pattern", line, env_var: envName, evidence_chain: envChain },
         });
       }
     }
@@ -277,6 +673,88 @@ class IDEConfigInjectionRule implements TypedRule {
 
       for (const flow of ideWriteFlows) {
         if (!flow.sanitized) {
+          const builder = new EvidenceChainBuilder()
+            .source({
+              source_type: "external-content",
+              location: `line ${flow.source.line}:${flow.source.column}`,
+              observed: flow.source.expression,
+              rationale:
+                "Untrusted data enters from a project file, network response, or dependency output. " +
+                "In the CurXecute attack pattern (CVE-2025-54135), a malicious project repo contains " +
+                "code that writes to the IDE's MCP configuration during build or install.",
+            });
+
+          for (const step of flow.path) {
+            builder.propagation({
+              propagation_type: step.type === "assignment" || step.type === "destructure" ? "variable-assignment"
+                : step.type === "template_embed" ? "template-literal"
+                : "function-call",
+              location: `line ${step.line}`,
+              observed: step.expression.slice(0, 80),
+            });
+          }
+
+          builder
+            .sink({
+              sink_type: "config-modification",
+              location: `line ${flow.sink.line}:${flow.sink.column}`,
+              observed: flow.sink.expression.slice(0, 80),
+              cve_precedent: "CVE-2025-54135",
+            })
+            .mitigation({
+              mitigation_type: "confirmation-gate",
+              present: false,
+              location: `between source (L${flow.source.line}) and sink (L${flow.sink.line})`,
+              detail:
+                "No user confirmation or integrity check before writing to IDE config. IDE configs control " +
+                "which MCP servers are auto-loaded and auto-approved — an unchecked write silently adds " +
+                "attacker-controlled servers that execute on next IDE launch.",
+            })
+            .impact({
+              impact_type: "remote-code-execution",
+              scope: "server-host",
+              exploitability: flow.path.length <= 1 ? "trivial" : "moderate",
+              scenario:
+                "A malicious project contains code that writes a new MCP server entry to the IDE's configuration " +
+                "(.cursor/mcp.json, .vscode/settings.json). When the developer opens the project, the write executes " +
+                "silently. On next IDE restart, the attacker's MCP server loads with full access to the developer's " +
+                "filesystem and credentials. CVE-2025-54135 (CurXecute) demonstrated this in Cursor IDE.",
+            })
+            .factor("ast_confirmed", 0.15, "AST taint analysis confirmed data flow to IDE config write")
+            .reference({
+              id: "CVE-2025-54135",
+              title: "CurXecute: Cursor IDE Remote Code Execution via .cursor Config Injection",
+              year: 2025,
+              relevance:
+                "CVE-2025-54135 demonstrated that malicious project repos can write to .cursor/mcp.json, " +
+                "silently registering attacker-controlled MCP servers that execute on IDE restart.",
+            })
+            .verification({
+              step_type: "trace-flow",
+              instruction:
+                `Trace the taint path from line ${flow.source.line} to line ${flow.sink.line}. Verify that ` +
+                `the data source is untrusted (project file, dependency, network) and that no user confirmation ` +
+                `or content validation exists in the path. Check if the written content can include 'command' ` +
+                `fields with shell execution or 'auto-approve' settings.`,
+              target: `source_code:${flow.source.line}-${flow.sink.line}`,
+              expected_observation:
+                "Untrusted data flows to IDE config write without user confirmation or content validation.",
+            })
+            .verification({
+              step_type: "check-config",
+              instruction:
+                "Check whether the target IDE validates or sandboxes MCP server entries added to its config. " +
+                "Verify if the IDE prompts the user before loading newly-added servers, or if they auto-start. " +
+                "Check for enableAllProjectMcpServers or similar auto-approve settings that would bypass " +
+                "any user confirmation for project-level MCP configs.",
+              target: "IDE MCP server loading and approval logic",
+              expected_observation:
+                "IDE auto-loads MCP servers from config without user confirmation, enabling silent " +
+                "code execution from injected server entries.",
+            });
+
+          const chain = builder.build();
+
           findings.push({
             rule_id: "Q4",
             severity: "critical",
@@ -290,7 +768,7 @@ class IDEConfigInjectionRule implements TypedRule {
             owasp_category: "MCP10-supply-chain",
             mitre_technique: "AML.T0054",
             confidence: flow.confidence,
-            metadata: { analysis_type: "ast_taint" },
+            metadata: { analysis_type: "ast_taint", evidence_chain: chain },
           });
         }
       }
@@ -312,6 +790,73 @@ class IDEConfigInjectionRule implements TypedRule {
           /(?:\.cursor|\.vscode|mcp\.json|settings)/i.test(context200);
 
         if (isConfigContext) {
+          const autoApproveChain = new EvidenceChainBuilder()
+            .source({
+              source_type: "external-content",
+              location: `line ${line}`,
+              observed: `Auto-approve pattern: "${match[0]}"`,
+              rationale:
+                "Code programmatically sets auto-approve or auto-start settings in IDE MCP configuration. " +
+                "These settings should only be set by explicit user choice, never by project code or dependencies.",
+            })
+            .sink({
+              sink_type: "privilege-grant",
+              location: `line ${line}`,
+              observed: `Auto-approve pattern "${match[0]}" in IDE config write context — bypasses user consent`,
+              cve_precedent: "CVE-2025-59944",
+            })
+            .mitigation({
+              mitigation_type: "confirmation-gate",
+              present: false,
+              location: `config write at line ${line}`,
+              detail:
+                "No user confirmation before setting auto-approve. Once set, all project-level MCP servers " +
+                "execute without consent — a single config write disables the entire human-in-the-loop safety barrier.",
+            })
+            .impact({
+              impact_type: "privilege-escalation",
+              scope: "ai-client",
+              exploitability: "trivial",
+              scenario:
+                "Code writes an auto-approve setting (enableAllProjectMcpServers, auto_start) to the IDE config. " +
+                "Once enabled, any MCP server defined in the project's config executes automatically without user " +
+                "approval. Combined with a malicious server entry, this achieves silent code execution — the user " +
+                "never sees a confirmation dialog.",
+            })
+            .factor("auto_approve_in_config", 0.15, "Auto-approve pattern found within IDE config write context")
+            .reference({
+              id: "CVE-2025-59944",
+              title: "Case-Insensitive Config Bypass for MCP Auto-Approval",
+              year: 2025,
+              relevance:
+                "Auto-approve settings bypass all user consent for MCP server loading. CVE-2025-59944 " +
+                "showed that case-sensitivity bypasses could enable auto-approval without explicit user consent.",
+            })
+            .verification({
+              step_type: "inspect-source",
+              instruction:
+                `Examine line ${line} to confirm the auto-approve pattern is being written to an IDE config file. ` +
+                `Determine whether this write is triggered by user action (safe) or by project code, build scripts, ` +
+                `or dependencies (dangerous). Check the full write content for other dangerous settings like shell ` +
+                `commands or credential references.`,
+              target: `source_code:${line}`,
+              expected_observation:
+                `Auto-approve pattern "${match[0]}" is being set programmatically in IDE MCP config, not by user action.`,
+            })
+            .verification({
+              step_type: "check-config",
+              instruction:
+                "Verify the impact of the auto-approve setting on MCP server loading. Check whether the IDE " +
+                "skips user confirmation dialogs when this setting is enabled. Determine if project-level MCP " +
+                "configs can define arbitrary server commands that would execute without user consent once " +
+                "auto-approve is active.",
+              target: "IDE auto-approve behavior and MCP server loading flow",
+              expected_observation:
+                "With auto-approve enabled, all project-level MCP servers load and execute without user " +
+                "confirmation, including servers with shell commands in their 'command' field.",
+            })
+            .build();
+
           findings.push({
             rule_id: "Q4",
             severity: "critical",
@@ -324,7 +869,7 @@ class IDEConfigInjectionRule implements TypedRule {
             owasp_category: "MCP10-supply-chain",
             mitre_technique: "AML.T0054",
             confidence: 0.88,
-            metadata: { analysis_type: "pattern", line },
+            metadata: { analysis_type: "pattern", line, evidence_chain: autoApproveChain },
           });
           break;
         }
@@ -336,6 +881,76 @@ class IDEConfigInjectionRule implements TypedRule {
     const caseMatch = caseBypass.exec(source);
     if (caseMatch) {
       const line = getLineNumber(source, caseMatch.index);
+      const caseChain = new EvidenceChainBuilder()
+        .source({
+          source_type: "external-content",
+          location: `line ${line}`,
+          observed: `Case-variant MCP config reference: "${caseMatch[0]}"`,
+          rationale:
+            "A non-standard case variant of the MCP config filename is used (e.g., MCP.JSON instead of mcp.json). " +
+            "On case-insensitive filesystems (macOS, Windows), this resolves to the same file but may bypass " +
+            "case-sensitive security checks that validate config file paths.",
+        })
+        .sink({
+          sink_type: "config-modification",
+          location: `line ${line}`,
+          observed: `"${caseMatch[0]}" — case variant may bypass approval checks that only match lowercase`,
+          cve_precedent: "CVE-2025-59944",
+        })
+        .mitigation({
+          mitigation_type: "input-validation",
+          present: false,
+          location: `config path validation at line ${line}`,
+          detail:
+            "Config path validation uses case-sensitive string comparison. On case-insensitive filesystems, " +
+            "a case variant like MCP.JSON bypasses the check but resolves to the same file as mcp.json.",
+        })
+        .impact({
+          impact_type: "privilege-escalation",
+          scope: "ai-client",
+          exploitability: "moderate",
+          scenario:
+            "An attacker uses a case-variant filename (MCP.JSON, Mcp.json) to write to the MCP config file " +
+            "while bypassing case-sensitive path validation. On macOS and Windows (case-insensitive filesystems), " +
+            "the variant resolves to the same file. Security checks that only match the lowercase form are evaded, " +
+            "allowing unauthorized server registration.",
+        })
+        .factor("case_variant_detected", 0.1, "Non-standard case variant of MCP config filename suggests intentional bypass")
+        .reference({
+          id: "CVE-2025-59944",
+          title: "Case-Insensitive MCP Config Bypass for Server Approval",
+          year: 2025,
+          relevance:
+            "CVE-2025-59944 demonstrated that case-insensitive config file lookup enabled bypass of " +
+            "server approval mechanisms. Attackers used case variants to write to config files without " +
+            "triggering case-sensitive security checks.",
+        })
+        .verification({
+          step_type: "inspect-source",
+          instruction:
+            `Check whether the case-variant reference "${caseMatch[0]}" at line ${line} is used to write to ` +
+            `or read from a config file. Determine whether the application's config path validation is ` +
+            `case-sensitive (bypassable on macOS/Windows) or case-insensitive (correct). Test whether the ` +
+            `case variant resolves to the same file as the standard lowercase form on the target platform.`,
+          target: `source_code:${line}`,
+          expected_observation:
+            `Case-variant "${caseMatch[0]}" used in config path — may bypass case-sensitive validation on ` +
+            `case-insensitive filesystems.`,
+        })
+        .verification({
+          step_type: "check-config",
+          instruction:
+            "Test the target platform's filesystem case sensitivity. On macOS (APFS default) and Windows " +
+            "(NTFS), verify that MCP.JSON and mcp.json resolve to the same file. Check whether the IDE's " +
+            "config loading normalizes filenames to lowercase before validation, or whether case variants " +
+            "can bypass the approval mechanism.",
+          target: "filesystem case sensitivity and config path normalization",
+          expected_observation:
+            "On case-insensitive filesystems, the case variant resolves to the same config file, " +
+            "bypassing case-sensitive validation.",
+        })
+        .build();
+
       findings.push({
         rule_id: "Q4",
         severity: "high",
@@ -348,7 +963,7 @@ class IDEConfigInjectionRule implements TypedRule {
         owasp_category: "MCP10-supply-chain",
         mitre_technique: "AML.T0054",
         confidence: 0.80,
-        metadata: { analysis_type: "pattern", line },
+        metadata: { analysis_type: "pattern", line, evidence_chain: caseChain },
       });
     }
 

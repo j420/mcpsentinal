@@ -1,16 +1,20 @@
 /**
- * EvidenceChainViz — Renders a structured evidence chain as a visual flow.
+ * EvidenceChainViz — Regulator-grade evidence presentation.
  *
- * Displays the source→propagation→sink data flow that proves a security finding,
- * with mitigation checks and impact assessment. Each link is independently verifiable.
+ * Renders structured evidence chains in a 5-question format designed for
+ * compliance officers, enterprise security teams, and regulators:
  *
- * Also includes an inline ConfidenceIndicator — the confidence bar is shown
- * at the top of each evidence chain rather than as a separate component,
- * because confidence is meaningless without the evidence that produced it.
+ *   1. WHAT was found?       — The vulnerability and its attack surface
+ *   2. WHERE in the code?    — Exact location from source through propagation to sink
+ *   3. WHY is this dangerous? — Real-world impact with CVE precedent and exploit scenario
+ *   4. HOW CONFIDENT are we? — Quantified confidence with transparent factor breakdown
+ *   5. HOW TO VERIFY?        — Step-by-step instructions a reviewer can independently follow
  *
- * Server component — no client-side state needed.
- * Gracefully renders nothing if evidence_chain is null/undefined (most findings
- * won't have structured evidence chains until rules are progressively upgraded).
+ * Each section provides 3-4 lines of descriptive prose suitable for
+ * framework-wide compliance reports (EU AI Act Art. 12/14/15, ISO 42001, NIST AI RMF).
+ *
+ * Gracefully renders nothing if evidence_chain is null/undefined.
+ * Falls back to a minimal confidence indicator when only confidence is available.
  */
 
 import React from "react";
@@ -72,67 +76,84 @@ interface ThreatReference {
   relevance: string;
 }
 
+interface VerificationStep {
+  step_type: string;
+  instruction: string;
+  target: string;
+  expected_observation?: string;
+}
+
 export interface EvidenceChainData {
   links: EvidenceLink[];
   confidence_factors: ConfidenceFactor[];
   confidence: number;
   threat_reference?: ThreatReference;
+  verification_steps?: VerificationStep[];
 }
 
-// ─── Constants ───────────────────────────────────────────────────────────────
+// ─── Human-readable label maps ──────────────────────────────────────────────
 
 const SOURCE_TYPE_LABELS: Record<string, string> = {
-  "user-parameter": "User Parameter",
-  "external-content": "External Content",
-  "file-content": "File Content",
-  "environment": "Environment",
+  "user-parameter": "User-Controlled Parameter",
+  "external-content": "External Content Source",
+  "file-content": "File System Content",
+  "environment": "Environment Variable",
   "database-content": "Database Content",
   "agent-output": "Agent Output",
-  "initialize-field": "Initialize Field",
+  "initialize-field": "MCP Initialize Field",
 };
 
 const SINK_TYPE_LABELS: Record<string, string> = {
-  "command-execution": "Command Execution",
-  "code-evaluation": "Code Evaluation",
-  "sql-execution": "SQL Execution",
-  "file-write": "File Write",
-  "network-send": "Network Send",
-  "deserialization": "Deserialization",
-  "template-render": "Template Render",
-  "credential-exposure": "Credential Exposure",
-  "config-modification": "Config Modification",
-  "privilege-grant": "Privilege Grant",
-};
-
-const PROPAGATION_LABELS: Record<string, string> = {
-  "direct-pass": "Direct Pass",
-  "variable-assignment": "Variable Assignment",
-  "string-concatenation": "String Concatenation",
-  "template-literal": "Template Literal",
-  "function-call": "Function Call",
-  "cross-tool-flow": "Cross-Tool Flow",
-  "schema-unconstrained": "Schema Unconstrained",
-  "description-directive": "Description Directive",
+  "command-execution": "Operating System Command Execution",
+  "code-evaluation": "Dynamic Code Evaluation",
+  "sql-execution": "SQL Statement Execution",
+  "file-write": "File System Write Operation",
+  "network-send": "Outbound Network Request",
+  "deserialization": "Object Deserialization",
+  "template-render": "Template Engine Rendering",
+  "credential-exposure": "Credential or Secret Exposure",
+  "config-modification": "Configuration Modification",
+  "privilege-grant": "Privilege Grant or Escalation",
 };
 
 const IMPACT_LABELS: Record<string, string> = {
-  "remote-code-execution": "Remote Code Execution",
+  "remote-code-execution": "Remote Code Execution (RCE)",
   "data-exfiltration": "Data Exfiltration",
   "credential-theft": "Credential Theft",
-  "denial-of-service": "Denial of Service",
+  "denial-of-service": "Denial of Service (DoS)",
   "privilege-escalation": "Privilege Escalation",
-  "session-hijack": "Session Hijack",
-  "config-poisoning": "Config Poisoning",
-  "cross-agent-propagation": "Cross-Agent Propagation",
+  "session-hijack": "Session Hijacking",
+  "config-poisoning": "Configuration Poisoning",
+  "cross-agent-propagation": "Cross-Agent Attack Propagation",
 };
 
 const EXPLOITABILITY_LABELS: Record<string, string> = {
-  trivial: "Trivial",
-  moderate: "Moderate",
-  complex: "Complex",
+  trivial: "Trivial — No special conditions required",
+  moderate: "Moderate — Requires specific preconditions",
+  complex: "Complex — Multiple conditions must align",
 };
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+const SCOPE_LABELS: Record<string, string> = {
+  "server-host": "Server Host System",
+  "user-data": "User Data and Privacy",
+  "connected-services": "Connected Services and APIs",
+  "build-environment": "Build and CI/CD Environment",
+  "ai-client": "AI Client and Agent Context",
+  "internal-details": "Internal System Details",
+};
+
+const STEP_TYPE_LABELS: Record<string, string> = {
+  "inspect-source": "Source Code Inspection",
+  "inspect-schema": "Schema Inspection",
+  "inspect-description": "Description Inspection",
+  "test-input": "Input Testing",
+  "check-config": "Configuration Check",
+  "check-dependency": "Dependency Check",
+  "trace-flow": "Data Flow Trace",
+  "compare-baseline": "Baseline Comparison",
+};
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
 function confLevel(c: number): "high" | "medium" | "low" {
   if (c >= 0.70) return "high";
@@ -140,96 +161,319 @@ function confLevel(c: number): "high" | "medium" | "low" {
   return "low";
 }
 
-function truncate(s: string, max: number): string {
-  if (s.length <= max) return s;
-  return s.slice(0, max) + "\u2026";
+function confLabel(c: number): string {
+  if (c >= 0.85) return "Very High";
+  if (c >= 0.70) return "High";
+  if (c >= 0.55) return "Moderate";
+  if (c >= 0.45) return "Low-Moderate";
+  return "Low";
 }
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
+// ─── Section 1: WHAT was found? ─────────────────────────────────────────────
 
-function SourceNode({ link }: { link: SourceLink }) {
-  return (
-    <div className="ec-node ec-node-source">
-      <div className="ec-node-badge ec-badge-source">SOURCE</div>
-      <div className="ec-node-type">{SOURCE_TYPE_LABELS[link.source_type] ?? link.source_type}</div>
-      <div className="ec-node-location">{link.location}</div>
-      <div className="ec-node-observed">{truncate(link.observed, 120)}</div>
-      <div className="ec-node-rationale">{link.rationale}</div>
-    </div>
-  );
-}
+function WhatSection({ sources, sinks, impacts }: { sources: SourceLink[]; sinks: SinkLink[]; impacts: ImpactLink[] }) {
+  const source = sources[0];
+  const sink = sinks[0];
+  const impact = impacts[0];
 
-function PropagationNode({ link }: { link: PropagationLink }) {
   return (
-    <div className="ec-node ec-node-prop">
-      <div className="ec-node-badge ec-badge-prop">FLOW</div>
-      <div className="ec-node-type">{PROPAGATION_LABELS[link.propagation_type] ?? link.propagation_type}</div>
-      <div className="ec-node-location">{link.location}</div>
-      <div className="ec-node-observed">{truncate(link.observed, 100)}</div>
-    </div>
-  );
-}
-
-function SinkNode({ link }: { link: SinkLink }) {
-  return (
-    <div className="ec-node ec-node-sink">
-      <div className="ec-node-badge ec-badge-sink">SINK</div>
-      <div className="ec-node-type">{SINK_TYPE_LABELS[link.sink_type] ?? link.sink_type}</div>
-      <div className="ec-node-location">{link.location}</div>
-      <div className="ec-node-observed">{truncate(link.observed, 100)}</div>
-      {link.cve_precedent && (
-        <span className="ec-cve">{link.cve_precedent}</span>
-      )}
-    </div>
-  );
-}
-
-function MitigationNode({ link }: { link: MitigationLink }) {
-  return (
-    <div className={`ec-node ec-node-mit ${link.present ? "ec-mit-present" : "ec-mit-absent"}`}>
-      <div className={`ec-node-badge ${link.present ? "ec-badge-mit-yes" : "ec-badge-mit-no"}`}>
-        {link.present ? "\u2713 MITIGATED" : "\u2717 UNMITIGATED"}
+    <div className="ec5-section ec5-what">
+      <div className="ec5-section-header">
+        <span className="ec5-section-num">1</span>
+        <h4 className="ec5-section-title">What Was Found</h4>
       </div>
-      <div className="ec-node-type">{link.mitigation_type.replace(/-/g, " ")}</div>
-      <div className="ec-node-detail">{link.detail}</div>
-    </div>
-  );
-}
-
-function ImpactNode({ link }: { link: ImpactLink }) {
-  return (
-    <div className="ec-node ec-node-impact">
-      <div className="ec-node-badge ec-badge-impact">IMPACT</div>
-      <div className="ec-node-type">{IMPACT_LABELS[link.impact_type] ?? link.impact_type}</div>
-      <div className="ec-impact-meta">
-        <span className="ec-impact-scope">{link.scope.replace(/-/g, " ")}</span>
-        <span className={`ec-impact-exploit ec-exploit-${link.exploitability}`}>
-          {EXPLOITABILITY_LABELS[link.exploitability] ?? link.exploitability}
-        </span>
+      <div className="ec5-section-body">
+        {source && (
+          <p className="ec5-prose">
+            <strong>Untrusted data entry point identified.</strong>{" "}
+            A {(SOURCE_TYPE_LABELS[source.source_type] ?? source.source_type).toLowerCase()} at{" "}
+            <code className="ec5-loc">{source.location}</code> introduces data into the processing
+            pipeline without adequate boundary controls. The observed input pattern
+            is <code className="ec5-code">{source.observed.length > 100 ? source.observed.slice(0, 100) + "\u2026" : source.observed}</code>.
+          </p>
+        )}
+        {source?.rationale && (
+          <p className="ec5-prose ec5-rationale">
+            {source.rationale}
+          </p>
+        )}
+        {sink && (
+          <p className="ec5-prose">
+            <strong>Dangerous operation reached.</strong>{" "}
+            This data reaches a {(SINK_TYPE_LABELS[sink.sink_type] ?? sink.sink_type).toLowerCase()} at{" "}
+            <code className="ec5-loc">{sink.location}</code>,
+            where the observed operation is <code className="ec5-code">{sink.observed.length > 100 ? sink.observed.slice(0, 100) + "\u2026" : sink.observed}</code>.
+            {sink.cve_precedent && (
+              <> This pattern has documented real-world exploitation precedent ({sink.cve_precedent}).</>
+            )}
+          </p>
+        )}
+        {impact && (
+          <p className="ec5-prose">
+            <strong>Potential impact: {IMPACT_LABELS[impact.impact_type] ?? impact.impact_type}.</strong>{" "}
+            If exploited, an attacker could compromise {(SCOPE_LABELS[impact.scope] ?? impact.scope).toLowerCase()}.{" "}
+            Exploitability is assessed as {(EXPLOITABILITY_LABELS[impact.exploitability] ?? impact.exploitability).toLowerCase()}.
+          </p>
+        )}
+        {!source && !sink && impacts.length > 0 && (
+          <p className="ec5-prose">
+            <strong>Structural vulnerability identified.</strong>{" "}
+            {impact!.scenario}
+          </p>
+        )}
       </div>
-      <div className="ec-node-detail">{link.scenario}</div>
     </div>
   );
 }
 
-function renderLink(link: EvidenceLink, index: number) {
-  switch (link.type) {
-    case "source":
-      return <SourceNode key={index} link={link} />;
-    case "propagation":
-      return <PropagationNode key={index} link={link} />;
-    case "sink":
-      return <SinkNode key={index} link={link} />;
-    case "mitigation":
-      return <MitigationNode key={index} link={link} />;
-    case "impact":
-      return <ImpactNode key={index} link={link} />;
-    default:
-      return null;
-  }
+// ─── Section 2: WHERE in the code? ──────────────────────────────────────────
+
+function WhereSection({ sources, propagations, sinks }: {
+  sources: SourceLink[]; propagations: PropagationLink[]; sinks: SinkLink[]
+}) {
+  if (sources.length === 0 && sinks.length === 0) return null;
+
+  return (
+    <div className="ec5-section ec5-where">
+      <div className="ec5-section-header">
+        <span className="ec5-section-num">2</span>
+        <h4 className="ec5-section-title">Where in the Code</h4>
+      </div>
+      <div className="ec5-section-body">
+        <p className="ec5-prose">
+          The data flow traverses {1 + propagations.length + (sinks.length > 0 ? 1 : 0)} location{(1 + propagations.length + (sinks.length > 0 ? 1 : 0)) !== 1 ? "s" : ""} from
+          entry point to dangerous operation.
+          {propagations.length > 0
+            ? ` The data passes through ${propagations.length} intermediate transformation${propagations.length !== 1 ? "s" : ""} before reaching the sink, each of which could have applied sanitization but did not.`
+            : " The data flows directly from source to sink with no intermediate transformations or sanitization points."
+          }
+        </p>
+        <div className="ec5-flow-chain">
+          {sources.map((s, i) => (
+            <div key={`s-${i}`} className="ec5-flow-node ec5-flow-source">
+              <div className="ec5-flow-badge">ENTRY</div>
+              <div className="ec5-flow-loc">{s.location}</div>
+              <div className="ec5-flow-obs">{s.observed.length > 80 ? s.observed.slice(0, 80) + "\u2026" : s.observed}</div>
+            </div>
+          ))}
+          {sources.length > 0 && (propagations.length > 0 || sinks.length > 0) && (
+            <div className="ec5-flow-arrow" aria-hidden="true">
+              <svg width="16" height="20" viewBox="0 0 16 20" fill="none"><path d="M8 0v14M3 11l5 6 5-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </div>
+          )}
+          {propagations.map((p, i) => (
+            <React.Fragment key={`p-${i}`}>
+              <div className="ec5-flow-node ec5-flow-prop">
+                <div className="ec5-flow-badge">FLOW</div>
+                <div className="ec5-flow-loc">{p.location}</div>
+                <div className="ec5-flow-obs">{p.observed.length > 80 ? p.observed.slice(0, 80) + "\u2026" : p.observed}</div>
+              </div>
+              {(i < propagations.length - 1 || sinks.length > 0) && (
+                <div className="ec5-flow-arrow" aria-hidden="true">
+                  <svg width="16" height="20" viewBox="0 0 16 20" fill="none"><path d="M8 0v14M3 11l5 6 5-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                </div>
+              )}
+            </React.Fragment>
+          ))}
+          {sinks.map((s, i) => (
+            <div key={`k-${i}`} className="ec5-flow-node ec5-flow-sink">
+              <div className="ec5-flow-badge">DANGER</div>
+              <div className="ec5-flow-loc">{s.location}</div>
+              <div className="ec5-flow-obs">{s.observed.length > 80 ? s.observed.slice(0, 80) + "\u2026" : s.observed}</div>
+              {s.cve_precedent && <div className="ec5-flow-cve">{s.cve_precedent}</div>}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
-// ─── Main Component ──────────────────────────────────────────────────────────
+// ─── Section 3: WHY is this dangerous? ──────────────────────────────────────
+
+function WhySection({ impacts, mitigations, reference }: {
+  impacts: ImpactLink[]; mitigations: MitigationLink[]; reference?: ThreatReference
+}) {
+  const absentMitigations = mitigations.filter(m => !m.present);
+  const presentMitigations = mitigations.filter(m => m.present);
+
+  return (
+    <div className="ec5-section ec5-why">
+      <div className="ec5-section-header">
+        <span className="ec5-section-num">3</span>
+        <h4 className="ec5-section-title">Why This Is Dangerous</h4>
+      </div>
+      <div className="ec5-section-body">
+        {impacts.map((impact, i) => (
+          <div key={i} className="ec5-impact-block">
+            <p className="ec5-prose">
+              <strong>{IMPACT_LABELS[impact.impact_type] ?? impact.impact_type}.</strong>{" "}
+              {impact.scenario}
+            </p>
+            <div className="ec5-impact-meta">
+              <span className="ec5-impact-scope">
+                Scope: {SCOPE_LABELS[impact.scope] ?? impact.scope}
+              </span>
+              <span className={`ec5-impact-exploit ec5-exploit-${impact.exploitability}`}>
+                Exploitability: {EXPLOITABILITY_LABELS[impact.exploitability] ?? impact.exploitability}
+              </span>
+            </div>
+          </div>
+        ))}
+        {absentMitigations.length > 0 && (
+          <div className="ec5-mitigations">
+            <p className="ec5-prose ec5-mit-header">
+              <strong>Missing security controls ({absentMitigations.length}):</strong>{" "}
+              The following mitigation measures were checked during analysis and found to be absent.
+              Each represents a defense layer that, if implemented, would reduce or eliminate the exploitability of this finding.
+            </p>
+            <div className="ec5-mit-list">
+              {absentMitigations.map((m, i) => (
+                <div key={i} className="ec5-mit-item ec5-mit-absent">
+                  <span className="ec5-mit-icon">\u2717</span>
+                  <div className="ec5-mit-content">
+                    <strong>{m.mitigation_type.replace(/-/g, " ")}</strong>
+                    <p>{m.detail}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {presentMitigations.length > 0 && (
+          <div className="ec5-mitigations ec5-mitigations-present">
+            <p className="ec5-prose ec5-mit-header">
+              <strong>Controls detected ({presentMitigations.length}):</strong>
+            </p>
+            <div className="ec5-mit-list">
+              {presentMitigations.map((m, i) => (
+                <div key={i} className="ec5-mit-item ec5-mit-present">
+                  <span className="ec5-mit-icon">\u2713</span>
+                  <div className="ec5-mit-content">
+                    <strong>{m.mitigation_type.replace(/-/g, " ")}</strong>
+                    <p>{m.detail}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {reference && (
+          <div className="ec5-reference">
+            <span className="ec5-ref-label">Threat Intelligence Reference</span>
+            <div className="ec5-ref-detail">
+              <span className="ec5-ref-id">{reference.id}</span>
+              <span className="ec5-ref-title">{reference.title}</span>
+              {reference.year && <span className="ec5-ref-year">({reference.year})</span>}
+            </div>
+            <p className="ec5-ref-relevance">{reference.relevance}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Section 4: HOW CONFIDENT are we? ───────────────────────────────────────
+
+function ConfidenceSection({ confidence, factors }: { confidence: number; factors: ConfidenceFactor[] }) {
+  const level = confLevel(confidence);
+  const pct = Math.round(confidence * 100);
+
+  return (
+    <div className="ec5-section ec5-confidence">
+      <div className="ec5-section-header">
+        <span className="ec5-section-num">4</span>
+        <h4 className="ec5-section-title">Confidence Assessment</h4>
+      </div>
+      <div className="ec5-section-body">
+        <div className="ec5-conf-display">
+          <div className="ec5-conf-score">
+            <span className={`ec5-conf-pct ec5-conf-${level}`}>{pct}%</span>
+            <span className={`ec5-conf-label-text ec5-conf-${level}`}>{confLabel(confidence)}</span>
+          </div>
+          <div className="ec5-conf-bar-track">
+            <div className={`ec5-conf-bar-fill ec5-conf-${level}`} style={{ width: `${pct}%` }} />
+          </div>
+        </div>
+        <p className="ec5-prose">
+          This finding has been assigned a confidence score of <strong>{pct}%</strong> ({confLabel(confidence).toLowerCase()}).
+          Confidence reflects the strength of the evidence chain: higher values indicate that the finding
+          was confirmed through multiple independent analysis techniques (e.g., AST-based taint tracking,
+          structural pattern matching, or cross-reference with known CVEs). Lower values indicate the
+          finding is based on heuristic patterns that may require manual verification.
+        </p>
+        {factors.length > 0 && (
+          <div className="ec5-factors">
+            <p className="ec5-factors-header">
+              <strong>Confidence factors:</strong> The following analysis signals contributed to the final confidence score.
+              Positive adjustments indicate corroborating evidence; negative adjustments indicate uncertainty or partial mitigation.
+            </p>
+            <div className="ec5-factors-list">
+              {factors.map((f, i) => (
+                <div key={i} className="ec5-factor-item">
+                  <span className={`ec5-factor-adj ${f.adjustment >= 0 ? "ec5-factor-pos" : "ec5-factor-neg"}`}>
+                    {f.adjustment >= 0 ? "+" : ""}{f.adjustment.toFixed(2)}
+                  </span>
+                  <div className="ec5-factor-detail">
+                    <strong>{f.factor.replace(/_/g, " ")}</strong>
+                    <p>{f.rationale}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Section 5: HOW TO VERIFY? ──────────────────────────────────────────────
+
+function VerifySection({ steps }: { steps: VerificationStep[] }) {
+  if (steps.length === 0) return null;
+
+  return (
+    <div className="ec5-section ec5-verify">
+      <div className="ec5-section-header">
+        <span className="ec5-section-num">5</span>
+        <h4 className="ec5-section-title">How to Verify</h4>
+      </div>
+      <div className="ec5-section-body">
+        <p className="ec5-prose">
+          The following verification steps enable independent confirmation of this finding.
+          Each step can be performed by a security reviewer, compliance auditor, or automated
+          tooling to validate that the identified vulnerability exists and assess whether
+          remediation has been applied.
+        </p>
+        <div className="ec5-verify-steps">
+          {steps.map((step, i) => (
+            <div key={i} className="ec5-verify-step">
+              <div className="ec5-verify-step-header">
+                <span className="ec5-verify-step-num">Step {i + 1}</span>
+                <span className="ec5-verify-step-type">{STEP_TYPE_LABELS[step.step_type] ?? step.step_type}</span>
+              </div>
+              <div className="ec5-verify-step-target">
+                <span className="ec5-verify-target-label">Target:</span>
+                <code className="ec5-verify-target-val">{step.target}</code>
+              </div>
+              <p className="ec5-verify-instruction">{step.instruction}</p>
+              {step.expected_observation && (
+                <div className="ec5-verify-expected">
+                  <span className="ec5-verify-expected-label">Expected observation:</span>
+                  <p className="ec5-verify-expected-text">{step.expected_observation}</p>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Component ─────────────────────────────────────────────────────────
 
 export default function EvidenceChainViz({
   chain,
@@ -245,107 +489,42 @@ export default function EvidenceChainViz({
   // If there's only confidence (no chain), render a minimal confidence indicator
   if (!chain && confidence != null) {
     const level = confLevel(confidence);
+    const pct = Math.round(confidence * 100);
     return (
-      <div className="ec-confidence-only">
-        <span className="ec-conf-label">Confidence</span>
-        <div className="ec-conf-bar-track">
-          <div className={`ec-conf-bar-fill ec-conf-${level}`} style={{ width: `${Math.round(confidence * 100)}%` }} />
+      <div className="ec5-confidence-only">
+        <span className="ec5-conf-only-label">Confidence</span>
+        <div className="ec5-conf-bar-track">
+          <div className={`ec5-conf-bar-fill ec5-conf-${level}`} style={{ width: `${pct}%` }} />
         </div>
-        <span className={`ec-conf-pct ec-conf-${level}`}>{Math.round(confidence * 100)}%</span>
+        <span className={`ec5-conf-only-pct ec5-conf-${level}`}>{pct}%</span>
       </div>
     );
   }
 
-  // Full evidence chain visualization
   if (!chain) return null;
 
-  // Separate flow links (source, propagation, sink) from context links (mitigation, impact)
-  const flowLinks = chain.links.filter((l) => l.type === "source" || l.type === "propagation" || l.type === "sink");
+  // Categorize links
+  const sources = chain.links.filter((l): l is SourceLink => l.type === "source");
+  const propagations = chain.links.filter((l): l is PropagationLink => l.type === "propagation");
+  const sinks = chain.links.filter((l): l is SinkLink => l.type === "sink");
   const mitigations = chain.links.filter((l): l is MitigationLink => l.type === "mitigation");
   const impacts = chain.links.filter((l): l is ImpactLink => l.type === "impact");
-
-  const level = confLevel(chain.confidence);
+  const steps = chain.verification_steps ?? [];
 
   return (
-    <div className="ec-chain">
-      {/* ── Confidence Bar ───────────────────────────────────── */}
-      <div className="ec-confidence">
-        <span className="ec-conf-label">Confidence</span>
-        <div className="ec-conf-bar-track">
-          <div className={`ec-conf-bar-fill ec-conf-${level}`} style={{ width: `${Math.round(chain.confidence * 100)}%` }} />
-        </div>
-        <span className={`ec-conf-pct ec-conf-${level}`}>{Math.round(chain.confidence * 100)}%</span>
+    <div className="ec5-report">
+      <div className="ec5-report-header">
+        <span className="ec5-report-title">Evidence Report</span>
+        <span className={`ec5-report-conf ec5-conf-${confLevel(chain.confidence)}`}>
+          {Math.round(chain.confidence * 100)}% confidence
+        </span>
       </div>
 
-      {/* ── Data Flow Timeline ───────────────────────────────── */}
-      {flowLinks.length > 0 && (
-        <div className="ec-flow">
-          <div className="ec-flow-label">Evidence Chain</div>
-          <div className="ec-timeline">
-            {flowLinks.map((link, i) => (
-              <div key={i} className="ec-timeline-step">
-                {renderLink(link, i)}
-                {i < flowLinks.length - 1 && (
-                  <div className="ec-connector">
-                    <svg width="20" height="24" viewBox="0 0 20 24" fill="none">
-                      <path d="M10 0 L10 18 M5 14 L10 20 L15 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── Mitigations ──────────────────────────────────────── */}
-      {mitigations.length > 0 && (
-        <div className="ec-mitigations">
-          <div className="ec-flow-label">Mitigation Checks</div>
-          <div className="ec-mit-grid">
-            {mitigations.map((link, i) => (
-              <MitigationNode key={i} link={link} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── Impact ───────────────────────────────────────────── */}
-      {impacts.length > 0 && (
-        <div className="ec-impacts">
-          {impacts.map((link, i) => (
-            <ImpactNode key={i} link={link} />
-          ))}
-        </div>
-      )}
-
-      {/* ── Threat Reference ─────────────────────────────────── */}
-      {chain.threat_reference && (
-        <div className="ec-reference">
-          <span className="ec-ref-id">{chain.threat_reference.id}</span>
-          <span className="ec-ref-title">{chain.threat_reference.title}</span>
-          {chain.threat_reference.year && (
-            <span className="ec-ref-year">({chain.threat_reference.year})</span>
-          )}
-        </div>
-      )}
-
-      {/* ── Confidence Factor Breakdown ──────────────────────── */}
-      {chain.confidence_factors.length > 0 && (
-        <details className="ec-factors">
-          <summary className="ec-factors-summary">Confidence factors ({chain.confidence_factors.length})</summary>
-          <div className="ec-factors-list">
-            {chain.confidence_factors.map((f, i) => (
-              <div key={i} className="ec-factor">
-                <span className={`ec-factor-adj ${f.adjustment >= 0 ? "ec-factor-pos" : "ec-factor-neg"}`}>
-                  {f.adjustment >= 0 ? "+" : ""}{f.adjustment.toFixed(2)}
-                </span>
-                <span className="ec-factor-name">{f.factor}</span>
-              </div>
-            ))}
-          </div>
-        </details>
-      )}
+      <WhatSection sources={sources} sinks={sinks} impacts={impacts} />
+      <WhereSection sources={sources} propagations={propagations} sinks={sinks} />
+      <WhySection impacts={impacts} mitigations={mitigations} reference={chain.threat_reference} />
+      <ConfidenceSection confidence={chain.confidence} factors={chain.confidence_factors} />
+      <VerifySection steps={steps} />
     </div>
   );
 }

@@ -387,8 +387,8 @@ describe("Evidence Standard Enforcement", () => {
     }
   });
 
-  it("grace period is currently enabled", () => {
-    expect(EVIDENCE_CHAIN_GRACE_PERIOD).toBe(true);
+  it("grace period is disabled (all rules migrated)", () => {
+    expect(EVIDENCE_CHAIN_GRACE_PERIOD).toBe(false);
   });
 });
 
