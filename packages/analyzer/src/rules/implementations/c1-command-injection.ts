@@ -92,6 +92,7 @@ class CommandInjectionRule implements TypedRule {
       for (const flow of astCommandFlows) {
         astFlowCount++;
         if (flow.sanitized) {
+          const sanitizedChain = this.buildASTEvidenceChain(flow);
           findings.push({
             rule_id: RULE_ID,
             severity: "informational",
@@ -100,6 +101,7 @@ class CommandInjectionRule implements TypedRule {
             owasp_category: OWASP,
             mitre_technique: MITRE,
             confidence: flow.confidence * 0.3,
+            metadata: { analysis_type: "ast_taint_sanitized", evidence_chain: sanitizedChain },
           });
         } else {
           const chain = this.buildASTEvidenceChain(flow);
@@ -138,6 +140,7 @@ class CommandInjectionRule implements TypedRule {
 
       for (const flow of commandFlows) {
         if (flow.sanitized) {
+          const sanitizedChain = this.buildTaintEvidenceChain(flow);
           findings.push({
             rule_id: RULE_ID,
             severity: "informational",
@@ -146,6 +149,7 @@ class CommandInjectionRule implements TypedRule {
             owasp_category: OWASP,
             mitre_technique: MITRE,
             confidence: flow.confidence * 0.3,
+            metadata: { analysis_type: "taint_sanitized", evidence_chain: sanitizedChain },
           });
         } else {
           const chain = this.buildTaintEvidenceChain(flow);

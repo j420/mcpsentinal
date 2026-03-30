@@ -94,6 +94,37 @@ class DockerSocketMountRule implements TypedRule {
             inst.content.includes(":");
 
           if (isVolumeContext) {
+            const p1Chain = new EvidenceChainBuilder()
+              .source({
+                source_type: "file-content",
+                location: `Dockerfile/compose line ${inst.line}`,
+                observed: inst.content.slice(0, 100),
+                rationale: "Volume mount directive references Docker/container runtime socket",
+              })
+              .propagation({
+                propagation_type: "direct-pass",
+                location: `line ${inst.line}`,
+                observed: "Socket path bound as volume mount into container",
+              })
+              .sink({
+                sink_type: "privilege-grant",
+                location: `container runtime socket at line ${inst.line}`,
+                observed: "Docker socket mount grants full Docker daemon control to container",
+              })
+              .impact({
+                impact_type: "remote-code-execution",
+                scope: "server-host",
+                exploitability: "trivial",
+                scenario: "Attacker with container access uses docker.sock to spawn a privileged container, escaping to host",
+              })
+              .factor("structural-match", 0.2, "Volume directive directly references container runtime socket path")
+              .verification({
+                step_type: "check-config",
+                instruction: "Check the volume mount directive for docker.sock or equivalent runtime socket",
+                target: `line ${inst.line}`,
+                expected_observation: "Volume mount binding host container runtime socket into the container",
+              })
+              .build();
             findings.push({
               rule_id: "P1",
               severity: "critical",
@@ -107,7 +138,7 @@ class DockerSocketMountRule implements TypedRule {
               owasp_category: "MCP07-insecure-config",
               mitre_technique: "AML.T0054",
               confidence: 0.95,
-              metadata: { analysis_type: "structural", line: inst.line },
+              metadata: { analysis_type: "structural", line: inst.line, evidence_chain: p1Chain },
             });
           }
         }
@@ -143,6 +174,32 @@ class DangerousCapabilitiesRule implements TypedRule {
 
       // privileged: true
       if (/privileged\s*:\s*true/i.test(line)) {
+        const p2PrivChain = new EvidenceChainBuilder()
+          .source({
+            source_type: "file-content",
+            location: `container config line ${i + 1}`,
+            observed: "privileged: true",
+            rationale: "Container security context sets privileged mode",
+          })
+          .sink({
+            sink_type: "privilege-grant",
+            location: `line ${i + 1}`,
+            observed: "Privileged mode disables all Linux security boundaries (AppArmor, seccomp, cgroups)",
+          })
+          .impact({
+            impact_type: "remote-code-execution",
+            scope: "server-host",
+            exploitability: "trivial",
+            scenario: "Privileged container can mount host filesystem, load kernel modules, and escape to host",
+          })
+          .factor("structural-match", 0.2, "Explicit privileged: true in container security context")
+          .verification({
+            step_type: "check-config",
+            instruction: "Verify securityContext or container config contains privileged: true",
+            target: `line ${i + 1}`,
+            expected_observation: "privileged: true in container or pod spec",
+          })
+          .build();
         findings.push({
           rule_id: "P2",
           severity: "critical",
@@ -153,13 +210,44 @@ class DangerousCapabilitiesRule implements TypedRule {
           owasp_category: "MCP07-insecure-config",
           mitre_technique: "AML.T0054",
           confidence: 0.98,
-          metadata: { analysis_type: "structural", line: i + 1 },
+          metadata: { analysis_type: "structural", line: i + 1, evidence_chain: p2PrivChain },
         });
       }
 
       // cap_add with dangerous capabilities
       for (const cap of this.DANGEROUS_CAPS) {
         if (line.includes(cap) && /(?:cap_add|capabilities|add)/.test(lines.slice(Math.max(0, i - 3), i + 1).join("\n"))) {
+          const p2CapChain = new EvidenceChainBuilder()
+            .source({
+              source_type: "file-content",
+              location: `container config line ${i + 1}`,
+              observed: `capability: ${cap}`,
+              rationale: "Dangerous Linux capability added to container",
+            })
+            .propagation({
+              propagation_type: "direct-pass",
+              location: `cap_add/capabilities section near line ${i + 1}`,
+              observed: `${cap} added via cap_add or capabilities.add`,
+            })
+            .sink({
+              sink_type: "privilege-grant",
+              location: `line ${i + 1}`,
+              observed: `${cap} grants elevated host-level access to container processes`,
+            })
+            .impact({
+              impact_type: "privilege-escalation",
+              scope: "server-host",
+              exploitability: cap === "SYS_ADMIN" ? "trivial" : "moderate",
+              scenario: `Container with ${cap} can ${cap === "SYS_ADMIN" ? "escape to host via mount namespace" : "perform privileged operations on the host"}`,
+            })
+            .factor("structural-match", 0.15, `${cap} found in capabilities context`)
+            .verification({
+              step_type: "check-config",
+              instruction: `Verify ${cap} is listed in cap_add or capabilities.add`,
+              target: `lines ${Math.max(1, i - 2)}-${i + 1}`,
+              expected_observation: `${cap} in container capability additions`,
+            })
+            .build();
           findings.push({
             rule_id: "P2",
             severity: "critical",
@@ -170,7 +258,7 @@ class DangerousCapabilitiesRule implements TypedRule {
             owasp_category: "MCP07-insecure-config",
             mitre_technique: "AML.T0054",
             confidence: 0.93,
-            metadata: { analysis_type: "structural", line: i + 1, capability: cap },
+            metadata: { analysis_type: "structural", line: i + 1, capability: cap, evidence_chain: p2CapChain },
           });
           break;
         }
@@ -179,6 +267,33 @@ class DangerousCapabilitiesRule implements TypedRule {
       // hostPID / hostIPC / hostNetwork
       if (/host(?:PID|IPC|Network)\s*:\s*true/i.test(line)) {
         const match = line.match(/host(PID|IPC|Network)/i)!;
+        const nsType = match[1].toLowerCase();
+        const p2NsChain = new EvidenceChainBuilder()
+          .source({
+            source_type: "file-content",
+            location: `container config line ${i + 1}`,
+            observed: `host${match[1]}: true`,
+            rationale: `Container shares host ${nsType} namespace, breaking isolation`,
+          })
+          .sink({
+            sink_type: "privilege-grant",
+            location: `line ${i + 1}`,
+            observed: `Host ${nsType} namespace shared with container`,
+          })
+          .impact({
+            impact_type: "privilege-escalation",
+            scope: "server-host",
+            exploitability: "moderate",
+            scenario: `Container with host${match[1]} can ${nsType === "pid" ? "see and signal host processes" : nsType === "network" ? "access host network interfaces and services" : "access host IPC mechanisms"}`,
+          })
+          .factor("structural-match", 0.15, `Explicit host${match[1]}: true in pod/container spec`)
+          .verification({
+            step_type: "check-config",
+            instruction: `Verify host${match[1]}: true in the pod or container specification`,
+            target: `line ${i + 1}`,
+            expected_observation: `host${match[1]}: true sharing host namespace`,
+          })
+          .build();
         findings.push({
           rule_id: "P2",
           severity: "critical",
@@ -187,7 +302,7 @@ class DangerousCapabilitiesRule implements TypedRule {
           owasp_category: "MCP07-insecure-config",
           mitre_technique: "AML.T0054",
           confidence: 0.95,
-          metadata: { analysis_type: "structural", line: i + 1 },
+          metadata: { analysis_type: "structural", line: i + 1, evidence_chain: p2NsChain },
         });
       }
     }
@@ -225,6 +340,37 @@ class CloudMetadataAccessRule implements TypedRule {
         // Check if any part of the flow references metadata endpoints
         const flowText = `${flow.source.expression} ${flow.path.map(s => s.expression).join(" ")} ${flow.sink.expression}`;
         if (this.METADATA_ENDPOINTS.some(p => p.test(flowText))) {
+          const p3TaintChain = new EvidenceChainBuilder()
+            .source({
+              source_type: "file-content",
+              location: `line ${flow.source.line}`,
+              observed: flow.source.expression,
+              rationale: "Cloud metadata endpoint URL used as request target",
+            })
+            .propagation({
+              propagation_type: "variable-assignment",
+              location: flow.path.map(s => `L${s.line}`).join(" → "),
+              observed: flow.path.map(s => s.expression).join(" → "),
+            })
+            .sink({
+              sink_type: "network-send",
+              location: `line ${flow.sink.line}`,
+              observed: `HTTP request to cloud metadata service: ${flow.sink.expression}`,
+            })
+            .impact({
+              impact_type: "credential-theft",
+              scope: "connected-services",
+              exploitability: "trivial",
+              scenario: "SSRF to cloud metadata service (169.254.169.254) exposes IAM credentials, enabling lateral movement across cloud resources",
+            })
+            .factor("ast-taint-confirmed", 0.3, "Complete source→sink taint path confirmed via AST analysis")
+            .verification({
+              step_type: "inspect-source",
+              instruction: "Trace the metadata URL from its definition to where it is used in an HTTP request",
+              target: `lines ${flow.source.line}-${flow.sink.line}`,
+              expected_observation: "Cloud metadata endpoint flows into fetch/request without network policy blocking",
+            })
+            .build();
           findings.push({
             rule_id: "P3",
             severity: "critical",
@@ -237,7 +383,7 @@ class CloudMetadataAccessRule implements TypedRule {
             owasp_category: "MCP07-insecure-config",
             mitre_technique: "AML.T0054",
             confidence: flow.confidence,
-            metadata: { analysis_type: "ast_taint" },
+            metadata: { analysis_type: "ast_taint", evidence_chain: p3TaintChain },
           });
         }
       }
@@ -254,6 +400,32 @@ class CloudMetadataAccessRule implements TypedRule {
           // Skip if it's a block rule (blocking metadata is good)
           if (/(?:block|deny|reject|firewall|iptables|REJECT|DROP)/i.test(lineText)) continue;
 
+          const p3PatternChain = new EvidenceChainBuilder()
+            .source({
+              source_type: "file-content",
+              location: `line ${line}`,
+              observed: match[0],
+              rationale: "Cloud metadata service endpoint URL found in source code",
+            })
+            .sink({
+              sink_type: "network-send",
+              location: `line ${line}`,
+              observed: `Reference to cloud metadata endpoint: ${match[0]}`,
+            })
+            .impact({
+              impact_type: "credential-theft",
+              scope: "connected-services",
+              exploitability: "moderate",
+              scenario: "Cloud metadata access leaks IAM credentials, API keys, and instance identity tokens",
+            })
+            .factor("pattern-match", 0.1, "Metadata endpoint URL found but taint flow not confirmed via AST")
+            .verification({
+              step_type: "inspect-source",
+              instruction: "Check if the metadata endpoint URL is used in an HTTP request context",
+              target: `line ${line}`,
+              expected_observation: "Cloud metadata URL referenced in a request/fetch call, not in a block/deny rule",
+            })
+            .build();
           findings.push({
             rule_id: "P3",
             severity: "critical",
@@ -266,7 +438,7 @@ class CloudMetadataAccessRule implements TypedRule {
             owasp_category: "MCP07-insecure-config",
             mitre_technique: "AML.T0054",
             confidence: 0.88,
-            metadata: { analysis_type: "pattern", line },
+            metadata: { analysis_type: "pattern", line, evidence_chain: p3PatternChain },
           });
         }
       }
@@ -311,6 +483,32 @@ class TLSBypassRule implements TypedRule {
       const match = regex.exec(source);
       if (match) {
         const line = getLineNumber(source, match.index);
+        const p4Chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "file-content",
+            location: `line ${line}`,
+            observed: match[0].slice(0, 60),
+            rationale: `${lang} TLS certificate validation bypass pattern found in source code`,
+          })
+          .sink({
+            sink_type: "config-modification",
+            location: `line ${line}`,
+            observed: `${desc} — disables certificate verification for all outbound connections`,
+          })
+          .impact({
+            impact_type: "data-exfiltration",
+            scope: "connected-services",
+            exploitability: "moderate",
+            scenario: "MITM attacker intercepts traffic due to disabled TLS validation, capturing credentials and sensitive data in transit",
+          })
+          .factor("structural-match", 0.15, `${lang} TLS bypass pattern detected in source`)
+          .verification({
+            step_type: "inspect-source",
+            instruction: `Search for TLS validation bypass patterns (${desc}) in the source code`,
+            target: `line ${line}`,
+            expected_observation: "TLS certificate verification explicitly disabled",
+          })
+          .build();
         findings.push({
           rule_id: "P4",
           severity: "critical",
@@ -323,7 +521,7 @@ class TLSBypassRule implements TypedRule {
           owasp_category: "MCP07-insecure-config",
           mitre_technique: "AML.T0054",
           confidence,
-          metadata: { analysis_type: "structural", line, language: lang },
+          metadata: { analysis_type: "structural", line, language: lang, evidence_chain: p4Chain },
         });
       }
     }
@@ -350,6 +548,37 @@ class SecretsInBuildLayersRule implements TypedRule {
     for (const inst of instructions) {
       // ARG with secret-like names
       if (inst.directive === "ARG" && this.SECRET_ENV_NAMES.test(inst.content)) {
+        const p5ArgChain = new EvidenceChainBuilder()
+          .source({
+            source_type: "file-content",
+            location: `Dockerfile line ${inst.line}`,
+            observed: `ARG ${inst.content.slice(0, 60)}`,
+            rationale: "Dockerfile ARG directive contains credential-like variable name",
+          })
+          .propagation({
+            propagation_type: "direct-pass",
+            location: `Dockerfile line ${inst.line}`,
+            observed: "ARG value persisted in Docker image layer history",
+          })
+          .sink({
+            sink_type: "credential-exposure",
+            location: `image layer at line ${inst.line}`,
+            observed: "ARG values are visible via `docker history --no-trunc` to anyone with image access",
+          })
+          .impact({
+            impact_type: "credential-theft",
+            scope: "connected-services",
+            exploitability: "trivial",
+            scenario: "Attacker pulls the image and runs `docker history --no-trunc` to extract build-time credentials",
+          })
+          .factor("structural-match", 0.15, "ARG name matches credential pattern (PASSWORD, SECRET, TOKEN, etc.)")
+          .verification({
+            step_type: "inspect-description",
+            instruction: "Check the Dockerfile for ARG directives with secret-like names",
+            target: `line ${inst.line}`,
+            expected_observation: "ARG directive with a name matching PASSWORD, SECRET, TOKEN, API_KEY, or similar",
+          })
+          .build();
         findings.push({
           rule_id: "P5",
           severity: "critical",
@@ -362,12 +591,43 @@ class SecretsInBuildLayersRule implements TypedRule {
           owasp_category: "MCP07-insecure-config",
           mitre_technique: "AML.T0057",
           confidence: 0.92,
-          metadata: { analysis_type: "structural", line: inst.line },
+          metadata: { analysis_type: "structural", line: inst.line, evidence_chain: p5ArgChain },
         });
       }
 
       // ENV with secret-like names
       if (inst.directive === "ENV" && this.SECRET_ENV_NAMES.test(inst.content)) {
+        const p5EnvChain = new EvidenceChainBuilder()
+          .source({
+            source_type: "file-content",
+            location: `Dockerfile line ${inst.line}`,
+            observed: `ENV ${inst.content.slice(0, 60)}`,
+            rationale: "Dockerfile ENV directive contains credential-like variable name",
+          })
+          .propagation({
+            propagation_type: "direct-pass",
+            location: `Dockerfile line ${inst.line}`,
+            observed: "ENV value baked into image layer, persists in every derived image",
+          })
+          .sink({
+            sink_type: "credential-exposure",
+            location: `image layer at line ${inst.line}`,
+            observed: "ENV values visible to anyone with access to the image or any container started from it",
+          })
+          .impact({
+            impact_type: "credential-theft",
+            scope: "connected-services",
+            exploitability: "trivial",
+            scenario: "Attacker inspects the image or runs a container to read environment variables containing secrets",
+          })
+          .factor("structural-match", 0.15, "ENV name matches credential pattern (PASSWORD, SECRET, TOKEN, etc.)")
+          .verification({
+            step_type: "inspect-description",
+            instruction: "Check the Dockerfile for ENV directives with secret-like names",
+            target: `line ${inst.line}`,
+            expected_observation: "ENV directive with a name matching PASSWORD, SECRET, TOKEN, API_KEY, or similar",
+          })
+          .build();
         findings.push({
           rule_id: "P5",
           severity: "critical",
@@ -378,12 +638,43 @@ class SecretsInBuildLayersRule implements TypedRule {
           owasp_category: "MCP07-insecure-config",
           mitre_technique: "AML.T0057",
           confidence: 0.90,
-          metadata: { analysis_type: "structural", line: inst.line },
+          metadata: { analysis_type: "structural", line: inst.line, evidence_chain: p5EnvChain },
         });
       }
 
       // COPY .env file
       if (inst.directive === "COPY" && /\.env\b/.test(inst.content)) {
+        const p5CopyChain = new EvidenceChainBuilder()
+          .source({
+            source_type: "file-content",
+            location: `Dockerfile line ${inst.line}`,
+            observed: `COPY ${inst.content.slice(0, 60)}`,
+            rationale: "Dockerfile COPY directive includes .env file containing secrets",
+          })
+          .propagation({
+            propagation_type: "direct-pass",
+            location: `Dockerfile line ${inst.line}`,
+            observed: ".env file copied into image layer, persists in image history",
+          })
+          .sink({
+            sink_type: "credential-exposure",
+            location: `image layer at line ${inst.line}`,
+            observed: ".env file with secrets embedded in the container image",
+          })
+          .impact({
+            impact_type: "credential-theft",
+            scope: "connected-services",
+            exploitability: "trivial",
+            scenario: "Attacker extracts .env file from the image layer to obtain database URLs, API keys, and passwords",
+          })
+          .factor("structural-match", 0.2, "COPY directive explicitly includes .env file")
+          .verification({
+            step_type: "inspect-description",
+            instruction: "Check the Dockerfile for COPY directives that include .env files",
+            target: `line ${inst.line}`,
+            expected_observation: "COPY directive referencing a .env file",
+          })
+          .build();
         findings.push({
           rule_id: "P5",
           severity: "critical",
@@ -393,7 +684,7 @@ class SecretsInBuildLayersRule implements TypedRule {
           owasp_category: "MCP07-insecure-config",
           mitre_technique: "AML.T0057",
           confidence: 0.95,
-          metadata: { analysis_type: "structural", line: inst.line },
+          metadata: { analysis_type: "structural", line: inst.line, evidence_chain: p5CopyChain },
         });
       }
     }
@@ -428,6 +719,32 @@ class LDPreloadRule implements TypedRule {
       const match = regex.exec(source);
       if (match) {
         const line = getLineNumber(source, match.index);
+        const p6Chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "file-content",
+            location: `line ${line}`,
+            observed: match[0].slice(0, 80),
+            rationale: "Shared library hijacking or process injection pattern found in source code",
+          })
+          .sink({
+            sink_type: "code-evaluation",
+            location: `line ${line}`,
+            observed: `${desc} — enables arbitrary shared library injection into process space`,
+          })
+          .impact({
+            impact_type: "remote-code-execution",
+            scope: "server-host",
+            exploitability: "moderate",
+            scenario: "Attacker places a malicious shared library at the specified path; LD_PRELOAD/dlopen loads it into every process, achieving persistent code execution",
+          })
+          .factor("structural-match", 0.15, "Library hijacking pattern detected in source")
+          .verification({
+            step_type: "inspect-source",
+            instruction: "Search for LD_PRELOAD, DYLD_INSERT_LIBRARIES, dlopen, or /proc/pid/mem patterns",
+            target: `line ${line}`,
+            expected_observation: "Shared library injection or process memory manipulation pattern",
+          })
+          .build();
         findings.push({
           rule_id: "P6",
           severity: "critical",
@@ -438,7 +755,7 @@ class LDPreloadRule implements TypedRule {
           owasp_category: "MCP07-insecure-config",
           mitre_technique: "AML.T0054",
           confidence,
-          metadata: { analysis_type: "structural", line },
+          metadata: { analysis_type: "structural", line, evidence_chain: p6Chain },
         });
       }
     }
@@ -482,6 +799,37 @@ class HostFilesystemMountRule implements TypedRule {
 
       for (const { pattern, desc } of this.SENSITIVE_PATHS) {
         if (pattern.test(line)) {
+          const p7Chain = new EvidenceChainBuilder()
+            .source({
+              source_type: "file-content",
+              location: `container config line ${i + 1}`,
+              observed: line.trim().slice(0, 80),
+              rationale: `Volume mount references sensitive host path: ${desc}`,
+            })
+            .propagation({
+              propagation_type: "direct-pass",
+              location: `line ${i + 1}`,
+              observed: `Sensitive host directory (${desc}) bound into container via volume mount`,
+            })
+            .sink({
+              sink_type: "credential-exposure",
+              location: `container filesystem at line ${i + 1}`,
+              observed: `Host path ${desc} exposed inside container — grants access to sensitive host files`,
+            })
+            .impact({
+              impact_type: "credential-theft",
+              scope: "server-host",
+              exploitability: "trivial",
+              scenario: `Attacker with container access reads ${desc} to obtain SSH keys, system credentials, or configuration files from the host`,
+            })
+            .factor("structural-match", 0.15, `Sensitive host path (${desc}) in volume mount context`)
+            .verification({
+              step_type: "check-config",
+              instruction: "Verify the volume mount references a sensitive host directory",
+              target: `line ${i + 1}`,
+              expected_observation: `Volume mount binding ${desc} from host into the container`,
+            })
+            .build();
           findings.push({
             rule_id: "P7",
             severity: "critical",
@@ -494,7 +842,7 @@ class HostFilesystemMountRule implements TypedRule {
             owasp_category: "MCP07-insecure-config",
             mitre_technique: "AML.T0054",
             confidence: 0.90,
-            metadata: { analysis_type: "structural", line: i + 1, sensitive_path: desc },
+            metadata: { analysis_type: "structural", line: i + 1, sensitive_path: desc, evidence_chain: p7Chain },
           });
           break;
         }

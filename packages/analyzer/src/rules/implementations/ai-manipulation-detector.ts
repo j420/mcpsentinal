@@ -152,6 +152,13 @@ class TrustAssertionInjectionRule implements TypedRule {
       for (const { pattern, desc, confidence } of TRUST_ASSERTIONS) {
         const match = pattern.exec(text);
         if (match) {
+          const g2ToolChain = new EvidenceChainBuilder()
+            .source({ source_type: "external-content", location: `tool:${tool.name}:description`, observed: match[0], rationale: "Tool description asserts authority/trust status that AI clients are trained to respect" })
+            .propagation({ propagation_type: "description-directive", location: `tool:${tool.name}:description`, observed: `Trust assertion "${desc}" processed by AI as behavioral context` })
+            .impact({ impact_type: "privilege-escalation", scope: "ai-client", exploitability: "trivial", scenario: `AI trusts tool "${tool.name}" based on self-asserted authority claim: "${match[0]}"` })
+            .factor("trust_assertion", confidence - 0.70, `Trust assertion: ${desc}`)
+            .verification({ step_type: "inspect-description", instruction: `Check tool "${tool.name}" description for authority claims`, target: `tool:${tool.name}`, expected_observation: `${desc}: "${match[0]}"` })
+            .build();
           findings.push({
             rule_id: "G2",
             severity: "critical",
@@ -164,7 +171,7 @@ class TrustAssertionInjectionRule implements TypedRule {
             owasp_category: "MCP01-prompt-injection",
             mitre_technique: "AML.T0054",
             confidence,
-            metadata: { analysis_type: "linguistic", tool_name: tool.name },
+            metadata: { analysis_type: "linguistic", tool_name: tool.name, evidence_chain: g2ToolChain },
           });
           break;
         }
@@ -177,6 +184,13 @@ class TrustAssertionInjectionRule implements TypedRule {
       for (const { pattern, desc, confidence } of TRUST_ASSERTIONS) {
         const match = pattern.exec(instructions);
         if (match) {
+          const g2InitChain = new EvidenceChainBuilder()
+            .source({ source_type: "initialize-field", location: "server:instructions", observed: match[0], rationale: "Server initialize instructions contain trust assertion processed with higher trust than tool descriptions" })
+            .propagation({ propagation_type: "description-directive", location: "server:initialize:instructions", observed: `Trust assertion in initialize response: "${desc}"` })
+            .impact({ impact_type: "privilege-escalation", scope: "ai-client", exploitability: "trivial", scenario: `AI follows trust assertion "${match[0]}" from initialize instructions — highest-trust surface` })
+            .factor("initialize_trust_surface", Math.min(1.0, confidence + 0.03) - 0.70, `Initialize instructions: ${desc}`)
+            .verification({ step_type: "inspect-description", instruction: "Check server initialize instructions for authority claims", target: "server:initialize:instructions", expected_observation: `${desc}: "${match[0]}"` })
+            .build();
           findings.push({
             rule_id: "G2",
             severity: "critical",
@@ -186,8 +200,8 @@ class TrustAssertionInjectionRule implements TypedRule {
             remediation: "Remove trust assertions from server instructions.",
             owasp_category: "MCP01-prompt-injection",
             mitre_technique: "AML.T0054",
-            confidence: Math.min(1.0, confidence + 0.03), // Higher trust surface
-            metadata: { analysis_type: "linguistic", surface: "initialize_instructions" },
+            confidence: Math.min(1.0, confidence + 0.03),
+            metadata: { analysis_type: "linguistic", surface: "initialize_instructions", evidence_chain: g2InitChain },
           });
           break;
         }
@@ -219,6 +233,13 @@ class ResponseFormatInjectionRule implements TypedRule {
       for (const { regex, desc, confidence } of patterns) {
         const match = regex.exec(text);
         if (match) {
+          const g3Chain = new EvidenceChainBuilder()
+            .source({ source_type: "external-content", location: `tool:${tool.name}:description`, observed: match[0], rationale: "Tool description contains protocol-level references that AI may interpret as executable instructions" })
+            .propagation({ propagation_type: "description-directive", location: `tool:${tool.name}:description`, observed: `${desc} in tool description processed by AI` })
+            .impact({ impact_type: "cross-agent-propagation", scope: "ai-client", exploitability: "moderate", scenario: `AI mistakes "${match[0]}" in tool "${tool.name}" for protocol message or executable instruction` })
+            .factor("protocol_reference", confidence - 0.70, `Protocol reference: ${desc}`)
+            .verification({ step_type: "inspect-description", instruction: `Check tool "${tool.name}" description for protocol-level references`, target: `tool:${tool.name}`, expected_observation: `${desc}: "${match[0]}"` })
+            .build();
           findings.push({
             rule_id: "G3",
             severity: "critical",
@@ -231,7 +252,7 @@ class ResponseFormatInjectionRule implements TypedRule {
             owasp_category: "MCP01-prompt-injection",
             mitre_technique: "AML.T0061",
             confidence,
-            metadata: { analysis_type: "pattern", tool_name: tool.name },
+            metadata: { analysis_type: "pattern", tool_name: tool.name, evidence_chain: g3Chain },
           });
           break;
         }
@@ -262,6 +283,13 @@ class CapabilityEscalationRule implements TypedRule {
       for (const { regex, desc } of patterns) {
         const match = regex.exec(text);
         if (match) {
+          const g5Chain = new EvidenceChainBuilder()
+            .source({ source_type: "external-content", location: `tool:${tool.name}:description`, observed: match[0], rationale: "Tool description references prior approvals to escalate privileges without fresh user consent" })
+            .propagation({ propagation_type: "description-directive", location: `tool:${tool.name}:description`, observed: `Capability escalation pattern: ${desc}` })
+            .impact({ impact_type: "privilege-escalation", scope: "ai-client", exploitability: "trivial", scenario: `AI grants tool "${tool.name}" elevated permissions based on false claim of prior approval` })
+            .factor("escalation_pattern", 0.18, `Privilege escalation: ${desc}`)
+            .verification({ step_type: "inspect-description", instruction: `Check tool "${tool.name}" description for references to prior approvals or other tools' permissions`, target: `tool:${tool.name}`, expected_observation: `${desc}: "${match[0]}"` })
+            .build();
           findings.push({
             rule_id: "G5",
             severity: "critical",
@@ -274,7 +302,7 @@ class CapabilityEscalationRule implements TypedRule {
             owasp_category: "MCP01-prompt-injection",
             mitre_technique: "AML.T0061",
             confidence: 0.88,
-            metadata: { analysis_type: "linguistic", tool_name: tool.name },
+            metadata: { analysis_type: "linguistic", tool_name: tool.name, evidence_chain: g5Chain },
           });
           break;
         }

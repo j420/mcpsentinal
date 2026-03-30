@@ -361,6 +361,7 @@ class TaintBasedRule implements TypedRule {
       for (const flow of relevantFlows) {
         astFlowCount++;
         if (flow.sanitized) {
+          const sanitizedChain = this.buildASTEvidenceChain(flow);
           findings.push({
             rule_id: this.def.id,
             severity: "informational",
@@ -369,6 +370,7 @@ class TaintBasedRule implements TypedRule {
             owasp_category: this.def.owasp,
             mitre_technique: this.def.mitre,
             confidence: flow.confidence * 0.3,
+            metadata: { analysis_type: "ast_taint_sanitized", evidence_chain: sanitizedChain },
           });
         } else {
           const chain = this.buildASTEvidenceChain(flow);
@@ -405,6 +407,7 @@ class TaintBasedRule implements TypedRule {
 
       for (const flow of relevantFlows) {
         if (flow.sanitized) {
+          const sanitizedChain = this.buildTaintEvidenceChain(flow);
           findings.push({
             rule_id: this.def.id,
             severity: "informational",
@@ -413,6 +416,7 @@ class TaintBasedRule implements TypedRule {
             owasp_category: this.def.owasp,
             mitre_technique: this.def.mitre,
             confidence: flow.confidence * 0.3,
+            metadata: { analysis_type: "taint_sanitized", evidence_chain: sanitizedChain },
           });
         } else {
           const chain = this.buildTaintEvidenceChain(flow);

@@ -387,8 +387,8 @@ describe("Evidence Standard Enforcement", () => {
     }
   });
 
-  it("grace period is enabled (~80 finding paths still need evidence chains)", () => {
-    expect(EVIDENCE_CHAIN_GRACE_PERIOD).toBe(true);
+  it("grace period is disabled — all finding paths have evidence chains", () => {
+    expect(EVIDENCE_CHAIN_GRACE_PERIOD).toBe(false);
   });
 });
 

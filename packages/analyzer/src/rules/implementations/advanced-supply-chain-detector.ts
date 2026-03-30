@@ -121,6 +121,33 @@ class ActionsTagPoisoningRule implements TypedRule {
 
       // Pipe-to-shell: curl|bash in run step
       if (/(?:curl|wget)\s+.*\|\s*(?:bash|sh|sudo|python|node)/i.test(line)) {
+        const l1PipeChain = new EvidenceChainBuilder()
+          .source({
+            source_type: "external-content",
+            location: `line ${i + 1}: ${line.slice(0, 80)}`,
+            observed: line.slice(0, 100),
+            rationale: "Remote script downloaded via curl/wget is untrusted external content that executes without integrity verification.",
+          })
+          .sink({
+            sink_type: "command-execution",
+            location: `line ${i + 1}`,
+            observed: `Pipe-to-shell pattern: downloaded content piped directly to bash/sh/python/node`,
+          })
+          .impact({
+            impact_type: "remote-code-execution",
+            scope: "server-host",
+            exploitability: "trivial",
+            scenario: "An attacker who compromises the remote URL or performs a MITM attack can inject arbitrary code that executes with the CI runner's full privileges.",
+          })
+          .factor("pipe_to_shell", 0.15, "Direct pipe-to-shell is the highest-risk installation pattern — no checksum, no pinning")
+          .verification({
+            step_type: "inspect-source",
+            instruction: "Locate the curl/wget | bash pattern at the indicated line. Confirm the downloaded script is piped directly to a shell interpreter without checksum verification.",
+            target: `line ${i + 1}`,
+            expected_observation: "curl or wget output piped to bash, sh, python, or node",
+          })
+          .build();
+
         findings.push({
           rule_id: "L1",
           severity: "critical",
@@ -133,7 +160,7 @@ class ActionsTagPoisoningRule implements TypedRule {
           owasp_category: "MCP10-supply-chain",
           mitre_technique: "AML.T0017",
           confidence: 0.95,
-          metadata: { analysis_type: "structural", line: i + 1 },
+          metadata: { analysis_type: "structural", line: i + 1, evidence_chain: l1PipeChain },
         });
       }
     }
@@ -165,6 +192,38 @@ class MaliciousBuildPluginRule implements TypedRule {
       const isPluginContext = /(?:rollup|vite|webpack|esbuild)[\s\S]*(?:plugin|hooks|compiler)/i.test(context.source_code);
       if (isPluginContext && dangerousFlows.length > 0) {
         for (const flow of dangerousFlows) {
+          const l2TaintChain = new EvidenceChainBuilder()
+            .source({
+              source_type: "file-content",
+              location: `line ${flow.source.line}: "${flow.source.expression}"`,
+              observed: flow.source.expression,
+              rationale: "Data originates in a build plugin context where plugins execute with full system access during compilation.",
+            })
+            .propagation({
+              propagation_type: "function-call",
+              location: `line ${flow.source.line} → line ${flow.sink.line}`,
+              observed: `Taint flows from "${flow.source.expression}" to "${flow.sink.expression.slice(0, 50)}"`,
+            })
+            .sink({
+              sink_type: flow.sink.category === "command_execution" ? "command-execution" : "network-send",
+              location: `line ${flow.sink.line}`,
+              observed: `${flow.sink.category}: "${flow.sink.expression.slice(0, 80)}"`,
+            })
+            .impact({
+              impact_type: "remote-code-execution",
+              scope: "server-host",
+              exploitability: "moderate",
+              scenario: "A malicious build plugin executes arbitrary commands or exfiltrates data during the build process, compromising the build output and potentially the CI environment.",
+            })
+            .factor("ast_taint_flow", 0.1, "Complete AST taint path from source to dangerous sink in build plugin context")
+            .verification({
+              step_type: "inspect-source",
+              instruction: "Examine the build plugin code at the indicated lines. Confirm the taint flow from the source expression to the dangerous sink.",
+              target: `lines ${flow.source.line}–${flow.sink.line}`,
+              expected_observation: `Build plugin code with ${flow.sink.category} pattern`,
+            })
+            .build();
+
           findings.push({
             rule_id: "L2",
             severity: "critical",
@@ -178,7 +237,7 @@ class MaliciousBuildPluginRule implements TypedRule {
             owasp_category: "MCP10-supply-chain",
             mitre_technique: "AML.T0017",
             confidence: flow.confidence * 0.90,
-            metadata: { analysis_type: "ast_taint" },
+            metadata: { analysis_type: "ast_taint", evidence_chain: l2TaintChain },
           });
         }
       }
@@ -197,6 +256,33 @@ class MaliciousBuildPluginRule implements TypedRule {
         const match = regex.exec(context.source_code);
         if (match) {
           const line = getLineNumber(context.source_code, match.index);
+          const l2StructChain = new EvidenceChainBuilder()
+            .source({
+              source_type: "file-content",
+              location: `line ${line}: "${match[0].slice(0, 80)}"`,
+              observed: match[0].slice(0, 100),
+              rationale: "Build configuration file contains a plugin or hook with dangerous capabilities (network fetch, command execution, or environment exfiltration).",
+            })
+            .sink({
+              sink_type: desc.includes("exec") ? "command-execution" : "network-send",
+              location: `line ${line}`,
+              observed: `${desc}: "${match[0].slice(0, 80)}"`,
+            })
+            .impact({
+              impact_type: "remote-code-execution",
+              scope: "server-host",
+              exploitability: "moderate",
+              scenario: "A build plugin with exec or network access can steal secrets, inject backdoors into build artifacts, or exfiltrate source code during the build process.",
+            })
+            .factor("structural_pattern", 0.05, "Structural pattern match in build configuration context")
+            .verification({
+              step_type: "inspect-source",
+              instruction: "Open the build configuration file and examine the plugin/hook definition at the indicated line. Confirm it performs network requests or command execution.",
+              target: `line ${line}`,
+              expected_observation: desc,
+            })
+            .build();
+
           findings.push({
             rule_id: "L2",
             severity: "critical",
@@ -205,7 +291,7 @@ class MaliciousBuildPluginRule implements TypedRule {
             owasp_category: "MCP10-supply-chain",
             mitre_technique: "AML.T0017",
             confidence: 0.85,
-            metadata: { analysis_type: "structural", line },
+            metadata: { analysis_type: "structural", line, evidence_chain: l2StructChain },
           });
           break;
         }
@@ -240,6 +326,39 @@ class ConfigSymlinkRule implements TypedRule {
       const match = regex.exec(source);
       if (match) {
         const line = getLineNumber(source, match.index);
+        const l6SymlinkChain = new EvidenceChainBuilder()
+          .source({
+            source_type: "file-content",
+            location: `line ${line}: "${match[0].slice(0, 80)}"`,
+            observed: match[0].slice(0, 100),
+            rationale: "Code creates a symlink targeting a sensitive system path, enabling escape from the intended directory scope.",
+          })
+          .sink({
+            sink_type: "file-write",
+            location: `line ${line}`,
+            observed: `${desc}: symlink creation to sensitive path`,
+            cve_precedent: "CVE-2025-53109",
+          })
+          .impact({
+            impact_type: "privilege-escalation",
+            scope: "server-host",
+            exploitability: "moderate",
+            scenario: "An attacker creates a symlink pointing to a sensitive system path (e.g., /etc/passwd, ~/.ssh). When the MCP server follows the symlink, it reads or writes outside its intended directory boundary, enabling data theft or config poisoning.",
+          })
+          .factor("sensitive_target_path", 0.1, "Symlink targets a known sensitive system directory")
+          .reference({
+            id: "CVE-2025-53109",
+            title: "Anthropic filesystem MCP server symlink bypass",
+            relevance: "Demonstrates real-world symlink-based directory traversal in an MCP server.",
+          })
+          .verification({
+            step_type: "inspect-source",
+            instruction: "Examine the symlink creation at the indicated line. Verify the target path is a sensitive system directory and that no realpath() or lstat() check precedes it.",
+            target: `line ${line}`,
+            expected_observation: `Symlink to sensitive path without protection: ${desc}`,
+          })
+          .build();
+
         findings.push({
           rule_id: "L6",
           severity: "critical",
@@ -252,7 +371,7 @@ class ConfigSymlinkRule implements TypedRule {
           owasp_category: "MCP05-privilege-escalation",
           mitre_technique: "AML.T0054",
           confidence: 0.90,
-          metadata: { analysis_type: "structural", line },
+          metadata: { analysis_type: "structural", line, evidence_chain: l6SymlinkChain },
         });
       }
     }
@@ -262,6 +381,38 @@ class ConfigSymlinkRule implements TypedRule {
     const toctouMatch = toctouPattern.exec(source);
     if (toctouMatch) {
       const line = getLineNumber(source, toctouMatch.index);
+      const l6ToctouChain = new EvidenceChainBuilder()
+        .source({
+          source_type: "file-content",
+          location: `line ${line}: stat() followed by read()`,
+          observed: toctouMatch[0].slice(0, 100),
+          rationale: "A stat() call followed by a read() without O_NOFOLLOW creates a TOCTOU race window where an attacker can replace the file with a symlink.",
+        })
+        .propagation({
+          propagation_type: "direct-pass",
+          location: `line ${line}`,
+          observed: "File path used in stat() is reused in subsequent read() without atomic open",
+        })
+        .sink({
+          sink_type: "file-write",
+          location: `line ${line}`,
+          observed: "File read without O_NOFOLLOW or fstat() — vulnerable to symlink substitution between stat and open",
+        })
+        .impact({
+          impact_type: "privilege-escalation",
+          scope: "server-host",
+          exploitability: "complex",
+          scenario: "An attacker races between the stat() and read() calls, replacing the target file with a symlink to a sensitive file. The server then reads the symlinked file, bypassing directory boundary restrictions.",
+        })
+        .factor("toctou_race", 0.05, "TOCTOU race condition requires precise timing but is a proven attack vector")
+        .verification({
+          step_type: "inspect-source",
+          instruction: "Locate the stat()/read() sequence and verify there is no O_NOFOLLOW flag or fstat() check on the opened file descriptor between the two operations.",
+          target: `line ${line}`,
+          expected_observation: "stat() followed by readFile/open without symlink protection",
+        })
+        .build();
+
       findings.push({
         rule_id: "L6",
         severity: "high",
@@ -273,7 +424,7 @@ class ConfigSymlinkRule implements TypedRule {
         owasp_category: "MCP05-privilege-escalation",
         mitre_technique: "AML.T0054",
         confidence: 0.75,
-        metadata: { analysis_type: "structural", line },
+        metadata: { analysis_type: "structural", line, evidence_chain: l6ToctouChain },
       });
     }
 
@@ -299,6 +450,33 @@ class TransitiveMCPDelegationRule implements TypedRule {
     const hasClientImport = /(?:import|require).*(?:@modelcontextprotocol\/sdk.*client|Client|StdioClientTransport|SSEClientTransport|StreamableHTTPClientTransport)/i.test(source);
 
     if (hasServerImport && hasClientImport) {
+      const l7DelegationChain = new EvidenceChainBuilder()
+        .source({
+          source_type: "file-content",
+          location: "import statements",
+          observed: "Both MCP Server and MCP Client imports present in the same module",
+          rationale: "A module that imports both MCP server and client SDK acts as a proxy/bridge, creating a transitive delegation path where upstream server responses flow through to downstream clients.",
+        })
+        .propagation({
+          propagation_type: "cross-tool-flow",
+          location: "MCP server → MCP client bridge",
+          observed: "Server receives requests, forwards them via client to upstream MCP server, relays responses back",
+        })
+        .impact({
+          impact_type: "cross-agent-propagation",
+          scope: "other-agents",
+          exploitability: "moderate",
+          scenario: "A compromised upstream MCP server injects malicious tool descriptions or responses through this proxy server to downstream AI clients, bypassing per-server trust boundaries.",
+        })
+        .factor("dual_import", 0.12, "Both server and client SDK imports confirmed — strong indicator of MCP proxy pattern")
+        .verification({
+          step_type: "inspect-source",
+          instruction: "Search the file for import/require statements of @modelcontextprotocol/sdk. Confirm both Server and Client classes are imported in the same module.",
+          target: "import statements at top of file",
+          expected_observation: "Both McpServer/Server and Client/StdioClientTransport imports present",
+        })
+        .build();
+
       findings.push({
         rule_id: "L7",
         severity: "critical",
@@ -312,7 +490,7 @@ class TransitiveMCPDelegationRule implements TypedRule {
         owasp_category: "MCP06-excessive-permissions",
         mitre_technique: "AML.T0054",
         confidence: 0.92,
-        metadata: { analysis_type: "import_resolution" },
+        metadata: { analysis_type: "import_resolution", evidence_chain: l7DelegationChain },
       });
     }
 
@@ -328,6 +506,33 @@ class TransitiveMCPDelegationRule implements TypedRule {
       const match = regex.exec(source);
       if (match) {
         const line = getLineNumber(source, match.index);
+        const l7ProxyChain = new EvidenceChainBuilder()
+          .source({
+            source_type: "file-content",
+            location: `line ${line}: "${match[0].slice(0, 80)}"`,
+            observed: match[0].slice(0, 100),
+            rationale: "Code contains proxy/delegation/forwarding patterns that route MCP requests or credentials to upstream servers.",
+          })
+          .propagation({
+            propagation_type: "cross-tool-flow",
+            location: `line ${line}`,
+            observed: `${desc} — requests or credentials forwarded across trust boundaries`,
+          })
+          .impact({
+            impact_type: "cross-agent-propagation",
+            scope: "other-agents",
+            exploitability: "moderate",
+            scenario: "Proxy pattern enables a compromised upstream server to inject malicious responses into downstream clients. Credential forwarding exposes tokens to untrusted upstream servers.",
+          })
+          .factor("proxy_pattern", 0.05, "Structural proxy/delegation pattern detected")
+          .verification({
+            step_type: "inspect-source",
+            instruction: "Examine the proxy/delegation code at the indicated line. Verify whether upstream responses are validated before being relayed and whether credentials are scoped appropriately.",
+            target: `line ${line}`,
+            expected_observation: desc,
+          })
+          .build();
+
         findings.push({
           rule_id: "L7",
           severity: "critical",
@@ -336,7 +541,7 @@ class TransitiveMCPDelegationRule implements TypedRule {
           owasp_category: "MCP06-excessive-permissions",
           mitre_technique: "AML.T0054",
           confidence: 0.80,
-          metadata: { analysis_type: "import_resolution", line },
+          metadata: { analysis_type: "import_resolution", line, evidence_chain: l7ProxyChain },
         });
         break;
       }
@@ -371,6 +576,38 @@ class CredentialFileTheftRule implements TypedRule {
           flow.source.expression + " " + flow.path.map(s => s.expression).join(" ")
         );
         if (isCredFile) {
+          const l13TaintChain = new EvidenceChainBuilder()
+            .source({
+              source_type: "file-content",
+              location: `line ${flow.source.line}: "${flow.source.expression}"`,
+              observed: flow.source.expression,
+              rationale: "Credential file (.npmrc, .pypirc, .ssh/, .aws/credentials, .docker/config.json) is read by the application, exposing stored tokens and secrets.",
+            })
+            .propagation({
+              propagation_type: "function-call",
+              location: `line ${flow.source.line} → line ${flow.sink.line}`,
+              observed: `Credential file content flows from "${flow.source.expression}" to network sink "${flow.sink.expression.slice(0, 50)}"`,
+            })
+            .sink({
+              sink_type: "network-send",
+              location: `line ${flow.sink.line}`,
+              observed: `${flow.sink.category}: "${flow.sink.expression.slice(0, 80)}"`,
+            })
+            .impact({
+              impact_type: "credential-theft",
+              scope: "connected-services",
+              exploitability: "moderate",
+              scenario: "The MCP server reads a credential file (e.g., .npmrc with auth tokens) and exfiltrates its contents over the network to an attacker-controlled endpoint, enabling supply chain compromise of downstream registries.",
+            })
+            .factor("credential_file_exfil", 0.15, "AST taint confirms credential file read flows to network sink without sanitization")
+            .verification({
+              step_type: "trace-flow",
+              instruction: "Trace the data flow from the credential file read to the network call. Confirm the file contents are sent over the network without redaction.",
+              target: `lines ${flow.source.line}–${flow.sink.line}`,
+              expected_observation: "Credential file content passed to HTTP request, fetch, or similar network API",
+            })
+            .build();
+
           findings.push({
             rule_id: "L13",
             severity: "critical",
@@ -381,7 +618,7 @@ class CredentialFileTheftRule implements TypedRule {
             owasp_category: "MCP07-insecure-config",
             mitre_technique: "AML.T0057",
             confidence: flow.confidence,
-            metadata: { analysis_type: "ast_taint" },
+            metadata: { analysis_type: "ast_taint", evidence_chain: l13TaintChain },
           });
         }
       }
@@ -402,6 +639,33 @@ class CredentialFileTheftRule implements TypedRule {
         const match = regex.exec(context.source_code);
         if (match) {
           const line = getLineNumber(context.source_code, match.index);
+          const l13StructChain = new EvidenceChainBuilder()
+            .source({
+              source_type: "file-content",
+              location: `line ${line}: "${match[0].slice(0, 80)}"`,
+              observed: match[0].slice(0, 100),
+              rationale: `Application code reads a known credential file (${desc}), which typically contains authentication tokens, API keys, or private keys.`,
+            })
+            .sink({
+              sink_type: "credential-exposure",
+              location: `line ${line}`,
+              observed: `Reading ${desc} into application memory`,
+            })
+            .impact({
+              impact_type: "credential-theft",
+              scope: "connected-services",
+              exploitability: "moderate",
+              scenario: `The MCP server reads ${desc} which contains authentication credentials. Even without an observed network exfiltration sink, loading credentials into memory creates a theft vector via logging, error messages, or tool responses.`,
+            })
+            .factor("credential_file_read", 0.1, "Direct read of a known credential file path")
+            .verification({
+              step_type: "trace-flow",
+              instruction: `Search the source code for file read operations targeting ${desc}. Confirm the file path matches a known credential storage location.`,
+              target: `line ${line}`,
+              expected_observation: `readFile/readFileSync/open call with ${desc} path`,
+            })
+            .build();
+
           findings.push({
             rule_id: "L13",
             severity: "critical",
@@ -410,7 +674,7 @@ class CredentialFileTheftRule implements TypedRule {
             owasp_category: "MCP07-insecure-config",
             mitre_technique: "AML.T0057",
             confidence: 0.88,
-            metadata: { analysis_type: "structural", line },
+            metadata: { analysis_type: "structural", line, evidence_chain: l13StructChain },
           });
           break;
         }
@@ -451,6 +715,38 @@ class AuditLogTamperingRule implements TypedRule {
         const lineText = source.split("\n")[line - 1] || "";
         if (/(?:redact|pii|gdpr|anonymize|sanitize)/i.test(lineText)) continue;
 
+        const k3Chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "file-content",
+            location: `line ${line}: "${match[0].slice(0, 80)}"`,
+            observed: match[0].slice(0, 100),
+            rationale: "Code performs a read-modify-write operation on an audit log file, which enables tampering with forensic evidence.",
+          })
+          .propagation({
+            propagation_type: "variable-assignment",
+            location: `line ${line}`,
+            observed: `Log file content is read, filtered/modified, then written back: ${desc}`,
+          })
+          .sink({
+            sink_type: "file-write",
+            location: `line ${line}`,
+            observed: `Modified audit log content written back to log file — ${desc}`,
+          })
+          .impact({
+            impact_type: "config-poisoning",
+            scope: "server-host",
+            exploitability: "trivial",
+            scenario: "An attacker (or compromised code) modifies audit logs to remove evidence of intrusion, violating ISO 27001 A.8.15 log integrity requirements. This destroys the forensic trail needed for incident response.",
+          })
+          .factor("log_modification", 0.1, "Read-modify-write pattern on audit/log files indicates tampering capability")
+          .verification({
+            step_type: "trace-flow",
+            instruction: "Search for file read followed by filter/replace/write operations on log files. Confirm this is modifying existing log entries rather than legitimate append-only logging.",
+            target: `line ${line}`,
+            expected_observation: `${desc} — log content modified in place`,
+          })
+          .build();
+
         findings.push({
           rule_id: "K3",
           severity: "critical",
@@ -463,7 +759,7 @@ class AuditLogTamperingRule implements TypedRule {
           owasp_category: "MCP09-logging-monitoring",
           mitre_technique: "AML.T0054",
           confidence: 0.85,
-          metadata: { analysis_type: "structural", line },
+          metadata: { analysis_type: "structural", line, evidence_chain: k3Chain },
         });
       }
     }
@@ -498,6 +794,33 @@ class AutoApproveBypassRule implements TypedRule {
       const match = regex.exec(source);
       if (match) {
         const line = getLineNumber(source, match.index);
+        const k5Chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "file-content",
+            location: `line ${line}: "${match[0].slice(0, 60)}"`,
+            observed: match[0].slice(0, 80),
+            rationale: "Code contains a flag or configuration that explicitly bypasses human confirmation for tool execution, undermining the human-in-the-loop safety requirement.",
+          })
+          .sink({
+            sink_type: "privilege-grant",
+            location: `line ${line}`,
+            observed: `${desc} — operations execute without human approval`,
+          })
+          .impact({
+            impact_type: "privilege-escalation",
+            scope: "ai-client",
+            exploitability: "trivial",
+            scenario: "With auto-approve enabled, a compromised or poisoned tool can execute destructive operations (file deletion, credential access, network exfiltration) without any human review. This violates EU AI Act Art. 14 human oversight requirements.",
+          })
+          .factor("confirmation_bypass", 0.12, "Explicit auto-approve or confirmation bypass flag found in source code")
+          .verification({
+            step_type: "trace-flow",
+            instruction: "Search for auto-approve, skip-confirm, or force-execute patterns. Verify this flag controls whether human confirmation is required before tool execution.",
+            target: `line ${line}`,
+            expected_observation: `${desc} — boolean flag disabling human confirmation`,
+          })
+          .build();
+
         findings.push({
           rule_id: "K5",
           severity: "critical",
@@ -510,7 +833,7 @@ class AutoApproveBypassRule implements TypedRule {
           owasp_category: "ASI09-human-oversight-bypass",
           mitre_technique: "AML.T0054",
           confidence: 0.90,
-          metadata: { analysis_type: "structural", line },
+          metadata: { analysis_type: "structural", line, evidence_chain: k5Chain },
         });
       }
     }
@@ -543,6 +866,38 @@ class CrossBoundaryCredentialRule implements TypedRule {
       for (const flow of credFlows) {
         const isCredSource = /(?:token|secret|key|password|credential|auth|api_key)/i.test(flow.source.expression);
         if (isCredSource) {
+          const k8TaintChain = new EvidenceChainBuilder()
+            .source({
+              source_type: "environment",
+              location: `line ${flow.source.line}: "${flow.source.expression}"`,
+              observed: flow.source.expression,
+              rationale: "Credential (token, secret, key, password) is read from an environment variable or config, representing a trust boundary's authentication material.",
+            })
+            .propagation({
+              propagation_type: "function-call",
+              location: `line ${flow.source.line} → line ${flow.sink.line}`,
+              observed: `Credential "${flow.source.expression}" propagates to external sink "${flow.sink.expression.slice(0, 50)}"`,
+            })
+            .sink({
+              sink_type: flow.sink.category === "ssrf" ? "network-send" : "file-write",
+              location: `line ${flow.sink.line}`,
+              observed: `${flow.sink.category}: "${flow.sink.expression.slice(0, 80)}"`,
+            })
+            .impact({
+              impact_type: "credential-theft",
+              scope: "connected-services",
+              exploitability: "moderate",
+              scenario: "A credential intended for one trust boundary is forwarded to an external service or written to a shared location. An attacker controlling the destination can capture the credential and impersonate the original service.",
+            })
+            .factor("credential_cross_boundary", 0.12, "AST taint confirms credential flows from environment source to external sink")
+            .verification({
+              step_type: "trace-flow",
+              instruction: "Trace the credential variable from its environment source to the network/file sink. Confirm the credential crosses a service or agent trust boundary.",
+              target: `lines ${flow.source.line}–${flow.sink.line}`,
+              expected_observation: "Credential variable used in HTTP request, fetch call, or file write targeting another service",
+            })
+            .build();
+
           findings.push({
             rule_id: "K8",
             severity: "critical",
@@ -556,7 +911,7 @@ class CrossBoundaryCredentialRule implements TypedRule {
             owasp_category: "ASI03-identity-privilege-abuse",
             mitre_technique: "AML.T0054",
             confidence: flow.confidence,
-            metadata: { analysis_type: "ast_taint" },
+            metadata: { analysis_type: "ast_taint", evidence_chain: k8TaintChain },
           });
         }
       }
@@ -574,6 +929,33 @@ class CrossBoundaryCredentialRule implements TypedRule {
         const match = regex.exec(context.source_code);
         if (match) {
           const line = getLineNumber(context.source_code, match.index);
+          const k8StructChain = new EvidenceChainBuilder()
+            .source({
+              source_type: "file-content",
+              location: `line ${line}: "${match[0].slice(0, 80)}"`,
+              observed: match[0].slice(0, 100),
+              rationale: "Code contains a pattern indicating credentials are shared or forwarded across service/agent trust boundaries.",
+            })
+            .sink({
+              sink_type: "credential-exposure",
+              location: `line ${line}`,
+              observed: `${desc} — credentials exposed across trust boundary`,
+            })
+            .impact({
+              impact_type: "credential-theft",
+              scope: "connected-services",
+              exploitability: "moderate",
+              scenario: "Shared or forwarded credentials grant an untrusted service the same access as the original credential holder. Compromise of any service in the sharing chain compromises all services that accept the shared credential.",
+            })
+            .factor("shared_credential_pattern", 0.08, "Structural pattern matching shared/forwarded credential variable naming")
+            .verification({
+              step_type: "trace-flow",
+              instruction: "Search for the shared/forwarded credential variable at the indicated line. Verify the credential is used across service or agent boundaries rather than within a single trust domain.",
+              target: `line ${line}`,
+              expected_observation: `${desc} — credential variable shared or forwarded to another service`,
+            })
+            .build();
+
           findings.push({
             rule_id: "K8",
             severity: "critical",
@@ -582,7 +964,7 @@ class CrossBoundaryCredentialRule implements TypedRule {
             owasp_category: "ASI03-identity-privilege-abuse",
             mitre_technique: "AML.T0054",
             confidence: 0.75,
-            metadata: { analysis_type: "structural", line },
+            metadata: { analysis_type: "structural", line, evidence_chain: k8StructChain },
           });
           break;
         }

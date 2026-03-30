@@ -103,6 +103,43 @@ class SpecialTokenInjectionRule implements TypedRule {
       for (const { pattern, desc } of this.TOKENS) {
         const match = pattern.exec(context.initialize_metadata.server_instructions);
         if (match) {
+          const m1InstructionsChain = new EvidenceChainBuilder()
+            .source({
+              source_type: "initialize-field",
+              location: "server initialize response → instructions",
+              observed: match[0],
+              rationale: "Server instructions are processed by the AI client before any tool interaction, with high implicit trust",
+            })
+            .sink({
+              sink_type: "code-evaluation",
+              location: "server instructions field",
+              observed: `${desc}: "${match[0]}"`,
+            })
+            .mitigation({
+              mitigation_type: "input-validation",
+              present: false,
+              location: "server instructions",
+              detail: "No filtering of LLM special tokens in server instructions",
+            })
+            .impact({
+              impact_type: "remote-code-execution",
+              scope: "ai-client",
+              exploitability: "trivial",
+              scenario: `An attacker embeds ${desc} in the server instructions field. These are processed before any tool descriptions, allowing session-wide behavioral override of the AI client.`,
+            })
+            .factor("special token in initialize field", 0.2, "Initialize instructions have highest implicit trust — processed before all other content")
+            .reference({
+              id: "AML.T0054.002",
+              title: "Direct Prompt Injection via Initialize Instructions",
+              relevance: "Special tokens in server instructions act as direct prompt injection into the AI client",
+            })
+            .verification({
+              step_type: "inspect-description",
+              instruction: "Check server initialize response instructions field for LLM special tokens",
+              target: "server instructions",
+              expected_observation: `Instructions contain ${desc}: "${match[0]}"`,
+            })
+            .build();
           findings.push({
             rule_id: "M1",
             severity: "critical",
@@ -111,7 +148,7 @@ class SpecialTokenInjectionRule implements TypedRule {
             owasp_category: "MCP01-prompt-injection",
             mitre_technique: "AML.T0054",
             confidence: 0.96,
-            metadata: { analysis_type: "linguistic", surface: "instructions" },
+            metadata: { analysis_type: "linguistic", surface: "instructions", evidence_chain: m1InstructionsChain },
           });
           break;
         }
@@ -145,6 +182,32 @@ class ReasoningChainRule implements TypedRule {
         if (match) {
           // Only flag if description is unusually long (hiding reasoning in verbose text)
           if (desc.length > 200) {
+            const m3Chain = new EvidenceChainBuilder()
+              .source({
+                source_type: "external-content",
+                location: `tool "${tool.name}" description (${desc.length} chars)`,
+                observed: match[0],
+                rationale: "Long tool descriptions can hide reasoning chain manipulation that steers LLM decision-making",
+              })
+              .propagation({
+                propagation_type: "description-directive",
+                location: `tool "${tool.name}" description`,
+                observed: `${patternDesc} embedded in ${desc.length}-char description`,
+              })
+              .impact({
+                impact_type: "remote-code-execution",
+                scope: "ai-client",
+                exploitability: "moderate",
+                scenario: `Tool description contains ${patternDesc} ("${match[0]}") hidden in a ${desc.length}-char description. The LLM follows the embedded reasoning chain instead of its own analysis, causing it to select this tool or accept its output uncritically.`,
+              })
+              .factor("long description with reasoning pattern", 0.1, "Description length exceeds 200 chars, providing cover for manipulation")
+              .verification({
+                step_type: "inspect-description",
+                instruction: `Read the full description of tool "${tool.name}" and check for embedded reasoning or prescriptive directives`,
+                target: `tool "${tool.name}"`,
+                expected_observation: `Description contains ${patternDesc}: "${match[0]}"`,
+              })
+              .build();
             findings.push({
               rule_id: "M3",
               severity: "critical",
@@ -155,7 +218,7 @@ class ReasoningChainRule implements TypedRule {
               owasp_category: "MCP01-prompt-injection",
               mitre_technique: "AML.T0054",
               confidence: 0.78,
-              metadata: { analysis_type: "linguistic", tool_name: tool.name, desc_length: desc.length },
+              metadata: { analysis_type: "linguistic", tool_name: tool.name, desc_length: desc.length, evidence_chain: m3Chain },
             });
             break;
           }
@@ -195,6 +258,48 @@ class ProgressiveContextPoisoningRule implements TypedRule {
       const match = regex.exec(source);
       if (match) {
         const line = getLineNumber(source, match.index);
+        const m6Chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "external-content",
+            location: `source code line ${line}`,
+            observed: match[0].slice(0, 80),
+            rationale: "Code pattern enables accumulation of LLM-generated or external content without bounds or verification",
+          })
+          .propagation({
+            propagation_type: "variable-assignment",
+            location: `line ${line}`,
+            observed: `${desc} — content stored without integrity checks`,
+          })
+          .sink({
+            sink_type: "config-modification",
+            location: `line ${line}`,
+            observed: "Accumulated content fed back to LLM context in subsequent sessions",
+          })
+          .mitigation({
+            mitigation_type: "input-validation",
+            present: false,
+            location: `line ${line}`,
+            detail: "No bounds, truncation, or content verification on accumulated context",
+          })
+          .impact({
+            impact_type: "cross-agent-propagation",
+            scope: "ai-client",
+            exploitability: "moderate",
+            scenario: `Progressive poisoning: attacker injects content via ${desc}. The content accumulates across sessions, gradually shifting the AI client's behavior without any single injection being detectable.`,
+          })
+          .factor("unbounded accumulation pattern", 0.1, "No limit/max/truncate/clear/reset guard detected near the accumulation pattern")
+          .reference({
+            id: "AML.T0058",
+            title: "AI Agent Context Poisoning",
+            relevance: "Progressive context poisoning through unbounded content accumulation",
+          })
+          .verification({
+            step_type: "inspect-source",
+            instruction: `Check line ${line} for context accumulation without bounds or verification`,
+            target: `source code line ${line}`,
+            expected_observation: `${desc} without limit, truncation, or integrity verification`,
+          })
+          .build();
         findings.push({
           rule_id: "M6",
           severity: "critical",
@@ -207,7 +312,7 @@ class ProgressiveContextPoisoningRule implements TypedRule {
           owasp_category: "ASI06-memory-context-poisoning",
           mitre_technique: "AML.T0058",
           confidence: 0.75,
-          metadata: { analysis_type: "structural", line },
+          metadata: { analysis_type: "structural", line, evidence_chain: m6Chain },
         });
         break;
       }
@@ -241,6 +346,42 @@ class SystemPromptExtractionRule implements TypedRule {
       const match = regex.exec(source);
       if (match) {
         const line = getLineNumber(source, match.index);
+        const m9Chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "file-content",
+            location: `source code line ${line}`,
+            observed: match[0].slice(0, 80),
+            rationale: "Code pattern exposes system prompt or instruction content in tool output or responses",
+          })
+          .propagation({
+            propagation_type: "direct-pass",
+            location: `line ${line}`,
+            observed: `${desc} — system prompt content flows to tool response`,
+          })
+          .sink({
+            sink_type: "credential-exposure",
+            location: `line ${line}`,
+            observed: "System prompt or instructions leaked in tool response visible to users or downstream agents",
+          })
+          .impact({
+            impact_type: "data-exfiltration",
+            scope: "ai-client",
+            exploitability: "trivial",
+            scenario: `System prompt content is exposed via ${desc}. An attacker can extract the system prompt to understand safety constraints, then craft targeted bypass attacks.`,
+          })
+          .factor("system prompt in output path", 0.15, "Direct code pattern showing system prompt flowing to output")
+          .reference({
+            id: "AML.T0057",
+            title: "LLM Data Leakage",
+            relevance: "System prompt extraction enables downstream attacks by revealing safety constraints",
+          })
+          .verification({
+            step_type: "inspect-source",
+            instruction: `Check line ${line} for system prompt content being returned or sent in responses`,
+            target: `source code line ${line}`,
+            expected_observation: `${desc}`,
+          })
+          .build();
         findings.push({
           rule_id: "M9",
           severity: "critical",
@@ -249,7 +390,7 @@ class SystemPromptExtractionRule implements TypedRule {
           owasp_category: "MCP04-data-exfiltration",
           mitre_technique: "AML.T0057",
           confidence: 0.80,
-          metadata: { analysis_type: "structural", line },
+          metadata: { analysis_type: "structural", line, evidence_chain: m9Chain },
         });
         break;
       }
@@ -284,6 +425,43 @@ class JSONRPCErrorInjectionRule implements TypedRule {
       const match = regex.exec(source);
       if (match) {
         const line = getLineNumber(source, match.index);
+        const n4Chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "user-parameter",
+            location: `source code line ${line}`,
+            observed: match[0].slice(0, 80),
+            rationale: "User-controlled input flows into JSON-RPC error message or data fields",
+          })
+          .propagation({
+            propagation_type: "string-concatenation",
+            location: `line ${line}`,
+            observed: `${desc} — user input embedded in error response`,
+          })
+          .sink({
+            sink_type: "code-evaluation",
+            location: `JSON-RPC error response at line ${line}`,
+            observed: "Error message content processed by AI client as potential instructions",
+          })
+          .mitigation({
+            mitigation_type: "sanitizer-function",
+            present: false,
+            location: `line ${line}`,
+            detail: "No sanitization of user input before inclusion in error messages",
+          })
+          .impact({
+            impact_type: "remote-code-execution",
+            scope: "ai-client",
+            exploitability: "moderate",
+            scenario: `User-controlled content in JSON-RPC error objects (${desc}) is processed by the AI client. An attacker crafts input that triggers an error containing prompt injection payloads, which the LLM interprets as instructions.`,
+          })
+          .factor("user input in error path", 0.1, "Direct flow from request parameters to error message content")
+          .verification({
+            step_type: "inspect-source",
+            instruction: `Check line ${line} for user input flowing into error message or error data fields`,
+            target: `source code line ${line}`,
+            expected_observation: `${desc}`,
+          })
+          .build();
         findings.push({
           rule_id: "N4",
           severity: "critical",
@@ -294,7 +472,7 @@ class JSONRPCErrorInjectionRule implements TypedRule {
           owasp_category: "MCP07-insecure-config",
           mitre_technique: "AML.T0054",
           confidence: 0.82,
-          metadata: { analysis_type: "structural", line },
+          metadata: { analysis_type: "structural", line, evidence_chain: n4Chain },
         });
         break;
       }
@@ -328,6 +506,32 @@ class CapabilityDowngradeRule implements TypedRule {
       const match = regex.exec(source);
       if (match) {
         const line = getLineNumber(source, match.index);
+        const n5Chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "file-content",
+            location: `source code line ${line}`,
+            observed: match[0].slice(0, 80),
+            rationale: "Server declares a capability as disabled but implements a handler for it",
+          })
+          .propagation({
+            propagation_type: "direct-pass",
+            location: `server capabilities declaration`,
+            observed: `${desc} — capability disabled in declaration but handler present in code`,
+          })
+          .impact({
+            impact_type: "privilege-escalation",
+            scope: "ai-client",
+            exploitability: "moderate",
+            scenario: `${desc}. The AI client trusts the capabilities declaration and does not apply security controls for the undeclared capability. The server can exercise the capability without client-side consent or monitoring.`,
+          })
+          .factor("capability mismatch", 0.15, "Explicit contradiction between declared capabilities and implemented handlers")
+          .verification({
+            step_type: "inspect-source",
+            instruction: `Verify that the capability is declared as false/null in the capabilities object AND a handler exists in the same codebase`,
+            target: `source code around line ${line}`,
+            expected_observation: `${desc}`,
+          })
+          .build();
         findings.push({
           rule_id: "N5",
           severity: "critical",
@@ -338,7 +542,7 @@ class CapabilityDowngradeRule implements TypedRule {
           owasp_category: "MCP07-insecure-config",
           mitre_technique: "AML.T0054",
           confidence: 0.85,
-          metadata: { analysis_type: "structural", line },
+          metadata: { analysis_type: "structural", line, evidence_chain: n5Chain },
         });
         break;
       }
@@ -372,6 +576,48 @@ class SSEReconnectionRule implements TypedRule {
       const match = regex.exec(source);
       if (match) {
         const line = getLineNumber(source, match.index);
+        const n6Chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "environment",
+            location: `source code line ${line}`,
+            observed: match[0].slice(0, 80),
+            rationale: "SSE reconnection or session handling lacks re-authentication or integrity verification",
+          })
+          .propagation({
+            propagation_type: "direct-pass",
+            location: `line ${line}`,
+            observed: `${desc} — reconnection proceeds without verifying session integrity`,
+          })
+          .sink({
+            sink_type: "privilege-grant",
+            location: `SSE connection at line ${line}`,
+            observed: "Reconnection grants access without re-authentication",
+          })
+          .mitigation({
+            mitigation_type: "auth-check",
+            present: false,
+            location: `line ${line}`,
+            detail: "No authentication, token validation, or HMAC check on reconnection",
+          })
+          .impact({
+            impact_type: "session-hijack",
+            scope: "user-data",
+            exploitability: "moderate",
+            scenario: `${desc}. An attacker intercepts or replays an SSE reconnection request to hijack an existing session without providing valid credentials. CVE-2025-6515 class vulnerability.`,
+          })
+          .factor("missing re-auth on reconnect", 0.1, "No auth/token/verify/validate guard detected near reconnection pattern")
+          .reference({
+            id: "CVE-2025-6515",
+            title: "Session Hijacking via URI Manipulation in Streamable HTTP",
+            relevance: "SSE reconnection without re-authentication enables session hijacking",
+          })
+          .verification({
+            step_type: "inspect-source",
+            instruction: `Check line ${line} for SSE reconnection or session handling without re-authentication`,
+            target: `source code line ${line}`,
+            expected_observation: `${desc}`,
+          })
+          .build();
         findings.push({
           rule_id: "N6",
           severity: "critical",
@@ -380,7 +626,7 @@ class SSEReconnectionRule implements TypedRule {
           owasp_category: "MCP07-insecure-config",
           mitre_technique: "AML.T0061",
           confidence: 0.78,
-          metadata: { analysis_type: "structural", line },
+          metadata: { analysis_type: "structural", line, evidence_chain: n6Chain },
         });
         break;
       }
@@ -414,6 +660,37 @@ class LoggingProtocolInjectionRule implements TypedRule {
       const match = regex.exec(source);
       if (match) {
         const line = getLineNumber(source, match.index);
+        const n9Chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "user-parameter",
+            location: `source code line ${line}`,
+            observed: match[0].slice(0, 80),
+            rationale: "User-controlled input flows into MCP log notification messages processed by AI clients",
+          })
+          .propagation({
+            propagation_type: "string-concatenation",
+            location: `line ${line}`,
+            observed: `${desc} — user input embedded in log message without sanitization`,
+          })
+          .sink({
+            sink_type: "code-evaluation",
+            location: `MCP log notification at line ${line}`,
+            observed: "Log message content processed by AI client as potential instructions",
+          })
+          .impact({
+            impact_type: "remote-code-execution",
+            scope: "ai-client",
+            exploitability: "moderate",
+            scenario: `User-controlled content in MCP log notifications (${desc}) is processed by the AI client. An attacker crafts input that appears in log messages containing prompt injection payloads, which the LLM interprets as instructions.`,
+          })
+          .factor("user input in log path", 0.1, "Direct flow from request parameters to MCP log notification content")
+          .verification({
+            step_type: "inspect-source",
+            instruction: `Check line ${line} for user input flowing into log message or MCP notification`,
+            target: `source code line ${line}`,
+            expected_observation: `${desc}`,
+          })
+          .build();
         findings.push({
           rule_id: "N9",
           severity: "critical",
@@ -424,7 +701,7 @@ class LoggingProtocolInjectionRule implements TypedRule {
           owasp_category: "MCP09-logging-monitoring",
           mitre_technique: "AML.T0054",
           confidence: 0.80,
-          metadata: { analysis_type: "structural", line },
+          metadata: { analysis_type: "structural", line, evidence_chain: n9Chain },
         });
         break;
       }
@@ -457,6 +734,32 @@ class ProtocolVersionDowngradeRule implements TypedRule {
       const match = regex.exec(source);
       if (match) {
         const line = getLineNumber(source, match.index);
+        const n11Chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "file-content",
+            location: `source code line ${line}`,
+            observed: match[0].slice(0, 80),
+            rationale: "Server accepts or negotiates older protocol versions without rejecting insecure ones",
+          })
+          .propagation({
+            propagation_type: "direct-pass",
+            location: `protocol version negotiation at line ${line}`,
+            observed: `${desc} — server does not enforce minimum protocol version`,
+          })
+          .impact({
+            impact_type: "privilege-escalation",
+            scope: "ai-client",
+            exploitability: "moderate",
+            scenario: `${desc}. An attacker forces a protocol version downgrade to an older version lacking security features (e.g., annotations, capability declarations). The client operates without newer security controls.`,
+          })
+          .factor("version downgrade pattern", 0.1, "No reject/error/throw/deny guard detected near version negotiation")
+          .verification({
+            step_type: "inspect-source",
+            instruction: `Check line ${line} for protocol version negotiation that accepts older versions without rejection`,
+            target: `source code line ${line}`,
+            expected_observation: `${desc}`,
+          })
+          .build();
         findings.push({
           rule_id: "N11",
           severity: "critical",
@@ -465,7 +768,7 @@ class ProtocolVersionDowngradeRule implements TypedRule {
           owasp_category: "MCP07-insecure-config",
           mitre_technique: "AML.T0054",
           confidence: 0.78,
-          metadata: { analysis_type: "structural", line },
+          metadata: { analysis_type: "structural", line, evidence_chain: n11Chain },
         });
         break;
       }
@@ -488,12 +791,44 @@ class ResourceSubscriptionPoisoningRule implements TypedRule {
     const regex = /(?:subscription|notify|push|update).*(?:resource|content).*(?:changed|modified|mutated)(?!.*(?:verify|hash|checksum|integrity))/gi;
     const match = regex.exec(context.source_code);
     if (match) {
+      const n12Line = getLineNumber(context.source_code, match.index);
+      const n12Chain = new EvidenceChainBuilder()
+        .source({
+          source_type: "file-content",
+          location: `source code line ${n12Line}`,
+          observed: match[0].slice(0, 80),
+          rationale: "Resource subscription pushes content updates without verifying integrity of the changed content",
+        })
+        .propagation({
+          propagation_type: "direct-pass",
+          location: `line ${n12Line}`,
+          observed: "Resource content mutation delivered to client without hash or checksum verification",
+        })
+        .sink({
+          sink_type: "config-modification",
+          location: `resource subscription handler at line ${n12Line}`,
+          observed: "Mutated resource content processed by AI client without integrity check",
+        })
+        .impact({
+          impact_type: "cross-agent-propagation",
+          scope: "ai-client",
+          exploitability: "moderate",
+          scenario: "An attacker modifies a subscribed resource. The client receives the update without integrity verification, processing poisoned content as trusted data.",
+        })
+        .factor("missing integrity check on update", 0.1, "No verify/hash/checksum/integrity guard detected near subscription update")
+        .verification({
+          step_type: "inspect-source",
+          instruction: `Check line ${n12Line} for resource subscription updates without integrity verification`,
+          target: `source code line ${n12Line}`,
+          expected_observation: "Resource content update without hash or signature verification",
+        })
+        .build();
       findings.push({
         rule_id: "N12", severity: "critical",
-        evidence: `Resource subscription update without integrity verification at line ${getLineNumber(context.source_code, match.index)}.`,
+        evidence: `Resource subscription update without integrity verification at line ${n12Line}.`,
         remediation: "Verify resource content integrity on subscription updates using hashes or signatures.",
         owasp_category: "MCP07-insecure-config", mitre_technique: "AML.T0054", confidence: 0.78,
-        metadata: { analysis_type: "structural" },
+        metadata: { analysis_type: "structural", evidence_chain: n12Chain },
       });
     }
     return findings;
@@ -516,12 +851,44 @@ class ChunkedTransferSmugglingRule implements TypedRule {
       regex.lastIndex = 0;
       const match = regex.exec(context.source_code);
       if (match) {
+        const n13Line = getLineNumber(context.source_code, match.index);
+        const n13Chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "file-content",
+            location: `source code line ${n13Line}`,
+            observed: match[0].slice(0, 80),
+            rationale: "Code manipulates HTTP chunked transfer encoding or combines conflicting transfer headers",
+          })
+          .propagation({
+            propagation_type: "direct-pass",
+            location: `line ${n13Line}`,
+            observed: `${desc} — ambiguous HTTP framing enables request smuggling`,
+          })
+          .sink({
+            sink_type: "network-send",
+            location: `HTTP response at line ${n13Line}`,
+            observed: "Ambiguous HTTP framing sent to client, enabling request smuggling attacks",
+          })
+          .impact({
+            impact_type: "session-hijack",
+            scope: "user-data",
+            exploitability: "complex",
+            scenario: `${desc}. An attacker exploits ambiguous HTTP framing (Transfer-Encoding vs Content-Length) to smuggle requests, potentially hijacking other users' sessions or injecting responses.`,
+          })
+          .factor("chunked encoding manipulation", 0.1, "Direct manipulation of HTTP transfer encoding detected")
+          .verification({
+            step_type: "inspect-source",
+            instruction: `Check line ${n13Line} for conflicting Transfer-Encoding and Content-Length headers or raw chunked encoding`,
+            target: `source code line ${n13Line}`,
+            expected_observation: `${desc}`,
+          })
+          .build();
         findings.push({
           rule_id: "N13", severity: "critical",
-          evidence: `${desc} at line ${getLineNumber(context.source_code, match.index)}: "${match[0].slice(0, 80)}".`,
+          evidence: `${desc} at line ${n13Line}: "${match[0].slice(0, 80)}".`,
           remediation: "Use a well-tested HTTP library. Never manually construct chunked encoding. Reject ambiguous headers.",
           owasp_category: "MCP07-insecure-config", mitre_technique: "AML.T0061", confidence: 0.82,
-          metadata: { analysis_type: "structural" },
+          metadata: { analysis_type: "structural", evidence_chain: n13Chain },
         });
         break;
       }
@@ -546,12 +913,39 @@ class TOFUBypassRule implements TypedRule {
       regex.lastIndex = 0;
       const match = regex.exec(context.source_code);
       if (match) {
+        const n14Line = getLineNumber(context.source_code, match.index);
+        const n14Chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "file-content",
+            location: `source code line ${n14Line}`,
+            observed: match[0].slice(0, 80),
+            rationale: "Code bypasses or disables trust-on-first-use fingerprint pinning, allowing server impersonation",
+          })
+          .propagation({
+            propagation_type: "direct-pass",
+            location: `line ${n14Line}`,
+            observed: `${desc} — server identity not verified on subsequent connections`,
+          })
+          .impact({
+            impact_type: "session-hijack",
+            scope: "connected-services",
+            exploitability: "moderate",
+            scenario: `${desc}. An attacker performs a MITM attack by impersonating the MCP server. Without fingerprint pinning, the client accepts the attacker's server as legitimate on reconnection.`,
+          })
+          .factor("TOFU bypass pattern", 0.1, "Fingerprint/pinning explicitly ignored, skipped, or disabled")
+          .verification({
+            step_type: "inspect-source",
+            instruction: `Check line ${n14Line} for trust-on-first-use bypass or fingerprint pinning being disabled`,
+            target: `source code line ${n14Line}`,
+            expected_observation: `${desc}`,
+          })
+          .build();
         findings.push({
           rule_id: "N14", severity: "critical",
-          evidence: `${desc} at line ${getLineNumber(context.source_code, match.index)}: "${match[0].slice(0, 80)}".`,
+          evidence: `${desc} at line ${n14Line}: "${match[0].slice(0, 80)}".`,
           remediation: "Implement certificate/key pinning. Store fingerprints on first use and verify on subsequent connections.",
           owasp_category: "MCP07-insecure-config", mitre_technique: "AML.T0054", confidence: 0.80,
-          metadata: { analysis_type: "structural" },
+          metadata: { analysis_type: "structural", evidence_chain: n14Chain },
         });
         break;
       }
@@ -576,12 +970,44 @@ class MethodNameConfusionRule implements TypedRule {
       regex.lastIndex = 0;
       const match = regex.exec(context.source_code);
       if (match) {
+        const n15Line = getLineNumber(context.source_code, match.index);
+        const n15Chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "user-parameter",
+            location: `source code line ${n15Line}`,
+            observed: match[0].slice(0, 80),
+            rationale: "User-controlled input used as JSON-RPC method name or dynamic dispatch key",
+          })
+          .propagation({
+            propagation_type: "variable-assignment",
+            location: `line ${n15Line}`,
+            observed: `${desc} — user input assigned to method dispatch key`,
+          })
+          .sink({
+            sink_type: "code-evaluation",
+            location: `method dispatch at line ${n15Line}`,
+            observed: "User-controlled method name used to invoke server-side handlers",
+          })
+          .impact({
+            impact_type: "remote-code-execution",
+            scope: "server-host",
+            exploitability: "moderate",
+            scenario: `${desc}. An attacker sends a crafted JSON-RPC request with a method name pointing to an internal or privileged handler, bypassing intended access controls.`,
+          })
+          .factor("user input as method key", 0.15, "Direct flow from request parameters to method dispatch key")
+          .verification({
+            step_type: "inspect-source",
+            instruction: `Check line ${n15Line} for user input being used as method name or dispatch key without allowlist validation`,
+            target: `source code line ${n15Line}`,
+            expected_observation: `${desc}`,
+          })
+          .build();
         findings.push({
           rule_id: "N15", severity: "critical",
-          evidence: `${desc} at line ${getLineNumber(context.source_code, match.index)}: "${match[0].slice(0, 80)}".`,
+          evidence: `${desc} at line ${n15Line}: "${match[0].slice(0, 80)}".`,
           remediation: "Validate method names against an allowlist. Never use user input as method dispatch keys.",
           owasp_category: "MCP07-insecure-config", mitre_technique: "AML.T0054", confidence: 0.85,
-          metadata: { analysis_type: "structural" },
+          metadata: { analysis_type: "structural", evidence_chain: n15Chain },
         });
         break;
       }
