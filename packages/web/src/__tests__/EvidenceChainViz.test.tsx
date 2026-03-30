@@ -2,16 +2,19 @@
 /**
  * EvidenceChainViz Critical Test Suite
  *
- * Tests the main-branch EvidenceChainViz component which:
+ * Tests the regulator-grade 5-question EvidenceChainViz component which:
  * - Takes { chain: EvidenceChainData | null | undefined, confidence?: number }
  * - Uses discriminated union link types (SourceLink, PropagationLink, etc.)
- * - Server component (no "use client"), CSS class-based rendering
+ * - 5-section layout: What Was Found, Where in the Code, Why This Is Dangerous,
+ *   Confidence Assessment, How to Verify
+ * - CSS prefix: ec5- (not ec-)
+ * - Badges: ENTRY (source), FLOW (propagation), DANGER (sink)
  * - confLevel thresholds: >=0.70 high, >=0.45 medium, <0.45 low
  * - Confidence display: Math.round(confidence * 100) — NO clamping
- * - truncate(s, max): s.slice(0, max) + "…" — no null guard (types require string)
- * - Badges: SOURCE, FLOW, SINK, ✓ MITIGATED / ✗ UNMITIGATED, IMPACT
- * - Confidence factors: adjustment (number) with +/- prefix, .toFixed(2)
- * - Threat reference: id, title, optional year/url
+ * - Truncation: 100 chars in WhatSection prose, 80 chars in WhereSection flow nodes
+ * - Factor names: underscores replaced with spaces (f.factor.replace(/_/g, " "))
+ * - Source/sink types rendered as lowercase prose labels from label maps
+ * - Mitigations: ✓ (present) / ✗ (absent) with mitigation_type (dashes→spaces)
  */
 import { describe, it, expect } from "vitest";
 import React from "react";
@@ -77,9 +80,9 @@ describe("null/undefined handling", () => {
     );
     expect(container.textContent).toContain("85%");
     expect(container.textContent).toContain("Confidence");
-    // Should NOT render full chain sections
-    expect(container.querySelector(".ec-chain")).toBeNull();
-    expect(container.querySelector(".ec-confidence-only")).not.toBeNull();
+    // Should NOT render full chain report
+    expect(container.querySelector(".ec5-report")).toBeNull();
+    expect(container.querySelector(".ec5-confidence-only")).not.toBeNull();
   });
 
   it("chain=null, confidence=0 → renders '0%' (0 is valid, not null)", () => {
@@ -141,25 +144,25 @@ describe("confidence levels", () => {
   it("confidence=0.70 → 'high' class", () => {
     const chain = makeChain({ confidence: 0.70 });
     const { container } = render(<EvidenceChainViz chain={chain} />);
-    expect(container.querySelector(".ec-conf-high")).not.toBeNull();
+    expect(container.querySelector(".ec5-conf-high")).not.toBeNull();
   });
 
   it("confidence=0.69 → 'medium' class", () => {
     const chain = makeChain({ confidence: 0.69 });
     const { container } = render(<EvidenceChainViz chain={chain} />);
-    expect(container.querySelector(".ec-conf-medium")).not.toBeNull();
+    expect(container.querySelector(".ec5-conf-medium")).not.toBeNull();
   });
 
   it("confidence=0.45 → 'medium' class", () => {
     const chain = makeChain({ confidence: 0.45 });
     const { container } = render(<EvidenceChainViz chain={chain} />);
-    expect(container.querySelector(".ec-conf-medium")).not.toBeNull();
+    expect(container.querySelector(".ec5-conf-medium")).not.toBeNull();
   });
 
   it("confidence=0.44 → 'low' class", () => {
     const chain = makeChain({ confidence: 0.44 });
     const { container } = render(<EvidenceChainViz chain={chain} />);
-    expect(container.querySelector(".ec-conf-low")).not.toBeNull();
+    expect(container.querySelector(".ec5-conf-low")).not.toBeNull();
   });
 });
 
@@ -168,17 +171,17 @@ describe("confidence levels", () => {
 // ═════════════════════════════════════════════════════════════════════════════════
 
 describe("chain with empty links", () => {
-  it("empty links → renders confidence bar but no flow/mitigations/impacts", () => {
+  it("empty links → renders confidence section but no flow/mitigations/impacts", () => {
     const chain = makeChain({ links: [], confidence: 0.5 });
     const { container } = render(<EvidenceChainViz chain={chain} />);
-    // Confidence bar still renders
+    // Confidence section still renders
     expect(container.textContent).toContain("50%");
-    // No flow timeline
-    expect(container.querySelector(".ec-flow")).toBeNull();
+    // No flow chain (WhereSection returns null when no sources/sinks)
+    expect(container.querySelector(".ec5-flow-chain")).toBeNull();
     // No mitigations
-    expect(container.querySelector(".ec-mitigations")).toBeNull();
-    // No impacts
-    expect(container.querySelector(".ec-impacts")).toBeNull();
+    expect(container.querySelector(".ec5-mitigations")).toBeNull();
+    // No impact blocks
+    expect(container.querySelector(".ec5-impact-block")).toBeNull();
   });
 });
 
@@ -187,7 +190,7 @@ describe("chain with empty links", () => {
 // ═════════════════════════════════════════════════════════════════════════════════
 
 describe("link rendering by type", () => {
-  it("source link → renders 'SOURCE' badge, source_type label, location, observed, rationale", () => {
+  it("source link → renders 'ENTRY' badge in flow, source_type in prose, location, observed, rationale", () => {
     const chain = makeChain({
       links: [{
         type: "source",
@@ -198,28 +201,44 @@ describe("link rendering by type", () => {
       }],
     });
     const { container } = render(<EvidenceChainViz chain={chain} />);
-    expect(container.textContent).toContain("SOURCE");
-    expect(container.textContent).toContain("User Parameter");
+    // ENTRY badge in WhereSection flow
+    expect(container.textContent).toContain("ENTRY");
+    // Source type label rendered lowercase in WhatSection prose
+    expect(container.textContent).toContain("user-controlled parameter");
     expect(container.textContent).toContain("src/index.ts:10");
     expect(container.textContent).toContain("user input flows");
     expect(container.textContent).toContain("Direct user input");
   });
 
-  it("propagation link → renders 'FLOW' badge, propagation_type label", () => {
+  it("propagation link → renders 'FLOW' badge in flow timeline", () => {
+    // Propagation alone won't show in WhereSection (needs source or sink).
+    // Include a source so WhereSection renders the flow chain.
     const chain = makeChain({
-      links: [{
-        type: "propagation",
-        propagation_type: "variable-assignment",
-        location: "src/a.ts:5",
-        observed: "const x = input",
-      }],
+      links: [
+        {
+          type: "source",
+          source_type: "user-parameter",
+          location: "src/a.ts:1",
+          observed: "input",
+          rationale: "test",
+        },
+        {
+          type: "propagation",
+          propagation_type: "variable-assignment",
+          location: "src/a.ts:5",
+          observed: "const x = input",
+        },
+      ],
     });
     const { container } = render(<EvidenceChainViz chain={chain} />);
     expect(container.textContent).toContain("FLOW");
-    expect(container.textContent).toContain("Variable Assignment");
+    // propagation_type is not rendered as a label in the new component
+    // but the location and observed text are shown in the flow node
+    expect(container.textContent).toContain("src/a.ts:5");
+    expect(container.textContent).toContain("const x = input");
   });
 
-  it("sink link → renders 'SINK' badge, sink_type label, optional CVE tag", () => {
+  it("sink link → renders 'DANGER' badge, sink_type in prose, optional CVE tag", () => {
     const chain = makeChain({
       links: [{
         type: "sink",
@@ -230,8 +249,9 @@ describe("link rendering by type", () => {
       }],
     });
     const { container } = render(<EvidenceChainViz chain={chain} />);
-    expect(container.textContent).toContain("SINK");
-    expect(container.textContent).toContain("Command Execution");
+    expect(container.textContent).toContain("DANGER");
+    // Sink type rendered lowercase in WhatSection prose
+    expect(container.textContent).toContain("operating system command execution");
     expect(container.textContent).toContain("CVE-2025-12345");
   });
 
@@ -245,11 +265,11 @@ describe("link rendering by type", () => {
       }],
     });
     const { container } = render(<EvidenceChainViz chain={chain} />);
-    expect(container.textContent).toContain("SINK");
-    expect(container.querySelector(".ec-cve")).toBeNull();
+    expect(container.textContent).toContain("DANGER");
+    expect(container.querySelector(".ec5-flow-cve")).toBeNull();
   });
 
-  it("mitigation link (present=true) → renders '✓ MITIGATED'", () => {
+  it("mitigation link (present=true) → renders ✓ icon under 'Controls detected'", () => {
     const chain = makeChain({
       links: [{
         type: "mitigation",
@@ -260,11 +280,14 @@ describe("link rendering by type", () => {
       }],
     });
     const { container } = render(<EvidenceChainViz chain={chain} />);
-    expect(container.textContent).toContain("✓ MITIGATED");
-    expect(container.querySelector(".ec-mit-present")).not.toBeNull();
+    expect(container.textContent).toContain("Controls detected");
+    // mitigation_type rendered with dashes→spaces
+    expect(container.textContent).toContain("input validation");
+    expect(container.textContent).toContain("Input is validated");
+    expect(container.querySelector(".ec5-mit-present")).not.toBeNull();
   });
 
-  it("mitigation link (present=false) → renders '✗ UNMITIGATED'", () => {
+  it("mitigation link (present=false) → renders ✗ icon under 'Missing security controls'", () => {
     const chain = makeChain({
       links: [{
         type: "mitigation",
@@ -275,11 +298,13 @@ describe("link rendering by type", () => {
       }],
     });
     const { container } = render(<EvidenceChainViz chain={chain} />);
-    expect(container.textContent).toContain("✗ UNMITIGATED");
-    expect(container.querySelector(".ec-mit-absent")).not.toBeNull();
+    expect(container.textContent).toContain("Missing security controls");
+    expect(container.textContent).toContain("input validation");
+    expect(container.textContent).toContain("No validation found");
+    expect(container.querySelector(".ec5-mit-absent")).not.toBeNull();
   });
 
-  it("impact link → renders 'IMPACT' badge, impact_type, scope, exploitability, scenario", () => {
+  it("impact link → renders impact_type, scope, exploitability, scenario in prose", () => {
     const chain = makeChain({
       links: [{
         type: "impact",
@@ -290,9 +315,11 @@ describe("link rendering by type", () => {
       }],
     });
     const { container } = render(<EvidenceChainViz chain={chain} />);
-    expect(container.textContent).toContain("IMPACT");
-    expect(container.textContent).toContain("Remote Code Execution");
-    expect(container.textContent).toContain("server host"); // scope with - replaced by space
+    // Impact type from label map
+    expect(container.textContent).toContain("Remote Code Execution (RCE)");
+    // Scope from label map
+    expect(container.textContent).toContain("Server Host System");
+    // Exploitability from label map
     expect(container.textContent).toContain("Trivial");
     expect(container.textContent).toContain("Attacker gains shell access");
   });
@@ -312,7 +339,7 @@ describe("link rendering by type", () => {
 // ═════════════════════════════════════════════════════════════════════════════════
 
 describe("truncation", () => {
-  it("observed on source link: 'x'.repeat(200) → truncated at 120 chars + '…'", () => {
+  it("observed on source link: 'x'.repeat(200) → truncated in prose at 100 chars + '…'", () => {
     const chain = makeChain({
       links: [{
         type: "source",
@@ -325,8 +352,10 @@ describe("truncation", () => {
     const { container } = render(<EvidenceChainViz chain={chain} />);
     const text = container.textContent ?? "";
     expect(text).not.toContain("x".repeat(200)); // truncated
-    expect(text).toContain("…"); // has ellipsis
-    expect(text).toContain("x".repeat(120)); // first 120 chars present
+    expect(text).toContain("\u2026"); // has ellipsis
+    // WhatSection truncates at 100, WhereSection flow truncates at 80
+    expect(text).toContain("x".repeat(80)); // at least 80 chars present (flow)
+    expect(text).not.toContain("x".repeat(101)); // WhatSection limit is 100
   });
 
   it("observed on source link: 'x'.repeat(50) → not truncated", () => {
@@ -380,7 +409,7 @@ describe("confidence factor display", () => {
     expect(container.textContent).toContain("+0.00");
   });
 
-  it("5 factors → all rendered", () => {
+  it("5 factors → all rendered (underscores replaced with spaces)", () => {
     const factors = Array.from({ length: 5 }, (_, i) => ({
       factor: `factor_${i}`,
       adjustment: i * 0.05,
@@ -388,15 +417,16 @@ describe("confidence factor display", () => {
     }));
     const chain = makeChain({ confidence_factors: factors });
     const { container } = render(<EvidenceChainViz chain={chain} />);
-    for (const f of factors) {
-      expect(container.textContent).toContain(f.factor);
+    // Component renders factor names with underscores replaced by spaces
+    for (let i = 0; i < factors.length; i++) {
+      expect(container.textContent).toContain(`factor ${i}`);
     }
   });
 
-  it("0 factors → details section not rendered", () => {
+  it("0 factors → factors section not rendered", () => {
     const chain = makeChain({ confidence_factors: [] });
     const { container } = render(<EvidenceChainViz chain={chain} />);
-    expect(container.querySelector(".ec-factors")).toBeNull();
+    expect(container.querySelector(".ec5-factors")).toBeNull();
   });
 });
 
@@ -431,13 +461,13 @@ describe("threat reference", () => {
     });
     const { container } = render(<EvidenceChainViz chain={chain} />);
     expect(container.textContent).toContain("CWE-78");
-    expect(container.querySelector(".ec-ref-year")).toBeNull();
+    expect(container.querySelector(".ec5-ref-year")).toBeNull();
   });
 
-  it("without threat_reference → section not rendered", () => {
+  it("without threat_reference → reference section not rendered", () => {
     const chain = makeChain();
     const { container } = render(<EvidenceChainViz chain={chain} />);
-    expect(container.querySelector(".ec-reference")).toBeNull();
+    expect(container.querySelector(".ec5-reference")).toBeNull();
   });
 
   it("with threat_reference but year=0 → year is falsy, no year span", () => {
@@ -450,8 +480,8 @@ describe("threat reference", () => {
       },
     });
     const { container } = render(<EvidenceChainViz chain={chain} />);
-    // year=0 is falsy, so {chain.threat_reference.year && ...} won't render
-    expect(container.querySelector(".ec-ref-year")).toBeNull();
+    // year=0 is falsy, so {reference.year && ...} won't render
+    expect(container.querySelector(".ec5-ref-year")).toBeNull();
   });
 });
 
@@ -460,7 +490,7 @@ describe("threat reference", () => {
 // ═════════════════════════════════════════════════════════════════════════════════
 
 describe("label fallbacks", () => {
-  it("unknown source_type 'custom-source' → renders raw 'custom-source'", () => {
+  it("unknown source_type 'custom-source' → renders raw 'custom-source' in prose", () => {
     const chain = makeChain({
       links: [{
         type: "source",
@@ -471,10 +501,11 @@ describe("label fallbacks", () => {
       }],
     });
     const { container } = render(<EvidenceChainViz chain={chain} />);
+    // Unknown source_type falls through label map → rendered raw, lowercased in prose
     expect(container.textContent).toContain("custom-source");
   });
 
-  it("unknown sink_type 'custom-sink' → renders raw 'custom-sink'", () => {
+  it("unknown sink_type 'custom-sink' → renders raw 'custom-sink' in prose", () => {
     const chain = makeChain({
       links: [{
         type: "sink",
@@ -487,7 +518,7 @@ describe("label fallbacks", () => {
     expect(container.textContent).toContain("custom-sink");
   });
 
-  it("known source_type 'user-parameter' → renders 'User Parameter'", () => {
+  it("known source_type 'user-parameter' → renders 'user-controlled parameter' in prose", () => {
     const chain = makeChain({
       links: [{
         type: "source",
@@ -498,7 +529,8 @@ describe("label fallbacks", () => {
       }],
     });
     const { container } = render(<EvidenceChainViz chain={chain} />);
-    expect(container.textContent).toContain("User Parameter");
+    // Label map: "user-parameter" → "User-Controlled Parameter", then .toLowerCase() in prose
+    expect(container.textContent).toContain("user-controlled parameter");
   });
 });
 
@@ -507,15 +539,15 @@ describe("label fallbacks", () => {
 // ═════════════════════════════════════════════════════════════════════════════════
 
 describe("flow timeline structure", () => {
-  it("3 flow links → rendered with connectors between them", () => {
+  it("3 flow links (source+propagation+sink) → rendered with arrows between them", () => {
     const chain = makeChain();
     const { container } = render(<EvidenceChainViz chain={chain} />);
-    const connectors = container.querySelectorAll(".ec-connector");
-    // 3 flow links → 2 connectors (n-1)
-    expect(connectors).toHaveLength(2);
+    const arrows = container.querySelectorAll(".ec5-flow-arrow");
+    // source→propagation arrow, propagation→sink arrow = 2 arrows
+    expect(arrows).toHaveLength(2);
   });
 
-  it("1 flow link → 0 connectors", () => {
+  it("1 source link → 0 arrows", () => {
     const chain = makeChain({
       links: [{
         type: "source",
@@ -526,22 +558,23 @@ describe("flow timeline structure", () => {
       }],
     });
     const { container } = render(<EvidenceChainViz chain={chain} />);
-    const connectors = container.querySelectorAll(".ec-connector");
-    expect(connectors).toHaveLength(0);
+    const arrows = container.querySelectorAll(".ec5-flow-arrow");
+    expect(arrows).toHaveLength(0);
   });
 
-  it("mixed: 2 flow + 1 mitigation + 1 impact → only 1 connector (flow links only)", () => {
+  it("mixed: source + sink + mitigation + impact → 1 arrow (between source and sink in flow)", () => {
     const chain = makeChain({
       links: [
         { type: "source", source_type: "user-parameter", location: "a.ts:1", observed: "test", rationale: "test" },
         { type: "sink", sink_type: "command-execution", location: "b.ts:2", observed: "exec()" },
         { type: "mitigation", mitigation_type: "validation", present: true, location: "c.ts:3", detail: "present" },
-        { type: "impact", impact_type: "remote-code-execution", scope: "host", exploitability: "trivial", scenario: "shell" },
+        { type: "impact", impact_type: "remote-code-execution", scope: "server-host", exploitability: "trivial", scenario: "shell" },
       ],
     });
     const { container } = render(<EvidenceChainViz chain={chain} />);
-    const connectors = container.querySelectorAll(".ec-connector");
-    expect(connectors).toHaveLength(1); // only between 2 flow links
+    const arrows = container.querySelectorAll(".ec5-flow-arrow");
+    // Only flow nodes (source, propagation, sink) get arrows; 1 arrow between source→sink
+    expect(arrows).toHaveLength(1);
   });
 });
 
@@ -550,7 +583,7 @@ describe("flow timeline structure", () => {
 // ═════════════════════════════════════════════════════════════════════════════════
 
 describe("section rendering", () => {
-  it("chain with only mitigation links → mitigations section, no flow", () => {
+  it("chain with only mitigation links → mitigations section, no flow chain", () => {
     const chain = makeChain({
       links: [{
         type: "mitigation",
@@ -561,23 +594,24 @@ describe("section rendering", () => {
       }],
     });
     const { container } = render(<EvidenceChainViz chain={chain} />);
-    expect(container.querySelector(".ec-mitigations")).not.toBeNull();
-    expect(container.querySelector(".ec-flow")).toBeNull();
+    expect(container.querySelector(".ec5-mitigations")).not.toBeNull();
+    // WhereSection returns null when no sources/sinks
+    expect(container.querySelector(".ec5-flow-chain")).toBeNull();
   });
 
-  it("chain with only impact links → impacts section, no flow", () => {
+  it("chain with only impact links → impact block rendered, no flow chain", () => {
     const chain = makeChain({
       links: [{
         type: "impact",
         impact_type: "data-exfiltration",
-        scope: "org",
+        scope: "user-data",
         exploitability: "moderate",
         scenario: "Data leak",
       }],
     });
     const { container } = render(<EvidenceChainViz chain={chain} />);
-    expect(container.querySelector(".ec-impacts")).not.toBeNull();
-    expect(container.querySelector(".ec-flow")).toBeNull();
+    expect(container.querySelector(".ec5-impact-block")).not.toBeNull();
+    expect(container.querySelector(".ec5-flow-chain")).toBeNull();
   });
 
   it("chain with all link types → all sections render", () => {
@@ -587,16 +621,16 @@ describe("section rendering", () => {
         { type: "propagation", propagation_type: "direct-pass", location: "b.ts:2", observed: "pass" },
         { type: "sink", sink_type: "command-execution", location: "c.ts:3", observed: "exec()" },
         { type: "mitigation", mitigation_type: "validation", present: false, location: "d.ts:4", detail: "missing" },
-        { type: "impact", impact_type: "remote-code-execution", scope: "host", exploitability: "trivial", scenario: "shell" },
+        { type: "impact", impact_type: "remote-code-execution", scope: "server-host", exploitability: "trivial", scenario: "shell" },
       ],
       threat_reference: { id: "CVE-2025-1", title: "Test", year: 2025, relevance: "direct" },
     });
     const { container } = render(<EvidenceChainViz chain={chain} />);
-    expect(container.querySelector(".ec-flow")).not.toBeNull();
-    expect(container.querySelector(".ec-mitigations")).not.toBeNull();
-    expect(container.querySelector(".ec-impacts")).not.toBeNull();
-    expect(container.querySelector(".ec-reference")).not.toBeNull();
-    expect(container.querySelector(".ec-confidence")).not.toBeNull();
+    expect(container.querySelector(".ec5-flow-chain")).not.toBeNull();
+    expect(container.querySelector(".ec5-mitigations")).not.toBeNull();
+    expect(container.querySelector(".ec5-impact-block")).not.toBeNull();
+    expect(container.querySelector(".ec5-reference")).not.toBeNull();
+    expect(container.querySelector(".ec5-confidence")).not.toBeNull();
   });
 });
 
