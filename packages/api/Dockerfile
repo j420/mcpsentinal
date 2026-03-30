@@ -13,6 +13,12 @@ RUN pnpm install --frozen-lockfile --filter=@mcp-sentinel/api...
 COPY packages/database/ ./packages/database/
 COPY packages/risk-matrix/ ./packages/risk-matrix/
 COPY packages/api/ ./packages/api/
+
+# Cache-bust: Railway sets RAILWAY_GIT_COMMIT_SHA per deploy.
+# This ensures the build step always runs fresh (no stale Docker layer cache).
+ARG RAILWAY_GIT_COMMIT_SHA
+ENV BUILD_SHA=$RAILWAY_GIT_COMMIT_SHA
+
 RUN pnpm --filter=@mcp-sentinel/database build
 RUN pnpm --filter=@mcp-sentinel/risk-matrix build
 RUN pnpm --filter=@mcp-sentinel/api build
