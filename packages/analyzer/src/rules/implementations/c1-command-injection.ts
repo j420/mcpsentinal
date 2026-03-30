@@ -207,6 +207,12 @@ class CommandInjectionRule implements TypedRule {
               title: "Command injection in MCP servers",
               relevance: "Pattern matches known command injection vectors in MCP server code",
             })
+            .verification({
+              step_type: "inspect-source",
+              instruction: `Examine source code at line ${line} for command execution with user input`,
+              target: `source_code:${line}`,
+              expected_observation: `${desc} pattern with potential user-controlled input`,
+            })
             .build();
 
           findings.push({
@@ -310,6 +316,18 @@ class CommandInjectionRule implements TypedRule {
         id: "CVE-2025-6514",
         title: "mcp-remote OS command injection (CVSS 9.6)",
         relevance: "Same attack pattern: user input reaching exec() without sanitization in MCP server",
+      })
+      .verification({
+        step_type: "inspect-source",
+        instruction: `Verify untrusted input at line ${flow.source.line} reaches command execution at line ${flow.sink.line}`,
+        target: `source_code:${flow.source.line}-${flow.sink.line}`,
+        expected_observation: `Data flows from ${flow.source.expression} through ${flow.path.length} step(s) to ${flow.sink.expression.slice(0, 40)}`,
+      })
+      .verification({
+        step_type: "trace-flow",
+        instruction: `Trace the taint path: ${flow.path.map((s) => `L${s.line}`).join(" → ")} and verify no sanitizer exists`,
+        target: flow.path.map((s) => `line ${s.line}`).join(", "),
+        expected_observation: "No sanitization or input validation between source and sink",
       });
 
     return builder.build();
@@ -369,6 +387,12 @@ class CommandInjectionRule implements TypedRule {
         id: "CVE-2025-68143",
         title: "Anthropic mcp-server-git argument injection chain",
         relevance: "Same pattern: input propagation to command execution in MCP server context",
+      })
+      .verification({
+        step_type: "inspect-source",
+        instruction: `Verify untrusted input at line ${flow.source.line} reaches command execution at line ${flow.sink.line}`,
+        target: `source_code:${flow.source.line}-${flow.sink.line}`,
+        expected_observation: `Data flows from ${flow.source.expression} through ${flow.propagation_chain.length} step(s) to ${flow.sink.expression.slice(0, 40)}`,
       });
 
     return builder.build();
