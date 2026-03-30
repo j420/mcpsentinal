@@ -43,6 +43,13 @@ class PathTraversalRule implements TypedRule {
       );
 
       for (const flow of pathFlows) {
+        const c2AstChain = new EvidenceChainBuilder()
+          .source({ source_type: "user-parameter", location: `line ${flow.source.line}`, observed: flow.source.expression.slice(0, 100), rationale: `${flow.source.category} input flows to file path operation without sanitization` })
+          .propagation({ propagation_type: "variable-assignment", location: `lines ${flow.source.line}-${flow.sink.line}`, observed: `${flow.path.length} step(s) from source to sink` })
+          .sink({ sink_type: "file-write", location: `line ${flow.sink.line}`, observed: flow.sink.expression.slice(0, 80) })
+          .factor("ast_taint", flow.confidence - 0.70, `AST taint: ${flow.path.length} steps, source: ${flow.source.category}`)
+          .verification({ step_type: "inspect-source", instruction: `Trace data flow from line ${flow.source.line} to line ${flow.sink.line}`, target: `source:line ${flow.source.line}-${flow.sink.line}`, expected_observation: `User input reaches file operation without path normalization` })
+          .build();
         findings.push({
           rule_id: "C2",
           severity: "critical",
@@ -62,6 +69,7 @@ class PathTraversalRule implements TypedRule {
             analysis_type: "ast_taint",
             source_line: flow.source.line,
             sink_line: flow.sink.line,
+            evidence_chain: c2AstChain,
           },
         });
       }
@@ -77,6 +85,13 @@ class PathTraversalRule implements TypedRule {
       );
 
       for (const flow of pathFlows) {
+        const c2TaintChain = new EvidenceChainBuilder()
+          .source({ source_type: "user-parameter", location: `line ${flow.source.line}`, observed: flow.source.expression?.slice(0, 80) || flow.source.category, rationale: `${flow.source.category} input reaches file path operation` })
+          .propagation({ propagation_type: "direct-pass", location: `line ${flow.sink.line}`, observed: `Taint flow from ${flow.source.category} to path_access` })
+          .sink({ sink_type: "file-write", location: `line ${flow.sink.line}`, observed: flow.sink.expression?.slice(0, 80) || "file path operation" })
+          .factor("taint_analysis", flow.confidence - 0.70, `Regex taint: ${flow.source.category} → path_access`)
+          .verification({ step_type: "inspect-source", instruction: `Trace data from ${flow.source.category} to file operation at line ${flow.sink.line}`, target: `source:line ${flow.sink.line}`, expected_observation: `User input reaches file path operation without validation` })
+          .build();
         findings.push({
           rule_id: "C2",
           severity: "critical",
@@ -87,7 +102,7 @@ class PathTraversalRule implements TypedRule {
           owasp_category: "MCP05-privilege-escalation",
           mitre_technique: "AML.T0054",
           confidence: flow.confidence,
-          metadata: { analysis_type: "taint" },
+          metadata: { analysis_type: "taint", evidence_chain: c2TaintChain },
         });
       }
     }
@@ -104,6 +119,13 @@ class PathTraversalRule implements TypedRule {
         const match = regex.exec(context.source_code);
         if (match) {
           const line = getLineNumber(context.source_code, match.index);
+          const c2PatternChain = new EvidenceChainBuilder()
+            .source({ source_type: "file-content", location: `line ${line}`, observed: match[0].slice(0, 80), rationale: `Literal path traversal pattern in file operation: ${desc}` })
+            .propagation({ propagation_type: "direct-pass", location: `line ${line}`, observed: `${desc} detected in source code` })
+            .sink({ sink_type: "file-write", location: `line ${line}`, observed: `Path traversal: "${match[0].slice(0, 60)}"` })
+            .factor("structural_match", confidence - 0.70, `Pattern: ${desc}`)
+            .verification({ step_type: "inspect-source", instruction: `Review file operation at line ${line} for path traversal`, target: `source:line ${line}`, expected_observation: desc })
+            .build();
           findings.push({
             rule_id: "C2",
             severity: "critical",
@@ -112,7 +134,7 @@ class PathTraversalRule implements TypedRule {
             owasp_category: "MCP05-privilege-escalation",
             mitre_technique: "AML.T0054",
             confidence,
-            metadata: { analysis_type: "regex_fallback", line },
+            metadata: { analysis_type: "regex_fallback", line, evidence_chain: c2PatternChain },
           });
           break;
         }
@@ -332,6 +354,13 @@ class PrototypePollutionRule implements TypedRule {
         // Skip obvious safe patterns
         if (/(?:hasOwnProperty|Object\.create\(null\)|Object\.freeze)/.test(lineText)) continue;
 
+        const c10Chain = new EvidenceChainBuilder()
+          .source({ source_type: hasUserInput ? "user-parameter" : "file-content", location: `line ${line}`, observed: match[0].slice(0, 80), rationale: `${desc} — ${hasUserInput ? "user input detected nearby" : "code pattern"}` })
+          .propagation({ propagation_type: hasUserInput ? "variable-assignment" : "direct-pass", location: `line ${line}`, observed: `Prototype pollution pattern with ${hasUserInput ? "user input context" : "code-level access"}` })
+          .sink({ sink_type: "code-evaluation", location: `line ${line}`, observed: `${desc}: "${match[0].slice(0, 60)}"` })
+          .factor(hasUserInput ? "user_input_context" : "structural_match", adjustedConfidence - 0.70, `${desc} ${hasUserInput ? "with user input nearby" : ""}`)
+          .verification({ step_type: "inspect-source", instruction: `Review prototype pollution pattern at line ${line}`, target: `source:line ${line}`, expected_observation: desc })
+          .build();
         findings.push({
           rule_id: "C10",
           severity: "critical",
@@ -346,7 +375,7 @@ class PrototypePollutionRule implements TypedRule {
           owasp_category: "MCP03-command-injection",
           mitre_technique: "AML.T0054",
           confidence: adjustedConfidence,
-          metadata: { analysis_type: hasUserInput ? "context_aware" : "pattern", line },
+          metadata: { analysis_type: hasUserInput ? "context_aware" : "pattern", line, evidence_chain: c10Chain },
         });
         break; // One finding per pattern type
       }
@@ -408,6 +437,13 @@ class JWTAlgorithmConfusionRule implements TypedRule {
       if (match) {
         const line = getLineNumber(source, match.index);
 
+        const c14Chain = new EvidenceChainBuilder()
+          .source({ source_type: "file-content", location: `line ${line}`, observed: match[0].slice(0, 80), rationale: `JWT configuration vulnerability: ${desc}` })
+          .propagation({ propagation_type: "direct-pass", location: `line ${line}`, observed: `JWT misconfiguration flows to authentication decision` })
+          .sink({ sink_type: "credential-exposure", location: `line ${line}`, observed: `${desc}: "${match[0].slice(0, 60)}"` })
+          .factor("jwt_pattern", confidence - 0.70, `JWT vulnerability: ${desc}`)
+          .verification({ step_type: "inspect-source", instruction: `Review JWT configuration at line ${line}`, target: `source:line ${line}`, expected_observation: desc })
+          .build();
         findings.push({
           rule_id: "C14",
           severity,
@@ -419,7 +455,7 @@ class JWTAlgorithmConfusionRule implements TypedRule {
           owasp_category: "MCP07-insecure-config",
           mitre_technique: "AML.T0054",
           confidence,
-          metadata: { analysis_type: "structural", line },
+          metadata: { analysis_type: "structural", line, evidence_chain: c14Chain },
         });
       }
     }

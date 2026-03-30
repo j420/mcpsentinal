@@ -224,6 +224,32 @@ class AnnotationDeceptionRule implements TypedRule {
         );
 
         if (destructiveParams.length >= 2) {
+          const i2Chain = new EvidenceChainBuilder()
+            .source({
+              source_type: "external-content",
+              location: `tool:${tool.name}:annotations`,
+              observed: `destructiveHint not set, ${destructiveParams.length} destructive params: [${destructiveParams.join(", ")}]`,
+              rationale: "Tool with destructive capabilities lacks annotation that triggers user confirmation in AI clients",
+            })
+            .propagation({
+              propagation_type: "schema-unconstrained",
+              location: `tool:${tool.name}:annotations`,
+              observed: `Missing destructiveHint: true — AI client treats tool as safe for auto-execution`,
+            })
+            .impact({
+              impact_type: "privilege-escalation",
+              scope: "user-data",
+              exploitability: "moderate",
+              scenario: `AI auto-executes destructive tool "${tool.name}" without user confirmation due to missing annotation`,
+            })
+            .factor("missing_annotation", 0.05, `${destructiveParams.length} destructive params without destructiveHint`)
+            .verification({
+              step_type: "check-config",
+              instruction: `Check tool "${tool.name}" annotations for destructiveHint: true`,
+              target: `tool:${tool.name}:annotations`,
+              expected_observation: `destructiveHint is absent despite params [${destructiveParams.join(", ")}]`,
+            })
+            .build();
           findings.push({
             rule_id: "I2",
             severity: "high",
@@ -241,6 +267,7 @@ class AnnotationDeceptionRule implements TypedRule {
               analysis_type: "missing_annotation",
               tool_name: tool.name,
               destructive_params: destructiveParams,
+              evidence_chain: i2Chain,
             },
           });
         }

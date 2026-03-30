@@ -132,6 +132,32 @@ class LethalTrifectaRule implements TypedRule {
       }
 
       if (pattern.type === "credential_exposure") {
+        const f3SchemaChain = new EvidenceChainBuilder()
+          .source({
+            source_type: "user-parameter",
+            location: `tools: ${pattern.tools.join(", ")}`,
+            observed: `Schema analysis detected credential parameters coexisting with network URL parameters`,
+            rationale: "Credential parameters (API keys, tokens, passwords) in the same server as network-send parameters create a direct exfiltration path",
+          })
+          .propagation({
+            propagation_type: "cross-tool-flow",
+            location: "server execution context",
+            observed: "Credential values accessible in shared server memory can flow to network-sending tools",
+          })
+          .impact({
+            impact_type: "credential-theft",
+            scope: "connected-services",
+            exploitability: "moderate",
+            scenario: "Attacker instructs AI to read credentials via one tool and exfiltrate them via a network-capable tool in the same server",
+          })
+          .verification({
+            step_type: "inspect-description",
+            instruction: "Verify that credential-handling and network-sending tools coexist in this server",
+            target: pattern.tools.join(", "),
+            expected_observation: "At least one tool handles credentials AND at least one tool can send data to external endpoints",
+          })
+          .build();
+
         findings.push({
           rule_id: "F3",
           severity: "critical",
@@ -142,10 +168,40 @@ class LethalTrifectaRule implements TypedRule {
           owasp_category: "MCP04-data-exfiltration",
           mitre_technique: "AML.T0057",
           confidence: pattern.confidence,
+          metadata: {
+            analysis_type: "schema_structural",
+            tools_involved: pattern.tools,
+            evidence_chain: f3SchemaChain,
+          },
         });
       }
 
       if (pattern.type === "unrestricted_access") {
+        const f2SchemaChain = new EvidenceChainBuilder()
+          .source({
+            source_type: "user-parameter",
+            location: `tools: ${pattern.tools.join(", ")}`,
+            observed: `Schema analysis detected unconstrained command/code execution parameters`,
+            rationale: "Parameters that accept arbitrary commands or code without enum, pattern, or maxLength constraints enable unrestricted execution",
+          })
+          .propagation({
+            propagation_type: "schema-unconstrained",
+            location: "tool input schema",
+            observed: "No schema constraints (enum, pattern, maxLength) limit the parameter value space",
+          })
+          .sink({
+            sink_type: "command-execution",
+            location: "server-side execution environment",
+            observed: "Unconstrained parameters flow directly to command or code execution handlers",
+          })
+          .verification({
+            step_type: "inspect-description",
+            instruction: "Examine tool parameter schemas for missing constraints on command/code parameters",
+            target: pattern.tools.join(", "),
+            expected_observation: "Parameters accepting commands or code lack enum, pattern, or maxLength validation",
+          })
+          .build();
+
         findings.push({
           rule_id: "F2",
           severity: "critical",
@@ -156,6 +212,11 @@ class LethalTrifectaRule implements TypedRule {
           owasp_category: "MCP03-command-injection",
           mitre_technique: "AML.T0054",
           confidence: pattern.confidence,
+          metadata: {
+            analysis_type: "schema_structural",
+            tools_involved: pattern.tools,
+            evidence_chain: f2SchemaChain,
+          },
         });
       }
     }
@@ -241,6 +302,32 @@ class LethalTrifectaRule implements TypedRule {
       (p) => p.type === "circular_data_loop"
     );
     for (const pattern of loopPatterns) {
+      const f6Chain = new EvidenceChainBuilder()
+        .source({
+          source_type: "external-content",
+          location: `tools: ${pattern.tools_involved.join(", ")}`,
+          observed: `Cycle detection found circular data loop: ${pattern.tools_involved.join(" → ")} → ${pattern.tools_involved[0]}`,
+          rationale: "Write+read on the same data store enables persistent prompt injection — attacker poisons stored content once, AI executes it on every subsequent read",
+        })
+        .propagation({
+          propagation_type: "cross-tool-flow",
+          location: `cycle: ${pattern.tools_involved.join(" → ")}`,
+          observed: `Graph centrality: ${pattern.tools_involved.map((t) => `${t}=${((graph.centrality.get(t) || 0) * 100).toFixed(0)}%`).join(", ")}`,
+        })
+        .impact({
+          impact_type: "config-poisoning",
+          scope: "ai-client",
+          exploitability: "moderate",
+          scenario: "Attacker writes poisoned content to a data store via one tool; AI reads it back via another tool in the same cycle, executing the injected instructions persistently across sessions",
+        })
+        .verification({
+          step_type: "inspect-description",
+          instruction: "Verify that tools in the cycle can both write to and read from the same data store",
+          target: pattern.tools_involved.join(", "),
+          expected_observation: "At least one tool writes data that another tool in the cycle reads back, forming a persistent injection loop",
+        })
+        .build();
+
       findings.push({
         rule_id: "F6",
         severity: "high",
@@ -259,6 +346,7 @@ class LethalTrifectaRule implements TypedRule {
         metadata: {
           analysis_type: "cycle_detection",
           cycle: pattern.tools_involved,
+          evidence_chain: f6Chain,
         },
       });
     }
@@ -268,6 +356,31 @@ class LethalTrifectaRule implements TypedRule {
       (p) => p.type === "command_injection_chain"
     );
     for (const pattern of cmdPatterns) {
+      const f2GraphChain = new EvidenceChainBuilder()
+        .source({
+          source_type: "external-content",
+          location: `tools: ${pattern.tools_involved.join(", ")}`,
+          observed: `Graph analysis detected command injection chain: ${pattern.description}`,
+          rationale: "Untrusted content ingestion tools feed data to command execution tools without validation boundary",
+        })
+        .propagation({
+          propagation_type: "cross-tool-flow",
+          location: `data flow: ${pattern.tools_involved.join(" → ")}`,
+          observed: "Capability graph edge connects untrusted-content-ingestion to command-execution without sanitization",
+        })
+        .sink({
+          sink_type: "command-execution",
+          location: "server-side execution environment",
+          observed: "Untrusted input reaches command execution tool via cross-tool data flow",
+        })
+        .verification({
+          step_type: "inspect-description",
+          instruction: "Verify that untrusted content can flow from ingestion tools to command execution tools",
+          target: pattern.tools_involved.join(", "),
+          expected_observation: "Data path exists from content ingestion to command execution without input validation",
+        })
+        .build();
+
       findings.push({
         rule_id: "F2",
         severity: "critical",
@@ -279,6 +392,11 @@ class LethalTrifectaRule implements TypedRule {
         owasp_category: "MCP03-command-injection",
         mitre_technique: "AML.T0054",
         confidence: pattern.confidence,
+        metadata: {
+          analysis_type: "capability_graph",
+          tools_involved: pattern.tools_involved,
+          evidence_chain: f2GraphChain,
+        },
       });
     }
 
@@ -287,6 +405,32 @@ class LethalTrifectaRule implements TypedRule {
       (p) => p.type === "credential_exposure"
     );
     for (const pattern of credPatterns) {
+      const f3GraphChain = new EvidenceChainBuilder()
+        .source({
+          source_type: "user-parameter",
+          location: `tools: ${pattern.tools_involved.join(", ")}`,
+          observed: `Graph analysis detected credential exposure path: ${pattern.description}`,
+          rationale: "Credential-handling tools coexist with network-sending tools, enabling credential exfiltration via cross-tool data flow",
+        })
+        .propagation({
+          propagation_type: "cross-tool-flow",
+          location: `data flow: ${pattern.tools_involved.join(" → ")}`,
+          observed: "Capability graph connects credential-access nodes to network-send nodes",
+        })
+        .impact({
+          impact_type: "credential-theft",
+          scope: "connected-services",
+          exploitability: "moderate",
+          scenario: "Attacker instructs AI to access credentials via one tool and send them to an external endpoint via a network-capable tool in the same server",
+        })
+        .verification({
+          step_type: "inspect-description",
+          instruction: "Verify that credential-handling and network-sending capabilities coexist with a data flow path between them",
+          target: pattern.tools_involved.join(", "),
+          expected_observation: "Graph edge connects a credential-access tool to a network-send tool",
+        })
+        .build();
+
       findings.push({
         rule_id: "F3",
         severity: "critical",
@@ -297,6 +441,11 @@ class LethalTrifectaRule implements TypedRule {
         owasp_category: "MCP04-data-exfiltration",
         mitre_technique: "AML.T0057",
         confidence: pattern.confidence,
+        metadata: {
+          analysis_type: "capability_graph",
+          tools_involved: pattern.tools_involved,
+          evidence_chain: f3GraphChain,
+        },
       });
     }
 
@@ -369,6 +518,36 @@ class ExfiltrationChainRule implements TypedRule {
         centrality: graph.centrality.get(t) || 0,
       }));
 
+      const f7Chain = new EvidenceChainBuilder()
+        .source({
+          source_type: "user-parameter",
+          location: `tools: ${pattern.tools_involved.join(", ")}`,
+          observed: `Graph reachability analysis found ${pattern.tools_involved.length}-step exfiltration chain`,
+          rationale: "No individual tool in the chain is dangerous; the combination of read → transform → send enables multi-step data exfiltration",
+        })
+        .propagation({
+          propagation_type: "cross-tool-flow",
+          location: `chain: ${pattern.tools_involved.join(" → ")}`,
+          observed: `Tool centrality: ${centralityInfo.map((c) => `${c.tool}=${(c.centrality * 100).toFixed(0)}%`).join(", ")} — high centrality tools are data flow bottlenecks`,
+        })
+        .sink({
+          sink_type: "network-send",
+          location: "external network endpoint",
+          observed: "Final tool in the chain sends data to an external endpoint, completing the exfiltration path",
+        })
+        .factor(
+          "chain-length",
+          (pattern.tools_involved.length - 2) * 0.1,
+          `${pattern.tools_involved.length}-step chain: longer chains are harder to detect but still exploitable`,
+        )
+        .verification({
+          step_type: "inspect-description",
+          instruction: "Trace the data flow through each tool in the chain to confirm read → transform → send sequence",
+          target: pattern.tools_involved.join(", "),
+          expected_observation: "First tool reads sensitive data, intermediate tools transform/encode it, last tool sends it externally",
+        })
+        .build();
+
       findings.push({
         rule_id: "F7",
         severity: "critical",
@@ -391,6 +570,7 @@ class ExfiltrationChainRule implements TypedRule {
         metadata: {
           analysis_type: "graph_reachability",
           chain: pattern.tools_involved,
+          evidence_chain: f7Chain,
           centrality: Object.fromEntries(
             centralityInfo.map((c) => [c.tool, c.centrality])
           ),

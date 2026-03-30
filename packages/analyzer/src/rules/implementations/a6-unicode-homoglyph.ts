@@ -183,7 +183,32 @@ class UnicodeHomoglyphRule implements TypedRule {
         );
 
         if (descHomoglyphs.length >= 3) {
-          // Only flag if significant number of homoglyphs in description
+          const a6DescChain = new EvidenceChainBuilder()
+            .source({
+              source_type: "external-content",
+              location: `tool "${tool.name}" description`,
+              observed: `${descHomoglyphs.length} homoglyph characters, scripts: ${[...descResult.scripts_detected].join(", ")}`,
+              rationale: "Tool description contains multiple homoglyph characters from non-Latin scripts suggesting obfuscation",
+            })
+            .propagation({
+              propagation_type: "description-directive",
+              location: `tool:${tool.name}:description`,
+              observed: `Mixed-script description processed by AI as tool context`,
+            })
+            .impact({
+              impact_type: "cross-agent-propagation",
+              scope: "ai-client",
+              exploitability: "moderate",
+              scenario: `Homoglyph characters in tool "${tool.name}" description hide injection payloads from human reviewers`,
+            })
+            .factor("homoglyph_density", 0.10, `${descHomoglyphs.length} homoglyphs across ${[...descResult.scripts_detected].length} scripts`)
+            .verification({
+              step_type: "inspect-description",
+              instruction: `Hex-dump tool "${tool.name}" description and check for non-Latin codepoints`,
+              target: `tool:${tool.name}:description`,
+              expected_observation: `${descHomoglyphs.length} homoglyph characters from scripts: ${[...descResult.scripts_detected].join(", ")}`,
+            })
+            .build();
           findings.push({
             rule_id: "A6",
             severity: "high",
@@ -199,6 +224,7 @@ class UnicodeHomoglyphRule implements TypedRule {
             owasp_category: "MCP02-tool-poisoning",
             mitre_technique: "AML.T0054",
             confidence: Math.min(0.9, 0.5 + descHomoglyphs.length * 0.1),
+            metadata: { evidence_chain: a6DescChain },
           });
         }
       }
@@ -209,6 +235,31 @@ class UnicodeHomoglyphRule implements TypedRule {
         if (otherTool.name === tool.name) continue;
         const otherNormalized = normalizeConfusables(otherTool.name);
         if (normalizedName === otherNormalized && tool.name !== otherTool.name) {
+          const a6ShadowChain = new EvidenceChainBuilder()
+            .source({
+              source_type: "external-content",
+              location: `tool:${tool.name} vs tool:${otherTool.name}`,
+              observed: `Both normalize to "${normalizedName}" but are different strings`,
+              rationale: "Two tools are visually identical after Unicode normalization — homoglyph-based shadowing",
+            })
+            .propagation({
+              propagation_type: "cross-tool-flow",
+              location: `tool registry`,
+              observed: `AI client cannot distinguish "${tool.name}" from "${otherTool.name}"`,
+            })
+            .sink({
+              sink_type: "privilege-grant",
+              location: `AI client tool invocation`,
+              observed: `Tool invocation routed to wrong tool due to visual identity collision`,
+            })
+            .factor("shadow_collision", 0.29, `Exact normalization collision: both names → "${normalizedName}"`)
+            .verification({
+              step_type: "inspect-description",
+              instruction: `Compare codepoints of "${tool.name}" and "${otherTool.name}" character by character`,
+              target: `tool:${tool.name} / tool:${otherTool.name}`,
+              expected_observation: `Different codepoints normalize to identical string "${normalizedName}"`,
+            })
+            .build();
           findings.push({
             rule_id: "A6",
             severity: "critical",
@@ -223,6 +274,7 @@ class UnicodeHomoglyphRule implements TypedRule {
             owasp_category: "MCP02-tool-poisoning",
             mitre_technique: "AML.T0054",
             confidence: 0.99,
+            metadata: { evidence_chain: a6ShadowChain },
           });
         }
       }
@@ -276,6 +328,31 @@ class ZeroWidthInjectionRule implements TypedRule {
       );
 
       if (nameInvisible.length > 0) {
+        const a7NameChain = new EvidenceChainBuilder()
+          .source({
+            source_type: "external-content",
+            location: `tool name: "${tool.name}"`,
+            observed: nameInvisible.map((i) => `${issueTypeLabels[i.type]} ${i.description}`).join("; "),
+            rationale: "Tool name contains invisible Unicode characters that alter identifier without visible change",
+          })
+          .propagation({
+            propagation_type: "description-directive",
+            location: `AI client tool registry`,
+            observed: `Invisible chars in tool name processed by AI as part of identifier`,
+          })
+          .sink({
+            sink_type: "privilege-grant",
+            location: `AI client tool invocation`,
+            observed: `Invisible characters enable identifier manipulation — tool name appears different to AI than to humans`,
+          })
+          .factor("invisible_in_name", 0.25, `${nameInvisible.length} invisible character(s) in tool name — critical identifier`)
+          .verification({
+            step_type: "inspect-description",
+            instruction: `Hex-dump tool name "${tool.name}" and check for zero-width, bidi, or tag codepoints`,
+            target: `tool name: "${tool.name}"`,
+            expected_observation: `${nameInvisible.length} invisible character(s) at positions not visible to reviewers`,
+          })
+          .build();
         findings.push({
           rule_id: "A7",
           severity: "critical",
@@ -299,6 +376,7 @@ class ZeroWidthInjectionRule implements TypedRule {
               ),
               positions: i.positions,
             })),
+            evidence_chain: a7NameChain,
           },
         });
       }
@@ -435,6 +513,32 @@ class ZeroWidthInjectionRule implements TypedRule {
           (i) => i.type === "bidi_override"
         );
         if (bidiIssues.length > 0) {
+          const a7BidiChain = new EvidenceChainBuilder()
+            .source({
+              source_type: "external-content",
+              location: `tool "${tool.name}" description`,
+              observed: `${bidiIssues.length} bidirectional override character(s)`,
+              rationale: "RTL override reverses displayed text — humans read reversed text while LLM processes original order",
+            })
+            .propagation({
+              propagation_type: "description-directive",
+              location: `tool:${tool.name}:description`,
+              observed: `Bidi overrides cause text rendering to diverge from LLM input`,
+            })
+            .impact({
+              impact_type: "cross-agent-propagation",
+              scope: "ai-client",
+              exploitability: "trivial",
+              scenario: `Reviewers see reversed text while LLM reads actual injection payload in tool "${tool.name}" description`,
+            })
+            .factor("bidi_override", 0.25, `${bidiIssues.length} bidi override character(s) — text reversal attack`)
+            .verification({
+              step_type: "inspect-description",
+              instruction: `Check tool "${tool.name}" description for U+202A-U+202E bidi override codepoints`,
+              target: `tool:${tool.name}:description`,
+              expected_observation: `${bidiIssues.length} bidirectional override characters reversing text display`,
+            })
+            .build();
           findings.push({
             rule_id: "A7",
             severity: "critical",
@@ -449,6 +553,7 @@ class ZeroWidthInjectionRule implements TypedRule {
             owasp_category: "MCP01-prompt-injection",
             mitre_technique: "AML.T0054",
             confidence: 0.95,
+            metadata: { evidence_chain: a7BidiChain },
           });
         }
       }
@@ -469,6 +574,32 @@ class ZeroWidthInjectionRule implements TypedRule {
           );
 
           if (paramInvisible.length > 0) {
+            const a7ParamChain = new EvidenceChainBuilder()
+              .source({
+                source_type: "user-parameter",
+                location: `tool:${tool.name}:param:${paramName}:description`,
+                observed: `${paramInvisible.length} invisible character(s)`,
+                rationale: "Parameter description contains invisible chars — secondary injection surface for LLM argument filling",
+              })
+              .propagation({
+                propagation_type: "description-directive",
+                location: `tool:${tool.name}:param:${paramName}`,
+                observed: `Invisible characters in parameter "${paramName}" description processed by AI`,
+              })
+              .impact({
+                impact_type: "cross-agent-propagation",
+                scope: "ai-client",
+                exploitability: "moderate",
+                scenario: `Hidden instructions in parameter "${paramName}" description influence AI argument filling`,
+              })
+              .factor("invisible_in_param", 0.10, `${paramInvisible.length} invisible character(s) in parameter description`)
+              .verification({
+                step_type: "inspect-description",
+                instruction: `Hex-dump parameter "${paramName}" description in tool "${tool.name}"`,
+                target: `tool:${tool.name}:param:${paramName}`,
+                expected_observation: `${paramInvisible.length} invisible character(s) in parameter description`,
+              })
+              .build();
             findings.push({
               rule_id: "A7",
               severity: "high",
@@ -482,6 +613,7 @@ class ZeroWidthInjectionRule implements TypedRule {
               owasp_category: "MCP01-prompt-injection",
               mitre_technique: "AML.T0054",
               confidence: 0.8,
+              metadata: { evidence_chain: a7ParamChain },
             });
           }
         }

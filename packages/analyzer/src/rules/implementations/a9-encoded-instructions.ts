@@ -303,6 +303,32 @@ class EncodedInstructionsRule implements TypedRule {
               paramResult.classification !== "source_code" &&
               paramResult.confidence >= 0.5
             ) {
+              const a9ParamChain = new EvidenceChainBuilder()
+                .source({
+                  source_type: "external-content",
+                  location: `tool:${tool.name}:param:${paramName}:description`,
+                  observed: `Entropy: ${paramEntropy.toFixed(2)} bits/char, classified as "${paramResult.classification}"`,
+                  rationale: "Parameter description has anomalous entropy suggesting encoded or obfuscated content",
+                })
+                .propagation({
+                  propagation_type: "description-directive",
+                  location: `tool:${tool.name}:param:${paramName}`,
+                  observed: `High-entropy parameter description processed by AI for argument filling`,
+                })
+                .impact({
+                  impact_type: "cross-agent-propagation",
+                  scope: "ai-client",
+                  exploitability: "moderate",
+                  scenario: `Encoded instructions in parameter "${paramName}" of tool "${tool.name}" bypass human review`,
+                })
+                .factor("entropy_analysis", paramResult.confidence * 0.8 - 0.70, `Shannon entropy ${paramEntropy.toFixed(2)} bits/char`)
+                .verification({
+                  step_type: "inspect-description",
+                  instruction: `Decode/inspect parameter "${paramName}" description for hidden instructions`,
+                  target: `tool:${tool.name}:param:${paramName}`,
+                  expected_observation: `Content classified as "${paramResult.classification}" with entropy ${paramEntropy.toFixed(2)}`,
+                })
+                .build();
               findings.push({
                 rule_id: "A9",
                 severity: "high",
@@ -316,6 +342,7 @@ class EncodedInstructionsRule implements TypedRule {
                 owasp_category: "MCP01-prompt-injection",
                 mitre_technique: "AML.T0054",
                 confidence: paramResult.confidence * 0.8,
+                metadata: { evidence_chain: a9ParamChain },
               });
             }
           }

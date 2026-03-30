@@ -159,12 +159,38 @@ registerTypedRule({
         const githubUrl = ctx.server.github_url || "";
         const isOfficial = githubUrl.includes(`github.com/${official}`);
         if (!isOfficial) {
+          const f5DirectChain = new EvidenceChainBuilder()
+            .source({
+              source_type: "external-content",
+              location: `server:${ctx.server.name}`,
+              observed: `Server name "${ctx.server.name}" contains "${official}"`,
+              rationale: "Server name impersonates an official vendor namespace, misleading AI clients and users",
+            })
+            .propagation({
+              propagation_type: "cross-tool-flow",
+              location: `server:${ctx.server.name}:github_url`,
+              observed: `GitHub URL "${ctx.server.github_url || "(none)"}" is not under github.com/${official}`,
+            })
+            .impact({
+              impact_type: "cross-agent-propagation",
+              scope: "ai-client",
+              exploitability: "trivial",
+              scenario: `AI trusts server "${ctx.server.name}" as official ${official} product due to namespace match`,
+            })
+            .factor("namespace_match", 0.20, `Direct substring match: "${official}" in server name`)
+            .verification({
+              step_type: "inspect-description",
+              instruction: `Verify whether "${ctx.server.name}" is an official ${official} server`,
+              target: `server:${ctx.server.name}`,
+              expected_observation: `Server uses "${official}" namespace but GitHub URL does not match`,
+            })
+            .build();
           findings.push({
             rule_id: "F5", severity: "critical",
             evidence: `Server name "${ctx.server.name}" contains official namespace "${official}" but is not from ${official}'s GitHub.`,
             remediation: "Do not use official vendor names in server names unless you are the vendor.",
             owasp_category: "MCP10-supply-chain", mitre_technique: "AML.T0054",
-            confidence: 0.90, metadata: { server_name: ctx.server.name, impersonated: official },
+            confidence: 0.90, metadata: { server_name: ctx.server.name, impersonated: official, evidence_chain: f5DirectChain },
           });
         }
       }
@@ -172,13 +198,39 @@ registerTypedRule({
       // Levenshtein similarity for typosquats
       const distance = damerauLevenshtein(serverName, official);
       if (distance > 0 && distance <= 2 && !serverName.includes(official)) {
+        const f5LevenChain = new EvidenceChainBuilder()
+          .source({
+            source_type: "external-content",
+            location: `server:${ctx.server.name}`,
+            observed: `Server name "${ctx.server.name}" is ${distance} edit(s) from "${official}"`,
+            rationale: "Server name is suspiciously similar to an official vendor name — typosquatting pattern",
+          })
+          .propagation({
+            propagation_type: "cross-tool-flow",
+            location: `server:${ctx.server.name}:name`,
+            observed: `Damerau-Levenshtein distance: ${distance} from "${official}"`,
+          })
+          .impact({
+            impact_type: "cross-agent-propagation",
+            scope: "ai-client",
+            exploitability: distance === 1 ? "trivial" : "moderate",
+            scenario: `AI selects typosquat "${ctx.server.name}" instead of official "${official}" server`,
+          })
+          .factor("levenshtein_similarity", distance === 1 ? 0.22 : 0.10, `Edit distance ${distance} from "${official}"`)
+          .verification({
+            step_type: "inspect-description",
+            instruction: `Compare server name "${ctx.server.name}" against official name "${official}"`,
+            target: `server:${ctx.server.name}`,
+            expected_observation: `Name is ${distance} edit(s) from "${official}" — likely typosquat`,
+          })
+          .build();
         findings.push({
           rule_id: "F5", severity: "critical",
           evidence: `Server name "${ctx.server.name}" is ${distance} edit(s) from official "${official}" (typosquat risk).`,
           remediation: "Rename server to avoid confusion with official vendor names.",
           owasp_category: "MCP10-supply-chain", mitre_technique: "AML.T0054",
           confidence: distance === 1 ? 0.92 : 0.80,
-          metadata: { server_name: ctx.server.name, target: official, distance },
+          metadata: { server_name: ctx.server.name, target: official, distance, evidence_chain: f5LevenChain },
         });
       }
     }
@@ -214,6 +266,31 @@ registerTypedRule({
       );
 
       if (dangerousNewTools.length > 0) {
+        const g6Chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "external-content",
+            location: `server:${ctx.server.name}:tools`,
+            observed: `${newTools.length} new tools added: [${newTools.slice(0, 5).join(", ")}${newTools.length > 5 ? "..." : ""}]`,
+            rationale: "Sudden tool additions after stable scan history indicate possible rug pull / behavior drift",
+          })
+          .propagation({
+            propagation_type: "cross-tool-flow",
+            location: `server:${ctx.server.name}:scan_history`,
+            observed: `Tool count: ${previous.tool_count} → ${current.tool_count} (delta: +${toolCountDelta})`,
+          })
+          .sink({
+            sink_type: "command-execution",
+            location: `server:${ctx.server.name}:new_tools`,
+            observed: `Dangerous new tools: [${dangerousNewTools.join(", ")}]`,
+          })
+          .factor("temporal_drift", 0.18, `${dangerousNewTools.length} dangerous tools added in single scan window`)
+          .verification({
+            step_type: "inspect-description",
+            instruction: `Compare current tool list against previous scan for server "${ctx.server.name}"`,
+            target: `server:${ctx.server.name}`,
+            expected_observation: `New dangerous tools [${dangerousNewTools.join(", ")}] appeared since last scan`,
+          })
+          .build();
         findings.push({
           rule_id: "G6", severity: "critical",
           evidence:
@@ -221,7 +298,7 @@ registerTypedRule({
             `Total tools: ${previous.tool_count} → ${current.tool_count}. Possible rug pull.`,
           remediation: "Investigate sudden tool additions. Review new dangerous tools. Consider reverting to previous version.",
           owasp_category: "MCP02-tool-poisoning", mitre_technique: "AML.T0054",
-          confidence: 0.88, metadata: { new_tools: newTools, dangerous_new: dangerousNewTools, delta: toolCountDelta },
+          confidence: 0.88, metadata: { new_tools: newTools, dangerous_new: dangerousNewTools, delta: toolCountDelta, evidence_chain: g6Chain },
         });
       }
     }
@@ -258,12 +335,37 @@ registerTypedRule({
       regex.lastIndex = 0;
       const match = regex.exec(src);
       if (match) {
+        const h1Chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "file-content",
+            location: `line ${lineNum(src, match.index)}`,
+            observed: match[0].slice(0, 80),
+            rationale: "OAuth implementation pattern detected in source code that violates RFC 9700 / OAuth 2.1",
+          })
+          .propagation({
+            propagation_type: "direct-pass",
+            location: `line ${lineNum(src, match.index)}`,
+            observed: `OAuth vulnerability: ${desc}`,
+          })
+          .sink({
+            sink_type: "credential-exposure",
+            location: `line ${lineNum(src, match.index)}`,
+            observed: `${desc}: "${match[0].slice(0, 60)}"`,
+          })
+          .factor("oauth_pattern", confidence - 0.70, `OAuth pattern: ${desc}`)
+          .verification({
+            step_type: "inspect-description",
+            instruction: `Review OAuth implementation at line ${lineNum(src, match.index)} for RFC 9700 compliance`,
+            target: `source:line ${lineNum(src, match.index)}`,
+            expected_observation: desc,
+          })
+          .build();
         findings.push({
           rule_id: "H1", severity: "critical",
           evidence: `OAuth vulnerability: ${desc} at line ${lineNum(src, match.index)}: "${match[0].slice(0, 60)}".`,
           remediation: "Follow RFC 9700. Use authorization code flow with PKCE. Never use implicit flow or ROPC.",
           owasp_category: "MCP07-insecure-config", mitre_technique: "AML.T0055",
-          confidence, metadata: { analysis_type: "structural", vulnerability: desc },
+          confidence, metadata: { analysis_type: "structural", vulnerability: desc, evidence_chain: h1Chain },
         });
       }
     }
@@ -289,6 +391,32 @@ registerTypedRule({
         params.some(p => /(?:agent|upstream|previous)[\s_]?(?:output|result|response)/i.test(p));
 
       if (acceptsAgentInput) {
+        const h3Chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "agent-output",
+            location: `tool:${tool.name}`,
+            observed: `Tool accepts agent/upstream/pipeline output via description or parameters`,
+            rationale: "Tool ingests output from other agents without declared trust boundaries",
+          })
+          .propagation({
+            propagation_type: "cross-tool-flow",
+            location: `tool:${tool.name}:description`,
+            observed: `Agent input sink detected in tool "${tool.name}" description or parameters`,
+          })
+          .impact({
+            impact_type: "cross-agent-propagation",
+            scope: "other-agents",
+            exploitability: "moderate",
+            scenario: `Compromised upstream agent injects instructions through tool "${tool.name}" into downstream agents`,
+          })
+          .factor("agent_input_sink", 0.08, "Tool accepts agent output without trust boundary declaration")
+          .verification({
+            step_type: "inspect-description",
+            instruction: `Check tool "${tool.name}" for inter-agent data flow without sanitization`,
+            target: `tool:${tool.name}`,
+            expected_observation: "Tool accepts agent output/result/response without trust boundary",
+          })
+          .build();
         findings.push({
           rule_id: "H3", severity: "high",
           evidence:
@@ -296,7 +424,7 @@ registerTypedRule({
             `Compromised upstream agent can propagate injected instructions downstream.`,
           remediation: "Validate and sanitize all inter-agent data. Declare trust boundaries explicitly.",
           owasp_category: "ASI07-insecure-inter-agent-comms", mitre_technique: "AML.T0059",
-          confidence: 0.78, metadata: { tool_name: tool.name },
+          confidence: 0.78, metadata: { tool_name: tool.name, evidence_chain: h3Chain },
         });
       }
     }
