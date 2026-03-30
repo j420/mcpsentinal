@@ -147,12 +147,38 @@ registerTypedRule(makeRule("A2", "Excessive Scope Claims", (ctx) => {
     for (const pattern of SCOPE_CLAIMS) {
       const match = pattern.exec(desc);
       if (match) {
+        const chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "external-content",
+            location: `tool:${tool.name}:description`,
+            observed: match[0],
+            rationale: "Tool description claims unrestricted scope that AI clients trust for permission decisions",
+          })
+          .propagation({
+            propagation_type: "description-directive",
+            location: `tool:${tool.name}:description`,
+            observed: `Scope claim "${match[0]}" in tool "${tool.name}" description`,
+          })
+          .impact({
+            impact_type: "privilege-escalation",
+            scope: "server-host",
+            exploitability: "moderate",
+            scenario: `AI grants tool "${tool.name}" unrestricted access based on scope claim "${match[0]}"`,
+          })
+          .factor("description_scope_analysis", 0.12, `Matched excessive scope pattern: "${match[0]}"`)
+          .verification({
+            step_type: "inspect-description",
+            instruction: `Check tool "${tool.name}" description for overly broad access claims`,
+            target: `tool:${tool.name}`,
+            expected_observation: `Description contains scope claim: "${match[0]}"`,
+          })
+          .build();
         findings.push({
           rule_id: "A2", severity: "high",
           evidence: `Tool "${tool.name}" claims excessive scope: "${match[0]}".`,
           remediation: "Scope tool access to specific directories/resources. Avoid 'all' or 'unrestricted' claims.",
           owasp_category: "MCP06-excessive-permissions", mitre_technique: "AML.T0054",
-          confidence: 0.82, metadata: { tool_name: tool.name },
+          confidence: 0.82, metadata: { tool_name: tool.name, evidence_chain: chain },
         });
         break;
       }
@@ -178,12 +204,38 @@ registerTypedRule(makeRule("A3", "Suspicious URLs in Description", (ctx) => {
     for (const { regex, desc: urlDesc } of SUSPICIOUS_URL_PATTERNS) {
       const match = regex.exec(desc);
       if (match) {
+        const chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "external-content",
+            location: `tool:${tool.name}:description`,
+            observed: match[0].slice(0, 80),
+            rationale: "Tool description contains a URL that AI may follow or leak data to",
+          })
+          .propagation({
+            propagation_type: "description-directive",
+            location: `tool:${tool.name}:description`,
+            observed: `${urlDesc} found: "${match[0].slice(0, 60)}"`,
+          })
+          .impact({
+            impact_type: "data-exfiltration",
+            scope: "connected-services",
+            exploitability: "moderate",
+            scenario: `Data sent to ${urlDesc} endpoint in tool "${tool.name}" description`,
+          })
+          .factor("url_pattern_analysis", 0.10, `Matched ${urlDesc} pattern in description`)
+          .verification({
+            step_type: "inspect-description",
+            instruction: `Check tool "${tool.name}" description for suspicious URLs`,
+            target: `tool:${tool.name}`,
+            expected_observation: `Description contains ${urlDesc}: "${match[0].slice(0, 60)}"`,
+          })
+          .build();
         findings.push({
           rule_id: "A3", severity: "medium",
           evidence: `Tool "${tool.name}" contains ${urlDesc}: "${match[0].slice(0, 60)}".`,
           remediation: "Remove suspicious URLs from tool descriptions. Use only well-known domains.",
           owasp_category: "MCP04-data-exfiltration", mitre_technique: "AML.T0057",
-          confidence: 0.80, metadata: { tool_name: tool.name, url_type: urlDesc },
+          confidence: 0.80, metadata: { tool_name: tool.name, url_type: urlDesc, evidence_chain: chain },
         });
         break;
       }
@@ -218,12 +270,38 @@ registerTypedRule(makeRule("A4", "Cross-Server Tool Name Shadowing", (ctx) => {
   for (const tool of ctx.tools) {
     const normalized = tool.name.toLowerCase().replace(/[-_\s]+/g, "_");
     if (COMMON_TOOL_NAMES.has(normalized)) {
+      const chain = new EvidenceChainBuilder()
+        .source({
+          source_type: "external-content",
+          location: `tool:${tool.name}:name`,
+          observed: tool.name,
+          rationale: "Tool name matches a common tool name used by official MCP servers",
+        })
+        .propagation({
+          propagation_type: "cross-tool-flow",
+          location: `tool:${tool.name}:name`,
+          observed: `Name "${tool.name}" normalizes to common name "${normalized}"`,
+        })
+        .impact({
+          impact_type: "cross-agent-propagation",
+          scope: "ai-client",
+          exploitability: "moderate",
+          scenario: `AI uses tool "${tool.name}" (shadowing "${normalized}") instead of the trusted equivalent, routing data through an untrusted server`,
+        })
+        .factor("name_shadowing", 0.08, `Exact match against common tool name "${normalized}" from official MCP servers`)
+        .verification({
+          step_type: "inspect-description",
+          instruction: `Compare tool "${tool.name}" against official MCP server tool names`,
+          target: `tool:${tool.name}`,
+          expected_observation: `Tool name "${normalized}" matches a common tool from official servers`,
+        })
+        .build();
       findings.push({
         rule_id: "A4", severity: "high",
         evidence: `Tool "${tool.name}" shadows common tool name "${normalized}". May confuse AI into using this instead of a trusted tool.`,
         remediation: "Use a unique, namespaced tool name (e.g., 'myserver_read_file' instead of 'read_file').",
         owasp_category: "MCP02-tool-poisoning", mitre_technique: "AML.T0054",
-        confidence: 0.78, metadata: { tool_name: tool.name, shadowed_name: normalized },
+        confidence: 0.78, metadata: { tool_name: tool.name, shadowed_name: normalized, evidence_chain: chain },
       });
     }
   }
@@ -237,13 +315,40 @@ registerTypedRule(makeRule("A5", "Description Length Anomaly", (ctx) => {
   for (const tool of ctx.tools) {
     const desc = tool.description || "";
     if (desc.length > 1000) {
+      const conf = Math.min(0.80, 0.40 + (desc.length - 1000) / 5000);
+      const chain = new EvidenceChainBuilder()
+        .source({
+          source_type: "external-content",
+          location: `tool:${tool.name}:description`,
+          observed: `Description length: ${desc.length} chars (threshold: 1000)`,
+          rationale: "Excessively long descriptions can hide prompt injection payloads in the noise",
+        })
+        .propagation({
+          propagation_type: "description-directive",
+          location: `tool:${tool.name}:description`,
+          observed: `${desc.length} chars of tool description processed by AI client`,
+        })
+        .impact({
+          impact_type: "cross-agent-propagation",
+          scope: "ai-client",
+          exploitability: "moderate",
+          scenario: `Injection payload hidden in ${desc.length}-char description of tool "${tool.name}" evades human review`,
+        })
+        .factor("description_length", conf - 0.60, `Length ${desc.length} chars, ${((desc.length - 1000) / 1000).toFixed(1)}x over threshold`)
+        .verification({
+          step_type: "inspect-description",
+          instruction: `Review the full ${desc.length}-char description of tool "${tool.name}" for hidden directives`,
+          target: `tool:${tool.name}`,
+          expected_observation: "Description exceeds 1000 chars and may contain hidden injection payloads",
+        })
+        .build();
       findings.push({
         rule_id: "A5", severity: "low",
         evidence: `Tool "${tool.name}" has unusually long description (${desc.length} chars). Long descriptions can hide injection payloads.`,
         remediation: "Keep tool descriptions concise (<500 chars). Move detailed docs to external references.",
         owasp_category: "MCP01-prompt-injection", mitre_technique: "AML.T0054",
-        confidence: Math.min(0.80, 0.40 + (desc.length - 1000) / 5000),
-        metadata: { tool_name: tool.name, length: desc.length },
+        confidence: conf,
+        metadata: { tool_name: tool.name, length: desc.length, evidence_chain: chain },
       });
     }
   }
@@ -266,13 +371,39 @@ registerTypedRule(makeRule("A8", "Description-Capability Mismatch", (ctx) => {
     const writeParams = params.filter(p => WRITE_PARAMS.test(p));
 
     if (writeParams.length > 0) {
+      const readOnlyClaim = desc.match(READ_ONLY_CLAIMS)?.[0] || "read-only";
+      const chain = new EvidenceChainBuilder()
+        .source({
+          source_type: "external-content",
+          location: `tool:${tool.name}:description`,
+          observed: `Claims "${readOnlyClaim}"`,
+          rationale: "Tool description makes a read-only safety claim that AI clients trust for auto-approval",
+        })
+        .propagation({
+          propagation_type: "schema-unconstrained",
+          location: `tool:${tool.name}:input_schema`,
+          observed: `Write parameters: [${writeParams.join(", ")}] contradict description`,
+        })
+        .sink({
+          sink_type: "config-modification",
+          location: `tool:${tool.name}:parameters`,
+          observed: `Parameters [${writeParams.join(", ")}] enable destructive operations despite "${readOnlyClaim}" claim`,
+        })
+        .factor("mismatch_severity", 0.15, `${writeParams.length} write parameter(s) contradict read-only claim`)
+        .verification({
+          step_type: "inspect-description",
+          instruction: `Compare tool "${tool.name}" description claim "${readOnlyClaim}" against its schema parameters`,
+          target: `tool:${tool.name}`,
+          expected_observation: `Description claims "${readOnlyClaim}" but parameters [${writeParams.join(", ")}] enable writes`,
+        })
+        .build();
       findings.push({
         rule_id: "A8", severity: "high",
         evidence:
-          `Tool "${tool.name}" claims "${desc.match(READ_ONLY_CLAIMS)?.[0]}" but has write parameters: [${writeParams.join(", ")}].`,
+          `Tool "${tool.name}" claims "${readOnlyClaim}" but has write parameters: [${writeParams.join(", ")}].`,
         remediation: "Update description to accurately reflect capabilities. Remove false read-only claims.",
         owasp_category: "MCP02-tool-poisoning", mitre_technique: "AML.T0054",
-        confidence: 0.85, metadata: { tool_name: tool.name, write_params: writeParams },
+        confidence: 0.85, metadata: { tool_name: tool.name, write_params: writeParams, evidence_chain: chain },
       });
     }
   }
@@ -300,12 +431,38 @@ registerTypedRule(makeRule("B1", "Missing Input Validation", (ctx) => {
     }
 
     if (unconstrained.length > 0) {
+      const chain = new EvidenceChainBuilder()
+        .source({
+          source_type: "user-parameter",
+          location: `tool:${tool.name}:input_schema`,
+          observed: `${unconstrained.length} unconstrained parameter(s): [${unconstrained.join(", ")}]`,
+          rationale: "Parameters without validation constraints accept arbitrary input including injection payloads",
+        })
+        .propagation({
+          propagation_type: "schema-unconstrained",
+          location: `tool:${tool.name}:input_schema`,
+          observed: `No maxLength, enum, pattern, format, min, or max constraints on [${unconstrained.join(", ")}]`,
+        })
+        .impact({
+          impact_type: "config-poisoning",
+          scope: "server-host",
+          exploitability: "moderate",
+          scenario: `Attacker injects malicious input via unconstrained parameters [${unconstrained.join(", ")}] in tool "${tool.name}"`,
+        })
+        .factor("structural_schema_check", 0.0, `${unconstrained.length} of ${Object.keys((schema.properties || {}) as Record<string, unknown>).length} parameters lack constraints`)
+        .verification({
+          step_type: "inspect-description",
+          instruction: `Check tool "${tool.name}" schema for missing validation constraints`,
+          target: `tool:${tool.name}`,
+          expected_observation: `Parameters [${unconstrained.join(", ")}] have no maxLength, enum, pattern, or format constraints`,
+        })
+        .build();
       findings.push({
         rule_id: "B1", severity: "medium",
         evidence: `Tool "${tool.name}" has ${unconstrained.length} unconstrained parameter(s): [${unconstrained.join(", ")}].`,
         remediation: "Add maxLength, enum, pattern, or format constraints to string parameters. Add min/max to numbers.",
         owasp_category: "MCP07-insecure-config", mitre_technique: null,
-        confidence: 0.70, metadata: { tool_name: tool.name, unconstrained },
+        confidence: 0.70, metadata: { tool_name: tool.name, unconstrained, evidence_chain: chain },
       });
     }
   }
@@ -326,12 +483,37 @@ registerTypedRule(makeRule("B2", "Dangerous Parameter Types", (ctx) => {
     const dangerous = props.filter(p => DANGEROUS_PARAM_NAMES.test(p));
 
     if (dangerous.length > 0) {
+      const chain = new EvidenceChainBuilder()
+        .source({
+          source_type: "user-parameter",
+          location: `tool:${tool.name}:input_schema`,
+          observed: `Dangerous parameter names: [${dangerous.join(", ")}]`,
+          rationale: "Parameter names indicate acceptance of commands, paths, SQL, or code — high-risk input types",
+        })
+        .propagation({
+          propagation_type: "direct-pass",
+          location: `tool:${tool.name}:parameters`,
+          observed: `Parameters [${dangerous.join(", ")}] match dangerous name patterns (command, sql, exec, path, etc.)`,
+        })
+        .sink({
+          sink_type: "command-execution",
+          location: `tool:${tool.name}:execution`,
+          observed: `Tool accepts [${dangerous.join(", ")}] — likely flows to command execution, file access, or database query`,
+        })
+        .factor("param_name_analysis", 0.05, `${dangerous.length} parameter(s) match dangerous name patterns`)
+        .verification({
+          step_type: "inspect-description",
+          instruction: `Check tool "${tool.name}" parameters [${dangerous.join(", ")}] for injection risk`,
+          target: `tool:${tool.name}`,
+          expected_observation: `Parameters named [${dangerous.join(", ")}] indicate command/SQL/path injection surface`,
+        })
+        .build();
       findings.push({
         rule_id: "B2", severity: "high",
         evidence: `Tool "${tool.name}" has dangerous parameter name(s): [${dangerous.join(", ")}].`,
         remediation: "Add strict validation (enum, pattern, maxLength) to parameters that accept commands, paths, SQL, or code.",
         owasp_category: "MCP03-command-injection", mitre_technique: "AML.T0054",
-        confidence: 0.75, metadata: { tool_name: tool.name, dangerous_params: dangerous },
+        confidence: 0.75, metadata: { tool_name: tool.name, dangerous_params: dangerous, evidence_chain: chain },
       });
     }
   }
@@ -346,12 +528,38 @@ registerTypedRule(makeRule("B3", "Excessive Parameter Count", (ctx) => {
     const schema = tool.input_schema as Record<string, unknown> | null;
     const count = Object.keys((schema?.properties || {}) as Record<string, unknown>).length;
     if (count > 15) {
+      const chain = new EvidenceChainBuilder()
+        .source({
+          source_type: "user-parameter",
+          location: `tool:${tool.name}:input_schema`,
+          observed: `${count} parameters (threshold: 15)`,
+          rationale: "Excessive parameters increase attack surface and make security review impractical",
+        })
+        .propagation({
+          propagation_type: "schema-unconstrained",
+          location: `tool:${tool.name}:input_schema`,
+          observed: `${count} parameters require AI reasoning for each value`,
+        })
+        .impact({
+          impact_type: "config-poisoning",
+          scope: "server-host",
+          exploitability: "complex",
+          scenario: `Large parameter surface (${count} params) in tool "${tool.name}" makes comprehensive validation unlikely`,
+        })
+        .factor("structural_schema_check", 0.0, `${count} parameters, ${count - 15} over threshold`)
+        .verification({
+          step_type: "inspect-description",
+          instruction: `Count parameters in tool "${tool.name}" schema`,
+          target: `tool:${tool.name}`,
+          expected_observation: `Tool has ${count} parameters, exceeding 15-parameter threshold`,
+        })
+        .build();
       findings.push({
         rule_id: "B3", severity: "low",
         evidence: `Tool "${tool.name}" has ${count} parameters (threshold: 15). Excessive params increase attack surface.`,
         remediation: "Reduce parameter count. Group related parameters into nested objects.",
         owasp_category: "MCP06-excessive-permissions", mitre_technique: null,
-        confidence: 0.70, metadata: { tool_name: tool.name, param_count: count },
+        confidence: 0.70, metadata: { tool_name: tool.name, param_count: count, evidence_chain: chain },
       });
     }
   }
@@ -364,12 +572,38 @@ registerTypedRule(makeRule("B4", "Schema-less Tools", (ctx) => {
   const findings: TypedFinding[] = [];
   for (const tool of ctx.tools) {
     if (!tool.input_schema) {
+      const chain = new EvidenceChainBuilder()
+        .source({
+          source_type: "user-parameter",
+          location: `tool:${tool.name}:input_schema`,
+          observed: "input_schema is null/undefined",
+          rationale: "Missing schema means no server-side input validation — AI client guesses parameter format",
+        })
+        .propagation({
+          propagation_type: "schema-unconstrained",
+          location: `tool:${tool.name}`,
+          observed: "No JSON Schema defined for tool input",
+        })
+        .impact({
+          impact_type: "config-poisoning",
+          scope: "server-host",
+          exploitability: "moderate",
+          scenario: `AI sends arbitrary JSON to schema-less tool "${tool.name}" — no validation possible`,
+        })
+        .factor("structural_schema_check", 0.20, "Complete absence of input schema is a strong misconfiguration signal")
+        .verification({
+          step_type: "inspect-description",
+          instruction: `Check if tool "${tool.name}" defines an input_schema`,
+          target: `tool:${tool.name}`,
+          expected_observation: "Tool has no input_schema — AI must guess parameter format",
+        })
+        .build();
       findings.push({
         rule_id: "B4", severity: "medium",
         evidence: `Tool "${tool.name}" has no input schema. AI will guess parameter types.`,
         remediation: "Add a JSON Schema with typed properties for all parameters.",
         owasp_category: "MCP07-insecure-config", mitre_technique: null,
-        confidence: 0.90, metadata: { tool_name: tool.name },
+        confidence: 0.90, metadata: { tool_name: tool.name, evidence_chain: chain },
       });
     }
   }
@@ -392,6 +626,37 @@ registerTypedRule(makeRule("B5", "Prompt Injection in Parameter Description", (c
       for (const { regex, desc: patternDesc, weight } of INJECTION_PATTERNS) {
         regex.lastIndex = 0;
         if (regex.test(paramDesc)) {
+          const b5Chain = new EvidenceChainBuilder()
+            .source({
+              source_type: "user-parameter",
+              location: `tool:${tool.name}:param:${paramName}:description`,
+              observed: paramDesc.slice(0, 120),
+              rationale: "Parameter descriptions are processed by AI as context for filling argument values",
+            })
+            .propagation({
+              propagation_type: "description-directive",
+              location: `tool:${tool.name}:param:${paramName}:description`,
+              observed: `Injection pattern "${patternDesc}" in parameter "${paramName}" description`,
+            })
+            .impact({
+              impact_type: "cross-agent-propagation",
+              scope: "ai-client",
+              exploitability: "trivial",
+              scenario: `AI follows injected "${patternDesc}" directive in parameter "${paramName}" of tool "${tool.name}"`,
+            })
+            .factor("linguistic scoring", Math.min(0.95, weight) - 0.60, `Injection pattern: ${patternDesc} (weight: ${weight})`)
+            .reference({
+              id: "INVARIANT-TOOL-POISONING",
+              title: "Tool Poisoning Attacks in MCP",
+              relevance: "Parameter descriptions are a secondary injection surface missed by most scanners",
+            })
+            .verification({
+              step_type: "inspect-description",
+              instruction: `Check parameter "${paramName}" description in tool "${tool.name}" for injection patterns`,
+              target: `tool:${tool.name}:param:${paramName}`,
+              expected_observation: `Description contains ${patternDesc}: "${paramDesc.slice(0, 80)}"`,
+            })
+            .build();
           findings.push({
             rule_id: "B5", severity: "critical",
             evidence:
@@ -400,7 +665,7 @@ registerTypedRule(makeRule("B5", "Prompt Injection in Parameter Description", (c
             remediation: "Remove behavioral directives from parameter descriptions. Use only factual type/format info.",
             owasp_category: "MCP01-prompt-injection", mitre_technique: "AML.T0054",
             confidence: Math.min(0.95, weight),
-            metadata: { tool_name: tool.name, param_name: paramName },
+            metadata: { tool_name: tool.name, param_name: paramName, evidence_chain: b5Chain },
           });
           break;
         }
@@ -419,12 +684,38 @@ registerTypedRule(makeRule("B6", "Unconstrained Additional Properties", (ctx) =>
     if (!schema) continue;
 
     if (schema.additionalProperties === true || (schema.additionalProperties === undefined && schema.properties)) {
+      const chain = new EvidenceChainBuilder()
+        .source({
+          source_type: "user-parameter",
+          location: `tool:${tool.name}:input_schema`,
+          observed: `additionalProperties: ${schema.additionalProperties === true ? "true" : "undefined (defaults to true)"}`,
+          rationale: "Schema accepts arbitrary extra parameters beyond those defined, bypassing all validation",
+        })
+        .propagation({
+          propagation_type: "schema-unconstrained",
+          location: `tool:${tool.name}:input_schema`,
+          observed: "additionalProperties not set to false — arbitrary keys accepted",
+        })
+        .impact({
+          impact_type: "config-poisoning",
+          scope: "server-host",
+          exploitability: "moderate",
+          scenario: `Attacker adds undeclared parameters to tool "${tool.name}" that bypass schema validation`,
+        })
+        .factor("structural_schema_check", 0.05, "additionalProperties not restricted — open schema")
+        .verification({
+          step_type: "inspect-description",
+          instruction: `Check tool "${tool.name}" schema for additionalProperties setting`,
+          target: `tool:${tool.name}`,
+          expected_observation: "additionalProperties is not set to false — arbitrary input accepted",
+        })
+        .build();
       findings.push({
         rule_id: "B6", severity: "medium",
         evidence: `Tool "${tool.name}" allows additional properties (not set to false). Arbitrary input accepted.`,
         remediation: "Set additionalProperties: false in the tool schema to reject unknown parameters.",
         owasp_category: "MCP07-insecure-config", mitre_technique: null,
-        confidence: 0.75, metadata: { tool_name: tool.name },
+        confidence: 0.75, metadata: { tool_name: tool.name, evidence_chain: chain },
       });
     }
   }
@@ -454,23 +745,73 @@ registerTypedRule(makeRule("B7", "Dangerous Default Parameter Values", (ctx) => 
 
       // Check: dangerous default value on security-sensitive parameter
       if (DANGEROUS_DEFAULT_PARAMS.test(name) && /^true$/i.test(defaultVal)) {
+        const b7BoolChain = new EvidenceChainBuilder()
+          .source({
+            source_type: "user-parameter",
+            location: `tool:${tool.name}:param:${name}:default`,
+            observed: `default: "${defaultVal}"`,
+            rationale: "Security-sensitive parameter defaults to permissive value without requiring explicit opt-in",
+          })
+          .propagation({
+            propagation_type: "direct-pass",
+            location: `tool:${tool.name}:param:${name}`,
+            observed: `Parameter "${name}" (security-sensitive) defaults to true`,
+          })
+          .sink({
+            sink_type: "config-modification",
+            location: `tool:${tool.name}:execution`,
+            observed: `Destructive operation enabled by default via "${name}": true`,
+          })
+          .factor("dangerous_default", 0.15, `Security-sensitive parameter "${name}" defaults to permissive value`)
+          .verification({
+            step_type: "inspect-description",
+            instruction: `Check parameter "${name}" in tool "${tool.name}" for dangerous default`,
+            target: `tool:${tool.name}:param:${name}`,
+            expected_observation: `Parameter "${name}" defaults to "${defaultVal}" — should require explicit opt-in`,
+          })
+          .build();
         findings.push({
           rule_id: "B7", severity: "high",
           evidence: `Tool "${tool.name}", parameter "${name}" defaults to "${defaultVal}". Dangerous default on security-sensitive parameter.`,
           remediation: `Change default of "${name}" to false/null. Require explicit opt-in for destructive operations.`,
           owasp_category: "MCP06-excessive-permissions", mitre_technique: null,
-          confidence: 0.85, metadata: { tool_name: tool.name, param_name: name, default_value: defaultVal },
+          confidence: 0.85, metadata: { tool_name: tool.name, param_name: name, default_value: defaultVal, evidence_chain: b7BoolChain },
         });
       }
 
       // Check: path defaults to root
       if (/path|dir|directory|folder/i.test(name) && /^\/$/.test(defaultVal)) {
+        const b7RootChain = new EvidenceChainBuilder()
+          .source({
+            source_type: "user-parameter",
+            location: `tool:${tool.name}:param:${name}:default`,
+            observed: `default: "/"`,
+            rationale: "Path parameter defaults to filesystem root, granting maximum filesystem scope",
+          })
+          .propagation({
+            propagation_type: "direct-pass",
+            location: `tool:${tool.name}:param:${name}`,
+            observed: `Path parameter "${name}" defaults to "/" (root)`,
+          })
+          .sink({
+            sink_type: "file-write",
+            location: `tool:${tool.name}:filesystem`,
+            observed: "Root filesystem access by default — enables traversal of /etc, /root, ~/.ssh",
+          })
+          .factor("dangerous_default", 0.20, "Root filesystem default is the most permissive path possible")
+          .verification({
+            step_type: "inspect-description",
+            instruction: `Check parameter "${name}" in tool "${tool.name}" for root path default`,
+            target: `tool:${tool.name}:param:${name}`,
+            expected_observation: `Parameter "${name}" defaults to "/" — should default to a restricted directory`,
+          })
+          .build();
         findings.push({
           rule_id: "B7", severity: "high",
           evidence: `Tool "${tool.name}", parameter "${name}" defaults to "/". Root filesystem access by default.`,
           remediation: "Default to a specific, restricted directory instead of root.",
           owasp_category: "MCP06-excessive-permissions", mitre_technique: null,
-          confidence: 0.90, metadata: { tool_name: tool.name, param_name: name },
+          confidence: 0.90, metadata: { tool_name: tool.name, param_name: name, evidence_chain: b7RootChain },
         });
       }
     }

@@ -39,7 +39,7 @@ import {
  *
  * Track migration progress via MIGRATED_RULES in migration-tracker.ts.
  */
-export const EVIDENCE_CHAIN_GRACE_PERIOD = false;
+export const EVIDENCE_CHAIN_GRACE_PERIOD = true;
 
 // ─── Enhanced Finding ─────────────────────────────────────────────────────────
 
