@@ -6115,6 +6115,71 @@ code, pre, kbd {
 /* Section subtitle */
 .sd-section-sub { font-size: 12px; color: var(--text-3); margin-bottom: var(--s3); }
 
+/* ── Findings Section ──────────────────────────────────── */
+.sd-findings-list { display: flex; flex-direction: column; gap: var(--s3); }
+.sd-finding-card {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--s4);
+  border-left-width: 3px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+.sd-finding-critical { border-left-color: var(--sev-critical); }
+.sd-finding-high { border-left-color: var(--sev-high); }
+.sd-finding-medium { border-left-color: var(--sev-medium); }
+.sd-finding-low { border-left-color: var(--sev-low); }
+.sd-finding-informational { border-left-color: var(--sev-info); }
+.sd-finding-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: var(--s2);
+}
+.sd-finding-rule-id {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 2px 6px;
+}
+.sd-finding-rule-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+}
+.sd-finding-tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: var(--r-full);
+  letter-spacing: 0.02em;
+}
+.sd-finding-owasp { background: rgba(29, 78, 216, 0.06); color: var(--sev-info); border: 1px solid rgba(29, 78, 216, 0.14); }
+.sd-finding-mitre { background: rgba(109, 40, 217, 0.06); color: #6D28D9; border: 1px solid rgba(109, 40, 217, 0.14); }
+.sd-finding-evidence {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.6;
+  margin-bottom: var(--s2);
+  word-break: break-word;
+}
+.sd-finding-remediation {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.5;
+  padding: var(--s2) var(--s3);
+  background: var(--surface-2);
+  border-radius: var(--r-sm);
+  border-left: 2px solid var(--good);
+  margin-top: var(--s2);
+}
+
 /* Empty state (0 findings) */
 .sd-empty-state {
   display: flex; align-items: center; gap: var(--s3);
