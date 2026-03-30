@@ -13,6 +13,7 @@ import type { AnalysisContext } from "../../engine.js";
 import { analyzeASTTaint } from "../analyzers/taint-ast.js";
 import { analyzeTaint } from "../analyzers/taint.js";
 import { shannonEntropy } from "../analyzers/entropy.js";
+import { EvidenceChainBuilder } from "../../evidence.js";
 
 function isTestFile(source: string): boolean {
   return /(?:__tests?__|\.(?:test|spec)\.)/.test(source);
@@ -189,12 +190,54 @@ class HardcodedSecretsRule implements TypedRule {
         }
 
         const masked = secret.slice(0, 4) + "..." + secret.slice(-4);
+        const entropy = shannonEntropy(secret);
+
+        const chain = new EvidenceChainBuilder()
+          .sink({
+            sink_type: "credential-exposure",
+            location: `line ${line}`,
+            observed: `${name}: "${masked}" (entropy: ${entropy.toFixed(2)} bits/char)`,
+          })
+          .mitigation({
+            mitigation_type: "sanitizer-function",
+            present: false,
+            location: `line ${line}`,
+            detail: "Secret is hardcoded in source — not read from environment variable or secrets manager",
+          })
+          .impact({
+            impact_type: "credential-theft",
+            scope: "connected-services",
+            exploitability: "trivial",
+            scenario:
+              `${name} exposed in source code at line ${line}. ` +
+              `Anyone with repo access (including forks) can extract and use this credential.`,
+          })
+          .factor("entropy analysis", entropy > 4.5 ? 0.15 : 0.0, `Shannon entropy: ${entropy.toFixed(2)} bits/char`)
+          .factor("known token prefix", confidence >= 0.90 ? 0.20 : 0.0, `Pattern: ${name}`)
+          .reference({
+            id: "GITHUB-SECRET-SCANNING",
+            title: "GitHub Secret Scanning Partner Program",
+            relevance: `Detected ${name} — matches known credential pattern`,
+          })
+          .verification({
+            step_type: "inspect-source",
+            instruction: `Open source file and check line ${line} for a hardcoded credential`,
+            target: `source:line:${line}`,
+            expected_observation: `Line contains ${name} with high-entropy string (not a test/example value)`,
+          })
+          .verification({
+            step_type: "check-config",
+            instruction: "Verify the secret is not loaded from an environment variable",
+            target: `source:line:${line}`,
+            expected_observation: "Secret is a string literal, not process.env.* or os.environ reference",
+          })
+          .build();
 
         findings.push({
           rule_id: "C5",
           severity: "critical",
           evidence:
-            `[Entropy: ${shannonEntropy(secret).toFixed(2)} bits] ${name} at line ${line}: "${masked}". ` +
+            `[Entropy: ${entropy.toFixed(2)} bits] ${name} at line ${line}: "${masked}". ` +
             `Hardcoded secrets in source code are exposed in version control and build artifacts.`,
           remediation:
             "Move secrets to environment variables or a secrets manager (Vault, AWS Secrets Manager). " +
@@ -206,7 +249,8 @@ class HardcodedSecretsRule implements TypedRule {
             analysis_type: "entropy_pattern",
             secret_type: name,
             line,
-            entropy: shannonEntropy(secret),
+            entropy,
+            evidence_chain: chain,
           },
         });
       }

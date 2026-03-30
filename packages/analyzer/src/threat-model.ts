@@ -49,6 +49,8 @@ export interface EvidenceStandard {
   requires_sink: boolean;
   /** Minimum confidence for this threat to produce a finding */
   min_confidence: number;
+  /** Must have at least one verification step? (Question #5: HOW to verify) */
+  requires_verification?: boolean;
   /** Description of what counts as adequate evidence */
   description: string;
 }
@@ -87,6 +89,7 @@ export const THREAT_REGISTRY: ThreatDefinition[] = [
       requires_source: true,
       requires_sink: true,
       min_confidence: 0.60,
+      requires_verification: true,
       description:
         "Must show: (1) untrusted parameter input, (2) propagation to execution sink, " +
         "(3) absence of sanitization. Regex-only matches without taint flow are informational only.",
@@ -155,6 +158,7 @@ export const THREAT_REGISTRY: ThreatDefinition[] = [
       requires_source: true,
       requires_sink: true,
       min_confidence: 0.50,
+      requires_verification: true,
       description:
         "Must show: (1) a tool that reads private/sensitive data, (2) a tool that sends data " +
         "externally, (3) no isolation between them. For I13 (cross-config), the trifecta is " +
@@ -322,6 +326,7 @@ export const THREAT_REGISTRY: ThreatDefinition[] = [
       requires_source: false,
       requires_sink: true,
       min_confidence: 0.55,
+      requires_verification: true,
       description:
         "Must show: (1) OAuth implementation pattern, (2) specific vulnerability " +
         "(implicit flow, ROPC, redirect_uri from input, token in localStorage, missing state). " +
@@ -513,6 +518,29 @@ export const THREAT_REGISTRY: ThreatDefinition[] = [
   },
 ];
 
+// ─── Universal Evidence Standard ──────────────────────────────────────────────
+
+/**
+ * Minimum evidence standard for universal rules (A/B/E/I/G6).
+ * These rules don't map to a specific threat (no THREAT_REGISTRY entry),
+ * but they still need SOME evidence structure to be credible.
+ *
+ * Lenient: just 1 link, no source/sink required, low confidence floor.
+ * No verification required (structural/descriptive findings don't need
+ * reproduction steps — a schema check is self-evident).
+ */
+export const UNIVERSAL_EVIDENCE_STANDARD: EvidenceStandard = {
+  min_chain_length: 1,
+  requires_source: false,
+  requires_sink: false,
+  min_confidence: 0.30,
+  requires_verification: false,
+  description:
+    "Universal rules must provide at least one structured evidence link " +
+    "and a confidence score above 0.30. This ensures every scored finding " +
+    "has machine-readable evidence, not just a text string.",
+};
+
 // ─── Threat Model Selection ───────────────────────────────────────────────────
 
 /**
@@ -587,7 +615,7 @@ export function getRelevantRuleIds(profile: ServerProfile): Set<string> {
 export function getEvidenceStandard(
   ruleId: string,
   profile: ServerProfile,
-): EvidenceStandard | null {
+): EvidenceStandard {
   const threats = selectThreats(profile);
   let strictest: EvidenceStandard | null = null;
 
@@ -602,5 +630,8 @@ export function getEvidenceStandard(
     }
   }
 
-  return strictest;
+  // If no threat-specific standard exists, return the universal baseline.
+  // This closes the loophole where universal rules had no evidence standard
+  // and flat findings always passed.
+  return strictest ?? UNIVERSAL_EVIDENCE_STANDARD;
 }

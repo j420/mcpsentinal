@@ -23,6 +23,7 @@ import type { TypedRule, TypedFinding } from "../base.js";
 import { registerTypedRule } from "../base.js";
 import type { AnalysisContext } from "../../engine.js";
 import type { OwaspCategory } from "@mcp-sentinel/database";
+import { EvidenceChainBuilder } from "../../evidence.js";
 
 function makeRule(id: string, name: string, analyzeFn: (ctx: AnalysisContext) => TypedFinding[]): TypedRule {
   return { id, name, analyze: analyzeFn };
@@ -71,6 +72,40 @@ registerTypedRule(makeRule("A1", "Prompt Injection in Tool Description", (ctx) =
       const confidence = Math.min(0.98, noisyOR);
 
       if (confidence >= 0.50) {
+        const chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "user-parameter",
+            location: `tool:${tool.name}:description`,
+            observed: desc.slice(0, 200),
+            rationale: "Tool description is processed by the AI as behavioral context for tool usage",
+          })
+          .impact({
+            impact_type: "cross-agent-propagation",
+            scope: "ai-client",
+            exploitability: matchedSignals.length >= 2 ? "trivial" : "moderate",
+            scenario:
+              `AI follows injected instructions in tool "${tool.name}" description: ` +
+              matchedSignals.join(", "),
+          })
+          .factor(
+            "linguistic scoring",
+            confidence - 0.30,
+            `Noisy-OR of ${matchedSignals.length} injection signal(s): [${matchedSignals.join(", ")}]`,
+          )
+          .reference({
+            id: "INVARIANT-TOOL-POISONING",
+            title: "Tool Poisoning Attacks in MCP",
+            relevance: "Systematic study of prompt injection via tool descriptions",
+          })
+          .verification({
+            step_type: "inspect-description",
+            instruction: `Examine tool "${tool.name}" description for behavioral directives`,
+            target: `tool:${tool.name}`,
+            expected_observation:
+              `Description contains injection pattern(s): ${matchedSignals.join(", ")}`,
+          })
+          .build();
+
         findings.push({
           rule_id: "A1",
           severity: confidence >= 0.80 ? "critical" : confidence >= 0.60 ? "high" : "medium",
@@ -83,7 +118,12 @@ registerTypedRule(makeRule("A1", "Prompt Injection in Tool Description", (ctx) =
           owasp_category: "MCP01-prompt-injection",
           mitre_technique: "AML.T0054",
           confidence,
-          metadata: { analysis_type: "linguistic_scoring", tool_name: tool.name, signals: matchedSignals },
+          metadata: {
+            analysis_type: "linguistic_scoring",
+            tool_name: tool.name,
+            signals: matchedSignals,
+            evidence_chain: chain,
+          },
         });
       }
     }

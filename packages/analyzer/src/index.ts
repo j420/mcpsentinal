@@ -40,10 +40,12 @@ export {
   type MitigationLink,
   type ImpactLink,
   type ThreatReference,
+  type VerificationStep,
 } from "./evidence.js";
 
 export {
   THREAT_REGISTRY,
+  UNIVERSAL_EVIDENCE_STANDARD,
   selectThreats,
   getRelevantRuleIds,
   getEvidenceStandard,
@@ -52,6 +54,7 @@ export {
 } from "./threat-model.js";
 
 export {
+  EVIDENCE_CHAIN_GRACE_PERIOD,
   annotateFindings,
   scoredFindings,
   unscoredFindings,
