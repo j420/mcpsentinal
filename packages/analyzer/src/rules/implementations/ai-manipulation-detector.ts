@@ -16,6 +16,7 @@ import type { TypedRule, TypedFinding } from "../base.js";
 import { registerTypedRule } from "../base.js";
 import type { AnalysisContext } from "../../engine.js";
 import { buildCapabilityGraph } from "../analyzers/capability-graph.js";
+import { EvidenceChainBuilder } from "../../evidence.js";
 
 // ─── G1: Indirect Prompt Injection Gateway ────────────────────────────────
 
@@ -52,6 +53,53 @@ class IndirectInjectionGatewayRule implements TypedRule {
 
       const confidence = Math.min(0.95, ingestCap.confidence + (isWebScraper ? 0.15 : 0));
 
+      const chain = new EvidenceChainBuilder()
+        .source({
+          source_type: "external-content",
+          location: `tool:${tool.name}`,
+          observed: `Ingests ${sourceType} (${ingestCap.signals.length} signal(s))`,
+          rationale:
+            `Tool "${tool.name}" returns content from external sources that may be attacker-controlled`,
+        })
+        .propagation({
+          propagation_type: "cross-tool-flow",
+          location: `tool:${tool.name}:response`,
+          observed: `Tool output flows into AI context without sanitization`,
+        })
+        .impact({
+          impact_type: "cross-agent-propagation",
+          scope: "ai-client",
+          exploitability: isWebScraper ? "trivial" : "moderate",
+          scenario:
+            `Attacker embeds injection payload in ${sourceType} → tool "${tool.name}" ` +
+            `fetches it → AI processes response as instructions → attacker controls AI behavior`,
+        })
+        .factor(
+          "content ingestion capability",
+          ingestCap.confidence - 0.30,
+          `Capability graph: ingests-untrusted confidence ${(ingestCap.confidence * 100).toFixed(0)}%`,
+        )
+        .reference({
+          id: "REHBERGER-2024",
+          title: "Indirect Prompt Injection via MCP Web Scraping",
+          url: "https://embracethered.com/blog/posts/2024/claude-llm-prompt-injection-mcp/",
+          year: 2024,
+          relevance: "#1 real-world MCP attack vector — Claude Desktop compromised via web scraping",
+        })
+        .verification({
+          step_type: "inspect-schema",
+          instruction: `Check tool "${tool.name}" input schema and description for content ingestion patterns`,
+          target: `tool:${tool.name}`,
+          expected_observation: `Tool accepts URLs, file paths, or external identifiers as input and returns external content`,
+        })
+        .verification({
+          step_type: "trace-flow",
+          instruction: `Verify that tool "${tool.name}" output flows directly into AI context without sanitization`,
+          target: `tool:${tool.name}:response`,
+          expected_observation: "Tool returns raw external content without stripping potential injection payloads",
+        })
+        .build();
+
       findings.push({
         rule_id: "G1",
         severity: "critical",
@@ -72,6 +120,7 @@ class IndirectInjectionGatewayRule implements TypedRule {
           tool_name: tool.name,
           source_type: sourceType,
           signals: ingestCap.signals.length,
+          evidence_chain: chain,
         },
       });
     }
@@ -267,6 +316,50 @@ class InitializeInjectionRule implements TypedRule {
       for (const { regex, desc, confidence } of injectionPatterns) {
         const match = regex.exec(field.value);
         if (match) {
+          const chain = new EvidenceChainBuilder()
+            .source({
+              source_type: "initialize-field",
+              location: `initialize.${field.name}`,
+              observed: `"${match[0].slice(0, 60)}" in ${field.name}`,
+              rationale:
+                `Initialize ${field.name} is processed BEFORE tool descriptions with higher implicit trust`,
+            })
+            .impact({
+              impact_type: "session-hijack",
+              scope: "ai-client",
+              exploitability: "trivial",
+              scenario:
+                `Initialize ${field.name} injection (${desc}) sets behavioral rules for the ENTIRE session — ` +
+                `no user interaction required, payload is processed automatically on connection`,
+            })
+            .factor(
+              "pattern-match",
+              confidence - 0.30,
+              `Matched ${desc} pattern: "${match[0].slice(0, 60)}"`,
+            )
+            .reference({
+              id: "MCP-SPEC-2024-11-05",
+              title: "MCP initialize response instructions field — spec-sanctioned injection surface",
+              year: 2024,
+              relevance: "The instructions field in InitializeResult is designed for AI clients to follow",
+            })
+            .verification({
+              step_type: "inspect-description",
+              instruction: `Examine the server's ${field.name} field in the initialize response`,
+              target: `initialize.${field.name}`,
+              expected_observation: `Field contains ${desc} pattern: "${match[0].slice(0, 40)}"`,
+            })
+            .verification({
+              step_type: "trace-flow",
+              instruction:
+                "Verify that AI client processes initialize fields before tool descriptions " +
+                "and applies them as session-level behavioral rules",
+              target: "AI client initialize handler",
+              expected_observation:
+                "Initialize instructions are applied with higher trust than tool descriptions",
+            })
+            .build();
+
           findings.push({
             rule_id: "H2",
             severity: "critical",
@@ -285,6 +378,7 @@ class InitializeInjectionRule implements TypedRule {
               analysis_type: "linguistic",
               field: field.name,
               injection_type: desc,
+              evidence_chain: chain,
             },
           });
           break;

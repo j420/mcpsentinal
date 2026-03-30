@@ -121,6 +121,26 @@ export interface ImpactLink {
   scenario: string;
 }
 
+/** A concrete step to reproduce or verify this finding */
+export interface VerificationStep {
+  /** What kind of verification */
+  step_type:
+    | "inspect-source"      // Look at specific file/line
+    | "inspect-schema"      // Check tool's input_schema
+    | "inspect-description" // Check tool/parameter description text
+    | "test-input"          // Try specific input value (sandbox only)
+    | "check-config"        // Verify server/transport config
+    | "check-dependency"    // Verify package version/integrity
+    | "trace-flow"          // Follow data from A to B
+    | "compare-baseline";   // Compare against known-good state
+  /** Human-readable instruction */
+  instruction: string;
+  /** What to look at (file path, tool name, URL, etc.) */
+  target: string;
+  /** What the reviewer should expect to see if the finding is real */
+  expected_observation: string;
+}
+
 export type EvidenceLink = SourceLink | PropagationLink | SinkLink | MitigationLink | ImpactLink;
 
 // ─── Evidence Chain ───────────────────────────────────────────────────────────
@@ -150,6 +170,9 @@ export interface EvidenceChain {
 
   /** Real-world reference (CVE, published attack, research paper) */
   threat_reference?: ThreatReference;
+
+  /** Concrete steps a reviewer can follow to verify this finding (Question #5) */
+  verification_steps?: VerificationStep[];
 }
 
 export interface ConfidenceFactor {
@@ -181,6 +204,7 @@ export class EvidenceChainBuilder {
   private links: EvidenceLink[] = [];
   private factors: ConfidenceFactor[] = [];
   private ref?: ThreatReference;
+  private steps: VerificationStep[] = [];
 
   source(link: Omit<SourceLink, "type">): this {
     this.links.push({ type: "source", ...link });
@@ -233,6 +257,12 @@ export class EvidenceChainBuilder {
     return this;
   }
 
+  /** Add a verification step (Question #5: HOW to verify) */
+  verification(step: VerificationStep): this {
+    this.steps.push(step);
+    return this;
+  }
+
   /** Build the chain, computing final confidence */
   build(): EvidenceChain {
     const confidence = computeConfidence(this.links, this.factors);
@@ -241,6 +271,7 @@ export class EvidenceChainBuilder {
       confidence_factors: [...this.factors],
       confidence,
       threat_reference: this.ref,
+      verification_steps: this.steps.length > 0 ? [...this.steps] : undefined,
     };
   }
 }
@@ -325,6 +356,16 @@ export function renderEvidenceNarrative(chain: EvidenceChain): string {
   // Reference
   if (chain.threat_reference) {
     parts.push(`REFERENCE: ${chain.threat_reference.id} — ${chain.threat_reference.title}. ${chain.threat_reference.relevance}`);
+  }
+
+  // Verification steps
+  if (chain.verification_steps?.length) {
+    parts.push("VERIFY:");
+    for (const [i, step] of chain.verification_steps.entries()) {
+      parts.push(`  ${i + 1}. [${step.step_type}] ${step.instruction}`);
+      parts.push(`     Target: ${step.target}`);
+      parts.push(`     Expected: ${step.expected_observation}`);
+    }
   }
 
   // Confidence

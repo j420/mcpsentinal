@@ -27,6 +27,7 @@ import {
   analyzeToolSet,
   type CrossToolPattern,
 } from "../analyzers/schema-inference.js";
+import { EvidenceChainBuilder } from "../../evidence.js";
 
 // --- F1: Lethal Trifecta ---
 
@@ -47,6 +48,52 @@ class LethalTrifectaRule implements TypedRule {
     // Schema-detected lethal trifecta (based on actual parameter types, not description text)
     for (const pattern of schemaAnalysis.cross_tool_patterns) {
       if (pattern.type === "lethal_trifecta") {
+        const schemaChain = new EvidenceChainBuilder()
+          .source({
+            source_type: "user-parameter",
+            location: `tools: ${pattern.tools.join(", ")}`,
+            observed: `Schema structural analysis identified lethal trifecta across ${pattern.tools.length} tools`,
+            rationale: "Parameter schemas confirm data-access + network-send capabilities coexist in same server",
+          })
+          .propagation({
+            propagation_type: "cross-tool-flow",
+            location: "server execution context",
+            observed: "Cross-tool data flow via shared server context — no isolation boundary",
+          })
+          .sink({
+            sink_type: "network-send",
+            location: "external network endpoint",
+            observed: "Private data readable by one tool can be exfiltrated via another tool's network capability",
+          })
+          .factor(
+            "schema-structural",
+            pattern.confidence - 0.30,
+            `Schema analysis confirmed: ${pattern.evidence}`,
+          )
+          .factor(
+            "attack-surface-score",
+            Math.max(...schemaAnalysis.tools.map((t) => t.attack_surface_score)) - 0.30,
+            `Highest tool attack surface: ${Math.max(...schemaAnalysis.tools.map((t) => t.attack_surface_score * 100)).toFixed(0)}%`,
+          )
+          .reference({
+            id: "OWASP-MCP04",
+            title: "OWASP MCP Top 10 — MCP04 Data Exfiltration",
+            relevance: "Private data + untrusted content + external comms = lethal trifecta for exfiltration",
+          })
+          .verification({
+            step_type: "inspect-schema",
+            instruction: "Examine tool parameter schemas to confirm data-access and network-send capabilities coexist",
+            target: pattern.tools.join(", "),
+            expected_observation: "At least one tool reads private data AND at least one tool can send data externally",
+          })
+          .verification({
+            step_type: "trace-flow",
+            instruction: "Verify that data can flow from the private-data-reading tool to the network-sending tool within the same server session",
+            target: "server tool execution context",
+            expected_observation: "No isolation boundary prevents data flow between these tools",
+          })
+          .build();
+
         findings.push({
           rule_id: "F1",
           severity: "critical",
@@ -68,6 +115,7 @@ class LethalTrifectaRule implements TypedRule {
           metadata: {
             analysis_type: "schema_structural",
             tools_involved: pattern.tools,
+            evidence_chain: schemaChain,
             per_tool_analysis: schemaAnalysis.tools.map((t) => ({
               name: t.tool_name,
               attack_surface: t.attack_surface_score,
@@ -121,6 +169,47 @@ class LethalTrifectaRule implements TypedRule {
       // Skip if schema analysis already found this
       if (findings.some((f) => f.rule_id === "F1")) continue;
 
+      const capDetails = this.extractCapabilityDetails(graph);
+      const graphChain = new EvidenceChainBuilder()
+        .source({
+          source_type: "user-parameter",
+          location: `tools: ${pattern.tools_involved.join(", ")}`,
+          observed: `Graph analysis: ${graph.nodes.length} tools, ${graph.edges.length} edges, ${graph.cycles.length} cycles`,
+          rationale: "Capability graph identifies coexistence of private-data, untrusted-content, and network-send capabilities",
+        })
+        .propagation({
+          propagation_type: "cross-tool-flow",
+          location: `${capDetails.private_readers.join(", ") || "private-data-reader"} → ${capDetails.network_senders.join(", ") || "network-sender"}`,
+          observed: `Data flow graph with ${graph.edges.length} edges enables cross-tool data movement`,
+        })
+        .sink({
+          sink_type: "network-send",
+          location: "external network endpoint",
+          observed:
+            "Lethal trifecta: private data + untrusted content + external comms = " +
+            "attacker-controlled content can exfiltrate private data via network tools",
+        })
+        .factor(
+          "capability-graph",
+          pattern.confidence - 0.30,
+          `${graph.nodes.reduce((sum, n) => sum + n.capabilities.reduce((s, c) => s + c.signals.length, 0), 0)} signals across ${graph.nodes.length} tools`,
+        )
+        .reference({
+          id: "OWASP-MCP04",
+          title: "OWASP MCP Top 10 — MCP04 Data Exfiltration",
+          relevance: "Lethal trifecta is the #1 structural risk pattern in the OWASP MCP Top 10",
+        })
+        .verification({
+          step_type: "inspect-schema",
+          instruction: "Verify tool descriptions and schemas confirm three capability categories: reads-private-data, ingests-untrusted, sends-network",
+          target: pattern.tools_involved.join(", "),
+          expected_observation:
+            `Private data: [${capDetails.private_readers.join(", ")}], ` +
+            `Untrusted: [${capDetails.untrusted_ingesters.join(", ")}], ` +
+            `Network: [${capDetails.network_senders.join(", ")}]`,
+        })
+        .build();
+
       findings.push({
         rule_id: "F1",
         severity: "critical",
@@ -136,12 +225,13 @@ class LethalTrifectaRule implements TypedRule {
         metadata: {
           analysis_type: "capability_graph",
           tools_involved: pattern.tools_involved,
+          evidence_chain: graphChain,
           graph_summary: {
             node_count: graph.nodes.length,
             edge_count: graph.edges.length,
             cycle_count: graph.cycles.length,
           },
-          capability_details: this.extractCapabilityDetails(graph),
+          capability_details: capDetails,
         },
       });
     }

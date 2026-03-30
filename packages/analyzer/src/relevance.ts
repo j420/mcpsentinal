@@ -23,6 +23,24 @@ import {
   type EvidenceStandard,
 } from "./threat-model.js";
 
+// ─── Evidence-First Enforcement ──────────────────────────────────────────────
+
+/**
+ * Grace period for evidence chain migration.
+ *
+ * When true: flat findings (no evidence chain) still pass the evidence standard
+ * for rules that have non-empty evidence text. This allows the 176 unmigrated
+ * rules to continue scoring while they are incrementally upgraded to produce
+ * structured EvidenceChains.
+ *
+ * When false: all findings require an evidence chain to be scored. This is the
+ * end state — every finding must answer all 5 questions (WHERE, WHAT, WHY,
+ * HOW confident, HOW to verify) before it can affect the server's score.
+ *
+ * Track migration progress via MIGRATED_RULES in migration-tracker.ts.
+ */
+export const EVIDENCE_CHAIN_GRACE_PERIOD = true;
+
 // ─── Enhanced Finding ─────────────────────────────────────────────────────────
 
 /**
@@ -75,11 +93,15 @@ export function annotateFindings(
     const threat = threatByRule.get(finding.rule_id) ?? null;
     const standard = getEvidenceStandard(finding.rule_id, profile);
 
-    // Check if the finding's evidence chain meets the standard
+    // Check if the finding's evidence chain meets the standard.
+    // Three cases:
+    // 1. chain exists + standard exists → evaluate chain against standard
+    // 2. chain is null + grace period ON → flat evidence passes (migration compat)
+    // 3. chain is null + grace period OFF → fails (strict enforcement)
     const chain = finding.metadata?.evidence_chain as EvidenceChain | undefined;
-    const meetsStandard = chain && standard
+    const meetsStandard = chain
       ? evaluateEvidenceStandard(chain, standard)
-      : !standard; // No standard = universal rule, always meets
+      : EVIDENCE_CHAIN_GRACE_PERIOD && finding.evidence.length > 0;
 
     return {
       rule_id: finding.rule_id,
@@ -161,6 +183,11 @@ function evaluateEvidenceStandard(
 
   // Check minimum confidence
   if (chain.confidence < standard.min_confidence) {
+    return false;
+  }
+
+  // Check verification steps requirement (Question #5: HOW to verify)
+  if (standard.requires_verification && (!chain.verification_steps || chain.verification_steps.length === 0)) {
     return false;
   }
 
