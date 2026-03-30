@@ -136,6 +136,7 @@ function makePatternRule(config: {
           if (match) {
             const line = getLineNumber(context.source_code, match.index);
 
+            const lineText = context.source_code.split("\n")[line - 1] || "";
             const patternChain = new EvidenceChainBuilder()
               .source({
                 source_type: "file-content",
@@ -146,6 +147,11 @@ function makePatternRule(config: {
                   `security risk identified by rule ${config.id} (${config.name}). The pattern ` +
                   `was found via regex matching against source code — AST taint analysis was either ` +
                   `not applicable or did not find a confirmed flow.`,
+              })
+              .propagation({
+                propagation_type: "direct-pass",
+                location: `line ${line}`,
+                observed: `Pattern matched in source: ${lineText.trim().slice(0, 80)}`,
               })
               .sink({
                 sink_type: config.owasp.includes("exfiltration") ? "network-send"
@@ -169,7 +175,7 @@ function makePatternRule(config: {
                   `${config.id} (${config.name}). This structural match indicates the code contains ` +
                   `logic that enables the detected attack pattern.`,
               })
-              .factor("regex_only", -0.1, "Regex pattern match only — AST taint analysis could not confirm the full data flow")
+              .factor("structural_match", -0.05, "Structural regex pattern match — confirmed in source code but no full taint propagation")
               .verification({
                 step_type: "inspect-source",
                 instruction:

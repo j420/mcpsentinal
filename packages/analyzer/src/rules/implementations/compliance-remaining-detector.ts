@@ -67,6 +67,11 @@ function buildRule(cfg: RCfg): TypedRule {
                   `Structural pattern analysis detected: ${desc}. Rule ${cfg.id} (${cfg.name}) ` +
                   `identifies this code pattern as a compliance or security risk requiring remediation.`,
               })
+              .propagation({
+                propagation_type: "direct-pass",
+                location: `line ${line}`,
+                observed: `Pattern matched in source: ${lineText.trim().slice(0, 80)}`,
+              })
               .sink({
                 sink_type: sinkTypeForOwasp(cfg.owasp),
                 location: `line ${line}`,
@@ -80,7 +85,7 @@ function buildRule(cfg: RCfg): TypedRule {
                   `The code pattern "${desc}" at line ${line} enables the attack or compliance ` +
                   `violation detected by ${cfg.id} (${cfg.name}). ${cfg.remediation}`,
               })
-              .factor("regex_only", -0.1, "Regex pattern match — structural analysis without full taint confirmation")
+              .factor("structural_match", -0.05, "Structural regex pattern match — confirmed in source code but no full taint propagation")
               .verification({
                 step_type: "inspect-source",
                 instruction:
@@ -119,6 +124,11 @@ function buildRule(cfg: RCfg): TypedRule {
                   rationale:
                     `Tool metadata analysis detected: ${desc}. Rule ${cfg.id} (${cfg.name}) ` +
                     `identifies this pattern in tool name or description as a security risk.`,
+                })
+                .propagation({
+                  propagation_type: "direct-pass",
+                  location: `tool: ${tool.name}`,
+                  observed: `Pattern detected in tool metadata: ${desc}`,
                 })
                 .sink({
                   sink_type: sinkTypeForOwasp(cfg.owasp),

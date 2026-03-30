@@ -436,16 +436,46 @@ export class ScanPipeline {
       // Convert scored findings to FindingInput shape for downstream scoring + persistence.
       // Only relevant findings that meet evidence standards are included here.
       const findings = profileResult.scored_findings as unknown as Parameters<typeof computeScore>[0];
+
+      // Evidence chain diagnostics — track how many findings have chains vs were filtered.
+      const annotated = profileResult.all_annotated;
+      const withChains = annotated.filter((f) => f.evidence_chain != null).length;
+      const droppedByEvidence = annotated.filter(
+        (f) => f.relevant && !f.meets_evidence_standard
+      ).length;
+      const chainsInScored = findings.filter(
+        (f: Record<string, unknown>) => f.evidence_chain != null
+      ).length;
+
       log.info(
         {
-          total_raw: profileResult.all_annotated.length,
+          total_raw: annotated.length,
           scored: findings.length,
           informational: profileResult.informational_findings.length,
+          evidence_chains_total: withChains,
+          evidence_chains_in_scored: chainsInScored,
+          dropped_by_evidence_standard: droppedByEvidence,
           attack_surfaces: profileResult.profile.attack_surfaces,
           threats: profileResult.threats.map((t) => t.id),
         },
         "Stage 5: Profile-aware analysis complete",
       );
+
+      if (droppedByEvidence > 0) {
+        const dropped = annotated
+          .filter((f) => f.relevant && !f.meets_evidence_standard)
+          .slice(0, 10)
+          .map((f) => ({
+            rule_id: f.rule_id,
+            has_chain: f.evidence_chain != null,
+            confidence: f.confidence,
+            chain_links: f.evidence_chain?.links?.length ?? 0,
+          }));
+        log.warn(
+          { dropped_findings: dropped },
+          "Stage 5: Findings dropped by evidence standard — check chain completeness",
+        );
+      }
 
       // ── Stage 5b: Dynamic tool invocation (gated, consent required) ────────
       // Only runs when --dynamic is set and a live endpoint exists.
