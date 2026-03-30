@@ -15,6 +15,14 @@ export function loadRules(rulesDir: string): DetectionRule[] {
     try {
       const content = readFileSync(join(rulesDir, file), "utf-8");
       const raw = parseYaml(content);
+
+      // Skip non-rule YAML files (framework mappings, config, etc.)
+      // Rule files always have an `id` field at the top level.
+      if (!raw || typeof raw !== "object" || !("id" in raw)) {
+        logger.debug({ file }, "Skipping non-rule YAML file (no id field)");
+        continue;
+      }
+
       const rule = DetectionRuleSchema.parse(raw);
 
       if (rule.enabled) {
