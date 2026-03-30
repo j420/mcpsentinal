@@ -1,5 +1,7 @@
 [build]
+builder = "DOCKERFILE"
 dockerfilePath = "packages/api/Dockerfile"
+watchPatterns = ["packages/api/**", "packages/database/**", "packages/risk-matrix/**", "pnpm-lock.yaml", "tsconfig.base.json"]
 
 [deploy]
 healthcheckPath = "/health"
