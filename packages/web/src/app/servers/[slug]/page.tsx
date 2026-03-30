@@ -3,10 +3,13 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import CategoryDeepDivePanel from "@/components/CategoryDeepDivePanel";
 import type { CddFinding } from "@/components/cdd-data";
+import { RULE_NAMES } from "@/components/cdd-data";
 import ServerProfileCard from "@/components/ServerProfileCard";
 import type { ServerProfileData } from "@/components/ServerProfileCard";
 import AttackChainCard from "@/components/AttackChainCard";
 import type { AttackChainItem } from "@/components/AttackChainCard";
+import EvidenceChainViz from "@/components/EvidenceChainViz";
+import type { EvidenceChainData } from "@/components/EvidenceChainViz";
 
 export const dynamic = "force-dynamic";
 
@@ -279,6 +282,47 @@ export default async function ServerDetailPage({
         chains={server.attack_chains ?? null}
         currentServerId={server.id}
       />
+
+      {/* ── Security Findings ─────────────────────────────── */}
+      <section id="findings" className="sd-section">
+        <h2 className="sd-section-title">
+          Security Findings
+          <span className="sd-section-count">{findings.length}</span>
+        </h2>
+        {findings.length === 0 ? (
+          <p className="sd-section-sub">No findings detected. This server passed all 177 detection rules.</p>
+        ) : (
+          <>
+            <p className="sd-section-sub">
+              {findings.length} finding{findings.length !== 1 ? "s" : ""} detected across {new Set(findings.map(f => f.severity)).size} severity level{new Set(findings.map(f => f.severity)).size !== 1 ? "s" : ""}.
+              Each finding includes a structured evidence chain answering: WHAT, WHERE, WHY, HOW CONFIDENT, and HOW TO VERIFY.
+            </p>
+            <div className="sd-findings-list">
+              {findings.map((f) => (
+                <div key={f.id} className={`sd-finding-card sd-finding-${f.severity}`}>
+                  <div className="sd-finding-header">
+                    <span className={`sev-badge sev-${f.severity}`}>{f.severity}</span>
+                    <span className="sd-finding-rule-id">{f.rule_id}</span>
+                    <span className="sd-finding-rule-name">{RULE_NAMES[f.rule_id] ?? f.rule_id}</span>
+                    {f.owasp_category && <span className="sd-finding-tag sd-finding-owasp">{f.owasp_category}</span>}
+                    {f.mitre_technique && <span className="sd-finding-tag sd-finding-mitre">{f.mitre_technique}</span>}
+                  </div>
+                  <div className="sd-finding-evidence">{f.evidence}</div>
+                  <EvidenceChainViz
+                    chain={f.evidence_chain as EvidenceChainData | null | undefined}
+                    confidence={f.confidence}
+                  />
+                  {f.remediation && (
+                    <div className="sd-finding-remediation">
+                      <strong>Remediation:</strong> {f.remediation}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </section>
 
       {/* ── Tools ──────────────────────────────────────────── */}
       {tools.length > 0 && (
