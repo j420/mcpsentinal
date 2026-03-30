@@ -123,11 +123,12 @@ async function main(): Promise<void> {
       printHumanReadable(stats);
     }
 
-    // Exit 1 only if the failure rate is too high (>10%) or nothing succeeded.
+    // Exit 1 only if there were servers to scan AND the failure rate is too high.
+    // Zero servers to scan (incremental mode, all already scanned) is NOT a failure.
     // Individual server failures (timeouts, bad endpoints) are expected and
     // should not fail the workflow job — that would make scan.yml unreliable.
     const failureRate = stats.total > 0 ? stats.failed / stats.total : 0;
-    const criticalFailure = stats.succeeded === 0 || failureRate > 0.1;
+    const criticalFailure = stats.total > 0 && (stats.succeeded === 0 || failureRate > 0.1);
     process.exitCode = criticalFailure ? 1 : 0;
   } finally {
     await pool.end();
