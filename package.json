@@ -16,6 +16,7 @@
     "enumerate": "pnpm --filter=@mcp-sentinel/scanner run enumerate",
     "score": "pnpm --filter=@mcp-sentinel/scorer run score",
     "risk-matrix": "pnpm --filter=@mcp-sentinel/risk-matrix run risk-matrix",
+    "attack-graph": "pnpm --filter=@mcp-sentinel/attack-graph run attack-graph",
     "red-team": "pnpm --filter=@mcp-sentinel/red-team run audit",
     "dynamic-test": "pnpm --filter=@mcp-sentinel/scanner run scan -- --dynamic",
     "cli": "pnpm --filter=@mcp-sentinel/cli run cli"
