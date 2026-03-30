@@ -17,6 +17,7 @@ import type { TypedRule, TypedFinding } from "../base.js";
 import { registerTypedRule } from "../base.js";
 import type { AnalysisContext } from "../../engine.js";
 import { analyzeASTTaint } from "../analyzers/taint-ast.js";
+import { EvidenceChainBuilder } from "../../evidence.js";
 
 function isTestFile(source: string): boolean {
   return /(?:__tests?__|\.(?:test|spec)\.)/.test(source);

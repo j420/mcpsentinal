@@ -10,6 +10,7 @@ import { registerTypedRule } from "../base.js";
 import type { AnalysisContext } from "../../engine.js";
 import type { OwaspCategory } from "@mcp-sentinel/database";
 import { analyzeASTTaint } from "../analyzers/taint-ast.js";
+import { EvidenceChainBuilder } from "../../evidence.js";
 
 function isTestFile(source: string): boolean {
   return /(?:__tests?__|\.(?:test|spec)\.)/.test(source);
@@ -48,6 +49,69 @@ function makePatternRule(config: {
             config.taintSinkCategories!.includes(f.sink.category) && !f.sanitized
           );
           for (const flow of relevant) {
+            const astBuilder = new EvidenceChainBuilder()
+              .source({
+                source_type: flow.source.category === "environment" ? "environment" : "file-content",
+                location: `line ${flow.source.line}:${flow.source.column}`,
+                observed: flow.source.expression,
+                rationale:
+                  `AST taint analysis identified data flow from source "${flow.source.expression}" ` +
+                  `to a sensitive sink. Rule ${config.id} (${config.name}) detects this pattern as ` +
+                  `a security risk requiring remediation.`,
+              });
+
+            for (const step of flow.path) {
+              astBuilder.propagation({
+                propagation_type: step.type === "assignment" || step.type === "destructure" ? "variable-assignment"
+                  : step.type === "template_embed" ? "template-literal"
+                  : step.type === "spread" ? "direct-pass"
+                  : "function-call",
+                location: `line ${step.line}`,
+                observed: step.expression.slice(0, 80),
+              });
+            }
+
+            astBuilder
+              .sink({
+                sink_type: flow.sink.category === "ssrf" ? "network-send"
+                  : flow.sink.category === "file_write" ? "file-write"
+                  : flow.sink.category === "command_execution" ? "command-execution"
+                  : flow.sink.category === "dns_exfil" ? "network-send"
+                  : "code-evaluation",
+                location: `line ${flow.sink.line}:${flow.sink.column}`,
+                observed: flow.sink.expression.slice(0, 80),
+              })
+              .mitigation({
+                mitigation_type: "sanitizer-function",
+                present: false,
+                location: `between source (L${flow.source.line}) and sink (L${flow.sink.line})`,
+                detail: "No sanitization, validation, or access control between the data source and the sensitive sink.",
+              })
+              .impact({
+                impact_type: config.owasp.includes("exfiltration") ? "data-exfiltration"
+                  : config.owasp.includes("injection") ? "remote-code-execution"
+                  : config.owasp.includes("privilege") ? "privilege-escalation"
+                  : "data-exfiltration",
+                scope: "connected-services",
+                exploitability: flow.path.length <= 2 ? "trivial" : "moderate",
+                scenario:
+                  `Data flows from "${flow.source.expression}" through ${flow.path.length} propagation ` +
+                  `step(s) to "${flow.sink.expression.slice(0, 40)}" without sanitization. ` +
+                  `This enables the attack pattern detected by ${config.id} (${config.name}).`,
+              })
+              .factor("ast_confirmed", 0.15, "AST taint analysis confirmed complete data flow from source to sink")
+              .verification({
+                step_type: "trace-flow",
+                instruction:
+                  `Trace the data flow from "${flow.source.expression}" at line ${flow.source.line} ` +
+                  `through ${flow.path.length} step(s) to the sink at line ${flow.sink.line}. ` +
+                  `Verify the source contains sensitive data and the sink operation is security-relevant.`,
+                target: `source_code:${flow.source.line}-${flow.sink.line}`,
+                expected_observation: `Unsanitized data flow from source to sink — ${config.name} confirmed.`,
+              });
+
+            const astChain = astBuilder.build();
+
             findings.push({
               rule_id: config.id,
               severity: "critical",
@@ -58,7 +122,7 @@ function makePatternRule(config: {
               owasp_category: config.owasp,
               mitre_technique: config.mitre,
               confidence: flow.confidence,
-              metadata: { analysis_type: "ast_taint" },
+              metadata: { analysis_type: "ast_taint", evidence_chain: astChain },
             });
           }
         } catch { /* fall through */ }
@@ -71,6 +135,52 @@ function makePatternRule(config: {
           const match = regex.exec(context.source_code);
           if (match) {
             const line = getLineNumber(context.source_code, match.index);
+
+            const patternChain = new EvidenceChainBuilder()
+              .source({
+                source_type: "file-content",
+                location: `line ${line}`,
+                observed: match[0].slice(0, 100),
+                rationale:
+                  `Structural pattern analysis detected: ${desc}. This pattern indicates a ` +
+                  `security risk identified by rule ${config.id} (${config.name}). The pattern ` +
+                  `was found via regex matching against source code — AST taint analysis was either ` +
+                  `not applicable or did not find a confirmed flow.`,
+              })
+              .sink({
+                sink_type: config.owasp.includes("exfiltration") ? "network-send"
+                  : config.owasp.includes("injection") ? "code-evaluation"
+                  : config.owasp.includes("privilege") ? "privilege-grant"
+                  : config.owasp.includes("supply") ? "code-evaluation"
+                  : "network-send",
+                location: `line ${line}`,
+                observed: `${desc}: ${match[0].slice(0, 60)}`,
+              })
+              .impact({
+                impact_type: config.owasp.includes("exfiltration") ? "data-exfiltration"
+                  : config.owasp.includes("injection") ? "remote-code-execution"
+                  : config.owasp.includes("privilege") ? "privilege-escalation"
+                  : config.owasp.includes("supply") ? "remote-code-execution"
+                  : "data-exfiltration",
+                scope: "connected-services",
+                exploitability: "moderate",
+                scenario:
+                  `The code pattern "${desc}" at line ${line} matches the attack signature for ` +
+                  `${config.id} (${config.name}). This structural match indicates the code contains ` +
+                  `logic that enables the detected attack pattern.`,
+              })
+              .factor("regex_only", -0.1, "Regex pattern match only — AST taint analysis could not confirm the full data flow")
+              .verification({
+                step_type: "inspect-source",
+                instruction:
+                  `Review the code at line ${line}: "${match[0].slice(0, 60)}". Verify that ` +
+                  `this pattern represents a genuine ${config.name} risk and not a false positive ` +
+                  `(e.g., test code, documentation, or commented-out code).`,
+                target: `source_code:${line}`,
+                expected_observation: `${desc} — ${config.name} pattern confirmed.`,
+              })
+              .build();
+
             findings.push({
               rule_id: config.id,
               severity: "critical",
@@ -79,7 +189,7 @@ function makePatternRule(config: {
               owasp_category: config.owasp,
               mitre_technique: config.mitre,
               confidence,
-              metadata: { analysis_type: "structural", line },
+              metadata: { analysis_type: "structural", line, evidence_chain: patternChain },
             });
             break;
           }

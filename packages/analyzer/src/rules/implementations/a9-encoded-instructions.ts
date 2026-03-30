@@ -30,6 +30,7 @@ import {
   type EntropyAnomaly,
   type EntropyClassification,
 } from "../analyzers/entropy.js";
+import { EvidenceChainBuilder } from "../../evidence.js";
 
 const CLASSIFICATION_SEVERITY: Record<EntropyClassification, Severity> = {
   base64: "critical",
@@ -62,6 +63,95 @@ class EncodedInstructionsRule implements TypedRule {
         globalResult.classification !== "unknown" &&
         globalResult.confidence >= 0.6
       ) {
+        const chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "external-content",
+            location: `tool "${tool.name}" description (${tool.description.length} chars)`,
+            observed:
+              `Entire description classified as "${globalResult.classification}" — ` +
+              `Shannon entropy: ${globalResult.shannon_entropy.toFixed(2)} bits/char`,
+            rationale:
+              "Tool description contains encoded or obfuscated content instead of natural language. " +
+              "Descriptions are external content authored by the server publisher and consumed by AI clients " +
+              "as trusted context for tool selection and invocation.",
+          })
+          .propagation({
+            propagation_type: "description-directive",
+            location: "AI client context window",
+            observed:
+              "Encoded payload in the description is sent to the AI model as part of tool metadata. " +
+              "AI models with decoding capabilities (base64, hex, URL) may decode and execute the hidden instructions.",
+          })
+          .sink({
+            sink_type: "code-evaluation",
+            location: "AI model instruction processing",
+            observed:
+              `Encoded content (${globalResult.classification}) bypasses human review because ` +
+              `the encoded text appears as random characters to reviewers, but the AI model may ` +
+              `decode and execute them as instructions`,
+          })
+          .mitigation({
+            mitigation_type: "input-validation",
+            present: false,
+            location: "tool description ingestion / MCP client",
+            detail:
+              "No entropy analysis or encoding detection applied to tool descriptions before AI processing",
+          })
+          .impact({
+            impact_type: "cross-agent-propagation",
+            scope: "ai-client",
+            exploitability: "moderate",
+            scenario:
+              "Base64, URL-encoded, or HTML-entity encoded instructions are embedded in the tool description. " +
+              "These bypass human review because the encoded text appears as random characters, but the AI model " +
+              "may decode and execute them as instructions.",
+          })
+          .factor(
+            "global_entropy_anomaly",
+            0.15,
+            `Shannon entropy ${globalResult.shannon_entropy.toFixed(2)} bits/char is outside natural language range (3.0-4.5)`
+          )
+          .factor(
+            "chi_squared_uniformity",
+            globalResult.chi_squared_p_value > 0.05 ? 0.1 : -0.05,
+            globalResult.chi_squared_p_value > 0.05
+              ? `Chi-squared p-value ${globalResult.chi_squared_p_value.toFixed(4)} > 0.05 — consistent with random/encoded data`
+              : `Chi-squared p-value ${globalResult.chi_squared_p_value.toFixed(4)} < 0.05 — not uniformly random`
+          )
+          .reference({
+            id: "AML.T0054",
+            title: "MITRE ATLAS — LLM Prompt Injection",
+            url: "https://atlas.mitre.org/techniques/AML.T0054",
+            relevance:
+              "Encoded instructions in tool descriptions are an indirect prompt injection technique. " +
+              "The payload is obfuscated to evade human review while remaining decodable by AI models.",
+          })
+          .verification({
+            step_type: "inspect-description",
+            instruction:
+              "Examine the tool description text for encoded content. Attempt to decode using common schemes: " +
+              "base64 (look for [A-Za-z0-9+/]= padding), URL encoding (look for %XX sequences), " +
+              "hex encoding (look for \\x or 0x prefixes), and HTML entities (look for &#x or &amp; patterns). " +
+              "Use `echo '<payload>' | base64 -d` or equivalent to attempt decoding suspicious blocks.",
+            target: `tool "${tool.name}" description`,
+            expected_observation:
+              `Description classified as "${globalResult.classification}" with entropy ` +
+              `${globalResult.shannon_entropy.toFixed(2)} bits/char. Decoding should reveal hidden text instructions.`,
+          })
+          .verification({
+            step_type: "test-input",
+            instruction:
+              "Extract the suspected encoded payload and attempt to decode it with each encoding scheme. " +
+              "If decoding produces readable text, examine whether the decoded content contains AI directives, " +
+              "system prompt overrides, role injection patterns, or exfiltration instructions. Compare the decoded " +
+              "text against known prompt injection patterns (role claims, instruction overrides, data exfiltration URLs).",
+            target: `decoded payload from tool "${tool.name}" description`,
+            expected_observation:
+              "Decoded content reveals instructions that would alter AI behavior — " +
+              "confirming the encoded content is a prompt injection payload hidden from human review.",
+          })
+          .build();
+
         findings.push({
           rule_id: "A9",
           severity: CLASSIFICATION_SEVERITY[globalResult.classification] || "medium",
@@ -89,6 +179,7 @@ class EncodedInstructionsRule implements TypedRule {
             chi_squared_p_value: globalResult.chi_squared_p_value,
             compression_ratio: globalResult.compression_ratio,
             classification: globalResult.classification,
+            evidence_chain: chain,
           },
         });
       }
@@ -103,6 +194,67 @@ class EncodedInstructionsRule implements TypedRule {
           anomaly.classification === "source_code"
         )
           continue;
+
+        const chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "external-content",
+            location: `tool "${tool.name}" description, offset ${anomaly.offset} (${anomaly.length} chars)`,
+            observed: anomaly.text.slice(0, 120),
+            rationale:
+              "A high-entropy region is embedded within otherwise normal description text. " +
+              "This is a signature pattern of encoded instructions hidden in legitimate-looking content.",
+          })
+          .propagation({
+            propagation_type: "description-directive",
+            location: "AI client context window",
+            observed:
+              `Encoded island (${anomaly.classification}) at offset ${anomaly.offset} is included ` +
+              `in the full description text sent to the AI model`,
+          })
+          .sink({
+            sink_type: "code-evaluation",
+            location: "AI model instruction processing",
+            observed:
+              `Embedded ${anomaly.classification} region with entropy ${anomaly.entropy.toFixed(2)} bits/char — ` +
+              `stands out from surrounding natural language text`,
+          })
+          .impact({
+            impact_type: "cross-agent-propagation",
+            scope: "ai-client",
+            exploitability: "moderate",
+            scenario:
+              "An encoded payload is embedded within an otherwise normal tool description. " +
+              "The surrounding text appears benign to human reviewers, while the encoded region " +
+              "contains instructions that the AI model can decode and follow.",
+          })
+          .factor(
+            "embedded_entropy_island",
+            0.15,
+            `Region entropy ${anomaly.entropy.toFixed(2)} bits/char significantly exceeds surrounding text`
+          )
+          .verification({
+            step_type: "inspect-description",
+            instruction:
+              `Extract the ${anomaly.length}-character region starting at offset ${anomaly.offset} in the tool description. ` +
+              `Compute its Shannon entropy independently and compare against the surrounding text entropy. ` +
+              `A difference of more than 1.5 bits/char confirms an entropy island — encoded content embedded in natural language.`,
+            target: `tool "${tool.name}" description, chars ${anomaly.offset}-${anomaly.offset + anomaly.length}`,
+            expected_observation:
+              `Region classified as "${anomaly.classification}" with entropy ${anomaly.entropy.toFixed(2)} bits/char, ` +
+              `significantly higher than surrounding natural language text (typically 3.0-4.5 bits/char).`,
+          })
+          .verification({
+            step_type: "test-input",
+            instruction:
+              `Attempt to decode the extracted region using ${anomaly.classification} decoding. ` +
+              `For base64: strip whitespace and run through a base64 decoder. For hex: interpret as hex bytes. ` +
+              `For URL-encoding: decode %XX sequences. Check if the decoded output contains readable text, ` +
+              `especially AI directives or prompt injection patterns.`,
+            target: `extracted region: "${anomaly.text.slice(0, 80)}${anomaly.text.length > 80 ? "..." : ""}"`,
+            expected_observation:
+              "Decoding reveals hidden instructions or payload content that was invisible in the encoded form.",
+          })
+          .build();
 
         findings.push({
           rule_id: "A9",
@@ -128,6 +280,7 @@ class EncodedInstructionsRule implements TypedRule {
             length: anomaly.length,
             region_entropy: anomaly.entropy,
             classification: anomaly.classification,
+            evidence_chain: chain,
           },
         });
       }

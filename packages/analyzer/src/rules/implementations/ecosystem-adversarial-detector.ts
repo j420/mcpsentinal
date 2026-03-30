@@ -16,6 +16,7 @@ import { registerTypedRule } from "../base.js";
 import type { AnalysisContext } from "../../engine.js";
 import { buildCapabilityGraph } from "../analyzers/capability-graph.js";
 import { damerauLevenshtein } from "../analyzers/similarity.js";
+import { EvidenceChainBuilder } from "../../evidence.js";
 
 function isTestFile(s: string) { return /(?:__tests?__|\.(?:test|spec)\.)/.test(s); }
 function lineNum(s: string, i: number) { return s.substring(0, i).split("\n").length; }
@@ -31,21 +32,107 @@ registerTypedRule({
 
     for (const tool of ctx.tools) {
       if (!tool.name || tool.name.trim().length === 0) {
+        const chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "external-content",
+            location: "tool definition",
+            observed: "empty or missing tool name",
+            rationale: "MCP servers define tools that AI clients enumerate and present to users. A tool with no name violates the MCP specification and can cause undefined behavior in client tool selection.",
+          })
+          .sink({
+            sink_type: "config-modification",
+            location: "MCP tool registry",
+            observed: "Tool registered without a name field",
+          })
+          .mitigation({
+            mitigation_type: "input-validation",
+            present: false,
+            location: "tool definition",
+            detail: "No name validation is enforced on tool registration, allowing unnamed tools to be served to AI clients.",
+          })
+          .impact({
+            impact_type: "privilege-escalation",
+            scope: "ai-client",
+            exploitability: "moderate",
+            scenario: "An unnamed tool may bypass client-side tool filtering or approval rules that match on tool names. AI clients may fail to display the tool for user review, enabling silent execution.",
+          })
+          .factor("spec-violation-confirmed", 0.15, "MCP specification explicitly requires non-empty tool names")
+          .reference({
+            id: "CWE-1007",
+            title: "Insufficient Visual Distinction of Homoglyphs Before Use",
+            relevance: "Missing tool name prevents visual identification and distinction by users and AI clients",
+          })
+          .verification({
+            step_type: "inspect-schema",
+            instruction: "Enumerate the server's tools via tools/list and check the name field of each tool. Look for any tool where name is empty, null, or whitespace-only.",
+            target: "MCP tools/list response",
+            expected_observation: "At least one tool entry has an empty or missing name field",
+          })
+          .verification({
+            step_type: "check-config",
+            instruction: "Review the server's tool registration code to verify that tool names are validated before being served. Check if there is any schema validation on the name field.",
+            target: "Server tool registration logic",
+            expected_observation: "No validation on tool name field — empty names are accepted",
+          })
+          .build();
         findings.push({
           rule_id: "F4", severity: "low",
           evidence: "Tool has empty or missing name (MCP spec requires non-empty name).",
           remediation: "Add a name to all tools per MCP specification.",
           owasp_category: "MCP07-insecure-config", mitre_technique: null,
-          confidence: 0.95, metadata: {},
+          confidence: 0.95, metadata: { evidence_chain: chain },
         });
       }
       if (tool.description === null || tool.description === undefined || tool.description.trim().length === 0) {
+        const chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "external-content",
+            location: `tool "${tool.name}"`,
+            observed: "missing tool description",
+            rationale: "Tool descriptions are the primary mechanism AI clients use to understand tool purpose and decide when to invoke them. A missing description forces the AI to guess based on the tool name alone, which can lead to misuse or incorrect invocations.",
+          })
+          .sink({
+            sink_type: "config-modification",
+            location: `tool "${tool.name}" description field`,
+            observed: "Tool served without description metadata",
+          })
+          .mitigation({
+            mitigation_type: "input-validation",
+            present: false,
+            location: `tool "${tool.name}"`,
+            detail: "No description is provided for the tool. The MCP spec recommends descriptions for proper AI understanding of tool capabilities.",
+          })
+          .impact({
+            impact_type: "privilege-escalation",
+            scope: "ai-client",
+            exploitability: "moderate",
+            scenario: "Without a description, the AI client may misinterpret the tool's purpose based on its name alone. A tool named 'update' could be a read operation or a destructive write — the AI has no way to distinguish without a description.",
+          })
+          .factor("spec-recommendation-violation", 0.05, "MCP spec recommends but does not require descriptions")
+          .reference({
+            id: "CWE-1007",
+            title: "Insufficient Visual Distinction of Homoglyphs Before Use",
+            relevance: "Missing description reduces the AI client's ability to properly identify and classify the tool",
+          })
+          .verification({
+            step_type: "inspect-description",
+            instruction: "Call tools/list on the server and inspect the description field for the tool in question. Verify it is null, undefined, or empty string.",
+            target: `tool "${tool.name}"`,
+            expected_observation: "Description field is absent or empty",
+          })
+          .verification({
+            step_type: "check-config",
+            instruction: "Review the tool registration source code to confirm no description is set. Check if this is an oversight or intentional omission.",
+            target: "Server tool definition code",
+            expected_observation: "Tool is registered without a description parameter",
+          })
+          .build();
         findings.push({
           rule_id: "F4", severity: "low",
           evidence: `Tool "${tool.name}" has no description (recommended by MCP spec).`,
           remediation: "Add descriptions to all tools for proper AI understanding.",
           owasp_category: "MCP07-insecure-config", mitre_technique: null,
-          confidence: 0.70, metadata: { tool_name: tool.name },
+          confidence: 0.70, metadata: { tool_name: tool.name, evidence_chain: chain },
         });
       }
     }

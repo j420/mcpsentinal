@@ -25,6 +25,7 @@ import {
   normalizeConfusables,
   type UnicodeIssueType,
 } from "../analyzers/unicode.js";
+import { EvidenceChainBuilder } from "../../evidence.js";
 
 // --- A6: Homoglyph Attack ---
 
@@ -49,6 +50,89 @@ class UnicodeHomoglyphRule implements TypedRule {
         if (homoglyphs.length > 0) {
           const normalizedName = normalizeConfusables(tool.name);
           const isDifferentAfterNormalization = normalizedName !== tool.name;
+
+          const chain = new EvidenceChainBuilder()
+            .source({
+              source_type: "external-content",
+              location: `tool name: "${tool.name}"`,
+              observed: homoglyphs.map((h) => h.description).join("; "),
+              rationale:
+                "Tool name contains non-Latin Unicode characters that are visually identical to Latin letters. " +
+                "Tool names are external content registered by server authors and processed by AI clients as trusted identifiers.",
+            })
+            .propagation({
+              propagation_type: "description-directive",
+              location: `tool registry / AI client tool selection`,
+              observed: `AI client receives tool name "${tool.name}" and treats it as a unique identifier for tool invocation`,
+            })
+            .sink({
+              sink_type: "privilege-grant",
+              location: `AI client tool invocation`,
+              observed:
+                `Identity confusion: AI client cannot distinguish "${tool.name}" from ` +
+                `"${normalizedName}" — invokes attacker tool with user credentials`,
+              cve_precedent: "CWE-1007",
+            })
+            .mitigation({
+              mitigation_type: "input-validation",
+              present: false,
+              location: "tool registration / MCP client",
+              detail:
+                "No Unicode normalization or script validation on tool names — mixed-script identifiers are accepted without warning",
+            })
+            .impact({
+              impact_type: "credential-theft",
+              scope: "ai-client",
+              exploitability: "trivial",
+              scenario:
+                "An attacker registers a tool with Cyrillic characters visually identical to a trusted tool name. " +
+                "The AI client cannot distinguish the malicious tool from the legitimate one, causing it to invoke " +
+                "the attacker's tool with the user's credentials and data.",
+            })
+            .factor(
+              "homoglyph_detected",
+              0.15,
+              `${homoglyphs.length} homoglyph character(s) found in tool name`
+            )
+            .factor(
+              isDifferentAfterNormalization ? "normalization_reveals_impersonation" : "normalization_unchanged",
+              isDifferentAfterNormalization ? 0.15 : -0.1,
+              isDifferentAfterNormalization
+                ? `Name normalizes to "${normalizedName}" — visually impersonates a Latin-only identifier`
+                : "Name unchanged after normalization — less likely to be impersonation"
+            )
+            .reference({
+              id: "CWE-1007",
+              title: "Insufficient Visual Distinction of Homoglyphs",
+              url: "https://cwe.mitre.org/data/definitions/1007.html",
+              relevance:
+                "Tool name uses Unicode homoglyphs to create visual confusion between identifiers, " +
+                "matching CWE-1007 (Insufficient Visual Distinction of Homoglyphs Before Rendering)",
+            })
+            .verification({
+              step_type: "inspect-description",
+              instruction:
+                "Examine the tool name character by character using a hex editor or Unicode inspector. " +
+                "Check each codepoint against the Unicode Character Database to confirm script membership. " +
+                "Latin 'a' is U+0061; Cyrillic 'а' is U+0430 — they render identically but are different characters.",
+              target: `tool name: "${tool.name}"`,
+              expected_observation:
+                `One or more characters belong to non-Latin scripts (Cyrillic, Greek, Mathematical Alphanumerics, Fullwidth Latin). ` +
+                `Scripts detected: ${[...nameResult.scripts_detected].join(", ")}.`,
+            })
+            .verification({
+              step_type: "compare-baseline",
+              instruction:
+                "Compare the tool name against known legitimate tool names in the same server or ecosystem. " +
+                "Apply Unicode confusable normalization (UAX #39) to both names and check for collisions. " +
+                "If the normalized form matches a known tool, this confirms homoglyph-based impersonation.",
+              target: `normalized form: "${normalizedName}"`,
+              expected_observation:
+                isDifferentAfterNormalization
+                  ? `After normalization, the name becomes "${normalizedName}" which may match a legitimate tool — confirming visual impersonation.`
+                  : "Name is unchanged after normalization but still contains mixed scripts, suggesting potential confusion.",
+            })
+            .build();
 
           findings.push({
             rule_id: "A6",
@@ -85,6 +169,7 @@ class UnicodeHomoglyphRule implements TypedRule {
                 ),
                 description: h.description,
               })),
+              evidence_chain: chain,
             },
           });
         }
@@ -229,6 +314,96 @@ class ZeroWidthInjectionRule implements TypedRule {
           // Check for tag characters hiding ASCII messages
           const hiddenMessage = extractTagMessage(tool.description);
 
+          const chain = new EvidenceChainBuilder()
+            .source({
+              source_type: "external-content",
+              location: `tool "${tool.name}" description`,
+              observed: descInvisible.map((i) => issueTypeLabels[i.type]).join(", "),
+              rationale:
+                "Tool description contains invisible Unicode characters that are not rendered visually " +
+                "but are processed by AI models as part of the input text. These characters are injected " +
+                "by the server author and consumed by the AI client without human review.",
+            })
+            .propagation({
+              propagation_type: "description-directive",
+              location: `AI client context window`,
+              observed:
+                "Invisible characters are included in the tool description text sent to the AI model " +
+                "as part of tool selection context — the model processes them as instructions",
+            })
+            .sink({
+              sink_type: "code-evaluation",
+              location: `AI model instruction processing`,
+              observed: hiddenMessage
+                ? `Hidden instructions decoded from tag characters: "${hiddenMessage}"`
+                : "Invisible characters may encode directives processed by the AI model but invisible to human auditors",
+            })
+            .mitigation({
+              mitigation_type: "input-validation",
+              present: false,
+              location: "tool description ingestion / MCP client",
+              detail:
+                "No Unicode normalization or invisible character stripping applied to tool descriptions before AI processing",
+            })
+            .impact({
+              impact_type: "cross-agent-propagation",
+              scope: "ai-client",
+              exploitability: hiddenMessage ? "trivial" : "moderate",
+              scenario:
+                "Invisible Unicode characters embed instructions that are processed by the AI model but invisible " +
+                "to human reviewers. A security auditor examining the tool description sees benign text while the " +
+                "model receives additional directives.",
+            })
+            .factor(
+              "invisible_chars_in_description",
+              0.1,
+              `${descInvisible.length} invisible character(s) found in tool description`
+            )
+            .factor(
+              hiddenMessage ? "hidden_message_extracted" : "no_hidden_message",
+              hiddenMessage ? 0.25 : 0.0,
+              hiddenMessage
+                ? `Tag characters decode to hidden ASCII message: "${hiddenMessage}"`
+                : "No tag-character hidden message detected (other invisible chars still present)"
+            )
+            .reference({
+              id: "AML.T0054",
+              title: "MITRE ATLAS — LLM Prompt Injection",
+              url: "https://atlas.mitre.org/techniques/AML.T0054",
+              relevance:
+                "Invisible Unicode characters are a steganographic prompt injection vector — " +
+                "instructions are embedded in metadata fields that appear clean to human reviewers " +
+                "but contain directives processed by the AI model",
+            })
+            .verification({
+              step_type: "inspect-description",
+              instruction:
+                "Perform a hex dump of the tool description text using `xxd` or a Unicode inspector tool. " +
+                "Search for codepoints in the following ranges: U+200B-U+200F (zero-width), U+202A-U+202E (bidi overrides), " +
+                "U+2060-U+2064 (invisible operators), U+E0001-U+E007F (tag characters), U+FE00-U+FE0F (variation selectors). " +
+                "Count the total number of invisible characters and note their positions in the text.",
+              target: `tool "${tool.name}" description (${tool.description.length} chars)`,
+              expected_observation:
+                `${descInvisible.length} invisible character(s) at positions not adjacent to emoji or legitimate formatting contexts. ` +
+                `Types found: ${[...new Set(descInvisible.map((i) => i.type))].join(", ")}.`,
+            })
+            .verification({
+              step_type: "inspect-description",
+              instruction:
+                hiddenMessage
+                  ? `Extract tag characters (U+E0001-U+E007F) and decode them as ASCII by subtracting 0xE0000 from each codepoint. ` +
+                    `Verify the decoded message matches the detected hidden payload. Check whether the decoded text contains ` +
+                    `instructions, URLs, or directives that would alter AI behavior.`
+                  : `Remove all invisible characters from the description and compare the cleaned version with the original. ` +
+                    `Check whether the visible text changes meaning or layout after stripping. Verify whether the invisible ` +
+                    `characters appear at positions that could split words or alter token boundaries for the AI model.`,
+              target: `tool "${tool.name}" description — invisible character positions`,
+              expected_observation: hiddenMessage
+                ? `Tag characters decode to: "${hiddenMessage}" — confirming steganographic injection.`
+                : "Invisible characters are present at suspicious positions, not adjacent to emoji or legitimate formatting.",
+            })
+            .build();
+
           findings.push({
             rule_id: "A7",
             severity: hiddenMessage ? "critical" : "high",
@@ -250,6 +425,7 @@ class ZeroWidthInjectionRule implements TypedRule {
               hidden_message: hiddenMessage,
               invisible_count: descInvisible.length,
               types_found: [...new Set(descInvisible.map((i) => i.type))],
+              evidence_chain: chain,
             },
           });
         }

@@ -16,6 +16,7 @@ import { registerTypedRule } from "../base.js";
 import type { AnalysisContext } from "../../engine.js";
 import { analyzeASTTaint } from "../analyzers/taint-ast.js";
 import { analyzeTaint } from "../analyzers/taint.js";
+import { EvidenceChainBuilder } from "../../evidence.js";
 
 function isTestFile(source: string): boolean {
   return /(?:__tests?__|\.(?:test|spec)\.)/.test(source);
@@ -56,6 +57,51 @@ class ActionsTagPoisoningRule implements TypedRule {
         const isMutableTag = /^(main|master|dev|latest|v\d+)$/.test(ref);
 
         if (!isSafe && !isSHA && isMutableTag) {
+          const chain = new EvidenceChainBuilder()
+            .source({
+              source_type: "external-content",
+              location: `line ${i + 1}: uses: ${action}@${ref}`,
+              observed: `${action}@${ref}`,
+              rationale: "GitHub Actions mutable tags can be force-pushed by the upstream repository owner at any time. An attacker who compromises the upstream repo can replace the tag with malicious code that runs in every downstream CI pipeline.",
+            })
+            .sink({
+              sink_type: "command-execution",
+              location: `GitHub Actions runner executing ${action}@${ref}`,
+              observed: `uses: ${action}@${ref} — mutable tag reference`,
+              cve_precedent: "CWE-829",
+            })
+            .mitigation({
+              mitigation_type: "input-validation",
+              present: false,
+              location: `line ${i + 1}`,
+              detail: "No SHA pinning found for this Action reference. Mutable tags (main, master, latest, vN) can be silently replaced without any change to the workflow file.",
+            })
+            .impact({
+              impact_type: "remote-code-execution",
+              scope: "server-host",
+              exploitability: "moderate",
+              scenario: "An attacker compromises the upstream Action repository and force-pushes a new commit to the mutable tag. Every downstream workflow referencing this tag now executes attacker-controlled code with full CI runner access, including access to secrets.",
+            })
+            .factor("mutable_tag_reference", 0.1, "The reference uses a mutable tag pattern (main/master/latest/vN) rather than a SHA pin")
+            .reference({
+              id: "CVE-2025-30066",
+              title: "tj-actions/changed-files tag poisoning",
+              relevance: "Demonstrates real-world exploitation of mutable Action tags — attacker force-pushed a malicious commit to the v35 tag affecting thousands of repositories.",
+            })
+            .verification({
+              step_type: "inspect-source",
+              instruction: "Open the workflow file and locate the uses: directive at the indicated line. Confirm the Action reference uses a mutable tag (e.g., @main, @v1) rather than a full 40-character SHA hash.",
+              target: `line ${i + 1}`,
+              expected_observation: `uses: ${action}@${ref} with a mutable tag instead of a SHA pin`,
+            })
+            .verification({
+              step_type: "check-dependency",
+              instruction: "Check the upstream Action repository to verify whether the tag is mutable. Navigate to the Action repository on GitHub and check if the tag can be force-pushed or if the repository enforces tag protection rules.",
+              target: `https://github.com/${action}`,
+              expected_observation: "The tag is a mutable Git tag or branch name that can be updated without notification to downstream consumers",
+            })
+            .build();
+
           findings.push({
             rule_id: "L1",
             severity: "critical",
@@ -68,7 +114,7 @@ class ActionsTagPoisoningRule implements TypedRule {
             owasp_category: "MCP10-supply-chain",
             mitre_technique: "AML.T0017",
             confidence: isMutableTag ? 0.92 : 0.75,
-            metadata: { analysis_type: "structural", line: i + 1, action, ref },
+            metadata: { analysis_type: "structural", line: i + 1, action, ref, evidence_chain: chain },
           });
         }
       }

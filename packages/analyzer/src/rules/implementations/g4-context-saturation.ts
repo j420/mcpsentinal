@@ -29,6 +29,7 @@ import {
   slidingWindowEntropy,
   classifyContent,
 } from "../analyzers/entropy.js";
+import { EvidenceChainBuilder } from "../../evidence.js";
 
 /** Thresholds for context saturation detection */
 const THRESHOLDS = {
@@ -160,13 +161,117 @@ class ContextSaturationRule implements TypedRule {
 
       // Only produce finding if multiple signals converge
       if (issues.length >= 2 && confidence >= 0.4) {
+        const clampedConfidence = Math.min(confidence, 0.95);
+
+        const chain = new EvidenceChainBuilder()
+          .source({
+            source_type: "external-content",
+            location: `tool "${tool.name}" description (${desc.length} chars)`,
+            observed:
+              `Oversized description: ${desc.length} chars, entropy ${globalEntropy.toFixed(2)} bits/char, ` +
+              `compression ratio ${globalCompression.toFixed(3)}`,
+            rationale:
+              "Tool description is external content authored by the server publisher. An oversized description " +
+              "with low entropy (repetitive padding) is designed to consume context window space, pushing the " +
+              "AI client's safety instructions below its effective attention threshold.",
+          })
+          .propagation({
+            propagation_type: "description-directive",
+            location: "AI client context window",
+            observed:
+              `${desc.length}-character description occupies significant context window space. ` +
+              `At ~4 chars/token, this consumes approximately ${Math.ceil(desc.length / 4)} tokens ` +
+              `of the model's context budget.`,
+          })
+          .sink({
+            sink_type: "code-evaluation",
+            location: "AI model attention mechanism",
+            observed:
+              "Safety instructions positioned before this description in the context window are displaced " +
+              "below the model's effective attention threshold — research shows models exhibit recency bias, " +
+              "prioritizing content near the end of the context over earlier instructions",
+          })
+          .mitigation({
+            mitigation_type: "input-validation",
+            present: false,
+            location: "tool description ingestion / MCP client",
+            detail:
+              "No description length limit or entropy-based content filtering applied. " +
+              "Descriptions of any length are passed directly to the AI model context.",
+          })
+          .impact({
+            impact_type: "cross-agent-propagation",
+            scope: "ai-client",
+            exploitability: tailAnomalies.length > 0 ? "trivial" : "moderate",
+            scenario:
+              "An oversized tool description pushes safety instructions below the model's effective attention window. " +
+              "Research shows recency bias causes models to prioritize content at the end of their context, so safety " +
+              "instructions near the start are effectively overridden.",
+          })
+          .factor(
+            "multiple_indicators",
+            0.1,
+            `${issues.length} independent saturation indicators converged (minimum 2 required)`
+          )
+          .factor(
+            entropyDiff > THRESHOLDS.tail_injection_entropy_diff ? "tail_injection_confirmed" : "no_tail_injection",
+            entropyDiff > THRESHOLDS.tail_injection_entropy_diff ? 0.15 : 0.0,
+            entropyDiff > THRESHOLDS.tail_injection_entropy_diff
+              ? `Tail entropy (${tailEntropy.toFixed(2)}) significantly exceeds head entropy (${headEntropy.toFixed(2)}) — payload at end of padding`
+              : "No significant entropy difference between head and tail regions"
+          )
+          .factor(
+            isPaddingDetected ? "repetitive_padding" : "normal_compression",
+            isPaddingDetected ? 0.1 : 0.0,
+            isPaddingDetected
+              ? `Compression ratio ${globalCompression.toFixed(3)} indicates highly repetitive padding content`
+              : "Compression ratio within normal range for descriptive text"
+          )
+          .reference({
+            id: "context-window-attacks",
+            title: "Context Window Saturation in LLM Tool Descriptions",
+            relevance:
+              "Research on LLM attention mechanisms shows that models exhibit strong recency bias — " +
+              "content at the end of the context window receives disproportionate attention weight. " +
+              "Padding attacks exploit this by filling the context with filler text, pushing safety " +
+              "instructions out of the effective attention window, then placing a payload in the tail.",
+          })
+          .verification({
+            step_type: "inspect-description",
+            instruction:
+              `Measure the tool description length (${desc.length} chars) and compute its Shannon entropy. ` +
+              `Legitimate tool documentation typically has 4.0-5.5 bits/char entropy and stays under 500 characters. ` +
+              `Check whether the description contains large blocks of repetitive or low-information text that serve ` +
+              `no functional purpose — these are padding designed to consume context window space.`,
+            target: `tool "${tool.name}" description (${desc.length} chars, ${paramCount} params)`,
+            expected_observation:
+              `Description entropy is ${globalEntropy.toFixed(2)} bits/char (expected 4.0-5.5 for documentation). ` +
+              `Chars per parameter: ${charsPerParam.toFixed(0)} (expected 50-150). ` +
+              `Compression ratio: ${globalCompression.toFixed(3)} (high compressibility = repetitive padding).`,
+          })
+          .verification({
+            step_type: "check-config",
+            instruction:
+              "Verify whether the AI client enforces a context window budget for tool descriptions. " +
+              "Check the client configuration for maximum description length limits, per-tool token budgets, " +
+              "or context allocation policies. If no limits exist, the client is vulnerable to context saturation. " +
+              "Also examine the last 20% of the description for content that differs significantly in nature " +
+              "from the first 30% — a tail injection payload will have higher entropy than the padding that precedes it.",
+            target: "AI client configuration / context window allocation policy",
+            expected_observation:
+              `No description length limit configured. Tail section (last ${tailSize} chars) has entropy ` +
+              `${tailEntropy.toFixed(2)} vs head (first ${headSize} chars) entropy ${headEntropy.toFixed(2)} — ` +
+              `${entropyDiff > THRESHOLDS.tail_injection_entropy_diff ? "confirming tail injection pattern" : "within normal range"}.`,
+          })
+          .build();
+
         findings.push({
           rule_id: "G4",
           severity,
           evidence:
             `[Statistical analysis] Tool "${tool.name}" shows ${issues.length} ` +
             `context saturation indicators: ${issues.join(". ")}. ` +
-            `Combined confidence: ${(Math.min(confidence, 0.95) * 100).toFixed(0)}%.`,
+            `Combined confidence: ${(clampedConfidence * 100).toFixed(0)}%.`,
           remediation:
             "Reduce description length to under 500 characters. " +
             "If detailed documentation is needed, link to external docs. " +
@@ -175,7 +280,7 @@ class ContextSaturationRule implements TypedRule {
             "then place a payload in the tail of the description.",
           owasp_category: "MCP01-prompt-injection",
           mitre_technique: "AML.T0061",
-          confidence: Math.min(confidence, 0.95),
+          confidence: clampedConfidence,
           metadata: {
             analysis_type: "statistical_saturation",
             description_length: desc.length,
@@ -189,6 +294,7 @@ class ContextSaturationRule implements TypedRule {
             tail_anomaly_count: tailAnomalies.length,
             classification: globalClassification.classification,
             issue_count: issues.length,
+            evidence_chain: chain,
           },
         });
       }
