@@ -817,6 +817,19 @@ export interface RuleTest {
   status: "pass" | "fail";
 }
 
+export interface RuleEvidenceChain {
+  /** WHAT: what the rule examines */
+  source: string;
+  /** WHERE: detection technique used */
+  detection: string;
+  /** WHY: what happens if exploited */
+  impact: string;
+  /** HOW CONFIDENT: basis for confidence score */
+  confidence_basis: string;
+  /** HOW TO VERIFY: steps a reviewer can follow */
+  verification: string;
+}
+
 export interface EnrichedRule {
   id: string;
   name: string;
@@ -829,6 +842,7 @@ export interface EnrichedRule {
   killChainPhase: string;
   frameworks: string[];
   tests: RuleTest[];
+  evidenceChain: RuleEvidenceChain;
 }
 
 export interface Gap {
@@ -859,6 +873,84 @@ function deriveRisk(severity: CddFinding["severity"]): RuleRisk {
   if (severity === "high") return "high";
   if (severity === "medium") return "medium";
   return "low";
+}
+
+// ── Evidence chain metadata per rule ─────────────────────────────────────────
+// 5-question regulator-grade evidence: WHAT / WHERE / WHY / HOW CONFIDENT / HOW TO VERIFY
+// Populated for proof-of-concept rules; remainder use category-derived defaults.
+
+const RULE_EVIDENCE_CHAINS: Record<string, RuleEvidenceChain> = {
+  A1: {
+    source: "Tool description text — the primary surface LLMs read to decide tool behavior and trust level",
+    detection: "Multi-signal linguistic scoring (Noisy-OR probability) across role injection, exfiltration directives, delimiter injection, base64-encoded payloads, and multi-turn setup patterns",
+    impact: "Cross-agent propagation — injected instructions in tool descriptions are processed by AI clients as trusted behavioral directives, enabling full session hijack without user awareness",
+    confidence_basis: "Base 0.70 (source → propagation → sink chain). Boosted by: multiple signal co-occurrence (+0.10), known payload match (+0.05). Reduced by: short description length (-0.05)",
+    verification: "Inspect the tool description field. Search for role override phrases ('you are', 'ignore previous'), exfiltration URLs, base64 blocks >20 chars, or prompt delimiter tokens (###, [INST], <|system|>)",
+  },
+  C1: {
+    source: "User-controlled parameter values passed through tool input schema to server-side code execution paths",
+    detection: "AST taint analysis — tracks data flow from user input parameters (source) through variable assignments and template literals to exec/spawn/system calls (sink), with sanitizer detection for execFile with array args and allowlist checks",
+    impact: "Remote code execution — unsanitized user input reaches shell execution functions (exec, spawn, system), allowing arbitrary command execution on the server host with the server process's privileges",
+    confidence_basis: "Base 0.70 (source → propagation → sink via AST). Boosted by: direct taint path without sanitizer (+0.10), template literal interpolation (+0.05). Reduced by: sanitizer present on path (-0.15)",
+    verification: "Trace the data flow: find the user input parameter in the tool schema, follow variable assignments through the source code to exec/spawn/system calls. Check for sanitizers (execFile with array args, input validation, allowlist) between source and sink",
+  },
+  D3: {
+    source: "Package names in dependency manifests (package.json dependencies, requirements.txt, pyproject.toml)",
+    detection: "Multi-algorithm string similarity — Damerau-Levenshtein distance, Jaro-Winkler similarity, and keyboard-proximity analysis against 60+ known legitimate MCP package names including @modelcontextprotocol/sdk and official Anthropic packages",
+    impact: "Remote code execution — typosquatted packages execute attacker-controlled code during install via postinstall hooks. Real-world precedent: Alex Birsan dependency confusion attack (2021), ua-parser-js supply chain compromise",
+    confidence_basis: "Base 0.45 (source + sink, no propagation). Boosted by: Levenshtein distance ≤ 2 from known package (+0.15), matches known target name (+0.10). Reduced by: common English word overlap (-0.10)",
+    verification: "Compare each dependency name against the intended package. Compute Levenshtein distance — 1-2 character difference from a popular MCP package is a strong typosquat signal. Verify the package exists on npm/PyPI and inspect its author, publish date, and download count",
+  },
+  F1: {
+    source: "Tool metadata — input schemas, capability tags, and parameter types across all tools registered in a single MCP server",
+    detection: "Capability graph analysis — builds a directed graph of tool capabilities and checks for the lethal trifecta: (1) reads private/sensitive data + (2) ingests untrusted external content + (3) sends data to external endpoints, all coexisting in the same server",
+    impact: "Data exfiltration — the trifecta creates a complete attack chain: read private data → process untrusted content containing injection payload → exfiltrate to attacker-controlled endpoint. Server score CAPPED at 40 when detected",
+    confidence_basis: "Base 0.70 (source → propagation → sink). Boosted by: all three capability categories confirmed with high-confidence tool classification (+0.15). Reduced by: read-only annotations present (-0.10)",
+    verification: "List all tools and classify each into: (1) reads private/sensitive data (file read, DB query, credential access), (2) ingests untrusted content (web fetch, email read, issue tracker), (3) sends to external endpoints (HTTP POST, email send, webhook). If all three categories are present, the lethal trifecta exists",
+  },
+  I1: {
+    source: "Tool annotations object (readOnlyHint, destructiveHint, idempotentHint) from MCP specification 2025-03-26",
+    detection: "Annotation-schema contradiction detection — identifies tools that declare readOnlyHint:true but have parameters named delete/remove/drop/overwrite/destroy, or tools with destructive parameter patterns that lack destructiveHint:true annotation",
+    impact: "Privilege escalation via auto-approval — AI clients trust tool annotations for automatic execution decisions. A deceptive readOnlyHint:true causes destructive operations to bypass user consent entirely, executing delete/overwrite without confirmation",
+    confidence_basis: "Base 0.70 (source → propagation → sink). Boosted by: direct annotation-parameter contradiction found (+0.15), multiple destructive parameters present (+0.05). Reduced by: ambiguous parameter names (-0.05)",
+    verification: "Check the tool's annotations object for readOnlyHint and destructiveHint values. Compare against parameter names (delete, remove, drop, overwrite, destroy) and descriptions. Flag any contradiction between declared hints and actual destructive capability",
+  },
+};
+
+// Category-prefix → default evidence chain (for rules not yet individually authored)
+function defaultEvidenceChain(ruleId: string, severity: CddFinding["severity"]): RuleEvidenceChain {
+  const prefix = ruleId.replace(/\d+/g, "");
+  const name = RULE_NAMES[ruleId] ?? ruleId;
+  const defaults: Record<string, Partial<RuleEvidenceChain>> = {
+    A: { source: "Tool description and metadata fields", detection: "Linguistic pattern scoring on tool description text", impact: "AI client manipulation via malicious description content" },
+    B: { source: "Tool input schema and parameter definitions", detection: "Structural schema validation and parameter analysis", impact: "Input validation bypass or parameter-level injection" },
+    C: { source: "Server source code and execution paths", detection: "AST taint analysis tracking user input to dangerous sinks", impact: "Code-level vulnerability enabling server compromise" },
+    D: { source: "Dependency manifests (package.json, requirements.txt)", detection: "Dependency name/version analysis and CVE database lookup", impact: "Supply chain compromise via vulnerable or malicious dependencies" },
+    E: { source: "MCP connection metadata and transport layer", detection: "Behavioral analysis of connection properties", impact: "Insecure transport or missing authentication controls" },
+    F: { source: "Cross-tool capability metadata and interaction patterns", detection: "Capability graph analysis across all tools in the server", impact: "Dangerous capability combinations enabling multi-step attacks" },
+    G: { source: "Tool metadata analyzed for AI-specific attack patterns", detection: "Adversarial AI pattern detection (trust injection, context manipulation)", impact: "AI client exploitation using LLM-specific attack vectors" },
+    H: { source: "MCP protocol fields and authentication configuration", detection: "OAuth pattern analysis and initialize response field scanning", impact: "Authentication bypass or session-level prompt injection" },
+    I: { source: "MCP protocol primitives (annotations, resources, prompts, sampling)", detection: "Protocol surface analysis for spec-level attack vectors", impact: "Protocol-level exploitation bypassing application-layer defenses" },
+    J: { source: "Source code patterns matching known CVEs and published attacks", detection: "CVE-backed pattern matching against 2025-2026 threat intelligence", impact: "Exploitation of documented real-world vulnerabilities" },
+    K: { source: "Source code and configuration for compliance control implementation", detection: "8-framework compliance gap analysis (NIST, OWASP, ISO, EU AI Act)", impact: "Missing compliance controls required by regulatory frameworks" },
+    L: { source: "Build configuration, CI/CD pipelines, and package manifests", detection: "Advanced supply chain pattern analysis (AST taint + structural)", impact: "Build-time or distribution-time supply chain compromise" },
+    M: { source: "Tool metadata and source code for AI runtime patterns", detection: "LLM-specific runtime exploitation pattern detection", impact: "AI model manipulation or inference cost amplification" },
+    N: { source: "JSON-RPC implementation and transport layer code", detection: "Protocol edge case detection (batch abuse, injection, race conditions)", impact: "Protocol-level denial of service or session hijacking" },
+    O: { source: "Source code data handling and exfiltration paths", detection: "AST taint analysis for covert data exfiltration channels", impact: "Stealthy data exfiltration bypassing standard DLP controls" },
+    P: { source: "Dockerfiles, container configs, and infrastructure definitions", detection: "Container security structural parsing (Docker/k8s directives)", impact: "Container escape or host-level privilege escalation" },
+    Q: { source: "Cross-protocol integration code and ecosystem bridge patterns", detection: "Multi-protocol interaction analysis for emergent risks", impact: "Cross-ecosystem attack propagation via protocol boundaries" },
+  };
+  const d = defaults[prefix] ?? { source: "Server metadata and source code", detection: "Pattern-based security analysis", impact: "Security vulnerability in MCP server" };
+  return {
+    source: d.source ?? "Server metadata and source code",
+    detection: d.detection ?? "Pattern-based security analysis",
+    impact: d.impact ?? "Security vulnerability in MCP server",
+    confidence_basis: severity === "critical" ? "High base confidence (0.70+) for critical-severity detection with multi-signal confirmation"
+      : severity === "high" ? "Moderate-high confidence (0.55-0.70) with structural pattern confirmation"
+      : severity === "medium" ? "Moderate confidence (0.45-0.55) based on structural indicators"
+      : "Lower confidence (0.30-0.45) — informational signal requiring manual review",
+    verification: `Review the ${name} detection output. Inspect the flagged location, confirm the pattern matches the rule criteria, and verify no false-positive conditions apply`,
+  };
 }
 
 // Build RULES array from existing data
@@ -893,6 +985,7 @@ export const RULES: EnrichedRule[] = (() => {
           killChainPhase: cat.killChain[0] ?? "Execution",
           frameworks: fwBadges.map(f => f.abbr),
           tests,
+          evidenceChain: RULE_EVIDENCE_CHAINS[ruleId] ?? defaultEvidenceChain(ruleId, sev),
         });
       }
     }

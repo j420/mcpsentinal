@@ -17,6 +17,7 @@ import {
   computeMaturity,
   computeRemediation,
   type EnrichedRule,
+  type RuleEvidenceChain,
   type Gap,
 } from "./cdd-data";
 
@@ -55,6 +56,7 @@ export default function CategoryDeepDivePanel({ findings, fullFindings }: { find
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [expandedStory, setExpandedStory] = useState<string | null>(null);
   const [expandedAtlas, setExpandedAtlas] = useState<string | null>(null);
+  const [expandedRule, setExpandedRule] = useState<string | null>(null);
 
   // Shared derived data — computed only when a category is selected
   const cat = selectedCat ? THREAT_CATS.find(c => c.id === selectedCat) ?? null : null;
@@ -252,9 +254,12 @@ export default function CategoryDeepDivePanel({ findings, fullFindings }: { find
                 <TreeTab
                   cat={cat}
                   catGaps={catGaps}
+                  catRules={catRules}
                   triggered={triggered}
                   allRuleIds={allRuleIds}
                   catHits={catHits}
+                  expandedRule={expandedRule}
+                  setExpandedRule={setExpandedRule}
                 />
               )}
               {activeView === "remediation" && (
@@ -296,12 +301,15 @@ export default function CategoryDeepDivePanel({ findings, fullFindings }: { find
 interface TreeTabProps {
   cat: (typeof THREAT_CATS)[number];
   catGaps: Gap[];
+  catRules: EnrichedRule[];
   triggered: Set<string>;
   allRuleIds: string[];
   catHits: string[];
+  expandedRule: string | null;
+  setExpandedRule: (id: string | null) => void;
 }
 
-function TreeTab({ cat, catGaps, triggered, allRuleIds, catHits }: TreeTabProps) {
+function TreeTab({ cat, catGaps, catRules, triggered, allRuleIds, catHits, expandedRule, setExpandedRule }: TreeTabProps) {
   return (
     <div className="cdd-body">
       <div className="cdd-left">
@@ -313,6 +321,7 @@ function TreeTab({ cat, catGaps, triggered, allRuleIds, catHits }: TreeTabProps)
               : 100;
           const barColor = scPct === 100 ? "var(--good)" : scPct >= 50 ? "var(--moderate)" : "var(--critical)";
           const scGaps = catGaps.filter(g => g.proposedSub === sc.id);
+          const scRules = catRules.filter(r => sc.rules.includes(r.id));
 
           return (
             <div key={sc.id} className={`cdd-subcat${scHits.length > 0 ? " cdd-subcat-hit" : ""}`}>
@@ -332,6 +341,74 @@ function TreeTab({ cat, catGaps, triggered, allRuleIds, catHits }: TreeTabProps)
                 </div>
               </div>
               <div className="cdd-subcat-desc">{sc.desc}</div>
+
+              {/* Individual rules with evidence chains */}
+              <div className="cdd-rules-list">
+                {scRules.map((rule) => {
+                  const isExpanded = expandedRule === rule.id;
+                  const isTriggered = triggered.has(rule.id);
+                  return (
+                    <div key={rule.id} className={`cdd-rule-card${isTriggered ? " cdd-rule-triggered" : ""}`}>
+                      <button
+                        type="button"
+                        className="cdd-rule-toggle"
+                        onClick={() => setExpandedRule(isExpanded ? null : rule.id)}
+                        aria-expanded={isExpanded}
+                      >
+                        <span className={`sev-badge sev-${rule.severity}`}>{rule.severity}</span>
+                        <span className="cdd-rule-id">{rule.id}</span>
+                        <span className="cdd-rule-name">{rule.name}</span>
+                        <span className={`cdd-rule-status ${statusClass(rule.status)}`}>{statusIcon(rule.status)}</span>
+                        <span className="cdd-rule-chevron">{isExpanded ? "\u25B2" : "\u25BC"}</span>
+                      </button>
+                      {isExpanded && (
+                        <div className="cdd-rule-evidence">
+                          <div className="cdd-ec-grid">
+                            <div className="cdd-ec-item">
+                              <div className="cdd-ec-label">WHAT is examined?</div>
+                              <div className="cdd-ec-value">{rule.evidenceChain.source}</div>
+                            </div>
+                            <div className="cdd-ec-item">
+                              <div className="cdd-ec-label">WHERE / HOW detected?</div>
+                              <div className="cdd-ec-value">{rule.evidenceChain.detection}</div>
+                            </div>
+                            <div className="cdd-ec-item">
+                              <div className="cdd-ec-label">WHY is this dangerous?</div>
+                              <div className="cdd-ec-value">{rule.evidenceChain.impact}</div>
+                            </div>
+                            <div className="cdd-ec-item">
+                              <div className="cdd-ec-label">HOW CONFIDENT?</div>
+                              <div className="cdd-ec-value">{rule.evidenceChain.confidence_basis}</div>
+                            </div>
+                            <div className="cdd-ec-item">
+                              <div className="cdd-ec-label">HOW TO VERIFY?</div>
+                              <div className="cdd-ec-value">{rule.evidenceChain.verification}</div>
+                            </div>
+                          </div>
+                          {rule.tests.length > 0 && (
+                            <div className="cdd-rule-tests">
+                              <div className="cdd-ec-label">Test Cases</div>
+                              {rule.tests.map((t, i) => (
+                                <div key={i} className={`cdd-rule-test cdd-rule-test-${t.status}`}>
+                                  <span className="cdd-test-icon">{t.status === "pass" ? "\u2713" : "\u2717"}</span>
+                                  <span className="cdd-test-label">{t.label}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {rule.frameworks.length > 0 && (
+                            <div className="cdd-rule-fws">
+                              {rule.frameworks.map(fw => (
+                                <span key={fw} className="cdd-rule-fw-badge">{fw}</span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
 
               {/* Gap cards */}
               {scGaps.map(gap => (
