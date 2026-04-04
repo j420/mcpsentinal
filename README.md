@@ -2,17 +2,17 @@
 
 **The security intelligence layer for the MCP ecosystem.**
 
-MCP Sentinel scans every public MCP server, measures its security posture across 103 detection rules, and publishes the results as a searchable registry. We are not a gateway. We are the data layer that sits upstream of every deployment decision in the MCP ecosystem.
+MCP Sentinel scans every public MCP server, measures its security posture across 177 detection rules, and publishes the results as a searchable registry. We are not a gateway. We are the data layer that sits upstream of every deployment decision in the MCP ecosystem.
 
 [![Registry](https://img.shields.io/badge/registry-mcp--sentinel.com-blue)](https://mcp-sentinel.com)
-[![Rules](https://img.shields.io/badge/detection_rules-103-critical)](agent_docs/detection-rules.md)
+[![Rules](https://img.shields.io/badge/detection_rules-177-critical)](agent_docs/detection-rules.md)
 [![Servers](https://img.shields.io/badge/servers_scanned-10K%2B-green)](https://mcp-sentinel.com)
 
 ---
 
 ## What We Detect
 
-103 detection rules across 11 categories:
+177 detection rules across categories A–Q:
 
 | Category | Rules | Examples |
 |----------|-------|---------|
@@ -69,7 +69,7 @@ Discovery → Connection → Analysis → Scoring → Publication
 (crawler)   (connector)  (analyzer)  (scorer)   (api + web)
 ```
 
-7 crawl sources → 10,000+ servers → 60-rule analysis engine → 0–100 score → public registry
+7 crawl sources → 10,000+ servers → 177-rule analysis engine → 0–100 score → public registry
 
 Each stage is an independent package. The pipeline is fault-tolerant — a failed source fetch doesn't stop analysis of tool descriptions.
 
@@ -116,13 +116,13 @@ mcp-sentinel/
 ├── packages/
 │   ├── crawler/           ← 7 discovery sources
 │   ├── connector/         ← MCP SDK: initialize + tools/list only
-│   ├── analyzer/          ← 60-rule detection engine
+│   ├── analyzer/          ← 177-rule detection engine
 │   ├── scorer/            ← 0–100 composite scoring
 │   ├── database/          ← PostgreSQL schema + all queries
 │   ├── api/               ← Public REST API
 │   ├── web/               ← Next.js registry website
 │   └── cli/               ← npx mcp-sentinel
-├── rules/                 ← 60 YAML detection rules
+├── rules/                 ← 177 YAML metadata files for typed detection rules
 └── docs/runbooks/         ← Operational guides
 ```
 
