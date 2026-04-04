@@ -126,6 +126,8 @@ mcp-sentinel/
 └── docs/runbooks/         ← Operational guides
 ```
 
+Start with [`docs/runbooks/change-map.md`](docs/runbooks/change-map.md) for a task-by-task implementation map (rules, API, crawling, scoring, and compliance reporting).
+
 ## Contributing
 
 - Read [CLAUDE.md](CLAUDE.md) before making changes
