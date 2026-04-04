@@ -247,3 +247,4 @@ Do not merge if any of the below are true:
 - **Assurance owner:** reports + risk-matrix + attack-graph + red-team
 
 Each PR should identify which owner domain(s) it touches and include explicit validation for those domains.
+
