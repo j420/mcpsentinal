@@ -17,6 +17,7 @@ import {
   computeMaturity,
   computeRemediation,
   type EnrichedRule,
+  type RuleTest,
   type RuleEvidenceChain,
   type Gap,
 } from "./cdd-data";
@@ -49,6 +50,121 @@ function statusClass(status: string): string {
 }
 
 const SEV_ORDER = ["critical", "high", "medium", "low", "informational"] as const;
+const SEV_RANK: Record<string, number> = {
+  critical: 5,
+  high: 4,
+  medium: 3,
+  low: 2,
+  informational: 1,
+};
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
+function asArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function asString(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+export function buildLiveEvidenceChain(finding: FullFinding): RuleEvidenceChain {
+  const chain = asRecord(finding.evidence_chain);
+  const links = asArray(chain?.["links"]);
+  const verificationSteps = asArray(chain?.["verification_steps"]);
+  const confidenceFromChain = typeof chain?.["confidence"] === "number"
+    ? chain["confidence"] as number
+    : undefined;
+  const conf = typeof finding.confidence === "number" ? finding.confidence : confidenceFromChain;
+
+  const source = links.find((l) => asRecord(l)?.["type"] === "source");
+  const sink = links.find((l) => asRecord(l)?.["type"] === "sink");
+  const impact = links.find((l) => asRecord(l)?.["type"] === "impact");
+  const propagationCount = links.filter((l) => asRecord(l)?.["type"] === "propagation").length;
+  const mitigationCount = links.filter((l) => asRecord(l)?.["type"] === "mitigation").length;
+
+  const srcRec = asRecord(source);
+  const sinkRec = asRecord(sink);
+  const impactRec = asRecord(impact);
+
+  const sourceObserved = asString(srcRec?.["observed"]);
+  const sourceLocation = asString(srcRec?.["location"]);
+  const sinkObserved = asString(sinkRec?.["observed"]);
+  const sinkLocation = asString(sinkRec?.["location"]);
+  const impactScenario = asString(impactRec?.["scenario"]);
+
+  const verifyText = verificationSteps
+    .map((step) => {
+      const s = asRecord(step);
+      const instruction = asString(s?.["instruction"]);
+      if (!instruction) return null;
+      const target = asString(s?.["target"]);
+      return target ? `${instruction} (target: ${target})` : instruction;
+    })
+    .filter((v): v is string => Boolean(v))
+    .slice(0, 3)
+    .join("; ");
+
+  const confidenceLabel =
+    conf == null
+      ? "Confidence unavailable in this scan payload"
+      : `Scanner confidence ${(conf * 100).toFixed(0)}%` +
+        ` (links: ${links.length}, propagation hops: ${propagationCount}, mitigations assessed: ${mitigationCount})`;
+
+  return {
+    source: sourceObserved && sourceLocation
+      ? `Server-specific evidence at ${sourceLocation}: ${sourceObserved}`
+      : `Server-specific finding evidence: ${finding.evidence}`,
+    detection: sinkObserved && sinkLocation
+      ? `Observed sink at ${sinkLocation}: ${sinkObserved}`
+      : `Detected from this server's finding record (${finding.rule_id}) with severity ${finding.severity}`,
+    impact: impactScenario
+      ? `Impact scenario from evidence chain: ${impactScenario}`
+      : `Risk validated for this server from captured finding evidence and remediation context`,
+    confidence_basis: confidenceLabel,
+    verification: verifyText.length > 0
+      ? verifyText
+      : `Use finding evidence + remediation for ${finding.rule_id}: verify the flagged artifact and confirm remediation state.`,
+  };
+}
+
+export function buildLiveRuleTests(finding: FullFinding, fallback: RuleTest[]): RuleTest[] {
+  const chain = asRecord(finding.evidence_chain);
+  const links = asArray(chain?.["links"]);
+  const verificationSteps = asArray(chain?.["verification_steps"]);
+
+  const dynamic: RuleTest[] = [
+    {
+      label: `Live scan triggered ${finding.rule_id} (${finding.severity})`,
+      status: "pass",
+    },
+    {
+      label: `Evidence links captured: ${links.length}`,
+      status: links.length > 0 ? "pass" : "fail",
+    },
+  ];
+
+  const verifyDerived = verificationSteps
+    .map((step): RuleTest | null => {
+      const s = asRecord(step);
+      const instruction = asString(s?.["instruction"]);
+      const target = asString(s?.["target"]);
+      if (!instruction) return null;
+      return {
+        label: target ? `Verify: ${instruction} [${target}]` : `Verify: ${instruction}`,
+        status: "pass",
+      };
+    })
+    .filter((v): v is RuleTest => v !== null)
+    .slice(0, 3);
+
+  const merged = [...dynamic, ...verifyDerived];
+  if (merged.length > 0) return merged;
+  return fallback;
+}
 
 export default function CategoryDeepDivePanel({ findings, fullFindings }: { findings: CddFinding[]; fullFindings?: FullFinding[] }) {
   const triggered = new Set(findings.map((f) => f.rule_id));
@@ -84,6 +200,22 @@ export default function CategoryDeepDivePanel({ findings, fullFindings }: { find
       counts[f.severity] = (counts[f.severity] ?? 0) + 1;
     }
     return SEV_ORDER.map(s => ({ sev: s, count: counts[s] ?? 0 })).filter(s => s.count > 0);
+  }, [catFullFindings]);
+  const findingsByRule = useMemo(() => {
+    const map = new Map<string, FullFinding>();
+    for (const f of catFullFindings) {
+      const existing = map.get(f.rule_id);
+      if (!existing) {
+        map.set(f.rule_id, f);
+        continue;
+      }
+      const incomingRank = SEV_RANK[f.severity] ?? 0;
+      const existingRank = SEV_RANK[existing.severity] ?? 0;
+      if (incomingRank > existingRank) {
+        map.set(f.rule_id, f);
+      }
+    }
+    return map;
   }, [catFullFindings]);
 
   return (
@@ -258,6 +390,7 @@ export default function CategoryDeepDivePanel({ findings, fullFindings }: { find
                   triggered={triggered}
                   allRuleIds={allRuleIds}
                   catHits={catHits}
+                  findingsByRule={findingsByRule}
                   expandedRule={expandedRule}
                   setExpandedRule={setExpandedRule}
                 />
@@ -305,11 +438,12 @@ interface TreeTabProps {
   triggered: Set<string>;
   allRuleIds: string[];
   catHits: string[];
+  findingsByRule: Map<string, FullFinding>;
   expandedRule: string | null;
   setExpandedRule: (id: string | null) => void;
 }
 
-function TreeTab({ cat, catGaps, catRules, triggered, allRuleIds, catHits, expandedRule, setExpandedRule }: TreeTabProps) {
+function TreeTab({ cat, catGaps, catRules, triggered, allRuleIds, catHits, findingsByRule, expandedRule, setExpandedRule }: TreeTabProps) {
   return (
     <div className="cdd-body">
       <div className="cdd-left">
@@ -347,6 +481,9 @@ function TreeTab({ cat, catGaps, catRules, triggered, allRuleIds, catHits, expan
                 {scRules.map((rule) => {
                   const isExpanded = expandedRule === rule.id;
                   const isTriggered = triggered.has(rule.id);
+                  const liveFinding = findingsByRule.get(rule.id);
+                  const renderedEvidenceChain = liveFinding ? buildLiveEvidenceChain(liveFinding) : rule.evidenceChain;
+                  const renderedTests = liveFinding ? buildLiveRuleTests(liveFinding, rule.tests) : rule.tests;
                   return (
                     <div key={rule.id} className={`cdd-rule-card${isTriggered ? " cdd-rule-triggered" : ""}`}>
                       <button
@@ -366,29 +503,29 @@ function TreeTab({ cat, catGaps, catRules, triggered, allRuleIds, catHits, expan
                           <div className="cdd-ec-grid">
                             <div className="cdd-ec-item">
                               <div className="cdd-ec-label">WHAT is examined?</div>
-                              <div className="cdd-ec-value">{rule.evidenceChain.source}</div>
+                              <div className="cdd-ec-value">{renderedEvidenceChain.source}</div>
                             </div>
                             <div className="cdd-ec-item">
                               <div className="cdd-ec-label">WHERE / HOW detected?</div>
-                              <div className="cdd-ec-value">{rule.evidenceChain.detection}</div>
+                              <div className="cdd-ec-value">{renderedEvidenceChain.detection}</div>
                             </div>
                             <div className="cdd-ec-item">
                               <div className="cdd-ec-label">WHY is this dangerous?</div>
-                              <div className="cdd-ec-value">{rule.evidenceChain.impact}</div>
+                              <div className="cdd-ec-value">{renderedEvidenceChain.impact}</div>
                             </div>
                             <div className="cdd-ec-item">
                               <div className="cdd-ec-label">HOW CONFIDENT?</div>
-                              <div className="cdd-ec-value">{rule.evidenceChain.confidence_basis}</div>
+                              <div className="cdd-ec-value">{renderedEvidenceChain.confidence_basis}</div>
                             </div>
                             <div className="cdd-ec-item">
                               <div className="cdd-ec-label">HOW TO VERIFY?</div>
-                              <div className="cdd-ec-value">{rule.evidenceChain.verification}</div>
+                              <div className="cdd-ec-value">{renderedEvidenceChain.verification}</div>
                             </div>
                           </div>
-                          {rule.tests.length > 0 && (
+                          {renderedTests.length > 0 && (
                             <div className="cdd-rule-tests">
                               <div className="cdd-ec-label">Test Cases</div>
-                              {rule.tests.map((t, i) => (
+                              {renderedTests.map((t, i) => (
                                 <div key={i} className={`cdd-rule-test cdd-rule-test-${t.status}`}>
                                   <span className="cdd-test-icon">{t.status === "pass" ? "\u2713" : "\u2717"}</span>
                                   <span className="cdd-test-label">{t.label}</span>
