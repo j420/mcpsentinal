@@ -43,6 +43,23 @@ Before touching code, preserve these constraints:
 | Cross-server risk analysis | `packages/risk-matrix/src/*` | Pattern detection P01–P12 |
 | Kill-chain synthesis | `packages/attack-graph/src/*` | Multi-step chain generation |
 
+### CI / Actions Trigger Awareness (Before Opening a PR)
+
+Not every PR change set triggers the same GitHub Actions workflows.
+
+| Workflow | Trigger | Practical implication for contributors |
+|---|---|---|
+| `ci.yml` | `pull_request` to `main` **only when paths match code/config globs** | Docs-only edits (e.g., `README.md`, `docs/**`) do **not** trigger this workflow unless CI workflow files or tracked code/config paths also change. |
+| `crawl.yml` | `workflow_dispatch`, weekly schedule | Not PR-triggered; operational crawl pipeline. |
+| `scan.yml` | `workflow_dispatch`, `workflow_run` after crawl completion on `main` | Not PR-triggered; pipeline execution depends on crawl or manual dispatch. |
+| `accuracy.yml` | manual dispatch (schedule currently disabled) | Not PR-triggered by default. |
+| `publish.yml` | semver tag push | Release-time only, never PR-time. |
+
+**Reviewer checklist for trigger correctness**
+1. Confirm whether your PR path set is expected to run `ci.yml`.
+2. If CI is expected but did not run, verify changed files match `ci.yml` `on.pull_request.paths`.
+3. For docs-only PRs, run local validation commands explicitly and include outputs in PR notes.
+
 ---
 
 ## 3) Task-to-Change Matrix
