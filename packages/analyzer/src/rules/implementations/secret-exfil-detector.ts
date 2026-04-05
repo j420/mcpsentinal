@@ -16,6 +16,7 @@ import type { AnalysisContext } from "../../engine.js";
 import { analyzeASTTaint, type ASTTaintFlow } from "../analyzers/taint-ast.js";
 import { analyzeTaint, type TaintFlow } from "../analyzers/taint.js";
 import { EvidenceChainBuilder } from "../../evidence.js";
+import { computeCodeSignals } from "../../confidence-signals.js";
 
 function isTestFile(source: string): boolean {
   return /(?:__tests?__|\.(?:test|spec)\.)/.test(source);
@@ -389,8 +390,15 @@ class CISecretExfilRule implements TypedRule {
               "Determine if any of these are sensitive.",
             target: "environment variables in the execution context",
             expected_observation: "Multiple secrets present in environment — bulk dump exposes all.",
-          })
-          .build();
+          });
+
+        const l9LineText = context.source_code.split("\n")[line - 1] || "";
+        const l9Signals = computeCodeSignals({
+          sourceCode: context.source_code, matchLine: line, matchText: match[0],
+          lineText: l9LineText, context, owaspCategory: "MCP07-insecure-config",
+        });
+        for (const sig of l9Signals) { bulkChain.factor(sig.factor, sig.adjustment, sig.rationale); }
+        const l9Chain = bulkChain.build();
 
         findings.push({
           rule_id: "L9",
@@ -401,8 +409,8 @@ class CISecretExfilRule implements TypedRule {
           remediation: "Never serialize the entire process.env/os.environ. Select specific safe variables.",
           owasp_category: "MCP07-insecure-config",
           mitre_technique: "AML.T0057",
-          confidence: 0.70,
-          metadata: { analysis_type: "regex_fallback", line, evidence_chain: bulkChain },
+          confidence: l9Chain.confidence,
+          metadata: { analysis_type: "regex_fallback", line, evidence_chain: l9Chain },
         });
       }
     }
@@ -617,8 +625,14 @@ class AuditTrailDestructionRule implements TypedRule {
               target: "log rotation and storage immutability configuration",
               expected_observation:
                 "No append-only enforcement — audit files can be deleted by application code.",
-            })
-            .build();
+            });
+
+          const k2Signals = computeCodeSignals({
+            sourceCode: source, matchLine: line, matchText: match[0],
+            lineText, context, owaspCategory: "MCP09-logging-monitoring",
+          });
+          for (const sig of k2Signals) { k2RegexChain.factor(sig.factor, sig.adjustment, sig.rationale); }
+          const k2Chain = k2RegexChain.build();
 
           findings.push({
             rule_id: "K2",
@@ -631,8 +645,8 @@ class AuditTrailDestructionRule implements TypedRule {
               "per ISO 27001 A.8.15 and EU AI Act Art. 12.",
             owasp_category: "MCP09-logging-monitoring",
             mitre_technique: "AML.T0054",
-            confidence: 0.75,
-            metadata: { analysis_type: "regex_fallback", line, evidence_chain: k2RegexChain },
+            confidence: k2Chain.confidence,
+            metadata: { analysis_type: "regex_fallback", line, evidence_chain: k2Chain },
           });
           break;
         }
@@ -871,8 +885,15 @@ class DNSExfiltrationRule implements TypedRule {
               target: "DNS egress filtering, monitoring, and legitimate use case assessment",
               expected_observation:
                 "No DNS egress controls — dynamic hostname queries pass through unmonitored.",
-            })
-            .build();
+            });
+
+          const g7LineText = context.source_code.split("\n")[line - 1] || "";
+          const g7Signals = computeCodeSignals({
+            sourceCode: context.source_code, matchLine: line, matchText: match[0],
+            lineText: g7LineText, context, owaspCategory: "MCP04-data-exfiltration",
+          });
+          for (const sig of g7Signals) { g7RegexChain.factor(sig.factor, sig.adjustment, sig.rationale); }
+          const g7Chain = g7RegexChain.build();
 
           findings.push({
             rule_id: "G7",
@@ -885,8 +906,8 @@ class DNSExfiltrationRule implements TypedRule {
               "Use static hostnames only. DNS exfiltration bypasses all HTTP-layer security.",
             owasp_category: "MCP04-data-exfiltration",
             mitre_technique: "AML.T0057",
-            confidence: 0.80,
-            metadata: { analysis_type: "regex_fallback", line, evidence_chain: g7RegexChain },
+            confidence: g7Chain.confidence,
+            metadata: { analysis_type: "regex_fallback", line, evidence_chain: g7Chain },
           });
           break;
         }

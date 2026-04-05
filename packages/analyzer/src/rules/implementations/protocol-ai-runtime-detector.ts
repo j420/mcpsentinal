@@ -9,6 +9,7 @@ import type { TypedRule, TypedFinding } from "../base.js";
 import { registerTypedRule } from "../base.js";
 import type { AnalysisContext } from "../../engine.js";
 import { EvidenceChainBuilder } from "../../evidence.js";
+import { computeToolSignals, computeCodeSignals } from "../../confidence-signals.js";
 
 function isTestFile(source: string): boolean {
   return /(?:__tests?__|\.(?:test|spec)\.)/.test(source);
@@ -81,8 +82,12 @@ class SpecialTokenInjectionRule implements TypedRule {
               instruction: "Verify the LLM client processes this token as a control sequence",
               target: "AI client tool metadata processing",
               expected_observation: "Token is interpreted as an LLM control directive, not plain text",
-            })
-            .build();
+            });
+          const m1ToolSignals = computeToolSignals(context, "MCP01-prompt-injection", tool.name);
+          for (const sig of m1ToolSignals) {
+            chain.factor(sig.factor, sig.adjustment, sig.rationale);
+          }
+          const m1ToolChain = chain.build();
           findings.push({
             rule_id: "M1",
             severity: "critical",
@@ -90,8 +95,8 @@ class SpecialTokenInjectionRule implements TypedRule {
             remediation: "Remove LLM special tokens from tool descriptions. These are control sequences, not content.",
             owasp_category: "MCP01-prompt-injection",
             mitre_technique: "AML.T0054",
-            confidence: 0.95,
-            metadata: { analysis_type: "linguistic", tool_name: tool.name, evidence_chain: chain },
+            confidence: m1ToolChain.confidence,
+            metadata: { analysis_type: "linguistic", tool_name: tool.name, evidence_chain: m1ToolChain },
           });
           break;
         }
@@ -139,7 +144,12 @@ class SpecialTokenInjectionRule implements TypedRule {
               target: "server instructions",
               expected_observation: `Instructions contain ${desc}: "${match[0]}"`,
             })
-            .build();
+          ;
+          const m1InstrSignals = computeToolSignals(context, "MCP01-prompt-injection", context.server?.name ?? "server");
+          for (const sig of m1InstrSignals) {
+            m1InstructionsChain.factor(sig.factor, sig.adjustment, sig.rationale);
+          }
+          const m1InstrChain = m1InstructionsChain.build();
           findings.push({
             rule_id: "M1",
             severity: "critical",
@@ -147,8 +157,8 @@ class SpecialTokenInjectionRule implements TypedRule {
             remediation: "Remove special tokens from server instructions.",
             owasp_category: "MCP01-prompt-injection",
             mitre_technique: "AML.T0054",
-            confidence: 0.96,
-            metadata: { analysis_type: "linguistic", surface: "instructions", evidence_chain: m1InstructionsChain },
+            confidence: m1InstrChain.confidence,
+            metadata: { analysis_type: "linguistic", surface: "instructions", evidence_chain: m1InstrChain },
           });
           break;
         }
@@ -206,8 +216,12 @@ class ReasoningChainRule implements TypedRule {
                 instruction: `Read the full description of tool "${tool.name}" and check for embedded reasoning or prescriptive directives`,
                 target: `tool "${tool.name}"`,
                 expected_observation: `Description contains ${patternDesc}: "${match[0]}"`,
-              })
-              .build();
+              });
+            const m3Signals = computeToolSignals(context, "MCP01-prompt-injection", tool.name);
+            for (const sig of m3Signals) {
+              m3Chain.factor(sig.factor, sig.adjustment, sig.rationale);
+            }
+            const m3BuiltChain = m3Chain.build();
             findings.push({
               rule_id: "M3",
               severity: "critical",
@@ -217,8 +231,8 @@ class ReasoningChainRule implements TypedRule {
               remediation: "Keep tool descriptions factual and concise. Remove embedded reasoning or conclusions.",
               owasp_category: "MCP01-prompt-injection",
               mitre_technique: "AML.T0054",
-              confidence: 0.78,
-              metadata: { analysis_type: "linguistic", tool_name: tool.name, desc_length: desc.length, evidence_chain: m3Chain },
+              confidence: m3BuiltChain.confidence,
+              metadata: { analysis_type: "linguistic", tool_name: tool.name, desc_length: desc.length, evidence_chain: m3BuiltChain },
             });
             break;
           }
@@ -298,8 +312,20 @@ class ProgressiveContextPoisoningRule implements TypedRule {
             instruction: `Check line ${line} for context accumulation without bounds or verification`,
             target: `source code line ${line}`,
             expected_observation: `${desc} without limit, truncation, or integrity verification`,
-          })
-          .build();
+          });
+        const m6LineText = source.split("\n")[line - 1] || "";
+        const m6Signals = computeCodeSignals({
+          sourceCode: source,
+          matchLine: line,
+          matchText: match[0],
+          lineText: m6LineText,
+          context,
+          owaspCategory: "ASI06-memory-context-poisoning",
+        });
+        for (const sig of m6Signals) {
+          m6Chain.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const m6BuiltChain = m6Chain.build();
         findings.push({
           rule_id: "M6",
           severity: "critical",
@@ -311,8 +337,8 @@ class ProgressiveContextPoisoningRule implements TypedRule {
             "Implement content provenance tracking. Clear context periodically.",
           owasp_category: "ASI06-memory-context-poisoning",
           mitre_technique: "AML.T0058",
-          confidence: 0.75,
-          metadata: { analysis_type: "structural", line, evidence_chain: m6Chain },
+          confidence: m6BuiltChain.confidence,
+          metadata: { analysis_type: "structural", line, evidence_chain: m6BuiltChain },
         });
         break;
       }
@@ -380,8 +406,20 @@ class SystemPromptExtractionRule implements TypedRule {
             instruction: `Check line ${line} for system prompt content being returned or sent in responses`,
             target: `source code line ${line}`,
             expected_observation: `${desc}`,
-          })
-          .build();
+          });
+        const m9LineText = source.split("\n")[line - 1] || "";
+        const m9Signals = computeCodeSignals({
+          sourceCode: source,
+          matchLine: line,
+          matchText: match[0],
+          lineText: m9LineText,
+          context,
+          owaspCategory: "MCP04-data-exfiltration",
+        });
+        for (const sig of m9Signals) {
+          m9Chain.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const m9BuiltChain = m9Chain.build();
         findings.push({
           rule_id: "M9",
           severity: "critical",
@@ -389,8 +427,8 @@ class SystemPromptExtractionRule implements TypedRule {
           remediation: "Never expose system prompts or instructions in tool responses. Filter tool output.",
           owasp_category: "MCP04-data-exfiltration",
           mitre_technique: "AML.T0057",
-          confidence: 0.80,
-          metadata: { analysis_type: "structural", line, evidence_chain: m9Chain },
+          confidence: m9BuiltChain.confidence,
+          metadata: { analysis_type: "structural", line, evidence_chain: m9BuiltChain },
         });
         break;
       }
@@ -460,8 +498,20 @@ class JSONRPCErrorInjectionRule implements TypedRule {
             instruction: `Check line ${line} for user input flowing into error message or error data fields`,
             target: `source code line ${line}`,
             expected_observation: `${desc}`,
-          })
-          .build();
+          });
+        const n4LineText = source.split("\n")[line - 1] || "";
+        const n4Signals = computeCodeSignals({
+          sourceCode: source,
+          matchLine: line,
+          matchText: match[0],
+          lineText: n4LineText,
+          context,
+          owaspCategory: "MCP07-insecure-config",
+        });
+        for (const sig of n4Signals) {
+          n4Chain.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const n4BuiltChain = n4Chain.build();
         findings.push({
           rule_id: "N4",
           severity: "critical",
@@ -471,8 +521,8 @@ class JSONRPCErrorInjectionRule implements TypedRule {
           remediation: "Sanitize error messages. Never include user input or stack traces in error responses.",
           owasp_category: "MCP07-insecure-config",
           mitre_technique: "AML.T0054",
-          confidence: 0.82,
-          metadata: { analysis_type: "structural", line, evidence_chain: n4Chain },
+          confidence: n4BuiltChain.confidence,
+          metadata: { analysis_type: "structural", line, evidence_chain: n4BuiltChain },
         });
         break;
       }
@@ -530,8 +580,20 @@ class CapabilityDowngradeRule implements TypedRule {
             instruction: `Verify that the capability is declared as false/null in the capabilities object AND a handler exists in the same codebase`,
             target: `source code around line ${line}`,
             expected_observation: `${desc}`,
-          })
-          .build();
+          });
+        const n5LineText = source.split("\n")[line - 1] || "";
+        const n5Signals = computeCodeSignals({
+          sourceCode: source,
+          matchLine: line,
+          matchText: match[0],
+          lineText: n5LineText,
+          context,
+          owaspCategory: "MCP07-insecure-config",
+        });
+        for (const sig of n5Signals) {
+          n5Chain.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const n5BuiltChain = n5Chain.build();
         findings.push({
           rule_id: "N5",
           severity: "critical",
@@ -541,8 +603,8 @@ class CapabilityDowngradeRule implements TypedRule {
           remediation: "Declare all implemented capabilities in the server capabilities response.",
           owasp_category: "MCP07-insecure-config",
           mitre_technique: "AML.T0054",
-          confidence: 0.85,
-          metadata: { analysis_type: "structural", line, evidence_chain: n5Chain },
+          confidence: n5BuiltChain.confidence,
+          metadata: { analysis_type: "structural", line, evidence_chain: n5BuiltChain },
         });
         break;
       }
@@ -616,8 +678,20 @@ class SSEReconnectionRule implements TypedRule {
             instruction: `Check line ${line} for SSE reconnection or session handling without re-authentication`,
             target: `source code line ${line}`,
             expected_observation: `${desc}`,
-          })
-          .build();
+          });
+        const n6LineText = source.split("\n")[line - 1] || "";
+        const n6Signals = computeCodeSignals({
+          sourceCode: source,
+          matchLine: line,
+          matchText: match[0],
+          lineText: n6LineText,
+          context,
+          owaspCategory: "MCP07-insecure-config",
+        });
+        for (const sig of n6Signals) {
+          n6Chain.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const n6BuiltChain = n6Chain.build();
         findings.push({
           rule_id: "N6",
           severity: "critical",
@@ -625,8 +699,8 @@ class SSEReconnectionRule implements TypedRule {
           remediation: "Re-authenticate on SSE reconnection. Sign session tokens. Validate Last-Event-ID integrity.",
           owasp_category: "MCP07-insecure-config",
           mitre_technique: "AML.T0061",
-          confidence: 0.78,
-          metadata: { analysis_type: "structural", line, evidence_chain: n6Chain },
+          confidence: n6BuiltChain.confidence,
+          metadata: { analysis_type: "structural", line, evidence_chain: n6BuiltChain },
         });
         break;
       }
@@ -689,8 +763,20 @@ class LoggingProtocolInjectionRule implements TypedRule {
             instruction: `Check line ${line} for user input flowing into log message or MCP notification`,
             target: `source code line ${line}`,
             expected_observation: `${desc}`,
-          })
-          .build();
+          });
+        const n9LineText = source.split("\n")[line - 1] || "";
+        const n9Signals = computeCodeSignals({
+          sourceCode: source,
+          matchLine: line,
+          matchText: match[0],
+          lineText: n9LineText,
+          context,
+          owaspCategory: "MCP09-logging-monitoring",
+        });
+        for (const sig of n9Signals) {
+          n9Chain.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const n9BuiltChain = n9Chain.build();
         findings.push({
           rule_id: "N9",
           severity: "critical",
@@ -700,8 +786,8 @@ class LoggingProtocolInjectionRule implements TypedRule {
           remediation: "Sanitize all content before including in MCP log notifications. Escape special characters.",
           owasp_category: "MCP09-logging-monitoring",
           mitre_technique: "AML.T0054",
-          confidence: 0.80,
-          metadata: { analysis_type: "structural", line, evidence_chain: n9Chain },
+          confidence: n9BuiltChain.confidence,
+          metadata: { analysis_type: "structural", line, evidence_chain: n9BuiltChain },
         });
         break;
       }
@@ -758,8 +844,20 @@ class ProtocolVersionDowngradeRule implements TypedRule {
             instruction: `Check line ${line} for protocol version negotiation that accepts older versions without rejection`,
             target: `source code line ${line}`,
             expected_observation: `${desc}`,
-          })
-          .build();
+          });
+        const n11LineText = source.split("\n")[line - 1] || "";
+        const n11Signals = computeCodeSignals({
+          sourceCode: source,
+          matchLine: line,
+          matchText: match[0],
+          lineText: n11LineText,
+          context,
+          owaspCategory: "MCP07-insecure-config",
+        });
+        for (const sig of n11Signals) {
+          n11Chain.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const n11BuiltChain = n11Chain.build();
         findings.push({
           rule_id: "N11",
           severity: "critical",
@@ -767,8 +865,8 @@ class ProtocolVersionDowngradeRule implements TypedRule {
           remediation: "Enforce minimum protocol version. Reject connections below the minimum. Use newest supported version.",
           owasp_category: "MCP07-insecure-config",
           mitre_technique: "AML.T0054",
-          confidence: 0.78,
-          metadata: { analysis_type: "structural", line, evidence_chain: n11Chain },
+          confidence: n11BuiltChain.confidence,
+          metadata: { analysis_type: "structural", line, evidence_chain: n11BuiltChain },
         });
         break;
       }
@@ -821,14 +919,26 @@ class ResourceSubscriptionPoisoningRule implements TypedRule {
           instruction: `Check line ${n12Line} for resource subscription updates without integrity verification`,
           target: `source code line ${n12Line}`,
           expected_observation: "Resource content update without hash or signature verification",
-        })
-        .build();
+        });
+      const n12LineText = context.source_code!.split("\n")[n12Line - 1] || "";
+      const n12Signals = computeCodeSignals({
+        sourceCode: context.source_code,
+        matchLine: n12Line,
+        matchText: match[0],
+        lineText: n12LineText,
+        context,
+        owaspCategory: "MCP07-insecure-config",
+      });
+      for (const sig of n12Signals) {
+        n12Chain.factor(sig.factor, sig.adjustment, sig.rationale);
+      }
+      const n12BuiltChain = n12Chain.build();
       findings.push({
         rule_id: "N12", severity: "critical",
         evidence: `Resource subscription update without integrity verification at line ${n12Line}.`,
         remediation: "Verify resource content integrity on subscription updates using hashes or signatures.",
-        owasp_category: "MCP07-insecure-config", mitre_technique: "AML.T0054", confidence: 0.78,
-        metadata: { analysis_type: "structural", evidence_chain: n12Chain },
+        owasp_category: "MCP07-insecure-config", mitre_technique: "AML.T0054", confidence: n12BuiltChain.confidence,
+        metadata: { analysis_type: "structural", evidence_chain: n12BuiltChain },
       });
     }
     return findings;
@@ -881,14 +991,26 @@ class ChunkedTransferSmugglingRule implements TypedRule {
             instruction: `Check line ${n13Line} for conflicting Transfer-Encoding and Content-Length headers or raw chunked encoding`,
             target: `source code line ${n13Line}`,
             expected_observation: `${desc}`,
-          })
-          .build();
+          });
+        const n13LineText = context.source_code!.split("\n")[n13Line - 1] || "";
+        const n13Signals = computeCodeSignals({
+          sourceCode: context.source_code,
+          matchLine: n13Line,
+          matchText: match[0],
+          lineText: n13LineText,
+          context,
+          owaspCategory: "MCP07-insecure-config",
+        });
+        for (const sig of n13Signals) {
+          n13Chain.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const n13BuiltChain = n13Chain.build();
         findings.push({
           rule_id: "N13", severity: "critical",
           evidence: `${desc} at line ${n13Line}: "${match[0].slice(0, 80)}".`,
           remediation: "Use a well-tested HTTP library. Never manually construct chunked encoding. Reject ambiguous headers.",
-          owasp_category: "MCP07-insecure-config", mitre_technique: "AML.T0061", confidence: 0.82,
-          metadata: { analysis_type: "structural", evidence_chain: n13Chain },
+          owasp_category: "MCP07-insecure-config", mitre_technique: "AML.T0061", confidence: n13BuiltChain.confidence,
+          metadata: { analysis_type: "structural", evidence_chain: n13BuiltChain },
         });
         break;
       }
@@ -938,14 +1060,26 @@ class TOFUBypassRule implements TypedRule {
             instruction: `Check line ${n14Line} for trust-on-first-use bypass or fingerprint pinning being disabled`,
             target: `source code line ${n14Line}`,
             expected_observation: `${desc}`,
-          })
-          .build();
+          });
+        const n14LineText = context.source_code!.split("\n")[n14Line - 1] || "";
+        const n14Signals = computeCodeSignals({
+          sourceCode: context.source_code,
+          matchLine: n14Line,
+          matchText: match[0],
+          lineText: n14LineText,
+          context,
+          owaspCategory: "MCP07-insecure-config",
+        });
+        for (const sig of n14Signals) {
+          n14Chain.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const n14BuiltChain = n14Chain.build();
         findings.push({
           rule_id: "N14", severity: "critical",
           evidence: `${desc} at line ${n14Line}: "${match[0].slice(0, 80)}".`,
           remediation: "Implement certificate/key pinning. Store fingerprints on first use and verify on subsequent connections.",
-          owasp_category: "MCP07-insecure-config", mitre_technique: "AML.T0054", confidence: 0.80,
-          metadata: { analysis_type: "structural", evidence_chain: n14Chain },
+          owasp_category: "MCP07-insecure-config", mitre_technique: "AML.T0054", confidence: n14BuiltChain.confidence,
+          metadata: { analysis_type: "structural", evidence_chain: n14BuiltChain },
         });
         break;
       }
@@ -1000,14 +1134,26 @@ class MethodNameConfusionRule implements TypedRule {
             instruction: `Check line ${n15Line} for user input being used as method name or dispatch key without allowlist validation`,
             target: `source code line ${n15Line}`,
             expected_observation: `${desc}`,
-          })
-          .build();
+          });
+        const n15LineText = context.source_code!.split("\n")[n15Line - 1] || "";
+        const n15Signals = computeCodeSignals({
+          sourceCode: context.source_code,
+          matchLine: n15Line,
+          matchText: match[0],
+          lineText: n15LineText,
+          context,
+          owaspCategory: "MCP07-insecure-config",
+        });
+        for (const sig of n15Signals) {
+          n15Chain.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const n15BuiltChain = n15Chain.build();
         findings.push({
           rule_id: "N15", severity: "critical",
           evidence: `${desc} at line ${n15Line}: "${match[0].slice(0, 80)}".`,
           remediation: "Validate method names against an allowlist. Never use user input as method dispatch keys.",
-          owasp_category: "MCP07-insecure-config", mitre_technique: "AML.T0054", confidence: 0.85,
-          metadata: { analysis_type: "structural", evidence_chain: n15Chain },
+          owasp_category: "MCP07-insecure-config", mitre_technique: "AML.T0054", confidence: n15BuiltChain.confidence,
+          metadata: { analysis_type: "structural", evidence_chain: n15BuiltChain },
         });
         break;
       }

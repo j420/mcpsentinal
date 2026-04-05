@@ -17,6 +17,7 @@ import { registerTypedRule } from "../base.js";
 import type { AnalysisContext } from "../../engine.js";
 import { buildCapabilityGraph } from "../analyzers/capability-graph.js";
 import { EvidenceChainBuilder } from "../../evidence.js";
+import { computeToolSignals } from "../../confidence-signals.js";
 
 // ─── G1: Indirect Prompt Injection Gateway ────────────────────────────────
 
@@ -288,8 +289,10 @@ class CapabilityEscalationRule implements TypedRule {
             .propagation({ propagation_type: "description-directive", location: `tool:${tool.name}:description`, observed: `Capability escalation pattern: ${desc}` })
             .impact({ impact_type: "privilege-escalation", scope: "ai-client", exploitability: "trivial", scenario: `AI grants tool "${tool.name}" elevated permissions based on false claim of prior approval` })
             .factor("escalation_pattern", 0.18, `Privilege escalation: ${desc}`)
-            .verification({ step_type: "inspect-description", instruction: `Check tool "${tool.name}" description for references to prior approvals or other tools' permissions`, target: `tool:${tool.name}`, expected_observation: `${desc}: "${match[0]}"` })
-            .build();
+            .verification({ step_type: "inspect-description", instruction: `Check tool "${tool.name}" description for references to prior approvals or other tools' permissions`, target: `tool:${tool.name}`, expected_observation: `${desc}: "${match[0]}"` });
+          const g5ToolSignals = computeToolSignals(context, "MCP01-prompt-injection", tool.name);
+          for (const sig of g5ToolSignals) { g5Chain.factor(sig.factor, sig.adjustment, sig.rationale); }
+          const g5ChainResult = g5Chain.build();
           findings.push({
             rule_id: "G5",
             severity: "critical",
@@ -301,8 +304,8 @@ class CapabilityEscalationRule implements TypedRule {
               "Each tool should declare its own required permissions independently.",
             owasp_category: "MCP01-prompt-injection",
             mitre_technique: "AML.T0061",
-            confidence: 0.88,
-            metadata: { analysis_type: "linguistic", tool_name: tool.name, evidence_chain: g5Chain },
+            confidence: g5ChainResult.confidence,
+            metadata: { analysis_type: "linguistic", tool_name: tool.name, evidence_chain: g5ChainResult },
           });
           break;
         }

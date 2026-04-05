@@ -11,6 +11,7 @@ import type { AnalysisContext } from "../../engine.js";
 import type { OwaspCategory } from "@mcp-sentinel/database";
 import { analyzeASTTaint } from "../analyzers/taint-ast.js";
 import { EvidenceChainBuilder } from "../../evidence.js";
+import { computeCodeSignals } from "../../confidence-signals.js";
 
 function isTestFile(source: string): boolean {
   return /(?:__tests?__|\.(?:test|spec)\.)/.test(source);
@@ -130,14 +131,25 @@ function makePatternRule(config: {
 
       // Phase 2: Structural pattern analysis
       if (findings.length === 0) {
-        for (const { regex, desc, confidence } of config.patterns) {
+        for (const { regex, desc } of config.patterns) {
           regex.lastIndex = 0;
           const match = regex.exec(context.source_code);
           if (match) {
             const line = getLineNumber(context.source_code, match.index);
 
             const lineText = context.source_code.split("\n")[line - 1] || "";
-            const patternChain = new EvidenceChainBuilder()
+
+            // Compute server-specific confidence signals
+            const signals = computeCodeSignals({
+              sourceCode: context.source_code,
+              matchLine: line,
+              matchText: match[0],
+              lineText,
+              context,
+              owaspCategory: config.owasp,
+            });
+
+            const builder = new EvidenceChainBuilder()
               .source({
                 source_type: "file-content",
                 location: `line ${line}`,
@@ -175,7 +187,14 @@ function makePatternRule(config: {
                   `${config.id} (${config.name}). This structural match indicates the code contains ` +
                   `logic that enables the detected attack pattern.`,
               })
-              .factor("structural_match", -0.05, "Structural regex pattern match — confirmed in source code but no full taint propagation")
+              .factor("structural_match", -0.05, "Structural regex pattern match — confirmed in source code but no full taint propagation");
+
+            // Add server-specific confidence signals
+            for (const signal of signals) {
+              builder.factor(signal.factor, signal.adjustment, signal.rationale);
+            }
+
+            const patternChain = builder
               .verification({
                 step_type: "inspect-source",
                 instruction:
@@ -194,7 +213,7 @@ function makePatternRule(config: {
               remediation: config.remediation,
               owasp_category: config.owasp,
               mitre_technique: config.mitre,
-              confidence,
+              confidence: patternChain.confidence,
               metadata: { analysis_type: "structural", line, evidence_chain: patternChain },
             });
             break;

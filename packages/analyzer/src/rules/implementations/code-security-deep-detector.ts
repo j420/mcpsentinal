@@ -14,6 +14,7 @@ import { analyzeASTTaint } from "../analyzers/taint-ast.js";
 import { analyzeTaint } from "../analyzers/taint.js";
 import { shannonEntropy } from "../analyzers/entropy.js";
 import { EvidenceChainBuilder } from "../../evidence.js";
+import { computeCodeSignals } from "../../confidence-signals.js";
 
 function isTestFile(source: string): boolean {
   return /(?:__tests?__|\.(?:test|spec)\.)/.test(source);
@@ -119,11 +120,24 @@ class PathTraversalRule implements TypedRule {
         const match = regex.exec(context.source_code);
         if (match) {
           const line = getLineNumber(context.source_code, match.index);
-          const c2PatternChain = new EvidenceChainBuilder()
+          const lineText = context.source_code.split("\n")[line - 1] || "";
+          const codeSignals = computeCodeSignals({
+            sourceCode: context.source_code,
+            matchLine: line,
+            matchText: match[0],
+            lineText,
+            context,
+            owaspCategory: "MCP05-privilege-escalation",
+          });
+          const c2PatternChainBuilder = new EvidenceChainBuilder()
             .source({ source_type: "file-content", location: `line ${line}`, observed: match[0].slice(0, 80), rationale: `Literal path traversal pattern in file operation: ${desc}` })
             .propagation({ propagation_type: "direct-pass", location: `line ${line}`, observed: `${desc} detected in source code` })
             .sink({ sink_type: "file-write", location: `line ${line}`, observed: `Path traversal: "${match[0].slice(0, 60)}"` })
-            .factor("structural_match", confidence - 0.70, `Pattern: ${desc}`)
+            .factor("structural_match", confidence - 0.70, `Pattern: ${desc}`);
+          for (const signal of codeSignals) {
+            c2PatternChainBuilder.factor(signal.factor, signal.adjustment, signal.rationale);
+          }
+          const c2PatternChain = c2PatternChainBuilder
             .verification({ step_type: "inspect-source", instruction: `Review file operation at line ${line} for path traversal`, target: `source:line ${line}`, expected_observation: desc })
             .build();
           findings.push({
@@ -133,7 +147,7 @@ class PathTraversalRule implements TypedRule {
             remediation: "Remove path traversal sequences. Use path.resolve() with base directory validation.",
             owasp_category: "MCP05-privilege-escalation",
             mitre_technique: "AML.T0054",
-            confidence,
+            confidence: c2PatternChain.confidence,
             metadata: { analysis_type: "regex_fallback", line, evidence_chain: c2PatternChain },
           });
           break;
@@ -214,7 +228,15 @@ class HardcodedSecretsRule implements TypedRule {
         const masked = secret.slice(0, 4) + "..." + secret.slice(-4);
         const entropy = shannonEntropy(secret);
 
-        const chain = new EvidenceChainBuilder()
+        const c5CodeSignals = computeCodeSignals({
+          sourceCode: context.source_code,
+          matchLine: line,
+          matchText: match[0],
+          lineText,
+          context,
+          owaspCategory: "MCP07-insecure-config",
+        });
+        const chainBuilder = new EvidenceChainBuilder()
           .sink({
             sink_type: "credential-exposure",
             location: `line ${line}`,
@@ -235,7 +257,11 @@ class HardcodedSecretsRule implements TypedRule {
               `Anyone with repo access (including forks) can extract and use this credential.`,
           })
           .factor("entropy analysis", entropy > 4.5 ? 0.15 : 0.0, `Shannon entropy: ${entropy.toFixed(2)} bits/char`)
-          .factor("known token prefix", confidence >= 0.90 ? 0.20 : 0.0, `Pattern: ${name}`)
+          .factor("known token prefix", confidence >= 0.90 ? 0.20 : 0.0, `Pattern: ${name}`);
+        for (const signal of c5CodeSignals) {
+          chainBuilder.factor(signal.factor, signal.adjustment, signal.rationale);
+        }
+        const chain = chainBuilder
           .reference({
             id: "GITHUB-SECRET-SCANNING",
             title: "GitHub Secret Scanning Partner Program",
@@ -266,7 +292,7 @@ class HardcodedSecretsRule implements TypedRule {
             "Rotate the exposed credential immediately. Add .env to .gitignore.",
           owasp_category: "MCP07-insecure-config",
           mitre_technique: "AML.T0057",
-          confidence: finalConfidence,
+          confidence: chain.confidence,
           metadata: {
             analysis_type: "entropy_pattern",
             secret_type: name,
@@ -354,11 +380,23 @@ class PrototypePollutionRule implements TypedRule {
         // Skip obvious safe patterns
         if (/(?:hasOwnProperty|Object\.create\(null\)|Object\.freeze)/.test(lineText)) continue;
 
-        const c10Chain = new EvidenceChainBuilder()
+        const c10CodeSignals = computeCodeSignals({
+          sourceCode: source,
+          matchLine: line,
+          matchText: match[0],
+          lineText,
+          context,
+          owaspCategory: "MCP03-command-injection",
+        });
+        const c10ChainBuilder = new EvidenceChainBuilder()
           .source({ source_type: hasUserInput ? "user-parameter" : "file-content", location: `line ${line}`, observed: match[0].slice(0, 80), rationale: `${desc} — ${hasUserInput ? "user input detected nearby" : "code pattern"}` })
           .propagation({ propagation_type: hasUserInput ? "variable-assignment" : "direct-pass", location: `line ${line}`, observed: `Prototype pollution pattern with ${hasUserInput ? "user input context" : "code-level access"}` })
           .sink({ sink_type: "code-evaluation", location: `line ${line}`, observed: `${desc}: "${match[0].slice(0, 60)}"` })
-          .factor(hasUserInput ? "user_input_context" : "structural_match", adjustedConfidence - 0.70, `${desc} ${hasUserInput ? "with user input nearby" : ""}`)
+          .factor(hasUserInput ? "user_input_context" : "structural_match", adjustedConfidence - 0.70, `${desc} ${hasUserInput ? "with user input nearby" : ""}`);
+        for (const signal of c10CodeSignals) {
+          c10ChainBuilder.factor(signal.factor, signal.adjustment, signal.rationale);
+        }
+        const c10Chain = c10ChainBuilder
           .verification({ step_type: "inspect-source", instruction: `Review prototype pollution pattern at line ${line}`, target: `source:line ${line}`, expected_observation: desc })
           .build();
         findings.push({
@@ -374,7 +412,7 @@ class PrototypePollutionRule implements TypedRule {
             "For lodash: upgrade to >=4.17.21 and avoid _.merge with untrusted input.",
           owasp_category: "MCP03-command-injection",
           mitre_technique: "AML.T0054",
-          confidence: adjustedConfidence,
+          confidence: c10Chain.confidence,
           metadata: { analysis_type: hasUserInput ? "context_aware" : "pattern", line, evidence_chain: c10Chain },
         });
         break; // One finding per pattern type
@@ -436,12 +474,25 @@ class JWTAlgorithmConfusionRule implements TypedRule {
       const match = regex.exec(source);
       if (match) {
         const line = getLineNumber(source, match.index);
+        const lineText = source.split("\n")[line - 1] || "";
+        const c14CodeSignals = computeCodeSignals({
+          sourceCode: source,
+          matchLine: line,
+          matchText: match[0],
+          lineText,
+          context,
+          owaspCategory: "MCP07-insecure-config",
+        });
 
-        const c14Chain = new EvidenceChainBuilder()
+        const c14ChainBuilder = new EvidenceChainBuilder()
           .source({ source_type: "file-content", location: `line ${line}`, observed: match[0].slice(0, 80), rationale: `JWT configuration vulnerability: ${desc}` })
           .propagation({ propagation_type: "direct-pass", location: `line ${line}`, observed: `JWT misconfiguration flows to authentication decision` })
           .sink({ sink_type: "credential-exposure", location: `line ${line}`, observed: `${desc}: "${match[0].slice(0, 60)}"` })
-          .factor("jwt_pattern", confidence - 0.70, `JWT vulnerability: ${desc}`)
+          .factor("jwt_pattern", confidence - 0.70, `JWT vulnerability: ${desc}`);
+        for (const signal of c14CodeSignals) {
+          c14ChainBuilder.factor(signal.factor, signal.adjustment, signal.rationale);
+        }
+        const c14Chain = c14ChainBuilder
           .verification({ step_type: "inspect-source", instruction: `Review JWT configuration at line ${line}`, target: `source:line ${line}`, expected_observation: desc })
           .build();
         findings.push({
@@ -454,7 +505,7 @@ class JWTAlgorithmConfusionRule implements TypedRule {
             "Always set ignoreExpiration: false. For PyJWT: always use verify=True.",
           owasp_category: "MCP07-insecure-config",
           mitre_technique: "AML.T0054",
-          confidence,
+          confidence: c14Chain.confidence,
           metadata: { analysis_type: "structural", line, evidence_chain: c14Chain },
         });
       }

@@ -16,6 +16,7 @@ import type { AnalysisContext } from "../../engine.js";
 import { analyzeASTTaint } from "../analyzers/taint-ast.js";
 import { analyzeTaint } from "../analyzers/taint.js";
 import { EvidenceChainBuilder } from "../../evidence.js";
+import { computeCodeSignals } from "../../confidence-signals.js";
 
 function isTestFile(s: string) { return /(?:__tests?__|\.(?:test|spec)\.)/.test(s); }
 function lineNum(s: string, i: number) { return s.substring(0, i).split("\n").length; }
@@ -163,7 +164,16 @@ registerTypedRule({
       const match = regex.exec(ctx.source_code);
       if (match) {
         const matchLine = lineNum(ctx.source_code!, match.index);
-        const chain = new EvidenceChainBuilder()
+        const lineText = ctx.source_code!.split("\n")[matchLine - 1] || "";
+        const c6Signals = computeCodeSignals({
+          sourceCode: ctx.source_code,
+          matchLine,
+          matchText: match[0],
+          lineText,
+          context: ctx,
+          owaspCategory: "MCP07-insecure-config",
+        });
+        const c6Builder = new EvidenceChainBuilder()
           .source({
             source_type: "environment",
             location: `line ${matchLine}`,
@@ -192,7 +202,11 @@ registerTypedRule({
             id: "CWE-209",
             title: "Generation of Error Message Containing Sensitive Information",
             relevance: "Exposing stack traces in HTTP responses matches CWE-209, enabling attackers to gather reconnaissance data about server internals",
-          })
+          });
+        for (const sig of c6Signals) {
+          c6Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const chain = c6Builder
           .verification({
             step_type: "inspect-source",
             instruction: `Examine line ${matchLine} to confirm that an error object (err, error, or its .stack/.message property) is passed directly to a response method (res.json, res.send, res.write). Verify no error-sanitization middleware transforms the error before sending.`,
@@ -211,7 +225,7 @@ registerTypedRule({
           evidence: `${desc} at line ${matchLine}: "${match[0].slice(0, 80)}".`,
           remediation: "Return generic error messages to clients. Log full errors server-side only.",
           owasp_category: "MCP07-insecure-config", mitre_technique: null,
-          confidence: 0.80, metadata: { analysis_type: "structural", evidence_chain: chain },
+          confidence: chain.confidence, metadata: { analysis_type: "structural", evidence_chain: chain },
         });
         break;
       }
@@ -237,7 +251,16 @@ registerTypedRule({
       const match = regex.exec(ctx.source_code);
       if (match) {
         const line = lineNum(ctx.source_code, match.index);
-        const c7Chain = new EvidenceChainBuilder()
+        const lineText = ctx.source_code.split("\n")[line - 1] || "";
+        const c7Signals = computeCodeSignals({
+          sourceCode: ctx.source_code,
+          matchLine: line,
+          matchText: match[0],
+          lineText,
+          context: ctx,
+          owaspCategory: "MCP07-insecure-config",
+        });
+        const c7Builder = new EvidenceChainBuilder()
           .source({
             source_type: "file-content",
             location: `line ${line}`,
@@ -254,7 +277,11 @@ registerTypedRule({
             location: `line ${line}`,
             observed: `${desc}: "${match[0].slice(0, 60)}"`,
           })
-          .factor("structural_match", -0.02, `CORS wildcard pattern: ${desc}`)
+          .factor("structural_match", -0.02, `CORS wildcard pattern: ${desc}`);
+        for (const sig of c7Signals) {
+          c7Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const c7Chain = c7Builder
           .verification({
             step_type: "inspect-description",
             instruction: `Review CORS configuration at line ${line}`,
@@ -267,7 +294,7 @@ registerTypedRule({
           evidence: `${desc} at line ${line}: "${match[0].slice(0, 60)}".`,
           remediation: "Set specific allowed origins. Never use '*' with credentials.",
           owasp_category: "MCP07-insecure-config", mitre_technique: null,
-          confidence: 0.88, metadata: { analysis_type: "structural", evidence_chain: c7Chain },
+          confidence: c7Chain.confidence, metadata: { analysis_type: "structural", evidence_chain: c7Chain },
         });
         break;
       }
@@ -289,7 +316,16 @@ registerTypedRule({
       const hasAuth = /(?:auth|authenticate|verify|passport|jwt|bearer|apiKey|session)/i.test(ctx.source_code);
       if (!hasAuth) {
         const line = lineNum(ctx.source_code, match.index);
-        const c8Chain = new EvidenceChainBuilder()
+        const lineText = ctx.source_code.split("\n")[line - 1] || "";
+        const c8Signals = computeCodeSignals({
+          sourceCode: ctx.source_code,
+          matchLine: line,
+          matchText: match[0],
+          lineText,
+          context: ctx,
+          owaspCategory: "MCP07-insecure-config",
+        });
+        const c8Builder = new EvidenceChainBuilder()
           .source({
             source_type: "file-content",
             location: `line ${line}`,
@@ -306,7 +342,11 @@ registerTypedRule({
             location: `line ${line}`,
             observed: "Unauthenticated network service exposed on all interfaces",
           })
-          .factor("structural_match", 0.05, "Binding to 0.0.0.0 without any visible auth middleware")
+          .factor("structural_match", 0.05, "Binding to 0.0.0.0 without any visible auth middleware");
+        for (const sig of c8Signals) {
+          c8Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const c8Chain = c8Builder
           .verification({
             step_type: "inspect-description",
             instruction: `Check line ${line} for network binding and search for auth middleware`,
@@ -319,7 +359,7 @@ registerTypedRule({
           evidence: `Listening on 0.0.0.0 at line ${line} without visible auth middleware.`,
           remediation: "Add authentication middleware. Or bind to 127.0.0.1 if the service is internal-only.",
           owasp_category: "MCP07-insecure-config", mitre_technique: null,
-          confidence: 0.75, metadata: { analysis_type: "structural", evidence_chain: c8Chain },
+          confidence: c8Chain.confidence, metadata: { analysis_type: "structural", evidence_chain: c8Chain },
         });
       }
     }
@@ -344,7 +384,16 @@ registerTypedRule({
       const match = regex.exec(ctx.source_code);
       if (match) {
         const line = lineNum(ctx.source_code, match.index);
-        const c9Chain = new EvidenceChainBuilder()
+        const lineText = ctx.source_code.split("\n")[line - 1] || "";
+        const c9Signals = computeCodeSignals({
+          sourceCode: ctx.source_code,
+          matchLine: line,
+          matchText: match[0],
+          lineText,
+          context: ctx,
+          owaspCategory: "MCP05-privilege-escalation",
+        });
+        const c9Builder = new EvidenceChainBuilder()
           .source({
             source_type: "file-content",
             location: `line ${line}`,
@@ -361,7 +410,11 @@ registerTypedRule({
             location: `line ${line}`,
             observed: `${desc}: "${match[0].slice(0, 60)}"`,
           })
-          .factor("structural_match", 0.15, `Root filesystem access: ${desc}`)
+          .factor("structural_match", 0.15, `Root filesystem access: ${desc}`);
+        for (const sig of c9Signals) {
+          c9Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const c9Chain = c9Builder
           .verification({
             step_type: "inspect-description",
             instruction: `Review filesystem scope at line ${line}`,
@@ -374,7 +427,7 @@ registerTypedRule({
           evidence: `${desc} at line ${line}: "${match[0].slice(0, 60)}".`,
           remediation: "Restrict filesystem access to a specific directory. Never use '/' as base path.",
           owasp_category: "MCP05-privilege-escalation", mitre_technique: "AML.T0054",
-          confidence: 0.85, metadata: { analysis_type: "structural", evidence_chain: c9Chain },
+          confidence: c9Chain.confidence, metadata: { analysis_type: "structural", evidence_chain: c9Chain },
         });
         break;
       }
@@ -467,7 +520,16 @@ registerTypedRule({
       const match = regex.exec(ctx.source_code);
       if (match) {
         const line = lineNum(ctx.source_code, match.index);
-        const c15Chain = new EvidenceChainBuilder()
+        const lineText = ctx.source_code.split("\n")[line - 1] || "";
+        const c15Signals = computeCodeSignals({
+          sourceCode: ctx.source_code,
+          matchLine: line,
+          matchText: match[0],
+          lineText,
+          context: ctx,
+          owaspCategory: "MCP07-insecure-config",
+        });
+        const c15Builder = new EvidenceChainBuilder()
           .source({
             source_type: "user-parameter",
             location: `line ${line}`,
@@ -484,7 +546,11 @@ registerTypedRule({
             location: `line ${line}`,
             observed: `Secret comparison with === leaks secret length via timing side-channel`,
           })
-          .factor("structural_match", 0.15, `Timing-vulnerable comparison: ${desc}`)
+          .factor("structural_match", 0.15, `Timing-vulnerable comparison: ${desc}`);
+        for (const sig of c15Signals) {
+          c15Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const c15Chain = c15Builder
           .verification({
             step_type: "inspect-description",
             instruction: `Check line ${line} for timing-safe comparison (timingSafeEqual or compare_digest)`,
@@ -497,7 +563,7 @@ registerTypedRule({
           evidence: `${desc} at line ${line}: "${match[0].slice(0, 80)}".`,
           remediation: "Use crypto.timingSafeEqual() for Node.js or hmac.compare_digest() for Python.",
           owasp_category: "MCP07-insecure-config", mitre_technique: null,
-          confidence: 0.85, metadata: { analysis_type: "structural", evidence_chain: c15Chain },
+          confidence: c15Chain.confidence, metadata: { analysis_type: "structural", evidence_chain: c15Chain },
         });
         break;
       }

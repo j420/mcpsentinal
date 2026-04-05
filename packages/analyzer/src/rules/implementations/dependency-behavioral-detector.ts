@@ -18,6 +18,7 @@ import { registerTypedRule } from "../base.js";
 import type { AnalysisContext } from "../../engine.js";
 import { damerauLevenshtein } from "../analyzers/similarity.js";
 import { EvidenceChainBuilder } from "../../evidence.js";
+import { computeToolSignals } from "../../confidence-signals.js";
 
 // ─── D1: Known CVEs ───────────────────────────────────────────────────────
 
@@ -28,7 +29,7 @@ registerTypedRule({
     for (const dep of ctx.dependencies) {
       if (dep.has_known_cve && dep.cve_ids && dep.cve_ids.length > 0) {
         const cveList = dep.cve_ids.join(", ");
-        const chain = new EvidenceChainBuilder()
+        const builder = new EvidenceChainBuilder()
           .source({
             source_type: "external-content",
             location: `package dependency: ${dep.name}@${dep.version}`,
@@ -59,7 +60,14 @@ registerTypedRule({
             title: `Known vulnerability in ${dep.name}`,
             url: `https://nvd.nist.gov/vuln/detail/${dep.cve_ids[0]}`,
             relevance: `${dep.name}@${dep.version} is affected by this CVE — update to patched version`,
-          })
+          });
+
+        const d1Signals = computeToolSignals(ctx, "MCP08-dependency-vuln", dep.name);
+        for (const sig of d1Signals) {
+          builder.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+
+        const chain = builder
           .verification({
             step_type: "check-dependency",
             instruction: `Verify that ${dep.name}@${dep.version} is affected by ${cveList}. Cross-reference the installed version against the affected version ranges listed in the NVD or OSV advisory.`,
@@ -79,7 +87,7 @@ registerTypedRule({
           evidence: `Dependency "${dep.name}@${dep.version}" has known CVE(s): [${cveList}].`,
           remediation: `Update "${dep.name}" to a patched version. Check ${dep.cve_ids[0]} for details.`,
           owasp_category: "MCP08-dependency-vuln", mitre_technique: null,
-          confidence: 0.95, metadata: { dep_name: dep.name, version: dep.version, cves: dep.cve_ids, evidence_chain: chain },
+          confidence: chain.confidence, metadata: { dep_name: dep.name, version: dep.version, cves: dep.cve_ids, evidence_chain: chain },
         });
       }
     }
@@ -162,7 +170,7 @@ registerTypedRule({
   id: "D4", name: "Excessive Dependency Count",
   analyze(ctx) {
     if (ctx.dependencies.length > 50) {
-      const chain = new EvidenceChainBuilder()
+      const d4Builder = new EvidenceChainBuilder()
         .source({
           source_type: "external-content",
           location: "package manifest (package.json / requirements.txt)",
@@ -186,7 +194,14 @@ registerTypedRule({
           exploitability: "complex",
           scenario: `With ${ctx.dependencies.length} dependencies, the probability of at least one containing a vulnerability or being compromised increases significantly. Each transitive dependency tree compounds the risk, creating dozens of potential entry points for privilege escalation via supply chain attacks.`,
         })
-        .factor("count_severity", ctx.dependencies.length > 100 ? 0.10 : 0.05, `${ctx.dependencies.length} dependencies — ${ctx.dependencies.length > 100 ? "very large" : "large"} attack surface`)
+        .factor("count_severity", ctx.dependencies.length > 100 ? 0.10 : 0.05, `${ctx.dependencies.length} dependencies — ${ctx.dependencies.length > 100 ? "very large" : "large"} attack surface`);
+
+      const d4Signals = computeToolSignals(ctx, "MCP08-dependency-vuln", "dependencies");
+      for (const sig of d4Signals) {
+        d4Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+      }
+
+      const chain = d4Builder
         .verification({
           step_type: "check-dependency",
           instruction: `Count the direct dependencies in the package manifest (package.json or requirements.txt). Verify that the count exceeds the 50-dependency threshold.`,
@@ -206,7 +221,7 @@ registerTypedRule({
         evidence: `${ctx.dependencies.length} direct dependencies (threshold: 50). Large dependency trees increase attack surface.`,
         remediation: "Audit dependencies. Remove unused ones. Consider lighter alternatives.",
         owasp_category: "MCP08-dependency-vuln", mitre_technique: null,
-        confidence: 0.70, metadata: { count: ctx.dependencies.length, evidence_chain: chain },
+        confidence: chain.confidence, metadata: { count: ctx.dependencies.length, evidence_chain: chain },
       }];
     }
     return [];
@@ -239,7 +254,7 @@ registerTypedRule({
     const findings: TypedFinding[] = [];
     for (const dep of ctx.dependencies) {
       if (MALICIOUS_PACKAGES.has(dep.name)) {
-        const chain = new EvidenceChainBuilder()
+        const d5Builder = new EvidenceChainBuilder()
           .source({
             source_type: "external-content",
             location: `package dependency: ${dep.name}`,
@@ -269,7 +284,14 @@ registerTypedRule({
             title: `Known malicious package: ${dep.name}`,
             url: "https://github.com/nickvdyck/malicious-packages",
             relevance: `"${dep.name}" is a confirmed malicious package or typosquat — must be removed immediately`,
-          })
+          });
+
+        const d5Signals = computeToolSignals(ctx, "MCP08-dependency-vuln", dep.name);
+        for (const sig of d5Signals) {
+          d5Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+
+        const chain = d5Builder
           .verification({
             step_type: "check-dependency",
             instruction: `Cross-reference "${dep.name}" against malicious package databases (npm advisories, Snyk, Socket.dev)`,
@@ -283,7 +305,7 @@ registerTypedRule({
           evidence: `Dependency "${dep.name}" is a known malicious package.`,
           remediation: `Remove "${dep.name}" immediately. This package is confirmed malicious or a known typosquat.`,
           owasp_category: "MCP08-dependency-vuln", mitre_technique: "AML.T0054",
-          confidence: 0.99, metadata: { dep_name: dep.name, evidence_chain: chain },
+          confidence: chain.confidence, metadata: { dep_name: dep.name, evidence_chain: chain },
         });
       }
     }
@@ -309,7 +331,7 @@ registerTypedRule({
     for (const dep of ctx.dependencies) {
       for (const weak of WEAK_CRYPTO) {
         if (dep.name === weak.name) {
-          const chain = new EvidenceChainBuilder()
+          const d6Builder = new EvidenceChainBuilder()
             .source({
               source_type: "external-content",
               location: `package dependency: ${dep.name}@${dep.version}`,
@@ -341,7 +363,14 @@ registerTypedRule({
               title: "Use of a Broken or Risky Cryptographic Algorithm",
               url: "https://cwe.mitre.org/data/definitions/327.html",
               relevance: `${dep.name} relies on cryptographic algorithms that are known to be weak (CWE-327)`,
-            })
+            });
+
+          const d6Signals = computeToolSignals(ctx, "MCP07-insecure-config", dep.name);
+          for (const sig of d6Signals) {
+            d6Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+          }
+
+          const chain = d6Builder
             .verification({
               step_type: "check-dependency",
               instruction: `Verify the installed version of "${dep.name}" and check if a safe alternative exists`,
@@ -359,7 +388,7 @@ registerTypedRule({
               ? `Update "${dep.name}" to >=${weak.maxSafe} or replace with a modern alternative.`
               : `Replace "${dep.name}" with a modern, maintained cryptography library.`,
             owasp_category: "MCP07-insecure-config", mitre_technique: null,
-            confidence: 0.88, metadata: { dep_name: dep.name, evidence_chain: chain },
+            confidence: chain.confidence, metadata: { dep_name: dep.name, evidence_chain: chain },
           });
         }
       }
@@ -379,7 +408,7 @@ registerTypedRule({
       if (dep.name.startsWith("@") && dep.version) {
         const major = parseInt(dep.version.split(".")[0], 10);
         if (major >= 99) {
-          const chain = new EvidenceChainBuilder()
+          const d7Builder = new EvidenceChainBuilder()
             .source({
               source_type: "external-content",
               location: `package dependency: ${dep.name}@${dep.version}`,
@@ -410,7 +439,14 @@ registerTypedRule({
               url: "https://medium.com/@alex.birsan/dependency-confusion-4a5d60fec610",
               year: 2021,
               relevance: `Same attack technique: high version number on scoped package "${dep.name}" to win version resolution against private registries`,
-            })
+            });
+
+          const d7Signals = computeToolSignals(ctx, "MCP08-dependency-vuln", dep.name);
+          for (const sig of d7Signals) {
+            d7Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+          }
+
+          const chain = d7Builder
             .verification({
               step_type: "check-dependency",
               instruction: `Verify that "${dep.name}@${dep.version}" is the legitimate package from the expected private registry, not a public registry substitution`,
@@ -424,7 +460,7 @@ registerTypedRule({
             evidence: `Scoped package "${dep.name}@${dep.version}" has suspiciously high version (${major}.x). Dependency confusion indicator.`,
             remediation: "Verify the package is from the expected scope. High version numbers are used in dependency confusion attacks.",
             owasp_category: "MCP08-dependency-vuln", mitre_technique: "AML.T0054",
-            confidence: 0.85, metadata: { dep_name: dep.name, major_version: major, evidence_chain: chain },
+            confidence: chain.confidence, metadata: { dep_name: dep.name, major_version: major, evidence_chain: chain },
           });
         }
       }
@@ -439,7 +475,7 @@ registerTypedRule({
   id: "E1", name: "No Authentication Required",
   analyze(ctx) {
     if (ctx.connection_metadata && !ctx.connection_metadata.auth_required) {
-      const chain = new EvidenceChainBuilder()
+      const e1Builder = new EvidenceChainBuilder()
         .source({
           source_type: "environment",
           location: "server network configuration",
@@ -463,7 +499,14 @@ registerTypedRule({
           exploitability: "trivial",
           scenario: "Any network-reachable client can connect to the MCP server and invoke all exposed tools without authentication — DNS rebinding attacks can reach even localhost servers",
         })
-        .factor("no_auth_confirmed", 0.15, "Connection metadata confirms no authentication is required")
+        .factor("no_auth_confirmed", 0.15, "Connection metadata confirms no authentication is required");
+
+      const e1Signals = computeToolSignals(ctx, "MCP07-insecure-config", "behavioral");
+      for (const sig of e1Signals) {
+        e1Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+      }
+
+      const chain = e1Builder
         .verification({
           step_type: "check-config",
           instruction: "Attempt to connect to the MCP server without providing any credentials",
@@ -477,7 +520,7 @@ registerTypedRule({
         evidence: "Server does not require authentication. Any client can connect and use tools.",
         remediation: "Add authentication (API key, OAuth, mTLS). Even localhost servers should require auth (DNS rebinding).",
         owasp_category: "MCP07-insecure-config", mitre_technique: null,
-        confidence: 0.90, metadata: { analysis_type: "behavioral", evidence_chain: chain },
+        confidence: chain.confidence, metadata: { analysis_type: "behavioral", evidence_chain: chain },
       }];
     }
     return [];
@@ -492,7 +535,7 @@ registerTypedRule({
     if (ctx.connection_metadata) {
       const transport = ctx.connection_metadata.transport.toLowerCase();
       if (transport === "http" || transport === "ws") {
-        const chain = new EvidenceChainBuilder()
+        const e2Builder = new EvidenceChainBuilder()
           .source({
             source_type: "environment",
             location: "server transport configuration",
@@ -522,7 +565,14 @@ registerTypedRule({
             title: "Cleartext Transmission of Sensitive Information",
             url: "https://cwe.mitre.org/data/definitions/319.html",
             relevance: `MCP server uses ${transport} transport, transmitting all protocol messages including potential credentials in cleartext (CWE-319)`,
-          })
+          });
+
+        const e2Signals = computeToolSignals(ctx, "MCP07-insecure-config", "behavioral");
+        for (const sig of e2Signals) {
+          e2Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+
+        const chain = e2Builder
           .verification({
             step_type: "check-config",
             instruction: `Verify the server transport protocol and confirm TLS is not configured`,
@@ -536,7 +586,7 @@ registerTypedRule({
           evidence: `Server uses insecure transport: ${transport}. Data transmitted in plaintext.`,
           remediation: "Use HTTPS or WSS. All MCP connections should be encrypted in transit.",
           owasp_category: "MCP07-insecure-config", mitre_technique: null,
-          confidence: 0.95, metadata: { transport, evidence_chain: chain },
+          confidence: chain.confidence, metadata: { transport, evidence_chain: chain },
         }];
       }
     }
@@ -551,7 +601,7 @@ registerTypedRule({
   analyze(ctx) {
     if (ctx.connection_metadata && ctx.connection_metadata.response_time_ms > 10000) {
       const responseTime = ctx.connection_metadata.response_time_ms;
-      const chain = new EvidenceChainBuilder()
+      const e3Builder = new EvidenceChainBuilder()
         .source({
           source_type: "environment",
           location: "server response timing",
@@ -564,7 +614,14 @@ registerTypedRule({
           exploitability: "complex",
           scenario: `Server takes ${responseTime}ms to respond — may indicate crypto-mining siphoning CPU, infinite loop consuming resources, or intentional slowdown to degrade client performance`,
         })
-        .factor("response_time_anomaly", 0.05, `Response time ${responseTime}ms exceeds 10s threshold — anomalous but not conclusive`)
+        .factor("response_time_anomaly", 0.05, `Response time ${responseTime}ms exceeds 10s threshold — anomalous but not conclusive`);
+
+      const e3Signals = computeToolSignals(ctx, "MCP07-insecure-config", "behavioral");
+      for (const sig of e3Signals) {
+        e3Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+      }
+
+      const chain = e3Builder
         .verification({
           step_type: "test-input",
           instruction: `Measure the server response time for initialize + tools/list across multiple attempts`,
@@ -578,7 +635,7 @@ registerTypedRule({
         evidence: `Server response time: ${responseTime}ms (threshold: 10s). May indicate crypto-mining or processing abuse.`,
         remediation: "Investigate slow response. May indicate resource abuse, infinite loops, or network issues.",
         owasp_category: "MCP07-insecure-config", mitre_technique: null,
-        confidence: 0.60, metadata: { response_time_ms: responseTime, evidence_chain: chain },
+        confidence: chain.confidence, metadata: { response_time_ms: responseTime, evidence_chain: chain },
       }];
     }
     return [];
@@ -592,7 +649,7 @@ registerTypedRule({
   analyze(ctx) {
     if (ctx.tools.length > 50) {
       const toolCount = ctx.tools.length;
-      const chain = new EvidenceChainBuilder()
+      const e4Builder = new EvidenceChainBuilder()
         .source({
           source_type: "environment",
           location: "MCP server tools/list response",
@@ -610,7 +667,14 @@ registerTypedRule({
           id: "INVARIANT-LABS-2025",
           title: "Consent Fatigue in MCP Tool Approval",
           relevance: `84.2% tool poisoning success rate with auto-approve enabled — ${toolCount} tools greatly increases the risk of users enabling auto-approve`,
-        })
+        });
+
+      const e4Signals = computeToolSignals(ctx, "MCP06-excessive-permissions", "behavioral");
+      for (const sig of e4Signals) {
+        e4Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+      }
+
+      const chain = e4Builder
         .verification({
           step_type: "inspect-schema",
           instruction: `Count the tools returned by the server's tools/list endpoint`,
@@ -624,7 +688,7 @@ registerTypedRule({
         evidence: `Server exposes ${toolCount} tools (threshold: 50). Large tool sets increase attack surface and enable consent fatigue.`,
         remediation: "Reduce tool count. Split into focused servers. Each server should do one thing well.",
         owasp_category: "MCP06-excessive-permissions", mitre_technique: null,
-        confidence: 0.75, metadata: { tool_count: toolCount, evidence_chain: chain },
+        confidence: chain.confidence, metadata: { tool_count: toolCount, evidence_chain: chain },
       }];
     }
     return [];

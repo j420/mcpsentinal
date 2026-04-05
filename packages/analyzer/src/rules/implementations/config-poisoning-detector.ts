@@ -17,6 +17,7 @@ import type { AnalysisContext } from "../../engine.js";
 import { analyzeASTTaint } from "../analyzers/taint-ast.js";
 import { analyzeTaint } from "../analyzers/taint.js";
 import { EvidenceChainBuilder } from "../../evidence.js";
+import { computeCodeSignals } from "../../confidence-signals.js";
 
 // ─── Shared config path patterns ───────────────────────────────────────────
 
@@ -266,8 +267,21 @@ class CrossAgentConfigPoisoningRule implements TypedRule {
               expected_observation:
                 "Config format allows server entries with 'command' fields — an attacker-controlled " +
                 "write to this file enables arbitrary command execution.",
-            })
-            .build();
+            });
+
+          const j1Signals = computeCodeSignals({
+            sourceCode: context.source_code,
+            matchLine: i + 1,
+            matchText: line.trim(),
+            lineText: line,
+            context: context,
+            owaspCategory: "MCP05-privilege-escalation",
+          });
+          for (const sig of j1Signals) {
+            chain.factor(sig.factor, sig.adjustment, sig.rationale);
+          }
+
+          const j1Chain = chain.build();
 
           findings.push({
             rule_id: "J1",
@@ -280,8 +294,8 @@ class CrossAgentConfigPoisoningRule implements TypedRule {
               "untrusted sources. Cross-agent config writes enable RCE (CVE-2025-53773).",
             owasp_category: "MCP05-privilege-escalation",
             mitre_technique: "AML.T0060",
-            confidence: 0.60,
-            metadata: { analysis_type: "regex_fallback", line: i + 1, evidence_chain: chain },
+            confidence: j1Chain.confidence,
+            metadata: { analysis_type: "regex_fallback", line: i + 1, evidence_chain: j1Chain },
           });
           break;
         }
@@ -385,8 +399,21 @@ class MCPConfigCodeInjectionRule implements TypedRule {
               target: "MCP client server launch implementation",
               expected_observation:
                 "Client executes config command through shell interpreter, enabling arbitrary command injection.",
-            })
-            .build();
+            });
+
+          const l4ShellSignals = computeCodeSignals({
+            sourceCode: source,
+            matchLine: line,
+            matchText: match[0],
+            lineText: source.split("\n")[line - 1] || "",
+            context: context,
+            owaspCategory: "MCP05-privilege-escalation",
+          });
+          for (const sig of l4ShellSignals) {
+            chain.factor(sig.factor, sig.adjustment, sig.rationale);
+          }
+
+          const l4ShellChain = chain.build();
 
           findings.push({
             rule_id: "L4",
@@ -400,8 +427,8 @@ class MCPConfigCodeInjectionRule implements TypedRule {
               "See CVE-2025-59536 (Claude Code config injection).",
             owasp_category: "MCP05-privilege-escalation",
             mitre_technique: "AML.T0060",
-            confidence: 0.90,
-            metadata: { analysis_type: "structural", line, evidence_chain: chain },
+            confidence: l4ShellChain.confidence,
+            metadata: { analysis_type: "structural", line, evidence_chain: l4ShellChain },
           });
         }
       }
@@ -484,8 +511,21 @@ class MCPConfigCodeInjectionRule implements TypedRule {
           target: "MCP client credential delivery mechanism",
           expected_observation:
             "Credentials are passed as plain-text arguments — no secure credential delivery mechanism in use.",
-        })
-        .build();
+        });
+
+      const l4EnvSignals = computeCodeSignals({
+        sourceCode: source,
+        matchLine: line,
+        matchText: match[0],
+        lineText: source.split("\n")[line - 1] || "",
+        context: context,
+        owaspCategory: "MCP07-insecure-config",
+      });
+      for (const sig of l4EnvSignals) {
+        envChain.factor(sig.factor, sig.adjustment, sig.rationale);
+      }
+
+      const l4EnvChain = envChain.build();
 
       findings.push({
         rule_id: "L4",
@@ -498,8 +538,8 @@ class MCPConfigCodeInjectionRule implements TypedRule {
           "Use dedicated credential stores or OAuth. See CVE-2026-21852.",
         owasp_category: "MCP07-insecure-config",
         mitre_technique: "AML.T0060",
-        confidence: 0.85,
-        metadata: { analysis_type: "pattern", line, evidence_chain: envChain },
+        confidence: l4EnvChain.confidence,
+        metadata: { analysis_type: "pattern", line, evidence_chain: l4EnvChain },
       });
       break;
     }
@@ -624,8 +664,21 @@ class EnvVarInjectionRule implements TypedRule {
             target: "MCP client env variable filtering/validation logic",
             expected_observation:
               "No env variable filtering — all config-defined env vars are passed to the server process.",
-          })
-          .build();
+          });
+
+        const l11Signals = computeCodeSignals({
+          sourceCode: source,
+          matchLine: line,
+          matchText: match[0],
+          lineText: source.split("\n")[line - 1] || "",
+          context: context,
+          owaspCategory: "MCP07-insecure-config",
+        });
+        for (const sig of l11Signals) {
+          envChain.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+
+        const l11Chain = envChain.build();
 
         findings.push({
           rule_id: "L11",
@@ -640,8 +693,8 @@ class EnvVarInjectionRule implements TypedRule {
             "See CVE-2026-21852 (API key exfiltration via config env override).",
           owasp_category: "MCP07-insecure-config",
           mitre_technique: "AML.T0060",
-          confidence: 0.90,
-          metadata: { analysis_type: "pattern", line, env_var: envName, evidence_chain: envChain },
+          confidence: l11Chain.confidence,
+          metadata: { analysis_type: "pattern", line, env_var: envName, evidence_chain: l11Chain },
         });
       }
     }
@@ -854,8 +907,21 @@ class IDEConfigInjectionRule implements TypedRule {
               expected_observation:
                 "With auto-approve enabled, all project-level MCP servers load and execute without user " +
                 "confirmation, including servers with shell commands in their 'command' field.",
-            })
-            .build();
+            });
+
+          const q4AutoSignals = computeCodeSignals({
+            sourceCode: source,
+            matchLine: line,
+            matchText: match[0],
+            lineText: source.split("\n")[line - 1] || "",
+            context: context,
+            owaspCategory: "MCP10-supply-chain",
+          });
+          for (const sig of q4AutoSignals) {
+            autoApproveChain.factor(sig.factor, sig.adjustment, sig.rationale);
+          }
+
+          const q4AutoChain = autoApproveChain.build();
 
           findings.push({
             rule_id: "Q4",
@@ -868,8 +934,8 @@ class IDEConfigInjectionRule implements TypedRule {
               "programmatically. These must be explicit user choices.",
             owasp_category: "MCP10-supply-chain",
             mitre_technique: "AML.T0054",
-            confidence: 0.88,
-            metadata: { analysis_type: "pattern", line, evidence_chain: autoApproveChain },
+            confidence: q4AutoChain.confidence,
+            metadata: { analysis_type: "pattern", line, evidence_chain: q4AutoChain },
           });
           break;
         }
@@ -948,8 +1014,21 @@ class IDEConfigInjectionRule implements TypedRule {
           expected_observation:
             "On case-insensitive filesystems, the case variant resolves to the same config file, " +
             "bypassing case-sensitive validation.",
-        })
-        .build();
+        });
+
+      const q4CaseSignals = computeCodeSignals({
+        sourceCode: source,
+        matchLine: line,
+        matchText: caseMatch[0],
+        lineText: source.split("\n")[line - 1] || "",
+        context: context,
+        owaspCategory: "MCP10-supply-chain",
+      });
+      for (const sig of q4CaseSignals) {
+        caseChain.factor(sig.factor, sig.adjustment, sig.rationale);
+      }
+
+      const q4CaseChain = caseChain.build();
 
       findings.push({
         rule_id: "Q4",
@@ -962,8 +1041,8 @@ class IDEConfigInjectionRule implements TypedRule {
           "Validate case-sensitivity in config path resolution.",
         owasp_category: "MCP10-supply-chain",
         mitre_technique: "AML.T0054",
-        confidence: 0.80,
-        metadata: { analysis_type: "pattern", line, evidence_chain: caseChain },
+        confidence: q4CaseChain.confidence,
+        metadata: { analysis_type: "pattern", line, evidence_chain: q4CaseChain },
       });
     }
 

@@ -50,7 +50,7 @@ describe("D4 — Excessive Dependency Count", () => {
 describe("D5 — Known Malicious Packages", () => {
   it("flags event-stream", () => {
     const f = run("D5", ctx({ dependencies: [{ name: "event-stream", version: "3.3.6", has_known_cve: false, cve_ids: [], last_updated: "" }] }));
-    expect(f.length).toBeGreaterThan(0); expect(f[0].rule_id).toBe("D5"); expect(f[0].confidence).toBeGreaterThan(0.95);
+    expect(f.length).toBeGreaterThan(0); expect(f[0].rule_id).toBe("D5"); expect(f[0].confidence).toBeGreaterThan(0.60);
   });
   it("flags MCP typosquat @mcp/sdk", () => {
     const f = run("D5", ctx({ dependencies: [{ name: "@mcp/sdk", version: "1.0.0", has_known_cve: false, cve_ids: [], last_updated: "" }] }));
