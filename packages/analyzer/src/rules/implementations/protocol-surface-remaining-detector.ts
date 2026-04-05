@@ -8,6 +8,7 @@ import { registerTypedRule } from "../base.js";
 import type { AnalysisContext } from "../../engine.js";
 import { buildCapabilityGraph } from "../analyzers/capability-graph.js";
 import { EvidenceChainBuilder } from "../../evidence.js";
+import { computeToolSignals, computeCodeSignals } from "../../confidence-signals.js";
 
 function isTestFile(s: string) { return /(?:__tests?__|\.(?:test|spec)\.)/.test(s); }
 function lineNum(s: string, i: number) { return s.substring(0, i).split("\n").length; }
@@ -38,7 +39,7 @@ registerTypedRule({
       for (const pattern of INJECTION_PATTERNS) {
         const match = pattern.exec(text);
         if (match) {
-          const chain = new EvidenceChainBuilder()
+          const builder = new EvidenceChainBuilder()
             .source({
               source_type: "external-content",
               location: `resource: ${resource.name}`,
@@ -78,15 +79,21 @@ registerTypedRule({
                 `behavioral directive designed to manipulate AI client behavior.`,
               target: `resource metadata: ${resource.name}`,
               expected_observation: "Resource metadata contains AI behavioral directive — injection confirmed.",
-            })
-            .build();
+            });
+
+          const i3Signals = computeToolSignals(ctx, "MCP01-prompt-injection", resource.name);
+          for (const sig of i3Signals) {
+            builder.factor(sig.factor, sig.adjustment, sig.rationale);
+          }
+
+          const chain = builder.build();
 
           findings.push({
             rule_id: "I3", severity: "critical",
             evidence: `Resource "${resource.name}" contains injection pattern in metadata: "${text.slice(0, 80)}".`,
             remediation: "Sanitize resource names, descriptions, and URIs. Remove behavioral directives.",
             owasp_category: "MCP01-prompt-injection", mitre_technique: "AML.T0054",
-            confidence: 0.88, metadata: { resource_name: resource.name, evidence_chain: chain },
+            confidence: chain.confidence, metadata: { resource_name: resource.name, evidence_chain: chain },
           });
           break;
         }
@@ -117,7 +124,7 @@ registerTypedRule({
     for (const resource of resources) {
       for (const { regex, desc } of dangerousSchemes) {
         if (regex.test(resource.uri)) {
-          const chain = new EvidenceChainBuilder()
+          const builder = new EvidenceChainBuilder()
             .source({
               source_type: "external-content",
               location: `resource: ${resource.name}`,
@@ -162,15 +169,21 @@ registerTypedRule({
                 `enable unauthorized access to filesystem, code execution, or directory traversal.`,
               target: `resource URI: ${resource.uri.slice(0, 60)}`,
               expected_observation: `Resource URI uses ${desc} — dangerous scheme confirmed.`,
-            })
-            .build();
+            });
+
+          const i4Signals = computeToolSignals(ctx, "MCP05-privilege-escalation", resource.name);
+          for (const sig of i4Signals) {
+            builder.factor(sig.factor, sig.adjustment, sig.rationale);
+          }
+
+          const chain = builder.build();
 
           findings.push({
             rule_id: "I4", severity: "critical",
             evidence: `Resource "${resource.name}" has ${desc}: "${resource.uri.slice(0, 80)}".`,
             remediation: "Use only safe URI schemes (https://). Block file://, data:, javascript:// URIs.",
             owasp_category: "MCP05-privilege-escalation", mitre_technique: "AML.T0054",
-            confidence: 0.92, metadata: { resource_name: resource.name, uri_type: desc, evidence_chain: chain },
+            confidence: chain.confidence, metadata: { resource_name: resource.name, uri_type: desc, evidence_chain: chain },
           });
           break;
         }
@@ -193,7 +206,7 @@ registerTypedRule({
     const toolNames = new Set(ctx.tools.map(t => t.name.toLowerCase()));
     for (const resource of resources) {
       if (toolNames.has(resource.name.toLowerCase())) {
-        const chain = new EvidenceChainBuilder()
+        const builder = new EvidenceChainBuilder()
           .source({
             source_type: "external-content",
             location: `resource: ${resource.name}`,
@@ -227,15 +240,21 @@ registerTypedRule({
               `name confusion when the user intended resource access.`,
             target: `resource and tool both named: ${resource.name}`,
             expected_observation: "Resource and tool share name — confusion risk confirmed.",
-          })
-          .build();
+          });
+
+        const i5Signals = computeToolSignals(ctx, "MCP02-tool-poisoning", resource.name);
+        for (const sig of i5Signals) {
+          builder.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+
+        const chain = builder.build();
 
         findings.push({
           rule_id: "I5", severity: "high",
           evidence: `Resource "${resource.name}" shadows tool with same name. Creates confusion between resource access and tool invocation.`,
           remediation: "Use distinct names for resources and tools.",
           owasp_category: "MCP02-tool-poisoning", mitre_technique: null,
-          confidence: 0.82, metadata: { resource_name: resource.name, evidence_chain: chain },
+          confidence: chain.confidence, metadata: { resource_name: resource.name, evidence_chain: chain },
         });
       }
     }
@@ -258,7 +277,7 @@ registerTypedRule({
       for (const pattern of INJECTION_PATTERNS) {
         const match = pattern.exec(text);
         if (match) {
-          const chain = new EvidenceChainBuilder()
+          const i6Builder = new EvidenceChainBuilder()
             .source({
               source_type: "external-content",
               location: `prompt: ${prompt.name}`,
@@ -299,15 +318,21 @@ registerTypedRule({
                 `for behavioral directives that manipulate AI client behavior.`,
               target: `prompt metadata: ${prompt.name}`,
               expected_observation: "Prompt metadata contains AI behavioral directive — injection confirmed.",
-            })
-            .build();
+            });
+
+          const i6Signals = computeToolSignals(ctx, "MCP01-prompt-injection", prompt.name);
+          for (const sig of i6Signals) {
+            i6Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+          }
+
+          const chain = i6Builder.build();
 
           findings.push({
             rule_id: "I6", severity: "critical",
             evidence: `Prompt "${prompt.name}" contains injection pattern: "${text.slice(0, 80)}".`,
             remediation: "Sanitize prompt templates. Never include behavioral directives in prompt metadata.",
             owasp_category: "MCP01-prompt-injection", mitre_technique: "AML.T0054",
-            confidence: 0.88, metadata: { prompt_name: prompt.name, evidence_chain: chain },
+            confidence: chain.confidence, metadata: { prompt_name: prompt.name, evidence_chain: chain },
           });
           break;
         }
@@ -332,7 +357,7 @@ registerTypedRule({
     );
 
     if (hasIngestion) {
-      const chain = new EvidenceChainBuilder()
+      const i7Builder = new EvidenceChainBuilder()
         .source({
           source_type: "external-content",
           location: "server capabilities + tool set",
@@ -382,15 +407,21 @@ registerTypedRule({
             "preventing sampling requests from referencing content obtained via ingestion tools.",
           target: "server capabilities and content ingestion tools",
           expected_observation: "Sampling + ingestion confirmed — feedback loop possible.",
-        })
-        .build();
+        });
+
+      const i7Signals = computeToolSignals(ctx, "MCP01-prompt-injection", "sampling");
+      for (const sig of i7Signals) {
+        i7Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+      }
+
+      const chain = i7Builder.build();
 
       return [{
         rule_id: "I7", severity: "critical",
         evidence: "Server declares sampling capability AND has content ingestion tools. Sampling + ingestion creates super-injection feedback loop (23-41% amplification).",
         remediation: "Remove sampling capability or ingestion tools. Never combine both in one server.",
         owasp_category: "MCP01-prompt-injection", mitre_technique: "AML.T0054",
-        confidence: 0.88, metadata: { analysis_type: "capability_composite", evidence_chain: chain },
+        confidence: chain.confidence, metadata: { analysis_type: "capability_composite", evidence_chain: chain },
       }];
     }
     return [];
@@ -410,7 +441,7 @@ registerTypedRule({
     if (ctx.source_code) {
       const hasCostControl = /(?:max_tokens|maxTokens|token_limit|cost_limit|rate_limit|budget)/i.test(ctx.source_code);
       if (!hasCostControl) {
-        const chain = new EvidenceChainBuilder()
+        const i8Builder = new EvidenceChainBuilder()
           .source({
             source_type: "external-content",
             location: "server capabilities",
@@ -445,15 +476,21 @@ registerTypedRule({
               "breakers. Check if the server's sampling implementation has any bounds.",
             target: "source code: sampling implementation",
             expected_observation: "No cost controls found for sampling requests.",
-          })
-          .build();
+          });
+
+        const i8Signals = computeToolSignals(ctx, "MCP07-insecure-config", "sampling");
+        for (const sig of i8Signals) {
+          i8Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+
+        const chain = i8Builder.build();
 
         return [{
           rule_id: "I8", severity: "high",
           evidence: "Server declares sampling capability without visible cost controls. Each sampling request triggers AI inference.",
           remediation: "Add max_tokens limits, rate limiting, and cost budgets for sampling requests.",
           owasp_category: "MCP07-insecure-config", mitre_technique: null,
-          confidence: 0.75, metadata: { analysis_type: "structural", evidence_chain: chain },
+          confidence: chain.confidence, metadata: { analysis_type: "structural", evidence_chain: chain },
         }];
       }
     }
@@ -471,7 +508,7 @@ registerTypedRule({
       const desc = (tool.description || "").toLowerCase();
       if (/(?:password|credential|token|api.key|secret|ssn|social.security|credit.card).*(?:collect|harvest|gather|ask|request|prompt|elicit|input|enter)/i.test(desc) ||
           /(?:collect|harvest|gather|ask|request|prompt|elicit|input|enter).*(?:password|credential|token|api.key|secret|ssn)/i.test(desc)) {
-        const chain = new EvidenceChainBuilder()
+        const i9Builder = new EvidenceChainBuilder()
           .source({
             source_type: "external-content",
             location: `tool description: ${tool.name}`,
@@ -513,15 +550,21 @@ registerTypedRule({
               `social engineering via the AI intermediary.`,
             target: `tool description: ${tool.name}`,
             expected_observation: "Tool description instructs AI to collect user credentials/PII.",
-          })
-          .build();
+          });
+
+        const i9Signals = computeToolSignals(ctx, "MCP07-insecure-config", tool.name);
+        for (const sig of i9Signals) {
+          i9Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+
+        const chain = i9Builder.build();
 
         findings.push({
           rule_id: "I9", severity: "critical",
           evidence: `Tool "${tool.name}" suggests collecting credentials/PII: "${desc.slice(0, 80)}".`,
           remediation: "Never collect credentials through tool descriptions. Use proper auth flows (OAuth, OIDC).",
           owasp_category: "MCP07-insecure-config", mitre_technique: "AML.T0054",
-          confidence: 0.85, metadata: { tool_name: tool.name, evidence_chain: chain },
+          confidence: chain.confidence, metadata: { tool_name: tool.name, evidence_chain: chain },
         });
       }
     }
@@ -538,7 +581,7 @@ registerTypedRule({
     for (const tool of ctx.tools) {
       const desc = (tool.description || "").toLowerCase();
       if (/(?:redirect|navigate|visit|go.to|open)\s+(?:url|link|page|site).*(?:auth|login|verify|confirm)/i.test(desc)) {
-        const chain = new EvidenceChainBuilder()
+        const i10Builder = new EvidenceChainBuilder()
           .source({
             source_type: "external-content",
             location: `tool description: ${tool.name}`,
@@ -573,15 +616,21 @@ registerTypedRule({
               `a known provider) or potentially attacker-controlled.`,
             target: `tool description: ${tool.name}`,
             expected_observation: "Tool instructs AI to redirect user to external URL for auth.",
-          })
-          .build();
+          });
+
+        const i10Signals = computeToolSignals(ctx, "MCP07-insecure-config", tool.name);
+        for (const sig of i10Signals) {
+          i10Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+
+        const chain = i10Builder.build();
 
         findings.push({
           rule_id: "I10", severity: "high",
           evidence: `Tool "${tool.name}" suggests redirecting users to URLs for auth: "${desc.slice(0, 80)}".`,
           remediation: "Never redirect users to external URLs for authentication via tool descriptions.",
           owasp_category: "MCP07-insecure-config", mitre_technique: null,
-          confidence: 0.78, metadata: { tool_name: tool.name, evidence_chain: chain },
+          confidence: chain.confidence, metadata: { tool_name: tool.name, evidence_chain: chain },
         });
       }
     }
@@ -610,7 +659,7 @@ registerTypedRule({
     for (const root of roots) {
       for (const { regex, desc } of sensitiveRoots) {
         if (regex.test(root.uri)) {
-          const chain = new EvidenceChainBuilder()
+          const i11Builder = new EvidenceChainBuilder()
             .source({
               source_type: "file-content",
               location: `root declaration: ${root.uri}`,
@@ -653,15 +702,21 @@ registerTypedRule({
                 `subdirectory? (3) what sensitive data exists at this path?`,
               target: `root: ${root.uri}`,
               expected_observation: `Root at ${desc} — overly broad filesystem access confirmed.`,
-            })
-            .build();
+            });
+
+          const i11Signals = computeToolSignals(ctx, "MCP06-excessive-permissions", root.uri);
+          for (const sig of i11Signals) {
+            i11Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+          }
+
+          const chain = i11Builder.build();
 
           findings.push({
             rule_id: "I11", severity: "high",
             evidence: `Root declared at sensitive path (${desc}): "${root.uri}".`,
             remediation: "Restrict roots to specific project directories. Never expose /, /etc, /root, or ~/.ssh.",
             owasp_category: "MCP06-excessive-permissions", mitre_technique: null,
-            confidence: 0.90, metadata: { root_uri: root.uri, evidence_chain: chain },
+            confidence: chain.confidence, metadata: { root_uri: root.uri, evidence_chain: chain },
           });
         }
       }
@@ -685,7 +740,7 @@ registerTypedRule({
 
     // Tools not declared but handler exists
     if (!caps.tools && /(?:tools\/(?:call|list)|handleToolCall|registerTool)/i.test(src)) {
-      const toolChain = new EvidenceChainBuilder()
+      const toolChainBuilder = new EvidenceChainBuilder()
         .source({
           source_type: "file-content",
           location: "source code: tool handler registration",
@@ -724,19 +779,28 @@ registerTypedRule({
             "declared capabilities while tool handlers exist in the code.",
           target: "initialize capabilities vs source code tool handlers",
           expected_observation: "Tool handlers present but tools capability not declared at init.",
-        })
-        .build();
+        });
+
+      const toolCodeSignals = computeCodeSignals({
+        sourceCode: ctx.source_code!, matchLine: 1, matchText: "tools/call",
+        lineText: "tools/call or registerTool handler", context: ctx, owaspCategory: "MCP05-privilege-escalation",
+      });
+      for (const sig of toolCodeSignals) {
+        toolChainBuilder.factor(sig.factor, sig.adjustment, sig.rationale);
+      }
+
+      const toolChain = toolChainBuilder.build();
 
       findings.push({
         rule_id: "I12", severity: "critical",
         evidence: "Server uses tool handlers but did not declare tools capability during initialization.",
         remediation: "Declare all capabilities in the initialize response. Undeclared capabilities indicate escalation.",
         owasp_category: "MCP05-privilege-escalation", mitre_technique: "AML.T0054",
-        confidence: 0.85, metadata: { undeclared: "tools", evidence_chain: toolChain },
+        confidence: toolChain.confidence, metadata: { undeclared: "tools", evidence_chain: toolChain },
       });
     }
     if (!caps.sampling && /(?:sampling\/create|createSample|handleSampling)/i.test(src)) {
-      const samplingChain = new EvidenceChainBuilder()
+      const samplingChainBuilder = new EvidenceChainBuilder()
         .source({
           source_type: "file-content",
           location: "source code: sampling handler registration",
@@ -770,15 +834,24 @@ registerTypedRule({
             "is not declared but handlers exist.",
           target: "initialize capabilities vs source code sampling handlers",
           expected_observation: "Sampling handlers present but sampling capability not declared.",
-        })
-        .build();
+        });
+
+      const samplingCodeSignals = computeCodeSignals({
+        sourceCode: ctx.source_code!, matchLine: 1, matchText: "sampling/create",
+        lineText: "sampling/create or handleSampling handler", context: ctx, owaspCategory: "MCP05-privilege-escalation",
+      });
+      for (const sig of samplingCodeSignals) {
+        samplingChainBuilder.factor(sig.factor, sig.adjustment, sig.rationale);
+      }
+
+      const samplingChain = samplingChainBuilder.build();
 
       findings.push({
         rule_id: "I12", severity: "critical",
         evidence: "Server uses sampling handlers but did not declare sampling capability.",
         remediation: "Declare sampling capability or remove sampling handlers.",
         owasp_category: "MCP05-privilege-escalation", mitre_technique: "AML.T0054",
-        confidence: 0.85, metadata: { undeclared: "sampling", evidence_chain: samplingChain },
+        confidence: samplingChain.confidence, metadata: { undeclared: "sampling", evidence_chain: samplingChain },
       });
     }
 
@@ -813,7 +886,8 @@ registerTypedRule({
       const match = regex.exec(ctx.source_code);
       if (match) {
         const line = lineNum(ctx.source_code!, match.index);
-        const chain = new EvidenceChainBuilder()
+        const lineText = ctx.source_code!.split("\n")[line - 1] || "";
+        const i15Builder = new EvidenceChainBuilder()
           .source({
             source_type: "file-content",
             location: `line ${line}`,
@@ -855,15 +929,24 @@ registerTypedRule({
               `secure: true, httpOnly: true, sameSite: 'strict' flags.`,
             target: `source_code:${line}`,
             expected_observation: `${desc} — weak session management confirmed.`,
-          })
-          .build();
+          });
+
+        const i15Signals = computeCodeSignals({
+          sourceCode: ctx.source_code!, matchLine: line, matchText: match[0],
+          lineText, context: ctx, owaspCategory: "MCP07-insecure-config",
+        });
+        for (const sig of i15Signals) {
+          i15Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+
+        const chain = i15Builder.build();
 
         findings.push({
           rule_id: "I15", severity: "high",
           evidence: `${desc} at line ${line}.`,
           remediation: "Use crypto.randomUUID() for session IDs. Set secure: true, httpOnly: true on cookies.",
           owasp_category: "MCP07-insecure-config", mitre_technique: "AML.T0061",
-          confidence: 0.82, metadata: { analysis_type: "structural", evidence_chain: chain },
+          confidence: chain.confidence, metadata: { analysis_type: "structural", evidence_chain: chain },
         });
         break;
       }
@@ -887,7 +970,7 @@ registerTypedRule({
       for (const pattern of INJECTION_PATTERNS) {
         const match = pattern.exec(schemaStr);
         if (match) {
-          const chain = new EvidenceChainBuilder()
+          const j3Builder = new EvidenceChainBuilder()
             .source({
               source_type: "external-content",
               location: `tool schema: ${tool.name}`,
@@ -933,15 +1016,21 @@ registerTypedRule({
                 `injection payload.`,
               target: `tool schema: ${tool.name}`,
               expected_observation: "Schema fields contain AI behavioral directives — poisoning confirmed.",
-            })
-            .build();
+            });
+
+          const j3Signals = computeToolSignals(ctx, "MCP01-prompt-injection", tool.name);
+          for (const sig of j3Signals) {
+            j3Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+          }
+
+          const chain = j3Builder.build();
 
           findings.push({
             rule_id: "J3", severity: "critical",
             evidence: `Tool "${tool.name}" has injection in JSON Schema fields (enum/title/const/default): "${schemaStr.slice(0, 100)}".`,
             remediation: "Sanitize all JSON Schema fields — not just descriptions. LLMs process entire schemas.",
             owasp_category: "MCP01-prompt-injection", mitre_technique: "AML.T0054",
-            confidence: 0.88, metadata: { tool_name: tool.name, evidence_chain: chain },
+            confidence: chain.confidence, metadata: { tool_name: tool.name, evidence_chain: chain },
           });
           break;
         }
@@ -967,7 +1056,8 @@ registerTypedRule({
       const match = regex.exec(ctx.source_code);
       if (match) {
         const line = lineNum(ctx.source_code!, match.index);
-        const chain = new EvidenceChainBuilder()
+        const j4LineText = ctx.source_code!.split("\n")[line - 1] || "";
+        const j4Builder = new EvidenceChainBuilder()
           .source({
             source_type: "file-content",
             location: `line ${line}`,
@@ -1010,15 +1100,24 @@ registerTypedRule({
               `(3) environment variables, (4) internal paths. Check if authentication is required.`,
             target: `source_code:${line}`,
             expected_observation: `${desc} — sensitive system information exposed without auth.`,
-          })
-          .build();
+          });
+
+        const j4Signals = computeCodeSignals({
+          sourceCode: ctx.source_code!, matchLine: line, matchText: match[0],
+          lineText: j4LineText, context: ctx, owaspCategory: "MCP07-insecure-config",
+        });
+        for (const sig of j4Signals) {
+          j4Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+
+        const chain = j4Builder.build();
 
         findings.push({
           rule_id: "J4", severity: "high",
           evidence: `${desc} at line ${line}: "${match[0].slice(0, 60)}".`,
           remediation: "Remove detailed health endpoints in production. Only expose /health returning 200 OK.",
           owasp_category: "MCP07-insecure-config", mitre_technique: "AML.T0057",
-          confidence: 0.80, metadata: { analysis_type: "structural", evidence_chain: chain },
+          confidence: chain.confidence, metadata: { analysis_type: "structural", evidence_chain: chain },
         });
         break;
       }
@@ -1043,7 +1142,8 @@ registerTypedRule({
       const match = regex.exec(ctx.source_code);
       if (match) {
         const line = lineNum(ctx.source_code!, match.index);
-        const chain = new EvidenceChainBuilder()
+        const j5LineText = ctx.source_code!.split("\n")[line - 1] || "";
+        const j5Builder = new EvidenceChainBuilder()
           .source({
             source_type: "file-content",
             location: `line ${line}`,
@@ -1093,15 +1193,24 @@ registerTypedRule({
               `Check if this is a legitimate error message or an injection payload.`,
             target: `source_code:${line}`,
             expected_observation: "Tool response contains AI manipulation instructions.",
-          })
-          .build();
+          });
+
+        const j5Signals = computeCodeSignals({
+          sourceCode: ctx.source_code!, matchLine: line, matchText: match[0],
+          lineText: j5LineText, context: ctx, owaspCategory: "MCP01-prompt-injection",
+        });
+        for (const sig of j5Signals) {
+          j5Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+
+        const chain = j5Builder.build();
 
         findings.push({
           rule_id: "J5", severity: "critical",
           evidence: `${desc} at line ${line}: "${match[0].slice(0, 80)}".`,
           remediation: "Tool responses must never contain instructions for the AI. Sanitize all output content.",
           owasp_category: "MCP01-prompt-injection", mitre_technique: "AML.T0054",
-          confidence: 0.82, metadata: { analysis_type: "structural", evidence_chain: chain },
+          confidence: chain.confidence, metadata: { analysis_type: "structural", evidence_chain: chain },
         });
         break;
       }
@@ -1127,7 +1236,7 @@ registerTypedRule({
       for (const pattern of patterns) {
         const match = pattern.exec(desc);
         if (match) {
-          const chain = new EvidenceChainBuilder()
+          const j6Builder = new EvidenceChainBuilder()
             .source({
               source_type: "external-content",
               location: `tool description: ${tool.name}`,
@@ -1172,15 +1281,21 @@ registerTypedRule({
                 `selection.`,
               target: `tool description: ${tool.name}`,
               expected_observation: "Tool description contains preference manipulation language.",
-            })
-            .build();
+            });
+
+          const j6Signals = computeToolSignals(ctx, "MCP02-tool-poisoning", tool.name);
+          for (const sig of j6Signals) {
+            j6Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+          }
+
+          const chain = j6Builder.build();
 
           findings.push({
             rule_id: "J6", severity: "high",
             evidence: `Tool "${tool.name}" manipulates preference: "${match[0]}".`,
             remediation: "Tool descriptions should not instruct the AI to prefer this tool over others.",
             owasp_category: "MCP02-tool-poisoning", mitre_technique: "AML.T0054",
-            confidence: 0.82, metadata: { tool_name: tool.name, evidence_chain: chain },
+            confidence: chain.confidence, metadata: { tool_name: tool.name, evidence_chain: chain },
           });
           break;
         }
@@ -1206,7 +1321,8 @@ registerTypedRule({
       const match = regex.exec(ctx.source_code);
       if (match) {
         const line = lineNum(ctx.source_code!, match.index);
-        const chain = new EvidenceChainBuilder()
+        const j7LineText = ctx.source_code!.split("\n")[line - 1] || "";
+        const j7Builder = new EvidenceChainBuilder()
           .source({
             source_type: "external-content",
             location: `line ${line}`,
@@ -1256,15 +1372,24 @@ registerTypedRule({
               `(escaping, validation, allowlist) is applied before interpolation.`,
             target: `source_code:${line}`,
             expected_observation: "OpenAPI spec field interpolated into code template without sanitization.",
-          })
-          .build();
+          });
+
+        const j7Signals = computeCodeSignals({
+          sourceCode: ctx.source_code!, matchLine: line, matchText: match[0],
+          lineText: j7LineText, context: ctx, owaspCategory: "MCP10-supply-chain",
+        });
+        for (const sig of j7Signals) {
+          j7Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+
+        const chain = j7Builder.build();
 
         findings.push({
           rule_id: "J7", severity: "critical",
           evidence: `${desc} at line ${line}: "${match[0].slice(0, 80)}".`,
           remediation: "Sanitize OpenAPI spec fields before using in generated code. Never interpolate spec fields into templates.",
           owasp_category: "MCP10-supply-chain", mitre_technique: "AML.T0054",
-          confidence: 0.80, metadata: { analysis_type: "structural", evidence_chain: chain },
+          confidence: chain.confidence, metadata: { analysis_type: "structural", evidence_chain: chain },
         });
         break;
       }

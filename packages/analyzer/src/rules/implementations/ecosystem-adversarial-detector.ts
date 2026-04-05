@@ -17,6 +17,7 @@ import type { AnalysisContext } from "../../engine.js";
 import { buildCapabilityGraph } from "../analyzers/capability-graph.js";
 import { damerauLevenshtein } from "../analyzers/similarity.js";
 import { EvidenceChainBuilder } from "../../evidence.js";
+import { computeToolSignals, computeCodeSignals } from "../../confidence-signals.js";
 
 function isTestFile(s: string) { return /(?:__tests?__|\.(?:test|spec)\.)/.test(s); }
 function lineNum(s: string, i: number) { return s.substring(0, i).split("\n").length; }
@@ -73,14 +74,18 @@ registerTypedRule({
             instruction: "Review the server's tool registration code to verify that tool names are validated before being served. Check if there is any schema validation on the name field.",
             target: "Server tool registration logic",
             expected_observation: "No validation on tool name field — empty names are accepted",
-          })
-          .build();
+          });
+        const toolSignals = computeToolSignals(ctx, "MCP07-insecure-config", "(empty)");
+        for (const sig of toolSignals) {
+          chain.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const f4EmptyChain = chain.build();
         findings.push({
           rule_id: "F4", severity: "low",
           evidence: "Tool has empty or missing name (MCP spec requires non-empty name).",
           remediation: "Add a name to all tools per MCP specification.",
           owasp_category: "MCP07-insecure-config", mitre_technique: null,
-          confidence: 0.95, metadata: { evidence_chain: chain },
+          confidence: f4EmptyChain.confidence, metadata: { evidence_chain: f4EmptyChain },
         });
       }
       if (tool.description === null || tool.description === undefined || tool.description.trim().length === 0) {
@@ -125,14 +130,18 @@ registerTypedRule({
             instruction: "Review the tool registration source code to confirm no description is set. Check if this is an oversight or intentional omission.",
             target: "Server tool definition code",
             expected_observation: "Tool is registered without a description parameter",
-          })
-          .build();
+          });
+        const descToolSignals = computeToolSignals(ctx, "MCP07-insecure-config", tool.name);
+        for (const sig of descToolSignals) {
+          chain.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const f4DescChain = chain.build();
         findings.push({
           rule_id: "F4", severity: "low",
           evidence: `Tool "${tool.name}" has no description (recommended by MCP spec).`,
           remediation: "Add descriptions to all tools for proper AI understanding.",
           owasp_category: "MCP07-insecure-config", mitre_technique: null,
-          confidence: 0.70, metadata: { tool_name: tool.name, evidence_chain: chain },
+          confidence: f4DescChain.confidence, metadata: { tool_name: tool.name, evidence_chain: f4DescChain },
         });
       }
     }
@@ -184,13 +193,17 @@ registerTypedRule({
               target: `server:${ctx.server.name}`,
               expected_observation: `Server uses "${official}" namespace but GitHub URL does not match`,
             })
-            .build();
+          const f5DirectSignals = computeToolSignals(ctx, "MCP10-supply-chain", ctx.server.name || "");
+          for (const sig of f5DirectSignals) {
+            f5DirectChain.factor(sig.factor, sig.adjustment, sig.rationale);
+          }
+          const f5DirectBuilt = f5DirectChain.build();
           findings.push({
             rule_id: "F5", severity: "critical",
             evidence: `Server name "${ctx.server.name}" contains official namespace "${official}" but is not from ${official}'s GitHub.`,
             remediation: "Do not use official vendor names in server names unless you are the vendor.",
             owasp_category: "MCP10-supply-chain", mitre_technique: "AML.T0054",
-            confidence: 0.90, metadata: { server_name: ctx.server.name, impersonated: official, evidence_chain: f5DirectChain },
+            confidence: f5DirectBuilt.confidence, metadata: { server_name: ctx.server.name, impersonated: official, evidence_chain: f5DirectBuilt },
           });
         }
       }
@@ -223,14 +236,18 @@ registerTypedRule({
             target: `server:${ctx.server.name}`,
             expected_observation: `Name is ${distance} edit(s) from "${official}" — likely typosquat`,
           })
-          .build();
+        const f5LevenSignals = computeToolSignals(ctx, "MCP10-supply-chain", ctx.server.name || "");
+        for (const sig of f5LevenSignals) {
+          f5LevenChain.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const f5LevenBuilt = f5LevenChain.build();
         findings.push({
           rule_id: "F5", severity: "critical",
           evidence: `Server name "${ctx.server.name}" is ${distance} edit(s) from official "${official}" (typosquat risk).`,
           remediation: "Rename server to avoid confusion with official vendor names.",
           owasp_category: "MCP10-supply-chain", mitre_technique: "AML.T0054",
-          confidence: distance === 1 ? 0.92 : 0.80,
-          metadata: { server_name: ctx.server.name, target: official, distance, evidence_chain: f5LevenChain },
+          confidence: f5LevenBuilt.confidence,
+          metadata: { server_name: ctx.server.name, target: official, distance, evidence_chain: f5LevenBuilt },
         });
       }
     }
@@ -290,7 +307,11 @@ registerTypedRule({
             target: `server:${ctx.server.name}`,
             expected_observation: `New dangerous tools [${dangerousNewTools.join(", ")}] appeared since last scan`,
           })
-          .build();
+        const g6Signals = computeToolSignals(ctx, "MCP02-tool-poisoning", dangerousNewTools[0] || "");
+        for (const sig of g6Signals) {
+          g6Chain.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const g6Built = g6Chain.build();
         findings.push({
           rule_id: "G6", severity: "critical",
           evidence:
@@ -298,7 +319,7 @@ registerTypedRule({
             `Total tools: ${previous.tool_count} → ${current.tool_count}. Possible rug pull.`,
           remediation: "Investigate sudden tool additions. Review new dangerous tools. Consider reverting to previous version.",
           owasp_category: "MCP02-tool-poisoning", mitre_technique: "AML.T0054",
-          confidence: 0.88, metadata: { new_tools: newTools, dangerous_new: dangerousNewTools, delta: toolCountDelta, evidence_chain: g6Chain },
+          confidence: g6Built.confidence, metadata: { new_tools: newTools, dangerous_new: dangerousNewTools, delta: toolCountDelta, evidence_chain: g6Built },
         });
       }
     }
@@ -358,14 +379,27 @@ registerTypedRule({
             instruction: `Review OAuth implementation at line ${lineNum(src, match.index)} for RFC 9700 compliance`,
             target: `source:line ${lineNum(src, match.index)}`,
             expected_observation: desc,
-          })
-          .build();
+          });
+        const matchLineNum = lineNum(src, match.index);
+        const srcLines = src.split("\n");
+        const h1CodeSignals = computeCodeSignals({
+          matchText: match[0],
+          lineText: srcLines[matchLineNum - 1] || match[0],
+          matchLine: matchLineNum,
+          sourceCode: src,
+          context: ctx,
+          owaspCategory: "MCP07-insecure-config",
+        });
+        for (const sig of h1CodeSignals) {
+          h1Chain.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const h1Built = h1Chain.build();
         findings.push({
           rule_id: "H1", severity: "critical",
-          evidence: `OAuth vulnerability: ${desc} at line ${lineNum(src, match.index)}: "${match[0].slice(0, 60)}".`,
+          evidence: `OAuth vulnerability: ${desc} at line ${matchLineNum}: "${match[0].slice(0, 60)}".`,
           remediation: "Follow RFC 9700. Use authorization code flow with PKCE. Never use implicit flow or ROPC.",
           owasp_category: "MCP07-insecure-config", mitre_technique: "AML.T0055",
-          confidence, metadata: { analysis_type: "structural", vulnerability: desc, evidence_chain: h1Chain },
+          confidence: h1Built.confidence, metadata: { analysis_type: "structural", vulnerability: desc, evidence_chain: h1Built },
         });
       }
     }
@@ -416,7 +450,11 @@ registerTypedRule({
             target: `tool:${tool.name}`,
             expected_observation: "Tool accepts agent output/result/response without trust boundary",
           })
-          .build();
+        const h3Signals = computeToolSignals(ctx, "ASI07-insecure-inter-agent-comms", tool.name);
+        for (const sig of h3Signals) {
+          h3Chain.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const h3Built = h3Chain.build();
         findings.push({
           rule_id: "H3", severity: "high",
           evidence:
@@ -424,7 +462,7 @@ registerTypedRule({
             `Compromised upstream agent can propagate injected instructions downstream.`,
           remediation: "Validate and sanitize all inter-agent data. Declare trust boundaries explicitly.",
           owasp_category: "ASI07-insecure-inter-agent-comms", mitre_technique: "AML.T0059",
-          confidence: 0.78, metadata: { tool_name: tool.name, evidence_chain: h3Chain },
+          confidence: h3Built.confidence, metadata: { tool_name: tool.name, evidence_chain: h3Built },
         });
       }
     }

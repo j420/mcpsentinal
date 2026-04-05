@@ -24,6 +24,7 @@ import { registerTypedRule } from "../base.js";
 import type { AnalysisContext } from "../../engine.js";
 import type { OwaspCategory } from "@mcp-sentinel/database";
 import { EvidenceChainBuilder } from "../../evidence.js";
+import { computeToolSignals } from "../../confidence-signals.js";
 
 function makeRule(id: string, name: string, analyzeFn: (ctx: AnalysisContext) => TypedFinding[]): TypedRule {
   return { id, name, analyze: analyzeFn };
@@ -147,7 +148,7 @@ registerTypedRule(makeRule("A2", "Excessive Scope Claims", (ctx) => {
     for (const pattern of SCOPE_CLAIMS) {
       const match = pattern.exec(desc);
       if (match) {
-        const chain = new EvidenceChainBuilder()
+        const a2Builder = new EvidenceChainBuilder()
           .source({
             source_type: "external-content",
             location: `tool:${tool.name}:description`,
@@ -171,14 +172,18 @@ registerTypedRule(makeRule("A2", "Excessive Scope Claims", (ctx) => {
             instruction: `Check tool "${tool.name}" description for overly broad access claims`,
             target: `tool:${tool.name}`,
             expected_observation: `Description contains scope claim: "${match[0]}"`,
-          })
-          .build();
+          });
+        const a2Signals = computeToolSignals(ctx, "MCP06-excessive-permissions", tool.name);
+        for (const sig of a2Signals) {
+          a2Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const chain = a2Builder.build();
         findings.push({
           rule_id: "A2", severity: "high",
           evidence: `Tool "${tool.name}" claims excessive scope: "${match[0]}".`,
           remediation: "Scope tool access to specific directories/resources. Avoid 'all' or 'unrestricted' claims.",
           owasp_category: "MCP06-excessive-permissions", mitre_technique: "AML.T0054",
-          confidence: 0.82, metadata: { tool_name: tool.name, evidence_chain: chain },
+          confidence: chain.confidence, metadata: { tool_name: tool.name, evidence_chain: chain },
         });
         break;
       }
@@ -204,7 +209,7 @@ registerTypedRule(makeRule("A3", "Suspicious URLs in Description", (ctx) => {
     for (const { regex, desc: urlDesc } of SUSPICIOUS_URL_PATTERNS) {
       const match = regex.exec(desc);
       if (match) {
-        const chain = new EvidenceChainBuilder()
+        const a3Builder = new EvidenceChainBuilder()
           .source({
             source_type: "external-content",
             location: `tool:${tool.name}:description`,
@@ -228,14 +233,18 @@ registerTypedRule(makeRule("A3", "Suspicious URLs in Description", (ctx) => {
             instruction: `Check tool "${tool.name}" description for suspicious URLs`,
             target: `tool:${tool.name}`,
             expected_observation: `Description contains ${urlDesc}: "${match[0].slice(0, 60)}"`,
-          })
-          .build();
+          });
+        const a3Signals = computeToolSignals(ctx, "MCP04-data-exfiltration", tool.name);
+        for (const sig of a3Signals) {
+          a3Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const chain = a3Builder.build();
         findings.push({
           rule_id: "A3", severity: "medium",
           evidence: `Tool "${tool.name}" contains ${urlDesc}: "${match[0].slice(0, 60)}".`,
           remediation: "Remove suspicious URLs from tool descriptions. Use only well-known domains.",
           owasp_category: "MCP04-data-exfiltration", mitre_technique: "AML.T0057",
-          confidence: 0.80, metadata: { tool_name: tool.name, url_type: urlDesc, evidence_chain: chain },
+          confidence: chain.confidence, metadata: { tool_name: tool.name, url_type: urlDesc, evidence_chain: chain },
         });
         break;
       }
@@ -270,7 +279,7 @@ registerTypedRule(makeRule("A4", "Cross-Server Tool Name Shadowing", (ctx) => {
   for (const tool of ctx.tools) {
     const normalized = tool.name.toLowerCase().replace(/[-_\s]+/g, "_");
     if (COMMON_TOOL_NAMES.has(normalized)) {
-      const chain = new EvidenceChainBuilder()
+      const a4Builder = new EvidenceChainBuilder()
         .source({
           source_type: "external-content",
           location: `tool:${tool.name}:name`,
@@ -294,14 +303,18 @@ registerTypedRule(makeRule("A4", "Cross-Server Tool Name Shadowing", (ctx) => {
           instruction: `Compare tool "${tool.name}" against official MCP server tool names`,
           target: `tool:${tool.name}`,
           expected_observation: `Tool name "${normalized}" matches a common tool from official servers`,
-        })
-        .build();
+        });
+      const a4Signals = computeToolSignals(ctx, "MCP02-tool-poisoning", tool.name);
+      for (const sig of a4Signals) {
+        a4Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+      }
+      const chain = a4Builder.build();
       findings.push({
         rule_id: "A4", severity: "high",
         evidence: `Tool "${tool.name}" shadows common tool name "${normalized}". May confuse AI into using this instead of a trusted tool.`,
         remediation: "Use a unique, namespaced tool name (e.g., 'myserver_read_file' instead of 'read_file').",
         owasp_category: "MCP02-tool-poisoning", mitre_technique: "AML.T0054",
-        confidence: 0.78, metadata: { tool_name: tool.name, shadowed_name: normalized, evidence_chain: chain },
+        confidence: chain.confidence, metadata: { tool_name: tool.name, shadowed_name: normalized, evidence_chain: chain },
       });
     }
   }
@@ -372,7 +385,7 @@ registerTypedRule(makeRule("A8", "Description-Capability Mismatch", (ctx) => {
 
     if (writeParams.length > 0) {
       const readOnlyClaim = desc.match(READ_ONLY_CLAIMS)?.[0] || "read-only";
-      const chain = new EvidenceChainBuilder()
+      const a8Builder = new EvidenceChainBuilder()
         .source({
           source_type: "external-content",
           location: `tool:${tool.name}:description`,
@@ -395,15 +408,19 @@ registerTypedRule(makeRule("A8", "Description-Capability Mismatch", (ctx) => {
           instruction: `Compare tool "${tool.name}" description claim "${readOnlyClaim}" against its schema parameters`,
           target: `tool:${tool.name}`,
           expected_observation: `Description claims "${readOnlyClaim}" but parameters [${writeParams.join(", ")}] enable writes`,
-        })
-        .build();
+        });
+      const a8Signals = computeToolSignals(ctx, "MCP02-tool-poisoning", tool.name);
+      for (const sig of a8Signals) {
+        a8Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+      }
+      const chain = a8Builder.build();
       findings.push({
         rule_id: "A8", severity: "high",
         evidence:
           `Tool "${tool.name}" claims "${readOnlyClaim}" but has write parameters: [${writeParams.join(", ")}].`,
         remediation: "Update description to accurately reflect capabilities. Remove false read-only claims.",
         owasp_category: "MCP02-tool-poisoning", mitre_technique: "AML.T0054",
-        confidence: 0.85, metadata: { tool_name: tool.name, write_params: writeParams, evidence_chain: chain },
+        confidence: chain.confidence, metadata: { tool_name: tool.name, write_params: writeParams, evidence_chain: chain },
       });
     }
   }
@@ -431,7 +448,7 @@ registerTypedRule(makeRule("B1", "Missing Input Validation", (ctx) => {
     }
 
     if (unconstrained.length > 0) {
-      const chain = new EvidenceChainBuilder()
+      const b1Builder = new EvidenceChainBuilder()
         .source({
           source_type: "user-parameter",
           location: `tool:${tool.name}:input_schema`,
@@ -455,14 +472,18 @@ registerTypedRule(makeRule("B1", "Missing Input Validation", (ctx) => {
           instruction: `Check tool "${tool.name}" schema for missing validation constraints`,
           target: `tool:${tool.name}`,
           expected_observation: `Parameters [${unconstrained.join(", ")}] have no maxLength, enum, pattern, or format constraints`,
-        })
-        .build();
+        });
+      const b1Signals = computeToolSignals(ctx, "MCP07-insecure-config", tool.name);
+      for (const sig of b1Signals) {
+        b1Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+      }
+      const chain = b1Builder.build();
       findings.push({
         rule_id: "B1", severity: "medium",
         evidence: `Tool "${tool.name}" has ${unconstrained.length} unconstrained parameter(s): [${unconstrained.join(", ")}].`,
         remediation: "Add maxLength, enum, pattern, or format constraints to string parameters. Add min/max to numbers.",
         owasp_category: "MCP07-insecure-config", mitre_technique: null,
-        confidence: 0.70, metadata: { tool_name: tool.name, unconstrained, evidence_chain: chain },
+        confidence: chain.confidence, metadata: { tool_name: tool.name, unconstrained, evidence_chain: chain },
       });
     }
   }
@@ -483,7 +504,7 @@ registerTypedRule(makeRule("B2", "Dangerous Parameter Types", (ctx) => {
     const dangerous = props.filter(p => DANGEROUS_PARAM_NAMES.test(p));
 
     if (dangerous.length > 0) {
-      const chain = new EvidenceChainBuilder()
+      const b2Builder = new EvidenceChainBuilder()
         .source({
           source_type: "user-parameter",
           location: `tool:${tool.name}:input_schema`,
@@ -506,14 +527,18 @@ registerTypedRule(makeRule("B2", "Dangerous Parameter Types", (ctx) => {
           instruction: `Check tool "${tool.name}" parameters [${dangerous.join(", ")}] for injection risk`,
           target: `tool:${tool.name}`,
           expected_observation: `Parameters named [${dangerous.join(", ")}] indicate command/SQL/path injection surface`,
-        })
-        .build();
+        });
+      const b2Signals = computeToolSignals(ctx, "MCP03-command-injection", tool.name);
+      for (const sig of b2Signals) {
+        b2Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+      }
+      const chain = b2Builder.build();
       findings.push({
         rule_id: "B2", severity: "high",
         evidence: `Tool "${tool.name}" has dangerous parameter name(s): [${dangerous.join(", ")}].`,
         remediation: "Add strict validation (enum, pattern, maxLength) to parameters that accept commands, paths, SQL, or code.",
         owasp_category: "MCP03-command-injection", mitre_technique: "AML.T0054",
-        confidence: 0.75, metadata: { tool_name: tool.name, dangerous_params: dangerous, evidence_chain: chain },
+        confidence: chain.confidence, metadata: { tool_name: tool.name, dangerous_params: dangerous, evidence_chain: chain },
       });
     }
   }
@@ -528,7 +553,7 @@ registerTypedRule(makeRule("B3", "Excessive Parameter Count", (ctx) => {
     const schema = tool.input_schema as Record<string, unknown> | null;
     const count = Object.keys((schema?.properties || {}) as Record<string, unknown>).length;
     if (count > 15) {
-      const chain = new EvidenceChainBuilder()
+      const b3Builder = new EvidenceChainBuilder()
         .source({
           source_type: "user-parameter",
           location: `tool:${tool.name}:input_schema`,
@@ -552,14 +577,18 @@ registerTypedRule(makeRule("B3", "Excessive Parameter Count", (ctx) => {
           instruction: `Count parameters in tool "${tool.name}" schema`,
           target: `tool:${tool.name}`,
           expected_observation: `Tool has ${count} parameters, exceeding 15-parameter threshold`,
-        })
-        .build();
+        });
+      const b3Signals = computeToolSignals(ctx, "MCP06-excessive-permissions", tool.name);
+      for (const sig of b3Signals) {
+        b3Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+      }
+      const chain = b3Builder.build();
       findings.push({
         rule_id: "B3", severity: "low",
         evidence: `Tool "${tool.name}" has ${count} parameters (threshold: 15). Excessive params increase attack surface.`,
         remediation: "Reduce parameter count. Group related parameters into nested objects.",
         owasp_category: "MCP06-excessive-permissions", mitre_technique: null,
-        confidence: 0.70, metadata: { tool_name: tool.name, param_count: count, evidence_chain: chain },
+        confidence: chain.confidence, metadata: { tool_name: tool.name, param_count: count, evidence_chain: chain },
       });
     }
   }
@@ -572,7 +601,7 @@ registerTypedRule(makeRule("B4", "Schema-less Tools", (ctx) => {
   const findings: TypedFinding[] = [];
   for (const tool of ctx.tools) {
     if (!tool.input_schema) {
-      const chain = new EvidenceChainBuilder()
+      const b4Builder = new EvidenceChainBuilder()
         .source({
           source_type: "user-parameter",
           location: `tool:${tool.name}:input_schema`,
@@ -596,14 +625,18 @@ registerTypedRule(makeRule("B4", "Schema-less Tools", (ctx) => {
           instruction: `Check if tool "${tool.name}" defines an input_schema`,
           target: `tool:${tool.name}`,
           expected_observation: "Tool has no input_schema — AI must guess parameter format",
-        })
-        .build();
+        });
+      const b4Signals = computeToolSignals(ctx, "MCP07-insecure-config", tool.name);
+      for (const sig of b4Signals) {
+        b4Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+      }
+      const chain = b4Builder.build();
       findings.push({
         rule_id: "B4", severity: "medium",
         evidence: `Tool "${tool.name}" has no input schema. AI will guess parameter types.`,
         remediation: "Add a JSON Schema with typed properties for all parameters.",
         owasp_category: "MCP07-insecure-config", mitre_technique: null,
-        confidence: 0.90, metadata: { tool_name: tool.name, evidence_chain: chain },
+        confidence: chain.confidence, metadata: { tool_name: tool.name, evidence_chain: chain },
       });
     }
   }
@@ -684,7 +717,7 @@ registerTypedRule(makeRule("B6", "Unconstrained Additional Properties", (ctx) =>
     if (!schema) continue;
 
     if (schema.additionalProperties === true || (schema.additionalProperties === undefined && schema.properties)) {
-      const chain = new EvidenceChainBuilder()
+      const b6Builder = new EvidenceChainBuilder()
         .source({
           source_type: "user-parameter",
           location: `tool:${tool.name}:input_schema`,
@@ -708,14 +741,18 @@ registerTypedRule(makeRule("B6", "Unconstrained Additional Properties", (ctx) =>
           instruction: `Check tool "${tool.name}" schema for additionalProperties setting`,
           target: `tool:${tool.name}`,
           expected_observation: "additionalProperties is not set to false — arbitrary input accepted",
-        })
-        .build();
+        });
+      const b6Signals = computeToolSignals(ctx, "MCP07-insecure-config", tool.name);
+      for (const sig of b6Signals) {
+        b6Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+      }
+      const chain = b6Builder.build();
       findings.push({
         rule_id: "B6", severity: "medium",
         evidence: `Tool "${tool.name}" allows additional properties (not set to false). Arbitrary input accepted.`,
         remediation: "Set additionalProperties: false in the tool schema to reject unknown parameters.",
         owasp_category: "MCP07-insecure-config", mitre_technique: null,
-        confidence: 0.75, metadata: { tool_name: tool.name, evidence_chain: chain },
+        confidence: chain.confidence, metadata: { tool_name: tool.name, evidence_chain: chain },
       });
     }
   }
@@ -745,7 +782,7 @@ registerTypedRule(makeRule("B7", "Dangerous Default Parameter Values", (ctx) => 
 
       // Check: dangerous default value on security-sensitive parameter
       if (DANGEROUS_DEFAULT_PARAMS.test(name) && /^true$/i.test(defaultVal)) {
-        const b7BoolChain = new EvidenceChainBuilder()
+        const b7BoolBuilder = new EvidenceChainBuilder()
           .source({
             source_type: "user-parameter",
             location: `tool:${tool.name}:param:${name}:default`,
@@ -768,20 +805,24 @@ registerTypedRule(makeRule("B7", "Dangerous Default Parameter Values", (ctx) => 
             instruction: `Check parameter "${name}" in tool "${tool.name}" for dangerous default`,
             target: `tool:${tool.name}:param:${name}`,
             expected_observation: `Parameter "${name}" defaults to "${defaultVal}" — should require explicit opt-in`,
-          })
-          .build();
+          });
+        const b7BoolSignals = computeToolSignals(ctx, "MCP06-excessive-permissions", tool.name);
+        for (const sig of b7BoolSignals) {
+          b7BoolBuilder.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const b7BoolChain = b7BoolBuilder.build();
         findings.push({
           rule_id: "B7", severity: "high",
           evidence: `Tool "${tool.name}", parameter "${name}" defaults to "${defaultVal}". Dangerous default on security-sensitive parameter.`,
           remediation: `Change default of "${name}" to false/null. Require explicit opt-in for destructive operations.`,
           owasp_category: "MCP06-excessive-permissions", mitre_technique: null,
-          confidence: 0.85, metadata: { tool_name: tool.name, param_name: name, default_value: defaultVal, evidence_chain: b7BoolChain },
+          confidence: b7BoolChain.confidence, metadata: { tool_name: tool.name, param_name: name, default_value: defaultVal, evidence_chain: b7BoolChain },
         });
       }
 
       // Check: path defaults to root
       if (/path|dir|directory|folder/i.test(name) && /^\/$/.test(defaultVal)) {
-        const b7RootChain = new EvidenceChainBuilder()
+        const b7RootBuilder = new EvidenceChainBuilder()
           .source({
             source_type: "user-parameter",
             location: `tool:${tool.name}:param:${name}:default`,
@@ -804,14 +845,18 @@ registerTypedRule(makeRule("B7", "Dangerous Default Parameter Values", (ctx) => 
             instruction: `Check parameter "${name}" in tool "${tool.name}" for root path default`,
             target: `tool:${tool.name}:param:${name}`,
             expected_observation: `Parameter "${name}" defaults to "/" — should default to a restricted directory`,
-          })
-          .build();
+          });
+        const b7RootSignals = computeToolSignals(ctx, "MCP06-excessive-permissions", tool.name);
+        for (const sig of b7RootSignals) {
+          b7RootBuilder.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const b7RootChain = b7RootBuilder.build();
         findings.push({
           rule_id: "B7", severity: "high",
           evidence: `Tool "${tool.name}", parameter "${name}" defaults to "/". Root filesystem access by default.`,
           remediation: "Default to a specific, restricted directory instead of root.",
           owasp_category: "MCP06-excessive-permissions", mitre_technique: null,
-          confidence: 0.90, metadata: { tool_name: tool.name, param_name: name, evidence_chain: b7RootChain },
+          confidence: b7RootChain.confidence, metadata: { tool_name: tool.name, param_name: name, evidence_chain: b7RootChain },
         });
       }
     }

@@ -18,6 +18,7 @@ import { registerTypedRule } from "../base.js";
 import type { AnalysisContext } from "../../engine.js";
 import { analyzeASTTaint } from "../analyzers/taint-ast.js";
 import { EvidenceChainBuilder } from "../../evidence.js";
+import { computeCodeSignals } from "../../confidence-signals.js";
 
 function isTestFile(source: string): boolean {
   return /(?:__tests?__|\.(?:test|spec)\.)/.test(source);
@@ -94,7 +95,7 @@ class DockerSocketMountRule implements TypedRule {
             inst.content.includes(":");
 
           if (isVolumeContext) {
-            const p1Chain = new EvidenceChainBuilder()
+            const p1ChainBuilder = new EvidenceChainBuilder()
               .source({
                 source_type: "file-content",
                 location: `Dockerfile/compose line ${inst.line}`,
@@ -117,7 +118,19 @@ class DockerSocketMountRule implements TypedRule {
                 exploitability: "trivial",
                 scenario: "Attacker with container access uses docker.sock to spawn a privileged container, escaping to host",
               })
-              .factor("structural-match", 0.2, "Volume directive directly references container runtime socket path")
+              .factor("structural-match", 0.2, "Volume directive directly references container runtime socket path");
+            const p1Signals = computeCodeSignals({
+              sourceCode: context.source_code,
+              matchLine: inst.line,
+              matchText: inst.content,
+              lineText: inst.content,
+              context,
+              owaspCategory: "MCP07-insecure-config",
+            });
+            for (const sig of p1Signals) {
+              p1ChainBuilder.factor(sig.factor, sig.adjustment, sig.rationale);
+            }
+            const p1Chain = p1ChainBuilder
               .verification({
                 step_type: "check-config",
                 instruction: "Check the volume mount directive for docker.sock or equivalent runtime socket",
@@ -137,7 +150,7 @@ class DockerSocketMountRule implements TypedRule {
                 "For CI, use rootless Docker or Kaniko for image builds.",
               owasp_category: "MCP07-insecure-config",
               mitre_technique: "AML.T0054",
-              confidence: 0.95,
+              confidence: p1Chain.confidence,
               metadata: { analysis_type: "structural", line: inst.line, evidence_chain: p1Chain },
             });
           }
@@ -174,7 +187,7 @@ class DangerousCapabilitiesRule implements TypedRule {
 
       // privileged: true
       if (/privileged\s*:\s*true/i.test(line)) {
-        const p2PrivChain = new EvidenceChainBuilder()
+        const p2PrivBuilder = new EvidenceChainBuilder()
           .source({
             source_type: "file-content",
             location: `container config line ${i + 1}`,
@@ -192,7 +205,19 @@ class DangerousCapabilitiesRule implements TypedRule {
             exploitability: "trivial",
             scenario: "Privileged container can mount host filesystem, load kernel modules, and escape to host",
           })
-          .factor("structural-match", 0.2, "Explicit privileged: true in container security context")
+          .factor("structural-match", 0.2, "Explicit privileged: true in container security context");
+        const p2PrivSignals = computeCodeSignals({
+          sourceCode: context.source_code,
+          matchLine: i + 1,
+          matchText: "privileged: true",
+          lineText: line,
+          context,
+          owaspCategory: "MCP07-insecure-config",
+        });
+        for (const sig of p2PrivSignals) {
+          p2PrivBuilder.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const p2PrivChain = p2PrivBuilder
           .verification({
             step_type: "check-config",
             instruction: "Verify securityContext or container config contains privileged: true",
@@ -209,7 +234,7 @@ class DangerousCapabilitiesRule implements TypedRule {
           remediation: "Remove privileged: true. Use specific capabilities instead.",
           owasp_category: "MCP07-insecure-config",
           mitre_technique: "AML.T0054",
-          confidence: 0.98,
+          confidence: p2PrivChain.confidence,
           metadata: { analysis_type: "structural", line: i + 1, evidence_chain: p2PrivChain },
         });
       }
@@ -217,7 +242,7 @@ class DangerousCapabilitiesRule implements TypedRule {
       // cap_add with dangerous capabilities
       for (const cap of this.DANGEROUS_CAPS) {
         if (line.includes(cap) && /(?:cap_add|capabilities|add)/.test(lines.slice(Math.max(0, i - 3), i + 1).join("\n"))) {
-          const p2CapChain = new EvidenceChainBuilder()
+          const p2CapBuilder = new EvidenceChainBuilder()
             .source({
               source_type: "file-content",
               location: `container config line ${i + 1}`,
@@ -240,7 +265,19 @@ class DangerousCapabilitiesRule implements TypedRule {
               exploitability: cap === "SYS_ADMIN" ? "trivial" : "moderate",
               scenario: `Container with ${cap} can ${cap === "SYS_ADMIN" ? "escape to host via mount namespace" : "perform privileged operations on the host"}`,
             })
-            .factor("structural-match", 0.15, `${cap} found in capabilities context`)
+            .factor("structural-match", 0.15, `${cap} found in capabilities context`);
+          const p2CapSignals = computeCodeSignals({
+            sourceCode: context.source_code,
+            matchLine: i + 1,
+            matchText: cap,
+            lineText: line,
+            context,
+            owaspCategory: "MCP07-insecure-config",
+          });
+          for (const sig of p2CapSignals) {
+            p2CapBuilder.factor(sig.factor, sig.adjustment, sig.rationale);
+          }
+          const p2CapChain = p2CapBuilder
             .verification({
               step_type: "check-config",
               instruction: `Verify ${cap} is listed in cap_add or capabilities.add`,
@@ -257,7 +294,7 @@ class DangerousCapabilitiesRule implements TypedRule {
             remediation: `Remove ${cap} capability. Use the minimum required capabilities.`,
             owasp_category: "MCP07-insecure-config",
             mitre_technique: "AML.T0054",
-            confidence: 0.93,
+            confidence: p2CapChain.confidence,
             metadata: { analysis_type: "structural", line: i + 1, capability: cap, evidence_chain: p2CapChain },
           });
           break;
@@ -268,7 +305,7 @@ class DangerousCapabilitiesRule implements TypedRule {
       if (/host(?:PID|IPC|Network)\s*:\s*true/i.test(line)) {
         const match = line.match(/host(PID|IPC|Network)/i)!;
         const nsType = match[1].toLowerCase();
-        const p2NsChain = new EvidenceChainBuilder()
+        const p2NsBuilder = new EvidenceChainBuilder()
           .source({
             source_type: "file-content",
             location: `container config line ${i + 1}`,
@@ -286,7 +323,19 @@ class DangerousCapabilitiesRule implements TypedRule {
             exploitability: "moderate",
             scenario: `Container with host${match[1]} can ${nsType === "pid" ? "see and signal host processes" : nsType === "network" ? "access host network interfaces and services" : "access host IPC mechanisms"}`,
           })
-          .factor("structural-match", 0.15, `Explicit host${match[1]}: true in pod/container spec`)
+          .factor("structural-match", 0.15, `Explicit host${match[1]}: true in pod/container spec`);
+        const p2NsSignals = computeCodeSignals({
+          sourceCode: context.source_code,
+          matchLine: i + 1,
+          matchText: `host${match[1]}: true`,
+          lineText: line,
+          context,
+          owaspCategory: "MCP07-insecure-config",
+        });
+        for (const sig of p2NsSignals) {
+          p2NsBuilder.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const p2NsChain = p2NsBuilder
           .verification({
             step_type: "check-config",
             instruction: `Verify host${match[1]}: true in the pod or container specification`,
@@ -301,7 +350,7 @@ class DangerousCapabilitiesRule implements TypedRule {
           remediation: `Remove host${match[1]}. Container should use its own isolated namespace.`,
           owasp_category: "MCP07-insecure-config",
           mitre_technique: "AML.T0054",
-          confidence: 0.95,
+          confidence: p2NsChain.confidence,
           metadata: { analysis_type: "structural", line: i + 1, evidence_chain: p2NsChain },
         });
       }
@@ -400,7 +449,7 @@ class CloudMetadataAccessRule implements TypedRule {
           // Skip if it's a block rule (blocking metadata is good)
           if (/(?:block|deny|reject|firewall|iptables|REJECT|DROP)/i.test(lineText)) continue;
 
-          const p3PatternChain = new EvidenceChainBuilder()
+          const p3PatternBuilder = new EvidenceChainBuilder()
             .source({
               source_type: "file-content",
               location: `line ${line}`,
@@ -418,7 +467,19 @@ class CloudMetadataAccessRule implements TypedRule {
               exploitability: "moderate",
               scenario: "Cloud metadata access leaks IAM credentials, API keys, and instance identity tokens",
             })
-            .factor("pattern-match", 0.1, "Metadata endpoint URL found but taint flow not confirmed via AST")
+            .factor("pattern-match", 0.1, "Metadata endpoint URL found but taint flow not confirmed via AST");
+          const p3PatternSignals = computeCodeSignals({
+            sourceCode: context.source_code,
+            matchLine: line,
+            matchText: match[0],
+            lineText: lineText,
+            context,
+            owaspCategory: "MCP07-insecure-config",
+          });
+          for (const sig of p3PatternSignals) {
+            p3PatternBuilder.factor(sig.factor, sig.adjustment, sig.rationale);
+          }
+          const p3PatternChain = p3PatternBuilder
             .verification({
               step_type: "inspect-source",
               instruction: "Check if the metadata endpoint URL is used in an HTTP request context",
@@ -437,7 +498,7 @@ class CloudMetadataAccessRule implements TypedRule {
               "for credentials. If metadata access is required, use IMDSv2 with session tokens.",
             owasp_category: "MCP07-insecure-config",
             mitre_technique: "AML.T0054",
-            confidence: 0.88,
+            confidence: p3PatternChain.confidence,
             metadata: { analysis_type: "pattern", line, evidence_chain: p3PatternChain },
           });
         }
@@ -478,12 +539,13 @@ class TLSBypassRule implements TypedRule {
       { regex: /curl\s+(?:-k|--insecure)/g, desc: "curl --insecure", lang: "CLI", confidence: 0.92 },
     ];
 
-    for (const { regex, desc, lang, confidence } of patterns) {
+    for (const { regex, desc, lang } of patterns) {
       regex.lastIndex = 0;
       const match = regex.exec(source);
       if (match) {
         const line = getLineNumber(source, match.index);
-        const p4Chain = new EvidenceChainBuilder()
+        const lineText = source.split("\n")[line - 1] || "";
+        const p4Builder = new EvidenceChainBuilder()
           .source({
             source_type: "file-content",
             location: `line ${line}`,
@@ -501,7 +563,19 @@ class TLSBypassRule implements TypedRule {
             exploitability: "moderate",
             scenario: "MITM attacker intercepts traffic due to disabled TLS validation, capturing credentials and sensitive data in transit",
           })
-          .factor("structural-match", 0.15, `${lang} TLS bypass pattern detected in source`)
+          .factor("structural-match", 0.15, `${lang} TLS bypass pattern detected in source`);
+        const p4Signals = computeCodeSignals({
+          sourceCode: context.source_code,
+          matchLine: line,
+          matchText: match[0],
+          lineText,
+          context,
+          owaspCategory: "MCP07-insecure-config",
+        });
+        for (const sig of p4Signals) {
+          p4Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const p4Chain = p4Builder
           .verification({
             step_type: "inspect-source",
             instruction: `Search for TLS validation bypass patterns (${desc}) in the source code`,
@@ -520,7 +594,7 @@ class TLSBypassRule implements TypedRule {
             "Use NODE_EXTRA_CA_CERTS for custom CAs instead of disabling validation.",
           owasp_category: "MCP07-insecure-config",
           mitre_technique: "AML.T0054",
-          confidence,
+          confidence: p4Chain.confidence,
           metadata: { analysis_type: "structural", line, language: lang, evidence_chain: p4Chain },
         });
       }
@@ -548,7 +622,7 @@ class SecretsInBuildLayersRule implements TypedRule {
     for (const inst of instructions) {
       // ARG with secret-like names
       if (inst.directive === "ARG" && this.SECRET_ENV_NAMES.test(inst.content)) {
-        const p5ArgChain = new EvidenceChainBuilder()
+        const p5ArgBuilder = new EvidenceChainBuilder()
           .source({
             source_type: "file-content",
             location: `Dockerfile line ${inst.line}`,
@@ -571,7 +645,19 @@ class SecretsInBuildLayersRule implements TypedRule {
             exploitability: "trivial",
             scenario: "Attacker pulls the image and runs `docker history --no-trunc` to extract build-time credentials",
           })
-          .factor("structural-match", 0.15, "ARG name matches credential pattern (PASSWORD, SECRET, TOKEN, etc.)")
+          .factor("structural-match", 0.15, "ARG name matches credential pattern (PASSWORD, SECRET, TOKEN, etc.)");
+        const p5ArgSignals = computeCodeSignals({
+          sourceCode: context.source_code,
+          matchLine: inst.line,
+          matchText: inst.content,
+          lineText: inst.content,
+          context,
+          owaspCategory: "MCP07-insecure-config",
+        });
+        for (const sig of p5ArgSignals) {
+          p5ArgBuilder.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const p5ArgChain = p5ArgBuilder
           .verification({
             step_type: "inspect-description",
             instruction: "Check the Dockerfile for ARG directives with secret-like names",
@@ -590,14 +676,14 @@ class SecretsInBuildLayersRule implements TypedRule {
             "Never pass credentials via ARG. Use runtime env vars or secrets managers.",
           owasp_category: "MCP07-insecure-config",
           mitre_technique: "AML.T0057",
-          confidence: 0.92,
+          confidence: p5ArgChain.confidence,
           metadata: { analysis_type: "structural", line: inst.line, evidence_chain: p5ArgChain },
         });
       }
 
       // ENV with secret-like names
       if (inst.directive === "ENV" && this.SECRET_ENV_NAMES.test(inst.content)) {
-        const p5EnvChain = new EvidenceChainBuilder()
+        const p5EnvBuilder = new EvidenceChainBuilder()
           .source({
             source_type: "file-content",
             location: `Dockerfile line ${inst.line}`,
@@ -620,7 +706,19 @@ class SecretsInBuildLayersRule implements TypedRule {
             exploitability: "trivial",
             scenario: "Attacker inspects the image or runs a container to read environment variables containing secrets",
           })
-          .factor("structural-match", 0.15, "ENV name matches credential pattern (PASSWORD, SECRET, TOKEN, etc.)")
+          .factor("structural-match", 0.15, "ENV name matches credential pattern (PASSWORD, SECRET, TOKEN, etc.)");
+        const p5EnvSignals = computeCodeSignals({
+          sourceCode: context.source_code,
+          matchLine: inst.line,
+          matchText: inst.content,
+          lineText: inst.content,
+          context,
+          owaspCategory: "MCP07-insecure-config",
+        });
+        for (const sig of p5EnvSignals) {
+          p5EnvBuilder.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const p5EnvChain = p5EnvBuilder
           .verification({
             step_type: "inspect-description",
             instruction: "Check the Dockerfile for ENV directives with secret-like names",
@@ -637,14 +735,14 @@ class SecretsInBuildLayersRule implements TypedRule {
           remediation: "Pass secrets at runtime via -e flag or Docker secrets, not at build time.",
           owasp_category: "MCP07-insecure-config",
           mitre_technique: "AML.T0057",
-          confidence: 0.90,
+          confidence: p5EnvChain.confidence,
           metadata: { analysis_type: "structural", line: inst.line, evidence_chain: p5EnvChain },
         });
       }
 
       // COPY .env file
       if (inst.directive === "COPY" && /\.env\b/.test(inst.content)) {
-        const p5CopyChain = new EvidenceChainBuilder()
+        const p5CopyBuilder = new EvidenceChainBuilder()
           .source({
             source_type: "file-content",
             location: `Dockerfile line ${inst.line}`,
@@ -667,7 +765,19 @@ class SecretsInBuildLayersRule implements TypedRule {
             exploitability: "trivial",
             scenario: "Attacker extracts .env file from the image layer to obtain database URLs, API keys, and passwords",
           })
-          .factor("structural-match", 0.2, "COPY directive explicitly includes .env file")
+          .factor("structural-match", 0.2, "COPY directive explicitly includes .env file");
+        const p5CopySignals = computeCodeSignals({
+          sourceCode: context.source_code,
+          matchLine: inst.line,
+          matchText: inst.content,
+          lineText: inst.content,
+          context,
+          owaspCategory: "MCP07-insecure-config",
+        });
+        for (const sig of p5CopySignals) {
+          p5CopyBuilder.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const p5CopyChain = p5CopyBuilder
           .verification({
             step_type: "inspect-description",
             instruction: "Check the Dockerfile for COPY directives that include .env files",
@@ -683,7 +793,7 @@ class SecretsInBuildLayersRule implements TypedRule {
           remediation: "Add .env to .dockerignore. Use Docker secrets or runtime env vars.",
           owasp_category: "MCP07-insecure-config",
           mitre_technique: "AML.T0057",
-          confidence: 0.95,
+          confidence: p5CopyChain.confidence,
           metadata: { analysis_type: "structural", line: inst.line, evidence_chain: p5CopyChain },
         });
       }
@@ -714,12 +824,13 @@ class LDPreloadRule implements TypedRule {
       { regex: /ptrace\s*\(\s*PTRACE_ATTACH/g, desc: "ptrace attach to another process", confidence: 0.85 },
     ];
 
-    for (const { regex, desc, confidence } of patterns) {
+    for (const { regex, desc } of patterns) {
       regex.lastIndex = 0;
       const match = regex.exec(source);
       if (match) {
         const line = getLineNumber(source, match.index);
-        const p6Chain = new EvidenceChainBuilder()
+        const lineText = source.split("\n")[line - 1] || "";
+        const p6Builder = new EvidenceChainBuilder()
           .source({
             source_type: "file-content",
             location: `line ${line}`,
@@ -737,7 +848,19 @@ class LDPreloadRule implements TypedRule {
             exploitability: "moderate",
             scenario: "Attacker places a malicious shared library at the specified path; LD_PRELOAD/dlopen loads it into every process, achieving persistent code execution",
           })
-          .factor("structural-match", 0.15, "Library hijacking pattern detected in source")
+          .factor("structural-match", 0.15, "Library hijacking pattern detected in source");
+        const p6Signals = computeCodeSignals({
+          sourceCode: context.source_code,
+          matchLine: line,
+          matchText: match[0],
+          lineText,
+          context,
+          owaspCategory: "MCP07-insecure-config",
+        });
+        for (const sig of p6Signals) {
+          p6Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+        }
+        const p6Chain = p6Builder
           .verification({
             step_type: "inspect-source",
             instruction: "Search for LD_PRELOAD, DYLD_INSERT_LIBRARIES, dlopen, or /proc/pid/mem patterns",
@@ -754,7 +877,7 @@ class LDPreloadRule implements TypedRule {
             "If dynamic loading is needed, validate library paths against an allowlist.",
           owasp_category: "MCP07-insecure-config",
           mitre_technique: "AML.T0054",
-          confidence,
+          confidence: p6Chain.confidence,
           metadata: { analysis_type: "structural", line, evidence_chain: p6Chain },
         });
       }
@@ -799,7 +922,7 @@ class HostFilesystemMountRule implements TypedRule {
 
       for (const { pattern, desc } of this.SENSITIVE_PATHS) {
         if (pattern.test(line)) {
-          const p7Chain = new EvidenceChainBuilder()
+          const p7Builder = new EvidenceChainBuilder()
             .source({
               source_type: "file-content",
               location: `container config line ${i + 1}`,
@@ -822,7 +945,19 @@ class HostFilesystemMountRule implements TypedRule {
               exploitability: "trivial",
               scenario: `Attacker with container access reads ${desc} to obtain SSH keys, system credentials, or configuration files from the host`,
             })
-            .factor("structural-match", 0.15, `Sensitive host path (${desc}) in volume mount context`)
+            .factor("structural-match", 0.15, `Sensitive host path (${desc}) in volume mount context`);
+          const p7Signals = computeCodeSignals({
+            sourceCode: context.source_code,
+            matchLine: i + 1,
+            matchText: line.trim(),
+            lineText: line,
+            context,
+            owaspCategory: "MCP07-insecure-config",
+          });
+          for (const sig of p7Signals) {
+            p7Builder.factor(sig.factor, sig.adjustment, sig.rationale);
+          }
+          const p7Chain = p7Builder
             .verification({
               step_type: "check-config",
               instruction: "Verify the volume mount references a sensitive host directory",
@@ -841,7 +976,7 @@ class HostFilesystemMountRule implements TypedRule {
               "Use named volumes instead of host path mounts. Never mount /, /etc, /root, or ~/.ssh.",
             owasp_category: "MCP07-insecure-config",
             mitre_technique: "AML.T0054",
-            confidence: 0.90,
+            confidence: p7Chain.confidence,
             metadata: { analysis_type: "structural", line: i + 1, sensitive_path: desc, evidence_chain: p7Chain },
           });
           break;

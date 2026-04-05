@@ -537,8 +537,8 @@ class ExfiltrationChainRule implements TypedRule {
         })
         .factor(
           "chain-length",
-          (pattern.tools_involved.length - 2) * 0.1,
-          `${pattern.tools_involved.length}-step chain: longer chains are harder to detect but still exploitable`,
+          -(Math.max(0, pattern.tools_involved.length - 2) * 0.05),
+          `${pattern.tools_involved.length}-step chain: each hop beyond 2 adds uncertainty (-0.05/hop)`,
         )
         .verification({
           step_type: "inspect-description",

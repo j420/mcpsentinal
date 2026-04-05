@@ -15,6 +15,7 @@ import type { TypedRule, TypedFinding } from "../base.js";
 import { registerTypedRule } from "../base.js";
 import type { AnalysisContext } from "../../engine.js";
 import { EvidenceChainBuilder } from "../../evidence.js";
+import { computeCodeSignals } from "../../confidence-signals.js";
 
 function isTestFile(source: string): boolean {
   return /(?:__tests?__|\.(?:test|spec)\.)/.test(source);
@@ -99,7 +100,7 @@ class ManifestConfusionRule implements TypedRule {
       if (scripts) {
         const prepub = scripts.prepublish || scripts.prepublishOnly;
         if (prepub && /package\.json/.test(prepub) && !/tsc|build|compile|lint|typecheck/.test(prepub)) {
-          const l5Chain = new EvidenceChainBuilder()
+          const l5Builder = new EvidenceChainBuilder()
             .source({
               source_type: "file-content",
               location: "package.json → scripts.prepublish(Only)",
@@ -142,8 +143,15 @@ class ManifestConfusionRule implements TypedRule {
                 "malicious dependencies not visible in the repo, (2) entry point swap — redirecting `main` " +
                 "or `exports` to a backdoored file, (3) bin field hijacking — overriding system commands.",
             })
-            .factor("structural_confirmed", 0.1, "Structural analysis confirmed prepublish script references package.json with non-build commands")
-            .reference({
+            .factor("structural_confirmed", 0.1, "Structural analysis confirmed prepublish script references package.json with non-build commands");
+          const l5MatchLine = getLineNumber(context.source_code!, offset);
+          const l5LineText = context.source_code!.split("\n")[l5MatchLine - 1] || "";
+          const l5Signals = computeCodeSignals({
+            sourceCode: context.source_code!, matchLine: l5MatchLine, matchText: prepub,
+            lineText: l5LineText, context, owaspCategory: "MCP10-supply-chain",
+          });
+          for (const sig of l5Signals) { l5Builder.factor(sig.factor, sig.adjustment, sig.rationale); }
+          l5Builder.reference({
               id: "npm-manifest-confusion-2023",
               title: "Darcy Clarke: npm Manifest Confusion (July 2023)",
               year: 2023,
@@ -180,8 +188,8 @@ class ManifestConfusionRule implements TypedRule {
               target: "repository package.json vs published package.json",
               expected_observation:
                 "Published manifest differs from repository — manifest confusion confirmed.",
-            })
-            .build();
+            });
+          const l5Chain = l5Builder.build();
 
           findings.push({
             rule_id: "L5",
@@ -195,7 +203,7 @@ class ManifestConfusionRule implements TypedRule {
               "Never modify package.json in prepublish — it enables manifest confusion attacks.",
             owasp_category: "MCP10-supply-chain",
             mitre_technique: "AML.T0017",
-            confidence: 0.90,
+            confidence: l5Chain.confidence,
             metadata: { analysis_type: "structural", script: prepub, evidence_chain: l5Chain },
           });
         }
@@ -205,7 +213,7 @@ class ManifestConfusionRule implements TypedRule {
       if (bin && typeof bin === "object") {
         for (const [name, path] of Object.entries(bin)) {
           if (SYSTEM_COMMANDS.has(name)) {
-            const binChain = new EvidenceChainBuilder()
+            const binBuilder = new EvidenceChainBuilder()
               .source({
                 source_type: "file-content",
                 location: `package.json → bin.${name}`,
@@ -245,8 +253,15 @@ class ManifestConfusionRule implements TypedRule {
                   `user's full privileges. This is especially dangerous for commands like "curl", ` +
                   `"git", "ssh", and "sudo" which are used in security-sensitive contexts.`,
               })
-              .factor("structural_confirmed", 0.1, `Structural analysis confirmed bin entry "${name}" matches known system command`)
-              .reference({
+              .factor("structural_confirmed", 0.1, `Structural analysis confirmed bin entry "${name}" matches known system command`);
+            const binMatchLine = getLineNumber(context.source_code!, offset);
+            const binLineText = context.source_code!.split("\n")[binMatchLine - 1] || "";
+            const binSignals = computeCodeSignals({
+              sourceCode: context.source_code!, matchLine: binMatchLine, matchText: `"${name}": "${path}"`,
+              lineText: binLineText, context, owaspCategory: "MCP10-supply-chain",
+            });
+            for (const sig of binSignals) { binBuilder.factor(sig.factor, sig.adjustment, sig.rationale); }
+            binBuilder.reference({
                 id: "CWE-426",
                 title: "Untrusted Search Path",
                 relevance:
@@ -274,8 +289,8 @@ class ManifestConfusionRule implements TypedRule {
                 target: "installation scope and downstream command usage",
                 expected_observation:
                   `Package shadows "${name}" — any downstream invocation of "${name}" executes attacker code.`,
-              })
-              .build();
+              });
+            const binChain = binBuilder.build();
 
             findings.push({
               rule_id: "L14",
@@ -288,14 +303,14 @@ class ManifestConfusionRule implements TypedRule {
                 `Rename the bin entry from "${name}" to a unique name that doesn't shadow system commands.`,
               owasp_category: "MCP10-supply-chain",
               mitre_technique: "AML.T0017",
-              confidence: 0.95,
+              confidence: binChain.confidence,
               metadata: { analysis_type: "structural", bin_name: name, bin_path: path, evidence_chain: binChain },
             });
           }
 
           // Hidden entry point (starts with dot or double underscore)
           if (/^(?:\.|__)/.test(path)) {
-            const hiddenChain = new EvidenceChainBuilder()
+            const hiddenBuilder = new EvidenceChainBuilder()
               .source({
                 source_type: "file-content",
                 location: `package.json → bin.${name}`,
@@ -328,8 +343,15 @@ class ManifestConfusionRule implements TypedRule {
                   "it evades casual code review and directory listing during security audits. The file " +
                   "could contain a backdoor, data exfiltration logic, or reverse shell.",
               })
-              .factor("structural_confirmed", 0.05, "Structural analysis confirmed bin entry points to hidden file path")
-              .reference({
+              .factor("structural_confirmed", 0.05, "Structural analysis confirmed bin entry points to hidden file path");
+            const hiddenMatchLine = getLineNumber(context.source_code!, offset);
+            const hiddenLineText = context.source_code!.split("\n")[hiddenMatchLine - 1] || "";
+            const hiddenSignals = computeCodeSignals({
+              sourceCode: context.source_code!, matchLine: hiddenMatchLine, matchText: `"${name}": "${path}"`,
+              lineText: hiddenLineText, context, owaspCategory: "MCP10-supply-chain",
+            });
+            for (const sig of hiddenSignals) { hiddenBuilder.factor(sig.factor, sig.adjustment, sig.rationale); }
+            hiddenBuilder.reference({
                 id: "CWE-506",
                 title: "Embedded Malicious Code",
                 relevance:
@@ -344,8 +366,8 @@ class ManifestConfusionRule implements TypedRule {
                   `encoded strings, obfuscated code).`,
                 target: `file: ${path}`,
                 expected_observation: "Hidden file contains concealed executable code.",
-              })
-              .build();
+              });
+            const hiddenChain = hiddenBuilder.build();
 
             findings.push({
               rule_id: "L14",
@@ -356,7 +378,7 @@ class ManifestConfusionRule implements TypedRule {
               remediation: "bin entry points should be visible files in the package root or dist directory.",
               owasp_category: "MCP10-supply-chain",
               mitre_technique: "AML.T0017",
-              confidence: 0.85,
+              confidence: hiddenChain.confidence,
               metadata: { analysis_type: "structural", evidence_chain: hiddenChain },
             });
           }
@@ -375,7 +397,7 @@ class ManifestConfusionRule implements TypedRule {
               /(?:backdoor|payload|hook|inject|hidden)/.test(p)
             );
             if (suspiciousPath) {
-              const exportChain = new EvidenceChainBuilder()
+              const exportBuilder = new EvidenceChainBuilder()
                 .source({
                   source_type: "file-content",
                   location: 'package.json → exports["."]',
@@ -416,8 +438,15 @@ class ManifestConfusionRule implements TypedRule {
                     `import path but the victim's bundler uses require (or vice versa), the malicious ` +
                     "code executes undetected. This is a dual-format supply chain attack.",
                 })
-                .factor("structural_confirmed", 0.1, "Structural analysis confirmed divergent exports paths with suspicious filename")
-                .reference({
+                .factor("structural_confirmed", 0.1, "Structural analysis confirmed divergent exports paths with suspicious filename");
+              const exportMatchLine = getLineNumber(context.source_code!, offset);
+              const exportLineText = context.source_code!.split("\n")[exportMatchLine - 1] || "";
+              const exportSignals = computeCodeSignals({
+                sourceCode: context.source_code!, matchLine: exportMatchLine, matchText: suspiciousPath,
+                lineText: exportLineText, context, owaspCategory: "MCP10-supply-chain",
+              });
+              for (const sig of exportSignals) { exportBuilder.factor(sig.factor, sig.adjustment, sig.rationale); }
+              exportBuilder.reference({
                   id: "CWE-506",
                   title: "Embedded Malicious Code",
                   relevance:
@@ -444,8 +473,8 @@ class ManifestConfusionRule implements TypedRule {
                   target: `diff: ${importPath} vs ${requirePath}`,
                   expected_observation:
                     "Entry points have materially different functionality — not just ESM/CJS wrappers.",
-                })
-                .build();
+                });
+              const exportChain = exportBuilder.build();
 
               findings.push({
                 rule_id: "L14",
@@ -458,7 +487,7 @@ class ManifestConfusionRule implements TypedRule {
                   "Divergent paths with suspicious names indicate hidden payload delivery.",
                 owasp_category: "MCP10-supply-chain",
                 mitre_technique: "AML.T0017",
-                confidence: 0.90,
+                confidence: exportChain.confidence,
                 metadata: { analysis_type: "structural", evidence_chain: exportChain },
               });
             }
@@ -499,7 +528,7 @@ class BuildArtifactTamperingRule implements TypedRule {
         const isBuildTool = /(?:tsc|esbuild|rollup|webpack|vite|babel|swc|minify|terser|uglify)/i.test(script);
 
         if (modifiesDist && !isBuildTool) {
-          const l12Chain = new EvidenceChainBuilder()
+          const l12Builder = new EvidenceChainBuilder()
             .source({
               source_type: "file-content",
               location: `package.json → scripts.${hook}`,
@@ -541,8 +570,15 @@ class BuildArtifactTamperingRule implements TypedRule {
                 "An attacker can insert a backdoor, data exfiltration hook, or dependency override " +
                 "that exists only in the published artifact.",
             })
-            .factor("structural_confirmed", 0.1, `Structural analysis confirmed ${hook} script modifies dist/ files with non-build tools`)
-            .reference({
+            .factor("structural_confirmed", 0.1, `Structural analysis confirmed ${hook} script modifies dist/ files with non-build tools`);
+          const l12MatchLine = getLineNumber(context.source_code!, json === blocks[0]?.json ? 0 : context.source_code!.indexOf(script));
+          const l12LineText = context.source_code!.split("\n")[l12MatchLine - 1] || "";
+          const l12Signals = computeCodeSignals({
+            sourceCode: context.source_code!, matchLine: l12MatchLine, matchText: script.slice(0, 100),
+            lineText: l12LineText, context, owaspCategory: "MCP10-supply-chain",
+          });
+          for (const sig of l12Signals) { l12Builder.factor(sig.factor, sig.adjustment, sig.rationale); }
+          l12Builder.reference({
               id: "SLSA-Build-L2",
               title: "SLSA Framework: Build Integrity Requirements",
               year: 2024,
@@ -578,8 +614,8 @@ class BuildArtifactTamperingRule implements TypedRule {
               target: "dist/ directory before and after post-build hook",
               expected_observation:
                 "File hashes differ — dist/ contents modified after build step completed.",
-            })
-            .build();
+            });
+          const l12Chain = l12Builder.build();
 
           findings.push({
             rule_id: "L12",
@@ -594,7 +630,7 @@ class BuildArtifactTamperingRule implements TypedRule {
               "Use reproducible builds with integrity checksums.",
             owasp_category: "MCP10-supply-chain",
             mitre_technique: "AML.T0017",
-            confidence: 0.88,
+            confidence: l12Chain.confidence,
             metadata: { analysis_type: "structural", hook, script, evidence_chain: l12Chain },
           });
         }
@@ -606,7 +642,7 @@ class BuildArtifactTamperingRule implements TypedRule {
       if (testScript && publishScript) {
         const hasModifyBetween = /(?:sed|awk|cat\s*>>|echo\s*>>).*(?:dist|build|lib)/i.test(publishScript);
         if (hasModifyBetween) {
-          const l12PubChain = new EvidenceChainBuilder()
+          const l12PubBuilder = new EvidenceChainBuilder()
             .source({
               source_type: "file-content",
               location: "package.json → scripts.prepublish(Only)",
@@ -644,8 +680,15 @@ class BuildArtifactTamperingRule implements TypedRule {
                 "published package. This test-coverage gap can conceal injected backdoors, modified " +
                 "dependencies, or altered function behavior that would have been caught by the test suite.",
             })
-            .factor("structural_confirmed", 0.05, "Structural analysis confirmed prepublish modifies dist/ with non-build tools")
-            .reference({
+            .factor("structural_confirmed", 0.05, "Structural analysis confirmed prepublish modifies dist/ with non-build tools");
+          const l12PubMatchLine = getLineNumber(context.source_code!, context.source_code!.indexOf(publishScript) >= 0 ? context.source_code!.indexOf(publishScript) : 0);
+          const l12PubLineText = context.source_code!.split("\n")[l12PubMatchLine - 1] || "";
+          const l12PubSignals = computeCodeSignals({
+            sourceCode: context.source_code!, matchLine: l12PubMatchLine, matchText: publishScript.slice(0, 100),
+            lineText: l12PubLineText, context, owaspCategory: "MCP10-supply-chain",
+          });
+          for (const sig of l12PubSignals) { l12PubBuilder.factor(sig.factor, sig.adjustment, sig.rationale); }
+          l12PubBuilder.reference({
               id: "SLSA-Build-L2",
               title: "SLSA Framework: Build Integrity",
               year: 2024,
@@ -659,8 +702,8 @@ class BuildArtifactTamperingRule implements TypedRule {
                 `legitimate purpose (e.g., version stamping) or introduces untested code.`,
               target: "package.json → scripts.prepublish(Only)",
               expected_observation: "prepublish modifies build output after test execution.",
-            })
-            .build();
+            });
+          const l12PubChain = l12PubBuilder.build();
 
           findings.push({
             rule_id: "L12",
@@ -673,7 +716,7 @@ class BuildArtifactTamperingRule implements TypedRule {
               "Post-test modifications are invisible to quality gates.",
             owasp_category: "MCP10-supply-chain",
             mitre_technique: "AML.T0017",
-            confidence: 0.80,
+            confidence: l12PubChain.confidence,
             metadata: { analysis_type: "structural", evidence_chain: l12PubChain },
           });
         }
@@ -735,7 +778,7 @@ class RegistrySubstitutionRule implements TypedRule {
         // Skip local/internal registries (these are expected in enterprise)
         if (LOCAL_REGISTRIES.some((r) => r.test(url))) continue;
 
-        const k10Chain = new EvidenceChainBuilder()
+        const k10Builder = new EvidenceChainBuilder()
           .source({
             source_type: "file-content",
             location: `line ${line}`,
@@ -776,8 +819,14 @@ class RegistrySubstitutionRule implements TypedRule {
               "Alex Birsan's dependency confusion research (2021) demonstrated this attack against " +
               "Apple, Microsoft, and PayPal by publishing packages to a controlled registry.",
           })
-          .factor("structural_confirmed", 0.05, `Registry URL does not match any known trusted ${type} registry`)
-          .reference({
+          .factor("structural_confirmed", 0.05, `Registry URL does not match any known trusted ${type} registry`);
+        const k10LineText = source.split("\n")[line - 1] || "";
+        const k10Signals = computeCodeSignals({
+          sourceCode: source, matchLine: line, matchText: match[0],
+          lineText: k10LineText, context, owaspCategory: "MCP10-supply-chain",
+        });
+        for (const sig of k10Signals) { k10Builder.factor(sig.factor, sig.adjustment, sig.rationale); }
+        k10Builder.reference({
             id: "dependency-confusion-2021",
             title: "Alex Birsan: Dependency Confusion (February 2021)",
             year: 2021,
@@ -816,8 +865,8 @@ class RegistrySubstitutionRule implements TypedRule {
             target: "package manager integrity verification and registry scoping",
             expected_observation:
               "No integrity verification — packages from non-standard registry accepted without hash checks.",
-          })
-          .build();
+          });
+        const k10Chain = k10Builder.build();
 
         findings.push({
           rule_id: "K10",
@@ -831,7 +880,7 @@ class RegistrySubstitutionRule implements TypedRule {
             `If using a private registry, ensure it proxies from the official source.`,
           owasp_category: "MCP10-supply-chain",
           mitre_technique: "AML.T0054",
-          confidence: 0.80,
+          confidence: k10Chain.confidence,
           metadata: { analysis_type: "pattern", registry_type: type, url, line, evidence_chain: k10Chain },
         });
         break;

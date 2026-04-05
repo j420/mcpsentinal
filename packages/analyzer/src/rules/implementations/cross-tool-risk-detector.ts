@@ -28,6 +28,7 @@ import {
   analyzeToolSet,
 } from "../analyzers/schema-inference.js";
 import { EvidenceChainBuilder } from "../../evidence.js";
+import { computeToolSignals } from "../../confidence-signals.js";
 
 // ─── I1: Annotation Deception ──────────────────────────────────────────────
 
@@ -248,8 +249,10 @@ class AnnotationDeceptionRule implements TypedRule {
               instruction: `Check tool "${tool.name}" annotations for destructiveHint: true`,
               target: `tool:${tool.name}:annotations`,
               expected_observation: `destructiveHint is absent despite params [${destructiveParams.join(", ")}]`,
-            })
-            .build();
+            });
+          const i2ToolSignals = computeToolSignals(context, "MCP06-excessive-permissions", tool.name);
+          for (const sig of i2ToolSignals) { i2Chain.factor(sig.factor, sig.adjustment, sig.rationale); }
+          const i2ChainResult = i2Chain.build();
           findings.push({
             rule_id: "I2",
             severity: "high",
@@ -262,12 +265,12 @@ class AnnotationDeceptionRule implements TypedRule {
               "request user confirmation before execution.",
             owasp_category: "MCP06-excessive-permissions",
             mitre_technique: "AML.T0054",
-            confidence: 0.75,
+            confidence: i2ChainResult.confidence,
             metadata: {
               analysis_type: "missing_annotation",
               tool_name: tool.name,
               destructive_params: destructiveParams,
-              evidence_chain: i2Chain,
+              evidence_chain: i2ChainResult,
             },
           });
         }
@@ -532,9 +535,9 @@ class CrossConfigTrifectaRule implements TypedRule {
               "tools. No individual server triggers an alert — the attack only works because all three are configured together.",
           })
           .factor(
-            "multi_server_distribution",
-            0.1,
-            `Trifecta spans ${serverContributions.size} servers — more complex than single-server F1 but still exploitable`
+            "distributed_trifecta",
+            0.08,
+            `Lethal trifecta distributed across ${serverContributions.size} servers — harder to detect than single-server F1, higher real-world risk`
           )
           .factor(
             "graph_confirmed",
@@ -590,7 +593,7 @@ class CrossConfigTrifectaRule implements TypedRule {
             "complete data exfiltration even when distributed across servers.",
           owasp_category: "MCP04-data-exfiltration",
           mitre_technique: "AML.T0054",
-          confidence: pattern.confidence * 0.9,
+          confidence: Math.min(0.99, pattern.confidence + 0.08),
           metadata: {
             analysis_type: "cross_config_graph",
             servers_involved: Array.from(serverContributions.keys()),

@@ -17,6 +17,7 @@ import type { AnalysisContext } from "../../engine.js";
 import { analyzeASTTaint } from "../analyzers/taint-ast.js";
 import { analyzeTaint } from "../analyzers/taint.js";
 import { EvidenceChainBuilder } from "../../evidence.js";
+import { computeCodeSignals } from "../../confidence-signals.js";
 
 function isTestFile(source: string): boolean {
   return /(?:__tests?__|\.(?:test|spec)\.)/.test(source);
@@ -99,8 +100,18 @@ class ActionsTagPoisoningRule implements TypedRule {
               instruction: "Check the upstream Action repository to verify whether the tag is mutable. Navigate to the Action repository on GitHub and check if the tag can be force-pushed or if the repository enforces tag protection rules.",
               target: `https://github.com/${action}`,
               expected_observation: "The tag is a mutable Git tag or branch name that can be updated without notification to downstream consumers",
-            })
-            .build();
+            });
+
+          const l1TagSignals = computeCodeSignals({
+            sourceCode: context.source_code,
+            matchLine: i + 1,
+            matchText: `${action}@${ref}`,
+            lineText: line,
+            context,
+            owaspCategory: "MCP10-supply-chain",
+          });
+          for (const sig of l1TagSignals) chain.factor(sig.factor, sig.adjustment, sig.rationale);
+          const l1TagBuilt = chain.build();
 
           findings.push({
             rule_id: "L1",
@@ -113,8 +124,8 @@ class ActionsTagPoisoningRule implements TypedRule {
               "Use Dependabot or Renovate to keep SHA pins updated.",
             owasp_category: "MCP10-supply-chain",
             mitre_technique: "AML.T0017",
-            confidence: isMutableTag ? 0.92 : 0.75,
-            metadata: { analysis_type: "structural", line: i + 1, action, ref, evidence_chain: chain },
+            confidence: l1TagBuilt.confidence,
+            metadata: { analysis_type: "structural", line: i + 1, action, ref, evidence_chain: l1TagBuilt },
           });
         }
       }
@@ -145,8 +156,18 @@ class ActionsTagPoisoningRule implements TypedRule {
             instruction: "Locate the curl/wget | bash pattern at the indicated line. Confirm the downloaded script is piped directly to a shell interpreter without checksum verification.",
             target: `line ${i + 1}`,
             expected_observation: "curl or wget output piped to bash, sh, python, or node",
-          })
-          .build();
+          });
+
+        const l1PipeSignals = computeCodeSignals({
+          sourceCode: context.source_code,
+          matchLine: i + 1,
+          matchText: line.slice(0, 80),
+          lineText: line,
+          context,
+          owaspCategory: "MCP10-supply-chain",
+        });
+        for (const sig of l1PipeSignals) l1PipeChain.factor(sig.factor, sig.adjustment, sig.rationale);
+        const l1PipeBuilt = l1PipeChain.build();
 
         findings.push({
           rule_id: "L1",
@@ -159,8 +180,8 @@ class ActionsTagPoisoningRule implements TypedRule {
             "Better: use a versioned GitHub Action instead of curl|bash.",
           owasp_category: "MCP10-supply-chain",
           mitre_technique: "AML.T0017",
-          confidence: 0.95,
-          metadata: { analysis_type: "structural", line: i + 1, evidence_chain: l1PipeChain },
+          confidence: l1PipeBuilt.confidence,
+          metadata: { analysis_type: "structural", line: i + 1, evidence_chain: l1PipeBuilt },
         });
       }
     }
@@ -280,8 +301,18 @@ class MaliciousBuildPluginRule implements TypedRule {
               instruction: "Open the build configuration file and examine the plugin/hook definition at the indicated line. Confirm it performs network requests or command execution.",
               target: `line ${line}`,
               expected_observation: desc,
-            })
-            .build();
+            });
+
+          const l2Signals = computeCodeSignals({
+            sourceCode: context.source_code,
+            matchLine: line,
+            matchText: match[0].slice(0, 80),
+            lineText: (context.source_code.split("\n")[line - 1] || ""),
+            context,
+            owaspCategory: "MCP10-supply-chain",
+          });
+          for (const sig of l2Signals) l2StructChain.factor(sig.factor, sig.adjustment, sig.rationale);
+          const l2StructBuilt = l2StructChain.build();
 
           findings.push({
             rule_id: "L2",
@@ -290,8 +321,8 @@ class MaliciousBuildPluginRule implements TypedRule {
             remediation: "Build plugins should not make network requests or execute commands.",
             owasp_category: "MCP10-supply-chain",
             mitre_technique: "AML.T0017",
-            confidence: 0.85,
-            metadata: { analysis_type: "structural", line, evidence_chain: l2StructChain },
+            confidence: l2StructBuilt.confidence,
+            metadata: { analysis_type: "structural", line, evidence_chain: l2StructBuilt },
           });
           break;
         }
@@ -356,8 +387,18 @@ class ConfigSymlinkRule implements TypedRule {
             instruction: "Examine the symlink creation at the indicated line. Verify the target path is a sensitive system directory and that no realpath() or lstat() check precedes it.",
             target: `line ${line}`,
             expected_observation: `Symlink to sensitive path without protection: ${desc}`,
-          })
-          .build();
+          });
+
+        const l6SymSignals = computeCodeSignals({
+          sourceCode: source,
+          matchLine: line,
+          matchText: match[0].slice(0, 80),
+          lineText: (source.split("\n")[line - 1] || ""),
+          context,
+          owaspCategory: "MCP05-privilege-escalation",
+        });
+        for (const sig of l6SymSignals) l6SymlinkChain.factor(sig.factor, sig.adjustment, sig.rationale);
+        const l6SymBuilt = l6SymlinkChain.build();
 
         findings.push({
           rule_id: "L6",
@@ -370,8 +411,8 @@ class ConfigSymlinkRule implements TypedRule {
             "Resolve real paths with realpath() and verify against allowed base directory.",
           owasp_category: "MCP05-privilege-escalation",
           mitre_technique: "AML.T0054",
-          confidence: 0.90,
-          metadata: { analysis_type: "structural", line, evidence_chain: l6SymlinkChain },
+          confidence: l6SymBuilt.confidence,
+          metadata: { analysis_type: "structural", line, evidence_chain: l6SymBuilt },
         });
       }
     }
@@ -410,8 +451,18 @@ class ConfigSymlinkRule implements TypedRule {
           instruction: "Locate the stat()/read() sequence and verify there is no O_NOFOLLOW flag or fstat() check on the opened file descriptor between the two operations.",
           target: `line ${line}`,
           expected_observation: "stat() followed by readFile/open without symlink protection",
-        })
-        .build();
+        });
+
+      const l6ToctouSignals = computeCodeSignals({
+        sourceCode: source,
+        matchLine: line,
+        matchText: toctouMatch[0].slice(0, 80),
+        lineText: (source.split("\n")[line - 1] || ""),
+        context,
+        owaspCategory: "MCP05-privilege-escalation",
+      });
+      for (const sig of l6ToctouSignals) l6ToctouChain.factor(sig.factor, sig.adjustment, sig.rationale);
+      const l6ToctouBuilt = l6ToctouChain.build();
 
       findings.push({
         rule_id: "L6",
@@ -423,8 +474,8 @@ class ConfigSymlinkRule implements TypedRule {
           "Use O_NOFOLLOW with open(). Or use fstat() on the file descriptor after opening.",
         owasp_category: "MCP05-privilege-escalation",
         mitre_technique: "AML.T0054",
-        confidence: 0.75,
-        metadata: { analysis_type: "structural", line, evidence_chain: l6ToctouChain },
+        confidence: l6ToctouBuilt.confidence,
+        metadata: { analysis_type: "structural", line, evidence_chain: l6ToctouBuilt },
       });
     }
 
@@ -474,8 +525,18 @@ class TransitiveMCPDelegationRule implements TypedRule {
           instruction: "Search the file for import/require statements of @modelcontextprotocol/sdk. Confirm both Server and Client classes are imported in the same module.",
           target: "import statements at top of file",
           expected_observation: "Both McpServer/Server and Client/StdioClientTransport imports present",
-        })
-        .build();
+        });
+
+      const l7DualSignals = computeCodeSignals({
+        sourceCode: source,
+        matchLine: 1,
+        matchText: "import @modelcontextprotocol/sdk server + client",
+        lineText: (source.split("\n")[0] || ""),
+        context,
+        owaspCategory: "MCP06-excessive-permissions",
+      });
+      for (const sig of l7DualSignals) l7DelegationChain.factor(sig.factor, sig.adjustment, sig.rationale);
+      const l7DelegationBuilt = l7DelegationChain.build();
 
       findings.push({
         rule_id: "L7",
@@ -489,8 +550,8 @@ class TransitiveMCPDelegationRule implements TypedRule {
           "declare it explicitly in server metadata and implement trust boundary validation.",
         owasp_category: "MCP06-excessive-permissions",
         mitre_technique: "AML.T0054",
-        confidence: 0.92,
-        metadata: { analysis_type: "import_resolution", evidence_chain: l7DelegationChain },
+        confidence: l7DelegationBuilt.confidence,
+        metadata: { analysis_type: "import_resolution", evidence_chain: l7DelegationBuilt },
       });
     }
 
@@ -530,8 +591,18 @@ class TransitiveMCPDelegationRule implements TypedRule {
             instruction: "Examine the proxy/delegation code at the indicated line. Verify whether upstream responses are validated before being relayed and whether credentials are scoped appropriately.",
             target: `line ${line}`,
             expected_observation: desc,
-          })
-          .build();
+          });
+
+        const l7ProxySignals = computeCodeSignals({
+          sourceCode: source,
+          matchLine: line,
+          matchText: match[0].slice(0, 80),
+          lineText: (source.split("\n")[line - 1] || ""),
+          context,
+          owaspCategory: "MCP06-excessive-permissions",
+        });
+        for (const sig of l7ProxySignals) l7ProxyChain.factor(sig.factor, sig.adjustment, sig.rationale);
+        const l7ProxyBuilt = l7ProxyChain.build();
 
         findings.push({
           rule_id: "L7",
@@ -540,8 +611,8 @@ class TransitiveMCPDelegationRule implements TypedRule {
           remediation: "Declare delegation explicitly. Validate upstream responses. Don't forward credentials blindly.",
           owasp_category: "MCP06-excessive-permissions",
           mitre_technique: "AML.T0054",
-          confidence: 0.80,
-          metadata: { analysis_type: "import_resolution", line, evidence_chain: l7ProxyChain },
+          confidence: l7ProxyBuilt.confidence,
+          metadata: { analysis_type: "import_resolution", line, evidence_chain: l7ProxyBuilt },
         });
         break;
       }
@@ -663,8 +734,18 @@ class CredentialFileTheftRule implements TypedRule {
               instruction: `Search the source code for file read operations targeting ${desc}. Confirm the file path matches a known credential storage location.`,
               target: `line ${line}`,
               expected_observation: `readFile/readFileSync/open call with ${desc} path`,
-            })
-            .build();
+            });
+
+          const l13Signals = computeCodeSignals({
+            sourceCode: context.source_code,
+            matchLine: line,
+            matchText: match[0].slice(0, 80),
+            lineText: (context.source_code.split("\n")[line - 1] || ""),
+            context,
+            owaspCategory: "MCP07-insecure-config",
+          });
+          for (const sig of l13Signals) l13StructChain.factor(sig.factor, sig.adjustment, sig.rationale);
+          const l13StructBuilt = l13StructChain.build();
 
           findings.push({
             rule_id: "L13",
@@ -673,8 +754,8 @@ class CredentialFileTheftRule implements TypedRule {
             remediation: `Never read ${desc} in application code. Use proper auth mechanisms.`,
             owasp_category: "MCP07-insecure-config",
             mitre_technique: "AML.T0057",
-            confidence: 0.88,
-            metadata: { analysis_type: "structural", line, evidence_chain: l13StructChain },
+            confidence: l13StructBuilt.confidence,
+            metadata: { analysis_type: "structural", line, evidence_chain: l13StructBuilt },
           });
           break;
         }
@@ -744,8 +825,18 @@ class AuditLogTamperingRule implements TypedRule {
             instruction: "Search for file read followed by filter/replace/write operations on log files. Confirm this is modifying existing log entries rather than legitimate append-only logging.",
             target: `line ${line}`,
             expected_observation: `${desc} — log content modified in place`,
-          })
-          .build();
+          });
+
+        const k3Signals = computeCodeSignals({
+          sourceCode: source,
+          matchLine: line,
+          matchText: match[0].slice(0, 100),
+          lineText: lineText,
+          context,
+          owaspCategory: "MCP09-logging-monitoring",
+        });
+        for (const sig of k3Signals) k3Chain.factor(sig.factor, sig.adjustment, sig.rationale);
+        const k3Built = k3Chain.build();
 
         findings.push({
           rule_id: "K3",
@@ -758,8 +849,8 @@ class AuditLogTamperingRule implements TypedRule {
             "append-only databases). If PII redaction is needed, do it at write time, not retroactively.",
           owasp_category: "MCP09-logging-monitoring",
           mitre_technique: "AML.T0054",
-          confidence: 0.85,
-          metadata: { analysis_type: "structural", line, evidence_chain: k3Chain },
+          confidence: k3Built.confidence,
+          metadata: { analysis_type: "structural", line, evidence_chain: k3Built },
         });
       }
     }
@@ -818,8 +909,18 @@ class AutoApproveBypassRule implements TypedRule {
             instruction: "Search for auto-approve, skip-confirm, or force-execute patterns. Verify this flag controls whether human confirmation is required before tool execution.",
             target: `line ${line}`,
             expected_observation: `${desc} — boolean flag disabling human confirmation`,
-          })
-          .build();
+          });
+
+        const k5Signals = computeCodeSignals({
+          sourceCode: source,
+          matchLine: line,
+          matchText: match[0].slice(0, 60),
+          lineText: (source.split("\n")[line - 1] || ""),
+          context,
+          owaspCategory: "ASI09-human-oversight-bypass",
+        });
+        for (const sig of k5Signals) k5Chain.factor(sig.factor, sig.adjustment, sig.rationale);
+        const k5Built = k5Chain.build();
 
         findings.push({
           rule_id: "K5",
@@ -832,8 +933,8 @@ class AutoApproveBypassRule implements TypedRule {
             "explicit human confirmation. Implement a proper approval workflow.",
           owasp_category: "ASI09-human-oversight-bypass",
           mitre_technique: "AML.T0054",
-          confidence: 0.90,
-          metadata: { analysis_type: "structural", line, evidence_chain: k5Chain },
+          confidence: k5Built.confidence,
+          metadata: { analysis_type: "structural", line, evidence_chain: k5Built },
         });
       }
     }
@@ -953,8 +1054,18 @@ class CrossBoundaryCredentialRule implements TypedRule {
               instruction: "Search for the shared/forwarded credential variable at the indicated line. Verify the credential is used across service or agent boundaries rather than within a single trust domain.",
               target: `line ${line}`,
               expected_observation: `${desc} — credential variable shared or forwarded to another service`,
-            })
-            .build();
+            });
+
+          const k8Signals = computeCodeSignals({
+            sourceCode: context.source_code,
+            matchLine: line,
+            matchText: match[0].slice(0, 80),
+            lineText: (context.source_code.split("\n")[line - 1] || ""),
+            context,
+            owaspCategory: "ASI03-identity-privilege-abuse",
+          });
+          for (const sig of k8Signals) k8StructChain.factor(sig.factor, sig.adjustment, sig.rationale);
+          const k8StructBuilt = k8StructChain.build();
 
           findings.push({
             rule_id: "K8",
@@ -963,8 +1074,8 @@ class CrossBoundaryCredentialRule implements TypedRule {
             remediation: "Use scoped, per-service credentials. Never share API keys across trust boundaries.",
             owasp_category: "ASI03-identity-privilege-abuse",
             mitre_technique: "AML.T0054",
-            confidence: 0.75,
-            metadata: { analysis_type: "structural", line, evidence_chain: k8StructChain },
+            confidence: k8StructBuilt.confidence,
+            metadata: { analysis_type: "structural", line, evidence_chain: k8StructBuilt },
           });
           break;
         }

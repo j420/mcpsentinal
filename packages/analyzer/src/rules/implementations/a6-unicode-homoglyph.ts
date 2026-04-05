@@ -26,6 +26,7 @@ import {
   type UnicodeIssueType,
 } from "../analyzers/unicode.js";
 import { EvidenceChainBuilder } from "../../evidence.js";
+import { computeToolSignals } from "../../confidence-signals.js";
 
 // --- A6: Homoglyph Attack ---
 
@@ -258,8 +259,10 @@ class UnicodeHomoglyphRule implements TypedRule {
               instruction: `Compare codepoints of "${tool.name}" and "${otherTool.name}" character by character`,
               target: `tool:${tool.name} / tool:${otherTool.name}`,
               expected_observation: `Different codepoints normalize to identical string "${normalizedName}"`,
-            })
-            .build();
+            });
+          const a6ShadowSignals = computeToolSignals(context, "MCP02-tool-poisoning", tool.name);
+          for (const sig of a6ShadowSignals) { a6ShadowChain.factor(sig.factor, sig.adjustment, sig.rationale); }
+          const a6ShadowResult = a6ShadowChain.build();
           findings.push({
             rule_id: "A6",
             severity: "critical",
@@ -273,8 +276,8 @@ class UnicodeHomoglyphRule implements TypedRule {
               "enabling impersonation.",
             owasp_category: "MCP02-tool-poisoning",
             mitre_technique: "AML.T0054",
-            confidence: 0.99,
-            metadata: { evidence_chain: a6ShadowChain },
+            confidence: a6ShadowResult.confidence,
+            metadata: { evidence_chain: a6ShadowResult },
           });
         }
       }
@@ -351,8 +354,10 @@ class ZeroWidthInjectionRule implements TypedRule {
             instruction: `Hex-dump tool name "${tool.name}" and check for zero-width, bidi, or tag codepoints`,
             target: `tool name: "${tool.name}"`,
             expected_observation: `${nameInvisible.length} invisible character(s) at positions not visible to reviewers`,
-          })
-          .build();
+          });
+        const a7NameSignals = computeToolSignals(context, "MCP01-prompt-injection", tool.name);
+        for (const sig of a7NameSignals) { a7NameChain.factor(sig.factor, sig.adjustment, sig.rationale); }
+        const a7NameResult = a7NameChain.build();
         findings.push({
           rule_id: "A7",
           severity: "critical",
@@ -367,7 +372,7 @@ class ZeroWidthInjectionRule implements TypedRule {
             "Only allow visible ASCII and common Unicode letter categories.",
           owasp_category: "MCP01-prompt-injection",
           mitre_technique: "AML.T0054",
-          confidence: 0.95,
+          confidence: a7NameResult.confidence,
           metadata: {
             invisible_chars: nameInvisible.map((i) => ({
               type: i.type,
@@ -376,7 +381,7 @@ class ZeroWidthInjectionRule implements TypedRule {
               ),
               positions: i.positions,
             })),
-            evidence_chain: a7NameChain,
+            evidence_chain: a7NameResult,
           },
         });
       }
@@ -537,8 +542,10 @@ class ZeroWidthInjectionRule implements TypedRule {
               instruction: `Check tool "${tool.name}" description for U+202A-U+202E bidi override codepoints`,
               target: `tool:${tool.name}:description`,
               expected_observation: `${bidiIssues.length} bidirectional override characters reversing text display`,
-            })
-            .build();
+            });
+          const a7BidiSignals = computeToolSignals(context, "MCP01-prompt-injection", tool.name);
+          for (const sig of a7BidiSignals) { a7BidiChain.factor(sig.factor, sig.adjustment, sig.rationale); }
+          const a7BidiResult = a7BidiChain.build();
           findings.push({
             rule_id: "A7",
             severity: "critical",
@@ -552,8 +559,8 @@ class ZeroWidthInjectionRule implements TypedRule {
               "from tool metadata.",
             owasp_category: "MCP01-prompt-injection",
             mitre_technique: "AML.T0054",
-            confidence: 0.95,
-            metadata: { evidence_chain: a7BidiChain },
+            confidence: a7BidiResult.confidence,
+            metadata: { evidence_chain: a7BidiResult },
           });
         }
       }
@@ -598,8 +605,10 @@ class ZeroWidthInjectionRule implements TypedRule {
                 instruction: `Hex-dump parameter "${paramName}" description in tool "${tool.name}"`,
                 target: `tool:${tool.name}:param:${paramName}`,
                 expected_observation: `${paramInvisible.length} invisible character(s) in parameter description`,
-              })
-              .build();
+              });
+            const a7ParamSignals = computeToolSignals(context, "MCP01-prompt-injection", tool.name);
+            for (const sig of a7ParamSignals) { a7ParamChain.factor(sig.factor, sig.adjustment, sig.rationale); }
+            const a7ParamResult = a7ParamChain.build();
             findings.push({
               rule_id: "A7",
               severity: "high",
@@ -612,8 +621,8 @@ class ZeroWidthInjectionRule implements TypedRule {
                 "Strip invisible characters from parameter descriptions.",
               owasp_category: "MCP01-prompt-injection",
               mitre_technique: "AML.T0054",
-              confidence: 0.8,
-              metadata: { evidence_chain: a7ParamChain },
+              confidence: a7ParamResult.confidence,
+              metadata: { evidence_chain: a7ParamResult },
             });
           }
         }

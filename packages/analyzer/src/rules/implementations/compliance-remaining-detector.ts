@@ -9,6 +9,7 @@ import { registerTypedRule } from "../base.js";
 import type { AnalysisContext } from "../../engine.js";
 import type { OwaspCategory } from "@mcp-sentinel/database";
 import { EvidenceChainBuilder } from "../../evidence.js";
+import { computeCodeSignals, computeToolSignals } from "../../confidence-signals.js";
 
 function isTestFile(s: string) { return /(?:__tests?__|\.(?:test|spec)\.)/.test(s); }
 function lineNum(s: string, i: number) { return s.substring(0, i).split("\n").length; }
@@ -58,7 +59,17 @@ function buildRule(cfg: RCfg): TypedRule {
             const lineText = ctx.source_code.split("\n")[line - 1] || "";
             if (cfg.excludePatterns?.some(e => e.test(lineText))) continue;
 
-            const chain = new EvidenceChainBuilder()
+            // Compute server-specific confidence signals
+            const signals = computeCodeSignals({
+              sourceCode: ctx.source_code,
+              matchLine: line,
+              matchText: match[0],
+              lineText,
+              context: ctx,
+              owaspCategory: cfg.owasp,
+            });
+
+            const builder = new EvidenceChainBuilder()
               .source({
                 source_type: "file-content",
                 location: `line ${line}`,
@@ -85,7 +96,14 @@ function buildRule(cfg: RCfg): TypedRule {
                   `The code pattern "${desc}" at line ${line} enables the attack or compliance ` +
                   `violation detected by ${cfg.id} (${cfg.name}). ${cfg.remediation}`,
               })
-              .factor("structural_match", -0.05, "Structural regex pattern match — confirmed in source code but no full taint propagation")
+              .factor("structural_match", -0.05, "Structural regex pattern match — confirmed in source code but no full taint propagation");
+
+            // Add all server-specific confidence signals
+            for (const signal of signals) {
+              builder.factor(signal.factor, signal.adjustment, signal.rationale);
+            }
+
+            const chain = builder
               .verification({
                 step_type: "inspect-source",
                 instruction:
@@ -102,7 +120,7 @@ function buildRule(cfg: RCfg): TypedRule {
               evidence: `${desc} at line ${line}: "${match[0].slice(0, 80)}".`,
               remediation: cfg.remediation,
               owasp_category: cfg.owasp, mitre_technique: cfg.mitre,
-              confidence: cfg.confidence, metadata: { analysis_type: "structural", line, evidence_chain: chain },
+              confidence: chain.confidence, metadata: { analysis_type: "structural", line, evidence_chain: chain },
             });
             break;
           }
@@ -116,7 +134,10 @@ function buildRule(cfg: RCfg): TypedRule {
           for (const { regex, desc } of cfg.patterns) {
             regex.lastIndex = 0;
             if (regex.test(text)) {
-              const chain = new EvidenceChainBuilder()
+              // Compute server-specific confidence signals for tool findings
+              const signals = computeToolSignals(ctx, cfg.owasp, tool.name);
+
+              const builder = new EvidenceChainBuilder()
                 .source({
                   source_type: "external-content",
                   location: `tool: ${tool.name}`,
@@ -142,8 +163,14 @@ function buildRule(cfg: RCfg): TypedRule {
                   scenario:
                     `Tool "${tool.name}" exhibits the pattern detected by ${cfg.id} (${cfg.name}): ` +
                     `${desc}. ${cfg.remediation}`,
-                })
-                .factor("pattern_confirmed", 0.0, "Tool metadata pattern match confirmed")
+                });
+
+              // Add all server-specific confidence signals
+              for (const signal of signals) {
+                builder.factor(signal.factor, signal.adjustment, signal.rationale);
+              }
+
+              const chain = builder
                 .verification({
                   step_type: "inspect-description",
                   instruction:
@@ -159,7 +186,7 @@ function buildRule(cfg: RCfg): TypedRule {
                 evidence: `Tool "${tool.name}": ${desc}.`,
                 remediation: cfg.remediation,
                 owasp_category: cfg.owasp, mitre_technique: cfg.mitre,
-                confidence: cfg.confidence, metadata: { tool_name: tool.name, evidence_chain: chain },
+                confidence: chain.confidence, metadata: { tool_name: tool.name, evidence_chain: chain },
               });
               break;
             }
