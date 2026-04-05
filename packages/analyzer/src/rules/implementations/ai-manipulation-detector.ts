@@ -115,7 +115,7 @@ class IndirectInjectionGatewayRule implements TypedRule {
           "Consider content-type-specific sanitization (HTML → text, Markdown → text).",
         owasp_category: "MCP01-prompt-injection",
         mitre_technique: "AML.T0054.001",
-        confidence,
+        confidence: chain.confidence,
         metadata: {
           analysis_type: "capability_graph",
           tool_name: tool.name,
@@ -171,7 +171,7 @@ class TrustAssertionInjectionRule implements TypedRule {
               "Only the MCP client/registry should assert trust levels, never the tool itself.",
             owasp_category: "MCP01-prompt-injection",
             mitre_technique: "AML.T0054",
-            confidence,
+            confidence: g2ToolChain.confidence,
             metadata: { analysis_type: "linguistic", tool_name: tool.name, evidence_chain: g2ToolChain },
           });
           break;
@@ -201,7 +201,7 @@ class TrustAssertionInjectionRule implements TypedRule {
             remediation: "Remove trust assertions from server instructions.",
             owasp_category: "MCP01-prompt-injection",
             mitre_technique: "AML.T0054",
-            confidence: Math.min(1.0, confidence + 0.03),
+            confidence: g2InitChain.confidence,
             metadata: { analysis_type: "linguistic", surface: "initialize_instructions", evidence_chain: g2InitChain },
           });
           break;
@@ -252,7 +252,7 @@ class ResponseFormatInjectionRule implements TypedRule {
               "Tool descriptions should describe functionality, not mimic protocol messages.",
             owasp_category: "MCP01-prompt-injection",
             mitre_technique: "AML.T0061",
-            confidence,
+            confidence: g3Chain.confidence,
             metadata: { analysis_type: "pattern", tool_name: tool.name, evidence_chain: g3Chain },
           });
           break;
@@ -404,7 +404,7 @@ class InitializeInjectionRule implements TypedRule {
               "Sanitize these fields before processing.",
             owasp_category: "MCP01-prompt-injection",
             mitre_technique: "AML.T0054.002",
-            confidence,
+            confidence: chain.confidence,
             metadata: {
               analysis_type: "linguistic",
               field: field.name,
