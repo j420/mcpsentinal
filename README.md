@@ -2,17 +2,17 @@
 
 **The security intelligence layer for the MCP ecosystem.**
 
-MCP Sentinel scans every public MCP server, measures its security posture across 177 detection rules, and publishes the results as a searchable registry. We are not a gateway. We are the data layer that sits upstream of every deployment decision in the MCP ecosystem.
+MCP Sentinel scans every public MCP server, measures its security posture across 164 detection rules (13 retired), and publishes the results as a searchable registry. We are not a gateway. We are the data layer that sits upstream of every deployment decision in the MCP ecosystem.
 
 [![Registry](https://img.shields.io/badge/registry-mcp--sentinel.com-blue)](https://mcp-sentinel.com)
-[![Rules](https://img.shields.io/badge/detection_rules-177-critical)](agent_docs/detection-rules.md)
+[![Rules](https://img.shields.io/badge/detection_rules-164_active-critical)](agent_docs/detection-rules.md)
 [![Servers](https://img.shields.io/badge/servers_scanned-10K%2B-green)](https://mcp-sentinel.com)
 
 ---
 
 ## What We Detect
 
-177 detection rules across categories A–Q:
+164 active detection rules across categories A–Q (13 retired):
 
 | Category | Rules | Examples |
 |----------|-------|---------|
@@ -69,7 +69,7 @@ Discovery → Connection → Analysis → Scoring → Publication
 (crawler)   (connector)  (analyzer)  (scorer)   (api + web)
 ```
 
-7 crawl sources → 10,000+ servers → 177-rule analysis engine → 0–100 score → public registry
+7 crawl sources → 10,000+ servers → 164-rule analysis engine → 0–100 score → public registry
 
 Each stage is an independent package. The pipeline is fault-tolerant — a failed source fetch doesn't stop analysis of tool descriptions.
 
@@ -116,13 +116,13 @@ mcp-sentinel/
 ├── packages/
 │   ├── crawler/           ← 7 discovery sources
 │   ├── connector/         ← MCP SDK: initialize + tools/list only
-│   ├── analyzer/          ← 177-rule detection engine
+│   ├── analyzer/          ← 164-rule detection engine (all TypedRule implementations)
 │   ├── scorer/            ← 0–100 composite scoring
 │   ├── database/          ← PostgreSQL schema + all queries
 │   ├── api/               ← Public REST API
 │   ├── web/               ← Next.js registry website
 │   └── cli/               ← npx mcp-sentinel
-├── rules/                 ← 177 YAML metadata files for typed detection rules
+├── rules/                 ← 177 YAML metadata files (164 active, 13 retired)
 └── docs/runbooks/         ← Operational guides
 ```
 

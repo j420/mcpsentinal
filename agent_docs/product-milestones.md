@@ -60,7 +60,7 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
   - O: Data Privacy Attacks (6, 4 retired), P: Infrastructure Runtime (10), Q: Cross-Ecosystem Emergent (7, 8 retired)
 - [x] Analysis engine — `packages/analyzer/src/engine.ts` (specialized engines + 164 active TypedRule dispatch)
 - [x] **ALL rules migrated to TypedRules** — AST taint, capability graph, entropy, structural parsing (23 detector files, ~13K lines). 13 rules subsequently retired due to high FP rates; 164 active.
-- [x] 1051 tests passing (1002 analyzer + 49 red-team), 30+ per category across 16 test files
+- [x] 1642 tests passing (1443 analyzer + 49 red-team + 150 attack-graph), 30+ per category across 33 test files
 - [x] Rule loader — `packages/analyzer/src/rule-loader.ts` (YAML metadata interpretation)
 - [x] npm package published: `mcp-sentinel-scanner@0.2.0` with all TypedRules bundled
 - [x] Tool fingerprinting — `packages/analyzer/src/tool-fingerprint.ts`
@@ -144,7 +144,7 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 - [x] Ecosystem intelligence reports — `packages/reports/src/` (generator.ts, category-breakdown.ts, ecosystem-stats.ts, trend-analysis.ts, cli.ts)
   - Category breakdown, ecosystem stats, trend analysis, CLI for report generation
 
-**Verification (2026-03-28):** All 1051 tests pass across 21 test files (1002 analyzer + 49 red-team). All 164/164 active TypedRules registered (13 retired). Pipeline audit clean. CI green.
+**Verification (2026-04-07):** All 1631 tests pass across 33 test files (1432 analyzer + 49 red-team + 150 attack-graph). All 164/164 active TypedRules registered (13 retired). 262 evidence chain assertions across 11 category test files. 55 benign corpus fixtures (zero false positives). Evidence validation script enforces ≥90% chain coverage. Pipeline audit clean. CI green.
 
 **Success Criteria:** Detection precision >80% across all rule categories.
 
@@ -178,7 +178,7 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 
 ---
 
-### Completed Work Summary (as of 2026-03-24)
+### Completed Work Summary (as of 2026-04-07)
 
 | Component | Package | Key Files | Tests |
 |-----------|---------|-----------|-------|
@@ -186,9 +186,10 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 | 7 Crawlers | `packages/crawler` | sources/{npm,github,pypi,pulsemcp,smithery,mcpregistry,modelcontextprotocol-repo}.ts | 3 test files |
 | Crawler orchestration | `packages/crawler` | orchestrator.ts, cli.ts | orchestrator.test.ts |
 | MCP Connector | `packages/connector` | connector.ts | — |
-| Analysis Engine | `packages/analyzer` | engine.ts (73 KB), rule-loader.ts, tool-fingerprint.ts | 2 test files |
+| Analysis Engine | `packages/analyzer` | engine.ts (73 KB), rule-loader.ts, tool-fingerprint.ts | 29 test files, 1432 tests |
 | Python Taint Analysis | `packages/analyzer` | taint.ts, taint-python.ts, taint-ast.ts (2,442 lines) | — |
-| 164 Active Detection Rules | `rules/` | 177 YAML files across A-Q categories (13 retired) | — |
+| 164 Active Detection Rules | `rules/` | 177 YAML files across A-Q categories (13 retired) | 262 evidence chain assertions |
+| Test Infrastructure | `packages/analyzer` | test-helpers.ts, benign-corpus.test.ts, validate-evidence-chains.ts | 55 benign corpus fixtures |
 | Scoring Algorithm | `packages/scorer` | scorer.ts, cli.ts | scorer.test.ts |
 | Scan Pipeline | `packages/scanner` | pipeline.ts (30 KB), fetcher.ts, auditor.ts, enumerate.ts, cli.ts | scanner.test.ts |
 | REST API | `packages/api` | server.ts (20 KB), badge.ts | 2 test files |
@@ -196,11 +197,12 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 | CLI Tool | `packages/cli` | cli.ts (63 KB) | cli.test.ts |
 | Dynamic Tester | `packages/dynamic-tester` | index.ts, consent.ts, canary.ts, audit-log.ts, output-scanner.ts | 5 test files |
 | Risk Matrix | `packages/risk-matrix` | index.ts, patterns.ts, graph.ts, cli.ts | 2 test files |
-| Red Team | `packages/red-team` | runner.ts, reporter.ts, cli.ts, 900+ fixtures | fixtures.test.ts |
+| Attack Graph | `packages/attack-graph` | engine, scoring, narratives, templates | 3 test files, 150 tests |
+| Red Team | `packages/red-team` | runner.ts, reporter.ts, cli.ts, 900+ fixtures | fixtures.test.ts, 49 tests |
 | Benchmark | `packages/benchmark` | index.ts, corpus.ts, competitors.ts, ground-truth.ts, report.ts | — |
 | Reports | `packages/reports` | generator.ts, category-breakdown.ts, ecosystem-stats.ts, trend-analysis.ts, cli.ts | — |
 | CI/CD | `.github/workflows/` | ci.yml, crawl.yml, scan.yml, accuracy.yml, publish.yml | — |
-| **Total** | **16 packages** | **~300 KB of core logic** | **21 test files, 1051 tests** |
+| **Total** | **16 packages** | **~300 KB of core logic** | **33 test files, 1642 tests** |
 
 ---
 

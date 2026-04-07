@@ -1,6 +1,6 @@
 # mcp-sentinel-scanner
 
-MCP server that scans any MCP server against 177 security detection rules. Covers prompt injection, command injection, data exfiltration, supply chain attacks, OAuth vulnerabilities, and more.
+MCP server that scans any MCP server against 164 active security detection rules. Covers prompt injection, command injection, data exfiltration, supply chain attacks, OAuth vulnerabilities, and more.
 
 ## Tools
 
@@ -8,7 +8,7 @@ MCP server that scans any MCP server against 177 security detection rules. Cover
 |------|-------------|
 | `scan_server` | Analyze server metadata (tools, source code, dependencies) — no live connection needed |
 | `scan_endpoint` | Connect to a live MCP endpoint, enumerate tools, then analyze |
-| `list_rules` | List all 177 detection rules, filterable by category/severity |
+| `list_rules` | List all 164 active detection rules, filterable by category/severity |
 
 ## Usage with Claude Desktop
 
@@ -31,7 +31,7 @@ Ask Claude: *"Scan the MCP server at https://example.com/mcp for security issues
 
 The scanner will:
 1. Connect to the endpoint (initialize + tools/list only — never invokes tools)
-2. Run all 177 detection rules
+2. Run all 164 active detection rules
 3. Return findings with evidence + remediation + a 0-100 security score
 
 ## Detection Coverage

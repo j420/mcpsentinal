@@ -1,6 +1,8 @@
 # MCP Sentinel — Detection Rules Specification
 ## P8 Detection Rule Engineer Output — v4.0 (with P1 Threat Intelligence + 2026 Attack Surface)
 
+> **Note:** All 164 active rules have TypedRule implementations in TypeScript. The Engine Implementation Status tables below show legacy `runRegexRule` / `runCompositeRule` / `runBehavioralRule` handlers — these are the YAML fallback path. **TypedRule dispatch takes precedence.** When a rule has both a TypedRule registration and a YAML `detect` config, the engine uses the TypedRule (which produces structured evidence chains with confidence scoring). Zero YAML regex patterns remain in active rules. The 13 retired rules have `enabled: false` in their YAML files and their TypedRule registrations have been removed from the engine.
+
 ### Risk Domain Categories (Framework-Driven)
 
 164 active rules (13 retired) are organized into **13 risk domains** derived from cross-referencing 6 compliance frameworks. Each domain maps to specific controls in OWASP MCP Top 10, OWASP Agentic Top 10, CoSAI MCP Security, MAESTRO, EU AI Act, and MITRE ATLAS. See `rules/framework-registry.yaml` for the complete many-to-many mapping.
