@@ -2,7 +2,16 @@ import type { DetectionRule, FindingInput } from "@mcp-sentinel/database";
 import pino from "pino";
 import type { ServerToolPin } from "./tool-fingerprint.js";
 import { pinServerTools, diffToolPins } from "./tool-fingerprint.js";
-import { hasTypedRule, getTypedRule, type TypedFinding } from "./rules/base.js";
+import {
+  hasTypedRule,
+  getTypedRule,
+  getTypedRuleV2,
+  getAllTypedRulesV2,
+  checkRequirements,
+  ruleResultToTypedFinding,
+  type TypedFinding,
+  type AnalysisTechnique,
+} from "./rules/base.js";
 // Side-effect import: registers all TypedRule implementations so the engine
 // can dispatch to them when YAML rules declare detect.type: "typed".
 import "./rules/index.js";
@@ -91,6 +100,54 @@ export interface AnalysisContext {
   previous_tool_pin?: ServerToolPin | null;
 }
 
+/**
+ * Analysis coverage — tells orgs EXACTLY what was analyzed and what was skipped.
+ * Without this, a score of 85 with no source code looks identical to 85 with
+ * full taint analysis. Regulators (EU AI Act Art. 12, ISO 42001 A.8.1) require
+ * transparency about the scope and limitations of any assessment.
+ */
+export interface AnalysisCoverage {
+  /** Whether source code was available for analysis */
+  had_source_code: boolean;
+  /** Whether a live MCP connection was established */
+  had_connection: boolean;
+  /** Whether dependency data was available */
+  had_dependencies: boolean;
+  /** Whether initialize metadata (H2 surface) was available */
+  had_initialize_metadata: boolean;
+  /** Whether MCP resources were available (I3-I5) */
+  had_resources: boolean;
+  /** Whether MCP prompts were available (I6) */
+  had_prompts: boolean;
+  /** Whether declared capabilities were available (I7, I12) */
+  had_declared_capabilities: boolean;
+
+  /** Analysis techniques that were actually applied */
+  techniques_run: AnalysisTechnique[];
+  /** Number of v2 rules whose requirements were met */
+  rules_applicable: number;
+  /** Number of v2 rules that actually executed */
+  rules_executed: number;
+  /** Number of v2 rules skipped due to missing data (with reasons) */
+  rules_skipped_no_data: number;
+  /** Rules that skipped, with the specific missing data for each */
+  skip_reasons: Array<{ rule_id: string; missing: string[] }>;
+  /** Number of rules that produced at least one finding */
+  rules_with_findings: number;
+
+  /** rules_executed / rules_applicable — how much of the analysis surface was covered */
+  coverage_ratio: number;
+
+  /**
+   * Confidence band based on coverage:
+   * - high: coverage_ratio >= 0.80 AND had_source_code AND had_connection
+   * - medium: coverage_ratio >= 0.60
+   * - low: coverage_ratio >= 0.30
+   * - minimal: < 0.30
+   */
+  confidence_band: "high" | "medium" | "low" | "minimal";
+}
+
 /** Result of profile-aware analysis — includes profiling, threat mapping, and relevance filtering */
 export interface ProfiledAnalysisResult {
   /** Server capability profile with evidence */
@@ -105,6 +162,8 @@ export interface ProfiledAnalysisResult {
   all_annotated: AnnotatedFinding[];
   /** Human-readable profile report */
   profile_report: string;
+  /** What was analyzed, what was skipped, and why — enables honest confidence reporting */
+  coverage: AnalysisCoverage;
 }
 
 export class AnalysisEngine {
@@ -168,6 +227,9 @@ export class AnalysisEngine {
     // Step 6: Generate profile report
     const profileReport = generateProfileReport(profile);
 
+    // Step 7: Compute analysis coverage — what was analyzed, what was skipped
+    const coverage = this.computeCoverage(context, richFindings);
+
     logger.info(
       {
         server: context.server.id,
@@ -175,6 +237,10 @@ export class AnalysisEngine {
         scored_findings: scored.length,
         unscored_findings: unscored.length,
         filtered_out: richFindings.length - scored.length,
+        coverage_ratio: coverage.coverage_ratio.toFixed(2),
+        confidence_band: coverage.confidence_band,
+        techniques: coverage.techniques_run,
+        rules_skipped: coverage.rules_skipped_no_data,
       },
       "Profile-aware analysis complete",
     );
@@ -186,6 +252,7 @@ export class AnalysisEngine {
       informational_findings: unscored,
       all_annotated: annotated,
       profile_report: profileReport,
+      coverage,
     };
   }
 
@@ -312,6 +379,70 @@ export class AnalysisEngine {
     );
 
     return findings;
+  }
+
+  /**
+   * Compute analysis coverage by checking every registered v2 rule's requirements
+   * against the context. This tells orgs exactly what was analyzed and what was
+   * skipped due to missing data.
+   */
+  private computeCoverage(context: AnalysisContext, findings: TypedFinding[]): AnalysisCoverage {
+    const allV2Rules = getAllTypedRulesV2();
+    const techniquesRun = new Set<AnalysisTechnique>();
+    const skipReasons: Array<{ rule_id: string; missing: string[] }> = [];
+    let rulesApplicable = 0;
+    let rulesExecuted = 0;
+    let rulesSkippedNoData = 0;
+
+    for (const rule of allV2Rules) {
+      const check = checkRequirements(rule.requires, context);
+      rulesApplicable++;
+      if (check.met) {
+        rulesExecuted++;
+        techniquesRun.add(rule.technique);
+      } else {
+        rulesSkippedNoData++;
+        skipReasons.push({ rule_id: rule.id, missing: check.missing });
+      }
+    }
+
+    // Count rules that produced findings
+    const ruleIdsWithFindings = new Set(findings.map((f) => f.rule_id));
+    const rulesWithFindings = ruleIdsWithFindings.size;
+
+    const coverageRatio = rulesApplicable > 0 ? rulesExecuted / rulesApplicable : 0;
+
+    // Confidence band determination
+    const hadSource = !!context.source_code;
+    const hadConnection = !!context.connection_metadata;
+    let confidenceBand: AnalysisCoverage["confidence_band"];
+    if (coverageRatio >= 0.80 && hadSource && hadConnection) {
+      confidenceBand = "high";
+    } else if (coverageRatio >= 0.60) {
+      confidenceBand = "medium";
+    } else if (coverageRatio >= 0.30) {
+      confidenceBand = "low";
+    } else {
+      confidenceBand = "minimal";
+    }
+
+    return {
+      had_source_code: hadSource,
+      had_connection: hadConnection,
+      had_dependencies: context.dependencies.length > 0,
+      had_initialize_metadata: !!context.initialize_metadata,
+      had_resources: !!(context.resources && context.resources.length > 0),
+      had_prompts: !!(context.prompts && context.prompts.length > 0),
+      had_declared_capabilities: !!context.declared_capabilities,
+      techniques_run: Array.from(techniquesRun),
+      rules_applicable: rulesApplicable,
+      rules_executed: rulesExecuted,
+      rules_skipped_no_data: rulesSkippedNoData,
+      skip_reasons: skipReasons,
+      rules_with_findings: rulesWithFindings,
+      coverage_ratio: Math.round(coverageRatio * 100) / 100,
+      confidence_band: confidenceBand,
+    };
   }
 
   private runRule(

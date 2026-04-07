@@ -5,7 +5,7 @@
  * Each implementation file calls registerTypedRule() on import.
  */
 
-// Core framework
+// Core framework — v1 (legacy, backward-compatible)
 export {
   type TypedRule,
   type TypedFinding,
@@ -13,6 +13,22 @@ export {
   getTypedRule,
   getAllTypedRules,
   hasTypedRule,
+} from "./base.js";
+
+// Core framework — v2 (mandatory evidence chains)
+export {
+  type TypedRuleV2,
+  type RuleResult,
+  type RuleRequirements,
+  type AnalysisTechnique,
+  registerTypedRuleV2,
+  getTypedRuleV2,
+  getAllTypedRulesV2,
+  hasNativeV2Rule,
+  migrationStats,
+  checkRequirements,
+  ruleResultToTypedFinding,
+  V1RuleAdapter,
 } from "./base.js";
 
 // Analyzers (shared analysis toolkits)
