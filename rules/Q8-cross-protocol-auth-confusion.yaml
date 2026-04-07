@@ -36,4 +36,5 @@ test_cases:
   true_negative:
     - { description: "Server with single MCP transport and single auth mechanism", expected: false }
     - { description: "Server with independent auth middleware for each protocol, properly scoped", expected: false }
-enabled: true
+enabled: false
+retirement_rationale: "Retired 2026-04-07. Detection matched auth token keywords (oauth/jwt/bearer) combined with MCP transport keywords (sse/streamable) and reuse keywords. Token reuse across transport layers is a legitimate optimization when properly scoped. Estimated false-positive rate >55%. Cannot distinguish between insecure token sharing and intentional single-sign-on architecture. Authentication security is better assessed by H1 (OAuth implementation analysis) and K6/K7 (OAuth scope + token lifecycle) which examine actual auth implementation patterns."

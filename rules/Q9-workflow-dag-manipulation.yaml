@@ -42,4 +42,5 @@ test_cases:
   true_negative:
     - { description: "Source code defines a static LangGraph workflow at initialization time", expected: false }
     - { description: "MCP tool that reads workflow state without modifying it", expected: false }
-enabled: true
+enabled: false
+retirement_rationale: "Retired 2026-04-07. Detection matched workflow graph modification keywords (add_edge/add_node/modify) with user input references. Dynamic workflow construction is the core purpose of LangGraph, AutoGen, and CrewAI — every agentic application modifies graphs at runtime. Estimated false-positive rate >80%. Cannot distinguish malicious graph manipulation from legitimate dynamic workflow generation. Workflow integrity is better enforced through schema validation and allowlists at the framework level, not static code scanning."

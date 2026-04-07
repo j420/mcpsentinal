@@ -35,7 +35,7 @@ mcp-sentinel/
 ├── packages/
 │   ├── crawler/                 ← Discovery: finds MCP servers across 7+ sources (each has CLAUDE.md)
 │   ├── connector/               ← Connection: MCP SDK wrapper — initialize + tools/list ONLY (has CLAUDE.md)
-│   ├── analyzer/                ← Analysis: runs 177 detection rules, produces findings (has CLAUDE.md)
+│   ├── analyzer/                ← Analysis: runs 164 active detection rules, produces findings (has CLAUDE.md)
 │   ├── scorer/                  ← Scoring: computes composite scores from findings (has CLAUDE.md)
 │   ├── database/                ← PostgreSQL schema, migrations, queries — ALL SQL lives here (has CLAUDE.md)
 │   ├── api/                     ← Public REST API (has CLAUDE.md)
@@ -52,7 +52,7 @@ mcp-sentinel/
 │   └── runbooks/                ← Operational runbooks: add-new-rule, new-cve-response, full-crawl
 ├── tools/
 │   └── scripts/                 ← validate-rules.sh and operational scripts
-├── rules/                       ← Detection rule metadata (YAML) — 177 rules across A–Q (detection logic in TypeScript)
+├── rules/                       ← Detection rule metadata (YAML) — 164 active rules across A–Q (13 retired; detection logic in TypeScript)
 ├── tests/                       ← Integration and E2E tests
 └── data/                        ← Seed data, test fixtures
 ```
@@ -86,7 +86,7 @@ pnpm deploy:web                  # Deploy registry website
 ```
 ## Architecture Principles
 1. **Pipeline, not monolith.** Data flows: Discovery → Connection → Analysis → Scoring → Cross-Server (Risk Matrix → Attack Graph) → Publication. Each stage is a separate package with a clear contract.
-2. **Rules are metadata + TypeScript.** YAML files define rule metadata only (id, severity, OWASP/MITRE mappings, test cases). ALL 177 detection rules are implemented as TypedRules in TypeScript inside `packages/analyzer/src/rules/implementations/`. Zero YAML regex patterns remain. Detection uses AST taint analysis, capability graph algorithms, entropy-based secret detection, Levenshtein similarity, and structural parsing.
+2. **Rules are metadata + TypeScript.** YAML files define rule metadata only (id, severity, OWASP/MITRE mappings, test cases). All 164 active detection rules (13 retired) are implemented as TypedRules in TypeScript inside `packages/analyzer/src/rules/implementations/`. Zero YAML regex patterns remain. Detection uses AST taint analysis, capability graph algorithms, entropy-based secret detection, Levenshtein similarity, and structural parsing.
 3. **No LLM in v1.** All detection is deterministic (AST taint, capability graph, entropy, schema inference, linguistic scoring). LLM classification is v1.1 — only added where a deterministic rule demonstrably fails.
 4. **Collect everything, judge later.** Crawlers store raw metadata. Analysis is a separate pass. Never discard data because you don't have a rule for it yet.
 5. **History by default.** Every scan result is immutable. Scores change over time. The history table tracks every change. Trends are a first-class feature.
@@ -98,11 +98,11 @@ pnpm deploy:web                  # Deploy registry website
 - Use structured logging (pino) with correlation IDs across pipeline stages.
 - Database queries go in `packages/database/queries/` — never inline SQL in other packages.
 - All detection rules get test cases: minimum 2 true positives, 2 true negatives per rule.
-- 1201 tests across 19 test files (1002 analyzer + 49 red-team + 150 attack-graph), 30+ per category.
+- 1201 tests across 19 test files (1002 analyzer + 49 red-team + 150 attack-graph), 30+ per active category.
 ## Working with Detection Rules
 Read @agent_docs/detection-rules.md before touching rules/ or packages/analyzer/.
 
-**ALL 177 rules are TypedRule implementations.** Zero YAML regex remains. YAML files contain metadata only (`detect.type: typed`). All detection logic is in TypeScript.
+**All 164 active rules are TypedRule implementations (13 rules retired due to high false-positive rates).** Zero YAML regex remains. YAML files contain metadata only (`detect.type: typed`). All detection logic is in TypeScript.
 
 ### Rule YAML structure (metadata only):
 ```yaml
@@ -147,10 +147,10 @@ Detection logic lives in `packages/analyzer/src/rules/implementations/` across 2
 | `supply-chain-detector.ts` | L5, L12, L14, K10 | JSON structural parsing |
 | `infrastructure-detector.ts` | P1-P7 | Dockerfile/k8s structural parsing |
 | `advanced-supply-chain-detector.ts` | L1, L2, L6, L7, L13, K3, K5, K8 | Import resolution + AST taint |
-| `protocol-ai-runtime-detector.ts` | M1, M3, M6, M9, N4-N15 | Protocol structural analysis |
-| `data-privacy-cross-ecosystem-detector.ts` | O1-O9, Q1-Q13 | AST taint + structural |
+| `protocol-ai-runtime-detector.ts` | M1, M6, M9, N4-N15 (M3 retired) | Protocol structural analysis |
+| `data-privacy-cross-ecosystem-detector.ts` | O4-O6, O8-O9, Q3-Q4, Q6-Q7, Q10, Q13 (O1-O3, O7, Q1, Q2, Q5, Q8, Q9, Q11, Q12 retired) | AST taint + structural |
 | `protocol-surface-remaining-detector.ts` | I2-I15, J3-J7 | Protocol structural analysis |
-| `compliance-remaining-detector.ts` | K1-K20, L3-L15, M2-M8, N1-N10, O4-O10, P8-P10, Q10-Q15 | Factory-built structural rules |
+| `compliance-remaining-detector.ts` | K1-K20, L3-L15, M2, M4-M8, N1-N10, O4-O6, O8-O10, P8-P10, Q10, Q13, Q15 (Q14 retired) | Factory-built structural rules |
 
 ### Adding a new rule:
 1. Create YAML in `rules/` with metadata (id, severity, owasp, remediation, test_cases)
@@ -250,11 +250,12 @@ Fixed: `agent_docs/detection-rules.md` updated — `instructions` field correctl
 `2024-11-05` spec. All `2025-11-05` references corrected to `2025-03-26`.
 
 ### [RESOLVED] All 177 Rules Migrated from YAML Regex to TypedRules
-All 177 detection rules now have TypeScript TypedRule implementations using AST taint analysis,
+All 177 detection rules were migrated to TypeScript TypedRule implementations using AST taint analysis,
 capability graph algorithms, Shannon entropy, structural parsing, and linguistic scoring.
 Zero YAML regex patterns remain. YAML files contain metadata only (`detect.type: typed`).
 Engine auto-registers all TypedRules via side-effect import in `engine.ts`.
 1201 tests passing (1002 analyzer + 49 red-team + 150 attack-graph). npm package `mcp-sentinel-scanner@0.2.0` published.
+_Note: 13 rules subsequently retired (see below), bringing active count to 164._
 
 ### [RESOLVED] CI Workflow Invalid — paths + paths-ignore conflict
 Fixed: Removed `paths-ignore` blocks from `.github/workflows/ci.yml`. GitHub Actions does not
@@ -269,8 +270,15 @@ Five rules were emitted as "companion findings" by parent rules (F1→F2/F3/F6, 
 but were never registered as standalone TypedRules. The engine logged
 "Typed rule has no TypeScript implementation — skipping" for each on every scan.
 Fixed: Registered stub TypedRules that return `[]` (parent rules already produce their findings).
-All 177/177 rules now have registered TypedRule implementations. Zero engine warnings remain.
+All rules now have registered TypedRule implementations. Zero engine warnings remain.
 Pipeline audit confirmed: no rules missed during scans, all data flows intact.
+_Note: 13 rules subsequently retired, bringing active count to 164/177._
+### [RESOLVED] 13 Rules Retired Due to High False-Positive Rates
+Retired 13 rules that were pure string-matching with no path to real analysis, had high FP rates,
+or duplicated coverage from deeper rules. Active rule count: 164 (was 177).
+Retired: O1, O2, O3, O7 (data-privacy), Q1, Q2, Q5, Q8, Q9, Q11, Q12, Q14 (cross-ecosystem), M3 (ai-runtime).
+YAML files remain in `rules/` with `enabled: false`. TypedRule registrations removed from engine.
+
 ## Current Milestone
 Read @agent_docs/product-milestones.md for the current sprint focus.
 **Active layer:** Check the milestones doc. Only work on the active layer unless explicitly told otherwise. Each layer depends on the one below it. Don't skip ahead.

@@ -55,4 +55,13 @@ test_cases:
   true_negative:
     - { description: "Tool description says 'Executes SQL queries against the database. Returns results as JSON.'", expected: false }
     - { description: "Tool description says 'Use this tool to analyze data step by step' as a legitimate capability description", expected: false }
-enabled: true
+enabled: false
+retirement_rationale: >
+  Retired 2026-04-07. Detection matched generic reasoning keywords ('step 1', 'therefore',
+  'the correct answer is') in tool descriptions over 200 characters. These phrases are
+  common in legitimate technical documentation describing multi-step workflows. Estimated
+  false-positive rate >50%. Completely duplicated by A1 (Prompt Injection in Tool
+  Description) which uses Noisy-OR linguistic scoring with properly weighted independent
+  signals — a superior detection technique that considers role injection, authority claims,
+  LLM tokens, and behavioral directives holistically rather than matching individual
+  reasoning keywords.

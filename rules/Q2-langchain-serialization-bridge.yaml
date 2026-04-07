@@ -36,4 +36,5 @@ test_cases:
   true_negative:
     - { description: "Pure MCP server with no LangChain imports or serialization", expected: false }
     - { description: "LangChain test file verifying serialization safety", expected: false }
-enabled: true
+enabled: false
+retirement_rationale: "Retired 2026-04-07. Detection matched agentic framework imports (langchain/langgraph/crewai/autogen) combined with serialization keywords. Using LangChain with serialization is standard practice for chain persistence and caching. Estimated false-positive rate >70%. Completely duplicated by C12 (Unsafe Deserialization) which uses AST taint analysis to trace untrusted data through pickle.loads(), yaml.load(), and other deserialization sinks — a superior detection technique that verifies the source is actually untrusted."

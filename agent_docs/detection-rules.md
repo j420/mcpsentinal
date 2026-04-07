@@ -3,7 +3,7 @@
 
 ### Risk Domain Categories (Framework-Driven)
 
-177 rules are organized into **13 risk domains** derived from cross-referencing 6 compliance frameworks. Each domain maps to specific controls in OWASP MCP Top 10, OWASP Agentic Top 10, CoSAI MCP Security, MAESTRO, EU AI Act, and MITRE ATLAS. See `rules/framework-registry.yaml` for the complete many-to-many mapping.
+164 active rules (13 retired) are organized into **13 risk domains** derived from cross-referencing 6 compliance frameworks. Each domain maps to specific controls in OWASP MCP Top 10, OWASP Agentic Top 10, CoSAI MCP Security, MAESTRO, EU AI Act, and MITRE ATLAS. See `rules/framework-registry.yaml` for the complete many-to-many mapping.
 
 | # | Risk Domain | Count | Frameworks | Migration Priority |
 |---|---|---|---|---|
@@ -39,12 +39,12 @@ Migration priority 1 = migrate first (EU AI Act August 2026 deadline), 10 = migr
 | **2026 Threat Intelligence** | **J** | **Yes (source code + tool metadata)** | **7** | **P1 Threat Researcher (CVE-backed, March 2026)** |
 | **Compliance & Governance** | **K** | **Yes (source code + config)** | **20** | **P11 Compliance Mapper (8-framework mapped, March 2026)** |
 | **Supply Chain Advanced** | **L** | **Yes (source code + CI config)** | **15** | **P1 Threat Researcher (CVE-backed, March 2026)** |
-| **AI Runtime Exploitation** | **M** | **Mixed (tool metadata + source)** | **9** | **P1 Threat Researcher (LLM attack research, March 2026)** |
+| **AI Runtime Exploitation** | **M** | **Mixed (tool metadata + source)** | **8 (1 retired)** | **P1 Threat Researcher (LLM attack research, March 2026)** |
 | **Protocol Edge Cases** | **N** | **Yes (source code)** | **15** | **P1 Threat Researcher (JSON-RPC + transport, March 2026)** |
-| **Data Privacy Attacks** | **O** | **Yes (source code)** | **10** | **P1 Threat Researcher (exfiltration research, March 2026)** |
+| **Data Privacy Attacks** | **O** | **Yes (source code)** | **6 (4 retired)** | **P1 Threat Researcher (exfiltration research, March 2026)** |
 | **Infrastructure Runtime** | **P** | **Yes (source code + Dockerfiles)** | **10** | **P7 Infrastructure Engineer (container security, March 2026)** |
-| **Cross-Ecosystem Emergent** | **Q** | **Mixed (source + metadata)** | **15** | **P1 Threat Researcher (multi-protocol, March 2026)** |
-| **Total** | | | **177** | |
+| **Cross-Ecosystem Emergent** | **Q** | **Mixed (source + metadata)** | **7 (8 retired)** | **P1 Threat Researcher (multi-protocol, March 2026)** |
+| **Total** | | | **164 active (13 retired)** | |
 
 ### The G-Category: What a Threat Researcher Adds
 
@@ -253,7 +253,7 @@ There are two distinct patterns for how a single detector file covers multiple r
 
 #### 1. Stub-Registered Companion Rules (5 rules)
 
-Some parent rules emit findings for multiple rule IDs during a single `analyze()` pass. The "child" rules are registered as **stub TypedRules** (returning `[]`) to prevent engine dispatch warnings — the parent rule already produces their findings. All 177/177 rules are registered.
+Some parent rules emit findings for multiple rule IDs during a single `analyze()` pass. The "child" rules are registered as **stub TypedRules** (returning `[]`) to prevent engine dispatch warnings — the parent rule already produces their findings. All 164 active rules are registered (13 retired rules disabled).
 
 | Parent Rule | Stub Companion Rules | Why Companion (Not Separate) | Detector File |
 |-------------|---------------------|------------------------------|---------------|
@@ -280,9 +280,9 @@ Most detector files register **multiple full TypedRule implementations** — eac
 | `secret-exfil-detector.ts` | L9, K2, G7 | 3 separate TypedRule classes |
 | `supply-chain-detector.ts` | L5, L12, K10 (+ L14 stub) | 3 full TypedRule classes + 1 stub |
 | `advanced-supply-chain-detector.ts` | L1, L2, L6, L7, L13, K3, K5, K8 | 8 separate TypedRule classes |
-| `protocol-ai-runtime-detector.ts` | M1, M3, M6, M9, N4–N15 | 13 separate TypedRule classes |
+| `protocol-ai-runtime-detector.ts` | M1, M6, M9, N4–N15 (M3 retired) | 12 active TypedRule classes |
 | `infrastructure-detector.ts` | P1–P7 | 7 separate TypedRule classes |
-| `data-privacy-cross-ecosystem-detector.ts` | O1–O9, Q1–Q13 | Factory-built TypedRules |
+| `data-privacy-cross-ecosystem-detector.ts` | O4–O6, O8–O9, Q3–Q4, Q6–Q7, Q10, Q13 (O1–O3, O7, Q1, Q2, Q5, Q8, Q9, Q11, Q12 retired) | Factory-built TypedRules |
 | `compliance-remaining-detector.ts` | K1, K4, K6, K7, K11–K20, L3, L8, L10, L15, M2, M4, M5, M7, M8, N1–N3, O4–O10, P8–P10, Q2, Q3, Q5–Q15 | Factory (`buildRule()`) produces rules from config array |
 
 Single-rule detector files: `c1-command-injection.ts` (C1), `a9-encoded-instructions.ts` (A9), `d3-typosquatting.ts` (D3), `g4-context-saturation.ts` (G4). Also `a6-unicode-homoglyph.ts` (A6 + A7 as 2 independent classes) and `f1-lethal-trifecta.ts` (F1 + F7 as 2 independent classes, plus 3 stubs).

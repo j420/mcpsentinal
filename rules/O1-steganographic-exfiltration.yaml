@@ -44,4 +44,13 @@ test_cases:
     - { description: "Source code uses sharp to strip EXIF metadata from uploaded images for privacy", expected: false }
     - { description: "Source code reads EXIF GPS data from photos for a mapping application", expected: false }
 intelligence_source: "MITRE ATT&CK T1001.002, APT29 Hammertoss, Turla PNG payloads, MDPI 2025 AI steganography paper"
-enabled: true
+enabled: false
+retirement_rationale: >
+  Retired 2026-04-07. Detection relied on keyword matching for steganography library names
+  (steg, lsb, embed + image/png/wav). Even with AST analysis, importing a steganography
+  library is not proof of malicious data exfiltration — legitimate image processing,
+  watermarking, and media encoding trigger identically. Estimated false-positive rate >60%
+  in codebases with any image processing. No structural insight possible: steganographic
+  intent cannot be inferred from API calls alone. Data exfiltration paths are better
+  detected by C3 (SSRF taint) and secret-exfil-detector (L9/G7) which trace actual
+  sensitive data to network sinks.

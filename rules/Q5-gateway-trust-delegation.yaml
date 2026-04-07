@@ -40,4 +40,5 @@ test_cases:
   true_negative:
     - { description: "Standard single MCP server with no gateway/proxy functionality", expected: false }
     - { description: "MCP gateway with explicit per-server consent prompts and scoped auth tokens", expected: false }
-enabled: true
+enabled: false
+retirement_rationale: "Retired 2026-04-07. Detection matched gateway/proxy + trust/auth + forward/delegate keywords without verify/validate nearby. This pattern is too abstract for static analysis — whether trust delegation is 'confused' depends on the gateway's security architecture, which cannot be inferred from keyword proximity. Estimated false-positive rate >65%. Gateway security is better assessed through architecture review and runtime testing rather than source code pattern matching."

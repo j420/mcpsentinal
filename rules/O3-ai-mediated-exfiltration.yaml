@@ -49,4 +49,13 @@ test_cases:
     - { description: "Tool description says 'Provide the file path you want to read'", expected: false }
     - { description: "Tool description says 'Pass the search query as the first argument'", expected: false }
 intelligence_source: "Invariant Labs WhatsApp MCP (Apr 2025), arXiv Trivial Trojans (Jul 2025), Snyk MCP malware scan (Feb 2026), EchoLeak CVE-2025-32711"
-enabled: true
+enabled: false
+retirement_rationale: >
+  Retired 2026-04-07. Detection matched encoding functions (base64, hex, URL-encode) near
+  tool/function invocations. Encoding data before API calls is universal programming
+  practice (authentication headers, query parameters, binary data transport). Estimated
+  false-positive rate >80%. The concept of 'AI-mediated exfiltration' is too abstract for
+  static code analysis — it requires runtime behavioral analysis of what data the AI
+  chooses to pass to tools, which is outside static scanning scope. Actual data exfiltration
+  via tool arguments is detected by F7 (multi-step exfiltration chain) and F3 (data flow
+  risk) via capability graph analysis.
