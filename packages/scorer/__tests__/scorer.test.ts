@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeScore } from "../src/scorer.js";
+import { computeScore, type AnalysisCoverageInput } from "../src/scorer.js";
 import type { FindingInput } from "@mcp-sentinel/database";
 
 const ruleCategories: Record<string, string> = {
@@ -234,5 +234,59 @@ describe("v2 sub-scores", () => {
     expect(result.compliance_score).toBe(100);
     expect(result.supply_chain_score).toBe(100);
     expect(result.infrastructure_score).toBe(100);
+  });
+});
+
+// ── Coverage-Aware Scoring Tests ────────────────────────────────────────────
+// Validates that scores include coverage metadata for transparent reporting.
+
+describe("coverage-aware scoring", () => {
+  it("includes analysis_coverage when coverage is provided", () => {
+    const coverage: AnalysisCoverageInput = {
+      had_source_code: true,
+      had_connection: true,
+      had_dependencies: true,
+      coverage_ratio: 0.85,
+      confidence_band: "high",
+      techniques_run: ["ast-taint", "capability-graph", "entropy"],
+      rules_executed: 150,
+      rules_skipped_no_data: 27,
+    };
+
+    const result = computeScore([], ruleCategories, coverage);
+    expect(result.analysis_coverage).toBeDefined();
+    expect(result.analysis_coverage!.confidence_band).toBe("high");
+    expect(result.analysis_coverage!.had_source_code).toBe(true);
+    expect(result.analysis_coverage!.techniques_run).toContain("ast-taint");
+    expect(result.analysis_coverage!.rules_executed).toBe(150);
+  });
+
+  it("omits analysis_coverage when coverage is not provided", () => {
+    const result = computeScore([], ruleCategories);
+    expect(result.analysis_coverage).toBeUndefined();
+  });
+
+  it("includes low-confidence coverage for metadata-only scans", () => {
+    const coverage: AnalysisCoverageInput = {
+      had_source_code: false,
+      had_connection: false,
+      had_dependencies: false,
+      coverage_ratio: 0.25,
+      confidence_band: "minimal",
+      techniques_run: ["linguistic"],
+      rules_executed: 44,
+      rules_skipped_no_data: 133,
+    };
+
+    const findings: FindingInput[] = [
+      { rule_id: "A1", severity: "medium", evidence: "e", remediation: "r", owasp_category: null, mitre_technique: null },
+    ];
+
+    const result = computeScore(findings, ruleCategories, coverage);
+    expect(result.total_score).toBe(92);
+    expect(result.analysis_coverage!.confidence_band).toBe("minimal");
+    expect(result.analysis_coverage!.rules_skipped_no_data).toBe(133);
+    // This score of 92 should be displayed as "92/100 (minimal confidence)"
+    // — telling the org that most rules couldn't run due to missing data
   });
 });

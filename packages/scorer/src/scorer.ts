@@ -4,6 +4,24 @@ import pino from "pino";
 // Log to stderr so that stdout is clean for callers that parse it (e.g. CLI --json mode)
 const logger = pino({ name: "scorer" }, process.stderr);
 
+/**
+ * Analysis coverage summary — passed from the engine to the scorer so that
+ * scores can be reported with honest confidence bands.
+ *
+ * Without this, "85/100 with no source code" is indistinguishable from
+ * "85/100 with full AST taint analysis". Regulators require transparency.
+ */
+export interface AnalysisCoverageInput {
+  had_source_code: boolean;
+  had_connection: boolean;
+  had_dependencies: boolean;
+  coverage_ratio: number;
+  confidence_band: "high" | "medium" | "low" | "minimal";
+  techniques_run: string[];
+  rules_executed: number;
+  rules_skipped_no_data: number;
+}
+
 export interface ScoreResult {
   total_score: number;
 
@@ -32,6 +50,15 @@ export interface ScoreResult {
     severity: string;
     penalty: number;
   }>;
+
+  /**
+   * Analysis coverage from the engine — included when the caller provides it.
+   * Tells orgs: "This score of 85 is based on [high/medium/low/minimal] coverage."
+   *
+   * Display format: "85/100 (high confidence)" or "85/100 (low confidence)"
+   * Tooltip: "Analyzed: source code ✓, live connection ✓, dependencies ✓, 142/177 rules executed"
+   */
+  analysis_coverage?: AnalysisCoverageInput;
 }
 
 const SEVERITY_WEIGHTS: Record<Severity, number> = {
@@ -141,7 +168,8 @@ type FindingWithConfidence = FindingInput;
  */
 export function computeScore(
   findings: FindingInput[] | FindingWithConfidence[],
-  ruleCategories: Record<string, string>
+  ruleCategories: Record<string, string>,
+  coverage?: AnalysisCoverageInput,
 ): ScoreResult {
   // Legacy sub-scores (5 — backward-compatible)
   const legacyScores = {
@@ -254,5 +282,6 @@ export function computeScore(
     infrastructure_score: v2Scores.infrastructure_score,
     owasp_coverage: owaspCoverage,
     penalty_breakdown: penalties,
+    ...(coverage ? { analysis_coverage: coverage } : {}),
   };
 }
