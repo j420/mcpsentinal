@@ -1,6 +1,6 @@
 # Package: red-team
 
-**Purpose:** Precision/recall accuracy auditing for all 177 detection rules across 17 categories. Runs rule fixtures through the analyzer engine, computes per-rule metrics, and enforces the Layer 5 quality gate (precision >= 80%).
+**Purpose:** Precision/recall accuracy auditing for all 164 active detection rules across 17 categories (13 retired). Runs rule fixtures through the analyzer engine, computes per-rule metrics, and enforces the Layer 5 quality gate (precision >= 80%).
 
 ## Key Files
 - `src/runner.ts` — `AccuracyRunner` class (loads rules, runs fixtures, computes metrics)

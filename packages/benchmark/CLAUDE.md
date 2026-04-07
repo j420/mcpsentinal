@@ -41,7 +41,7 @@ No database required — runs entirely on the in-memory corpus.
 ## Architecture Decisions
 
 ### Engine Caching
-The analyzer engine + 177 rules are loaded ONCE and reused for all 100 servers. This prevents 100x YAML parsing overhead.
+The analyzer engine + 164 active rules (177 YAML files, 13 retired) are loaded ONCE and reused for all 100 servers. This prevents 100x YAML parsing overhead.
 
 ### Vulnerability Class Mapping
 Competitor tools use different rule ID namespaces (e.g., Sentinel uses "C1", baseline uses "CMD-INJ"). The `mapToVulnClass()` function normalizes both to a common vulnerability class (e.g., "command-injection") before computing unique-findings. Without this, every Sentinel finding would appear "unique" even when competitors detect the same vulnerability.

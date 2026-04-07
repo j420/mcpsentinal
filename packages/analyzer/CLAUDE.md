@@ -31,25 +31,25 @@ interface AnalysisContext {
 
 ## Detection Architecture: 2-Phase Analysis
 
-### Phase 1: TypeScript Engines (preferred — all new rules go here)
-Five specialized engines in `src/engines/` run first:
-- **CodeAnalyzer** — C1, C16 (AST taint, secrets, entropy)
-- **DescriptionAnalyzer** — A1–A5, H1–H2 (linguistic injection scoring)
+All 164 active rules are TypedRule implementations (13 retired). Zero YAML regex patterns remain.
+
+### Phase 1: Specialized Engines + TypedRules (all detection logic)
+Five specialized engines in `src/engines/` run first, then self-registering TypedRules in `src/rules/implementations/` cover the rest:
+- **CodeAnalyzer** — C1–C16 (AST taint, secrets, entropy)
+- **DescriptionAnalyzer** — A1–A9 (linguistic injection scoring, Unicode, encoding)
 - **SchemaAnalyzer** — B1–B7 (structural inference)
 - **DependencyAnalyzer** — D1–D7 (similarity, CVE lookup)
 - **ProtocolAnalyzer** — I1–I16, J1, J5 (transport, OAuth, annotations)
+- **23 TypedRule detector files** — E1–E4, F1–F7, G1–G7, H1–H3, J2–J7, K1–K20, L1–L15, M1–M9, N1–N15, O4–O10, P1–P10, Q3–Q15
 
-Plus self-registering TypedRule implementations in `src/rules/implementations/`.
-
-### Phase 2: YAML Fallback (legacy — do NOT add new rules here)
-For rules not yet migrated to TypeScript, the engine falls back to YAML interpretation:
+### Phase 2: YAML Fallback (deprecated — do NOT add new rules here)
 
 | `detect.type` | Handler method | Status |
 |---|---|---|
-| `regex` | `runRegexRule()` | **LEGACY ONLY — banned for new rules** |
-| `schema-check` | `runSchemaCheckRule()` | Active |
-| `behavioral` | `runBehavioralRule()` | Active |
-| `composite` | `runCompositeRule()` | Active |
+| `regex` | `runRegexRule()` | **DEPRECATED — all rules migrated to TypedRules** |
+| `schema-check` | `runSchemaCheckRule()` | Legacy fallback only |
+| `behavioral` | `runBehavioralRule()` | Legacy fallback only |
+| `composite` | `runCompositeRule()` | Legacy fallback only |
 
 **Adding a new rule**: Create a TypeScript implementation in `src/rules/implementations/`, register it in `src/rules/index.ts`. See `rules/CLAUDE.md` for the complete guide.
 

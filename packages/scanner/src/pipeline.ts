@@ -16,7 +16,7 @@
  *       ↓
  *   Stage 4: MCPConnector          — enumerate tools via initialize + tools/list
  *       ↓
- *   Stage 5: AnalysisEngine        — run all 103 detection rules → FindingInput[]
+ *   Stage 5: AnalysisEngine        — run all 164 active detection rules → FindingInput[]
  *       ↓
  *   Stage 5b: DynamicTester        — gated tool invocation (consent required, --dynamic only)
  *       ↓

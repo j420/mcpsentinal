@@ -5,7 +5,7 @@
 
 The MCP security market has **29+ active players** across 5 categories. Three waves of acquisitions (Snyk/Invariant, SentinelOne/Prompt Security, Check Point/Lakera) plus direct entry from platform giants (Cisco, Microsoft, Kong, Netskope, Proofpoint, Trend Micro) have transformed this from a niche to a hot enterprise category. Total AI security funding hit **$6.34B in 2025** (3x from 2024).
 
-MCP Sentinel's unique position: **ecosystem-wide security intelligence registry** with 177 rules, 8 compliance frameworks, and historical trending. No competitor combines all three. The biggest risk is not technical — it's that we have **0 users looking at 0 data** while competitors ship "good enough" with 15 rules and get Gartner mentions.
+MCP Sentinel's unique position: **ecosystem-wide security intelligence registry** with 164 active rules (13 retired), 8 compliance frameworks, and historical trending. No competitor combines all three. The biggest risk is not technical — it's that we have **0 users looking at 0 data** while competitors ship "good enough" with 15 rules and get Gartner mentions.
 
 ---
 
@@ -32,7 +32,7 @@ MCP Sentinel's unique position: **ecosystem-wide security intelligence registry*
 | **mcp-audit** | APIsec | 25+ secret patterns | OWASP LLM Top 10 + **CycloneDX AI-BOM export** + SARIF output | 144 GitHub stars |
 | **GenTelLab MCP-Guard** | Academic (arXiv) | 3-stage pipeline | Pattern → E5 embedding → LLM, **70K+ attack benchmark** | 96.01% accuracy (paper) |
 | **Ramparts** | Javelin | YARA + LLM analysis | Fast Rust scanner, multi-transport | 85 GitHub stars |
-| **MCP Sentinel** | Us | **177 rules, 17 categories (A-Q)** | Regex + schema + behavioral + composite, **fully deterministic** | **Not yet launched** |
+| **MCP Sentinel** | Us | **164 active rules, 17 categories (A-Q)** | Regex + schema + behavioral + composite, **fully deterministic** | **Not yet launched** |
 
 #### Category 2: Runtime Gateways/Proxies
 
@@ -181,7 +181,7 @@ MCP Sentinel's unique position: **ecosystem-wide security intelligence registry*
 
 | Capability | MCP Sentinel | Snyk agent-scan | Cisco Scanner | Enkrypt AI | Prompt Security | MCPAmpel |
 |---|---|---|---|---|---|---|
-| Detection rule count | **177** | ~15 | YARA+LLM+CFG | AI-based | Unknown | 16 engines |
+| Detection rule count | **164 active** | ~15 | YARA+LLM+CFG | AI-based | Unknown | 16 engines |
 | Public ecosystem registry | **Planned** | No | No | **Yes (1K)** | **Yes (13K)** | On-demand |
 | Source code SAST | **Yes (C1-C16)** | No | **Yes (CFG+taint)** | **Yes** | Unknown | Partial |
 | Dependency analysis | **Yes (D1-D7)** | No | **Yes** | No | No | Partial |
@@ -204,7 +204,7 @@ MCP Sentinel's unique position: **ecosystem-wide security intelligence registry*
 
 ### What MCP Sentinel Has That Nobody Else Does
 
-1. **177 deterministic rules across 17 categories** — 3-10x more than any competitor
+1. **164 active deterministic rules across 17 categories** — 3-10x more than any competitor
 2. **8-framework compliance mapping** — ISO 42001, EU AI Act, NIST AI RMF, CoSAI, MAESTRO, CSA AICM, ISO 27001, OWASP (both MCP + Agentic)
 3. **Dual OWASP mapping** — only tool mapping to both MCP Top 10 AND Agentic Top 10
 4. **Historical score trending** — append-only scan history enables rug-pull detection and drift analysis
@@ -235,7 +235,7 @@ MCP Sentinel's unique position: **ecosystem-wide security intelligence registry*
 
 1. **Prompt Security / SentinelOne already scored 13,000 servers.** They have the registry data we don't, plus SentinelOne's enterprise distribution. If they publish a searchable public registry, our core differentiator erodes.
 
-2. **Cisco's MCP Scanner has real static analysis.** CFG builder, taint tracking, reaching definitions, constant propagation, cross-file dataflow (v4.0+). Our 177 rules are broader but their analysis on the rules they DO have is deeper.
+2. **Cisco's MCP Scanner has real static analysis.** CFG builder, taint tracking, reaching definitions, constant propagation, cross-file dataflow (v4.0+). Our 164 active rules are broader but their analysis on the rules they DO have is deeper.
 
 3. **Snyk agent-scan has the brand.** 1,700 GitHub stars, Snyk's enterprise distribution, ETH Zurich research pedigree. When developers think "MCP security" they think mcp-scan.
 
@@ -250,7 +250,7 @@ MCP Sentinel's unique position: **ecosystem-wide security intelligence registry*
 
 #### Priority 2: Compete on CLI (days of work)
 - Reposition `npx mcp-sentinel` as a config scanner (direct mcp-scan competitor)
-- 177 rules vs 15 is the selling point — make it obvious in output
+- 164 active rules vs 15 is the selling point — make it obvious in output
 
 #### Priority 3: Easy Technical Wins
 - Add tool pinning (hash-based manifest comparison) — half a day
@@ -280,7 +280,7 @@ MCP Sentinel's unique position: **ecosystem-wide security intelligence registry*
 Every Tier 1 platform is acquiring MCP security tools. Acquisition criteria:
 1. **Real data** — a database of 10K+ scored servers is a data asset
 2. **Real users** — npm downloads, GitHub stars, enterprise pilots
-3. **Unique capabilities** — 177 rules, compliance mapping, historical tracking
+3. **Unique capabilities** — 164 active rules, compliance mapping, historical tracking
 
 We have #3. We need #1 and #2. That means shipping.
 

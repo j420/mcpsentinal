@@ -13,7 +13,7 @@
 ## Architecture
 
 - **No database required** — scanning is self-contained
-- **Rules loaded from `rules/` directory** at startup (177 YAML files, 164 active / 13 retired)
+- **Rules loaded from `rules/` directory** at startup — 177 YAML files (164 active, 13 retired with `enabled: false`)
 - **Uses `@mcp-sentinel/analyzer`** for detection engine
 - **Uses `@mcp-sentinel/scorer`** for scoring
 - **Uses `@mcp-sentinel/connector`** for live endpoint enumeration
