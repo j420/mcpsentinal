@@ -19,7 +19,8 @@
     "attack-graph": "pnpm --filter=@mcp-sentinel/attack-graph run attack-graph",
     "red-team": "pnpm --filter=@mcp-sentinel/red-team run audit",
     "dynamic-test": "pnpm --filter=@mcp-sentinel/scanner run scan -- --dynamic",
-    "cli": "pnpm --filter=@mcp-sentinel/cli run cli"
+    "cli": "pnpm --filter=@mcp-sentinel/cli run cli",
+    "validate:evidence": "tsx tools/scripts/validate-evidence-chains.ts"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",

@@ -15,9 +15,14 @@ name: Rule Accuracy Audit
 #                   P18 (Trust & Accuracy Auditor), P9 (Scanner Engine Engineer)
 
 on:
-  # Schedule disabled — re-enable when pipeline is production-ready
-  # schedule:
-  #   - cron: "0 3 * * 0"  # Sundays 03:00 UTC
+  schedule:
+    - cron: "0 3 * * 0"  # Sundays 03:00 UTC
+  pull_request:
+    branches: [main]
+    paths:
+      - 'packages/analyzer/**'
+      - 'packages/red-team/**'
+      - 'rules/**/*.yaml'
   workflow_dispatch:
     inputs:
       category:
