@@ -283,7 +283,7 @@ Most detector files register **multiple full TypedRule implementations** — eac
 | `protocol-ai-runtime-detector.ts` | M1, M6, M9, N4–N15 (M3 retired) | 12 active TypedRule classes |
 | `infrastructure-detector.ts` | P1–P7 | 7 separate TypedRule classes |
 | `data-privacy-cross-ecosystem-detector.ts` | O4–O6, O8–O9, Q3–Q4, Q6–Q7, Q10, Q13 (O1–O3, O7, Q1, Q2, Q5, Q8, Q9, Q11, Q12 retired) | Factory-built TypedRules |
-| `compliance-remaining-detector.ts` | K1, K4, K6, K7, K11–K20, L3, L8, L10, L15, M2, M4, M5, M7, M8, N1–N3, O4–O10, P8–P10, Q2, Q3, Q5–Q15 | Factory (`buildRule()`) produces rules from config array |
+| `compliance-remaining-detector.ts` | K1, K4, K6, K7, K11–K20, L3, L8, L10, L15, M2, M4, M5, M7, M8, N1–N3, O4–O6, O8–O10, P8–P10, Q3, Q4, Q6, Q7, Q10, Q13, Q15 (Q2, Q5, Q8, Q9, Q11, Q12, Q14 retired) | Factory (`buildRule()`) produces rules from config array |
 
 Single-rule detector files: `c1-command-injection.ts` (C1), `a9-encoded-instructions.ts` (A9), `d3-typosquatting.ts` (D3), `g4-context-saturation.ts` (G4). Also `a6-unicode-homoglyph.ts` (A6 + A7 as 2 independent classes) and `f1-lethal-trifecta.ts` (F1 + F7 as 2 independent classes, plus 3 stubs).
 
@@ -536,4 +536,28 @@ These rules close gaps identified by cross-referencing 83 existing rules against
 5. **Cross-trust-boundary data flow (K18)** — detects sensitive data flowing from high-sensitivity sources through low-sensitivity tool responses
 6. **Multi-agent collusion preconditions (K15)** — detects static enablers of runtime collusion behavior
 7. **Sandbox enforcement (K19)** — detects Docker/container misconfigurations that disable security boundaries
+
+---
+
+### Retired Rules (13 rules)
+
+The following 13 rules have been retired from active scanning. They remain in `rules/` as YAML files with `enabled: false`, but their TypedRule registrations have been removed from the engine. Retired rules produce no findings and do not affect scores.
+
+**Retirement criteria:** A rule is retired when it meets one or more of: (1) pure string-matching with no feasible path to real analysis, (2) false-positive rate exceeding 50%, (3) coverage fully duplicated by a deeper rule.
+
+| Rule ID | Name | Category | FP Rate | Reason |
+|---------|------|----------|---------|--------|
+| **O1** | Steganographic Data Exfiltration | Data Privacy | >60% | Keyword matching only; covered by C3/L9/G7 taint analysis |
+| **O2** | HTTP Header Covert Channel | Data Privacy | >70% | Custom headers are universal in HTTP; covered by C3 taint |
+| **O3** | AI-Mediated Exfiltration via Tool Arguments | Data Privacy | >80% | Encoding before API calls is legitimate and universal |
+| **O7** | Cross-Session Data Leakage | Data Privacy | >50% | Module-level state is normal in Node.js; needs runtime analysis (not static) |
+| **Q1** | Dual-Protocol Schema Constraint Loss | Cross-Ecosystem | >60% | Cannot statically verify constraint loss across protocol boundaries |
+| **Q2** | LangChain Serialization Bridge Injection | Cross-Ecosystem | >70% | Fully duplicated by C12 (Unsafe Deserialization) |
+| **Q5** | MCP Gateway Trust Delegation Confusion | Cross-Ecosystem | >65% | Too abstract; trust delegation patterns are architecturally legitimate |
+| **Q8** | Cross-Protocol Authentication Confusion | Cross-Ecosystem | >55% | Token reuse across protocols is common and often intentional |
+| **Q9** | Agentic Workflow DAG Manipulation | Cross-Ecosystem | >80% | Dynamic workflow modification is legitimate in agentic frameworks |
+| **Q11** | Code Suggestion Poisoning via MCP | Cross-Ecosystem | >70% | Code generation tools legitimately return code in responses |
+| **Q12** | Browser Extension MCP Bridge | Cross-Ecosystem | >50% | Niche pattern; duplicated by Q7 (Extension Privilege Escalation) |
+| **Q14** | Cross-Language Serialization Mismatch | Cross-Ecosystem | N/A | Pattern unmatchable via static analysis; rule never fires |
+| **M3** | Reasoning Chain Manipulation | AI Runtime | N/A | Fully duplicated by A1 linguistic scoring (higher precision) |
 

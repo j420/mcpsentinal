@@ -249,8 +249,8 @@ Pipeline populates `initialize_metadata` from the enumeration result. H2 rule no
 Fixed: `agent_docs/detection-rules.md` updated — `instructions` field correctly attributed to
 `2024-11-05` spec. All `2025-11-05` references corrected to `2025-03-26`.
 
-### [RESOLVED] All 177 Rules Migrated from YAML Regex to TypedRules
-All 177 detection rules were migrated to TypeScript TypedRule implementations using AST taint analysis,
+### [RESOLVED] All Rules Migrated from YAML Regex to TypedRules
+All 177 detection rules were originally migrated to TypeScript TypedRule implementations using AST taint analysis,
 capability graph algorithms, Shannon entropy, structural parsing, and linguistic scoring.
 Zero YAML regex patterns remain. YAML files contain metadata only (`detect.type: typed`).
 Engine auto-registers all TypedRules via side-effect import in `engine.ts`.

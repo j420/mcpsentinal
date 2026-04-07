@@ -8,7 +8,7 @@ Deep reference documentation for the MCP Sentinel project. These docs are the au
 
 | If you're working on... | Read this first |
 |---|---|
-| Detection rules (`rules/`, `packages/analyzer/`) | **detection-rules.md** — All 177 rules spec, engine handler status, threat intelligence sources, OWASP/MITRE mappings |
+| Detection rules (`rules/`, `packages/analyzer/`) | **detection-rules.md** — All 164 active rules spec (13 retired), engine handler status, threat intelligence sources, OWASP/MITRE mappings |
 | Scoring (`packages/scorer/`) | **scoring-algorithm.md** — Severity weights, category sub-scores, lethal trifecta cap, OWASP coverage, score interpretation |
 | Data model, pipeline stages, API contracts | **architecture.md** — Database schema, 6-stage pipeline spec, REST API contract, production topology, Railway config, GitHub Actions, failure recovery |
 | Crawlers (`packages/crawler/`) | **crawler-specs.md** — Per-source crawler specifications, API endpoints, rate limits, dedup strategy |
