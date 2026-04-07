@@ -134,3 +134,105 @@ describe("computeScore", () => {
     expect(result.behavior_score).toBe(100); // untouched
   });
 });
+
+// ── v2 Sub-Score Tests ──────────────────────────────────────────────────────
+// These validate that the 8 balanced sub-scores distribute penalties correctly
+// instead of dumping everything into config_score.
+
+describe("v2 sub-scores", () => {
+  it("maps compliance-governance rules to compliance_score (not config_score)", () => {
+    const findings: FindingInput[] = [
+      { rule_id: "K1", severity: "high", evidence: "e", remediation: "r", owasp_category: null, mitre_technique: null },
+    ];
+    const categories = { K1: "compliance-governance" };
+    const result = computeScore(findings, categories);
+
+    // v2: compliance_score absorbs K1
+    expect(result.compliance_score).toBe(85); // 100 - 15
+    // v2: other sub-scores untouched
+    expect(result.adversarial_score).toBe(100);
+    expect(result.protocol_score).toBe(100);
+    expect(result.infrastructure_score).toBe(100);
+    // Legacy: config_score still absorbs it (backward compat)
+    expect(result.config_score).toBe(85);
+  });
+
+  it("maps adversarial-ai rules to adversarial_score", () => {
+    const findings: FindingInput[] = [
+      { rule_id: "G1", severity: "critical", evidence: "e", remediation: "r", owasp_category: null, mitre_technique: null },
+    ];
+    const categories = { G1: "adversarial-ai" };
+    const result = computeScore(findings, categories);
+
+    expect(result.adversarial_score).toBe(75); // 100 - 25
+    expect(result.compliance_score).toBe(100); // untouched
+    // Legacy: still goes to config_score
+    expect(result.config_score).toBe(75);
+  });
+
+  it("maps protocol-surface rules to protocol_score", () => {
+    const findings: FindingInput[] = [
+      { rule_id: "I1", severity: "high", evidence: "e", remediation: "r", owasp_category: null, mitre_technique: null },
+    ];
+    const categories = { I1: "protocol-surface" };
+    const result = computeScore(findings, categories);
+
+    expect(result.protocol_score).toBe(85);
+    expect(result.adversarial_score).toBe(100);
+    expect(result.compliance_score).toBe(100);
+  });
+
+  it("maps schema-analysis rules to schema_score (not config_score)", () => {
+    const findings: FindingInput[] = [
+      { rule_id: "B1", severity: "medium", evidence: "e", remediation: "r", owasp_category: null, mitre_technique: null },
+    ];
+    const categories = { B1: "schema-analysis" };
+    const result = computeScore(findings, categories);
+
+    // v2: schema_score absorbs B1
+    expect(result.schema_score).toBe(92); // 100 - 8
+    // Legacy: config_score still absorbs it
+    expect(result.config_score).toBe(92);
+  });
+
+  it("maps supply-chain-advanced rules to supply_chain_score", () => {
+    const findings: FindingInput[] = [
+      { rule_id: "L1", severity: "high", evidence: "e", remediation: "r", owasp_category: null, mitre_technique: null },
+      { rule_id: "D1", severity: "high", evidence: "e", remediation: "r", owasp_category: null, mitre_technique: null },
+    ];
+    const categories = { L1: "supply-chain-advanced", D1: "dependency-analysis" };
+    const result = computeScore(findings, categories);
+
+    // v2: both map to supply_chain_score
+    expect(result.supply_chain_score).toBe(70); // 100 - 15 - 15
+    // Legacy: L1 → config_score, D1 → deps_score (split)
+    expect(result.config_score).toBe(85);
+    expect(result.deps_score).toBe(85);
+  });
+
+  it("maps infrastructure/AI-runtime/privacy rules to infrastructure_score", () => {
+    const findings: FindingInput[] = [
+      { rule_id: "M1", severity: "medium", evidence: "e", remediation: "r", owasp_category: null, mitre_technique: null },
+      { rule_id: "P1", severity: "medium", evidence: "e", remediation: "r", owasp_category: null, mitre_technique: null },
+      { rule_id: "Q1", severity: "medium", evidence: "e", remediation: "r", owasp_category: null, mitre_technique: null },
+    ];
+    const categories = { M1: "ai-runtime-exploitation", P1: "infrastructure-runtime", Q1: "cross-ecosystem-emergent" };
+    const result = computeScore(findings, categories);
+
+    // v2: all three map to infrastructure_score
+    expect(result.infrastructure_score).toBe(76); // 100 - 8 - 8 - 8
+    // Legacy: all three still go to config_score
+    expect(result.config_score).toBe(76);
+  });
+
+  it("returns 100 for all v2 sub-scores when no findings", () => {
+    const result = computeScore([], {});
+    expect(result.schema_score).toBe(100);
+    expect(result.ecosystem_score).toBe(100);
+    expect(result.protocol_score).toBe(100);
+    expect(result.adversarial_score).toBe(100);
+    expect(result.compliance_score).toBe(100);
+    expect(result.supply_chain_score).toBe(100);
+    expect(result.infrastructure_score).toBe(100);
+  });
+});
