@@ -84,9 +84,10 @@ jobs:
           if [ "${{ github.event.inputs.fail_fast }}" = "true" ]; then
             ARGS="$ARGS --fail-fast"
           fi
-          # Run and capture output — exit code 0 even on failures so we can
-          # upload the artifact and write the step summary before failing.
-          pnpm --filter=@mcp-sentinel/red-team exec tsx src/cli.ts $ARGS > accuracy-report.json 2>&1 || true
+          # Run and capture JSON output. Pino (from the analyzer engine) logs
+          # to stderr — keep stderr separate so accuracy-report.json contains
+          # only the valid JSON report, not interleaved log lines.
+          pnpm --filter=@mcp-sentinel/red-team exec tsx src/cli.ts $ARGS > accuracy-report.json 2>accuracy-audit.log || true
 
       - name: Run accuracy audit (text summary)
         id: accuracy_text
@@ -107,7 +108,9 @@ jobs:
         if: always()
         with:
           name: accuracy-report-${{ github.run_id }}
-          path: accuracy-report.json
+          path: |
+            accuracy-report.json
+            accuracy-audit.log
           retention-days: 30
 
       # ── Write GitHub step summary ─────────────────────────────────────────────
