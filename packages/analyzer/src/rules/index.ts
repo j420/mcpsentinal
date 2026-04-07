@@ -64,4 +64,6 @@ import "./implementations/dependency-behavioral-detector.js";
 import "./implementations/ecosystem-adversarial-detector.js";
 import "./implementations/protocol-surface-remaining-detector.js";
 import "./implementations/k1-absent-structured-logging.js";
+import "./implementations/k4-missing-human-confirmation.js";
+import "./implementations/k17-missing-timeout.js";
 import "./implementations/compliance-remaining-detector.js";

@@ -203,14 +203,7 @@ function buildRule(cfg: RCfg): TypedRule {
 
 const K_RULES: RCfg[] = [
   // K1 migrated to TypedRuleV2 — see k1-absent-structured-logging.ts
-  { id: "K4", name: "Missing Human Confirmation for Destructive Ops", source: "code",
-    patterns: [
-      { regex: /(?:delete|remove|drop|truncate|destroy|purge|wipe)(?:All|Many|Bulk|Batch)?\s*\([^)]*\)(?!.*(?:confirm|prompt|approve|ask|verify))/gi, desc: "destructive operation without confirmation" },
-    ],
-    severity: "high", owasp: "ASI09-human-oversight-bypass", mitre: null,
-    remediation: "Add user confirmation before destructive operations. Implement a confirmation dialog or approval workflow.",
-    confidence: 0.72, excludePatterns: [/test|mock|fixture|confirm|approve/i],
-  },
+  // K4 migrated to TypedRuleV2 — see k4-missing-human-confirmation.ts
   { id: "K6", name: "Overly Broad OAuth Scopes", source: "code",
     patterns: [
       { regex: /scope\s*[:=]\s*['"](?:admin|root|all|\*|read:all|write:all)/gi, desc: "overly broad OAuth scope" },
@@ -280,14 +273,7 @@ const K_RULES: RCfg[] = [
     remediation: "Add recursion depth limits. Add timeout/circuit breakers to all loops.",
     confidence: 0.72,
   },
-  { id: "K17", name: "Missing Timeout or Circuit Breaker", source: "code",
-    patterns: [
-      { regex: /(?:fetch|axios|request|http\.get)\s*\([^)]*\)(?!.*(?:timeout|signal|AbortController|deadline))/gi, desc: "HTTP request without timeout" },
-    ],
-    severity: "medium", owasp: "MCP07-insecure-config", mitre: null,
-    remediation: "Add timeouts to all HTTP requests. Use AbortController for fetch. Set timeout option for axios.",
-    confidence: 0.68, excludePatterns: [/timeout|signal|abort/i],
-  },
+  // K17 migrated to TypedRuleV2 — see k17-missing-timeout.ts
   { id: "K18", name: "Cross-Trust-Boundary Data Flow", source: "code",
     patterns: [
       { regex: /(?:internal|private|sensitive|secret).*(?:return|respond|send|output|expose).*(?:external|public|client|response)/gi, desc: "sensitive data crossing trust boundary" },
