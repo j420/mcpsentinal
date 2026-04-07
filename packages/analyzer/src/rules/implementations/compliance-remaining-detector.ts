@@ -202,15 +202,7 @@ function buildRule(cfg: RCfg): TypedRule {
 // ─── K-remaining ───────────────────────────────────────────────────────────
 
 const K_RULES: RCfg[] = [
-  { id: "K1", name: "Absent Structured Logging", source: "code",
-    patterns: [
-      { regex: /console\.(?:log|warn|error)\s*\(\s*['"`](?:request|handling|processing)/gi, desc: "console.log for request handling instead of structured logger" },
-      { regex: /logging\.disable\s*\(/gi, desc: "logging disabled" },
-    ],
-    severity: "high", owasp: "MCP09-logging-monitoring", mitre: null,
-    remediation: "Use structured logging (pino, winston) with correlation IDs. Never use console.log for request handling.",
-    confidence: 0.75, excludePatterns: [/pino|winston|bunyan|log4js|structured/i],
-  },
+  // K1 migrated to TypedRuleV2 — see k1-absent-structured-logging.ts
   { id: "K4", name: "Missing Human Confirmation for Destructive Ops", source: "code",
     patterns: [
       { regex: /(?:delete|remove|drop|truncate|destroy|purge|wipe)(?:All|Many|Bulk|Batch)?\s*\([^)]*\)(?!.*(?:confirm|prompt|approve|ask|verify))/gi, desc: "destructive operation without confirmation" },

@@ -302,6 +302,18 @@ export function registerTypedRule(rule: TypedRule): void {
 /** Register a v2 typed rule implementation (preferred for all new rules) */
 export function registerTypedRuleV2(rule: TypedRuleV2): void {
   v2RuleRegistry.set(rule.id, rule);
+  // Also register a v1-compatible wrapper so the engine (which dispatches via
+  // getTypedRule) can find this rule during the migration period.
+  if (!typedRuleRegistry.has(rule.id)) {
+    const v1Wrapper: TypedRule = {
+      id: rule.id,
+      name: rule.name,
+      analyze(context) {
+        return rule.analyze(context).map(ruleResultToTypedFinding);
+      },
+    };
+    typedRuleRegistry.set(rule.id, v1Wrapper);
+  }
 }
 
 /** Look up a typed rule by ID (v1 interface — legacy callers) */
