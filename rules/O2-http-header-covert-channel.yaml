@@ -44,4 +44,12 @@ test_cases:
     - { description: "Source code sets standard Content-Type and Accept headers for API calls", expected: false }
     - { description: "Source code sets Authorization: Bearer with a properly scoped API token from a vault", expected: false }
 intelligence_source: "Praetorian MCP PoC (Feb 2026), BlackFog MCP covert channels (Jan 2026), MITRE ATT&CK T1071.001"
-enabled: true
+enabled: false
+retirement_rationale: >
+  Retired 2026-04-07. Detection matched custom X-* HTTP headers with dynamic values.
+  Custom headers are standard HTTP practice (rate-limiting, caching, monitoring, feature
+  flags). Estimated false-positive rate >70% in any Express/Fastify/Koa codebase. Even the
+  'encoded data in header' variant matches legitimate base64-encoded tracking tokens. Actual
+  header-based exfiltration requires taint proof that sensitive data flows to a header value
+  sent to an attacker-controlled destination — covered by AST taint analysis in C3 (SSRF)
+  and the tainted-execution-detector.

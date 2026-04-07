@@ -175,7 +175,7 @@ describe("P8 — ECB Mode / Static IV", () => {
     expect(run("P8", `const cipher = crypto.createCipheriv('aes-128-ecb', key, null); // ECB mode encrypt`).some(x => x.rule_id === "P8")).toBe(true);
   });
   it("flags Math.random for crypto purpose", () => {
-    expect(run("P8", `const iv = Math.random().toString(16).slice(2); // use as IV for AES`).some(x => x.rule_id === "P8")).toBe(true);
+    expect(run("P8", `function encryptData(key, secret) { const iv = Math.random().toString(16).slice(2); return cipher(key, iv); }`).some(x => x.rule_id === "P8")).toBe(true);
   });
   it("flags static zero IV", () => {
     expect(run("P8", `const iv = Buffer.alloc(16); // static zero IV for encryption nonce`).some(x => x.rule_id === "P8")).toBe(true);

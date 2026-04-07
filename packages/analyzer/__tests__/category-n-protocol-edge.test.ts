@@ -23,13 +23,13 @@ function runCtx(id: string, c: AnalysisContext) { return getTypedRule(id)!.analy
 
 describe("N1 — JSON-RPC Batch Request Abuse", () => {
   it("flags batch processing without limits", () => {
-    expect(run("N1", `const results = processBatch(items); handleRpc(batch.request);`).some(x => x.rule_id === "N1")).toBe(true);
+    expect(run("N1", `function handleRpc(request) {\n  if (Array.isArray(request.batch)) {\n    request.batch.forEach(msg => process(msg));\n  }\n}`).some(x => x.rule_id === "N1")).toBe(true);
   });
   it("flags array request processing", () => {
-    expect(run("N1", `for (const m of array) { handleRpc(m.request); }`).some(x => x.rule_id === "N1")).toBe(true);
+    expect(run("N1", `function handleRpc(request) {\n  if (Array.isArray(request.body)) {\n    request.body.map(msg => dispatch(msg));\n  }\n}`).some(x => x.rule_id === "N1")).toBe(true);
   });
   it("flags batch rpc method dispatch", () => {
-    expect(run("N1", `const results = batch.map(msg => rpc.method(msg)); // batch rpc dispatch`).some(x => x.rule_id === "N1")).toBe(true);
+    expect(run("N1", `function processAll(ctx) {\n  const results = batch.map(msg => rpc.method(msg));\n  return results;\n}`).some(x => x.rule_id === "N1")).toBe(true);
   });
   it("does NOT flag batch with rate limit", () => {
     expect(run("N1", `if (batch.request.length > maxLimit) throw new Error('too many'); throttle(batch);`).filter(x => x.rule_id === "N1").length).toBe(0);
@@ -46,7 +46,7 @@ describe("N2 — Notification Flooding", () => {
     expect(run("N2", `while (running) { notify(msg); } // emit loop continuously`).some(x => x.rule_id === "N2")).toBe(true);
   });
   it("flags emit in while loop", () => {
-    expect(run("N2", `emit('update'); // notification while running in loop`).some(x => x.rule_id === "N2")).toBe(true);
+    expect(run("N2", `while (running) { emit('update'); }`).some(x => x.rule_id === "N2")).toBe(true);
   });
   it("flags push notification in interval", () => {
     expect(run("N2", `setInterval(() => { push(events); }, 100); // notification interval handler`).some(x => x.rule_id === "N2")).toBe(true);
@@ -63,10 +63,10 @@ describe("N2 — Notification Flooding", () => {
 
 describe("N3 — Progress Token Spoofing", () => {
   it("flags fake progress token", () => {
-    expect(run("N3", `const progressToken = fake('random-progress');`).some(x => x.rule_id === "N3")).toBe(true);
+    expect(run("N3", `const progressToken = req.body.progressId;`).some(x => x.rule_id === "N3")).toBe(true);
   });
   it("flags arbitrary progress token", () => {
-    expect(run("N3", `progress.progressToken = arbitrary(Math.random());`).some(x => x.rule_id === "N3")).toBe(true);
+    expect(run("N3", `const progressToken = counter++;`).some(x => x.rule_id === "N3")).toBe(true);
   });
   it("does NOT flag validated progress token", () => {
     expect(run("N3", `const token = crypto.randomUUID(); validateProgressToken(token);`).filter(x => x.rule_id === "N3").length).toBe(0);
@@ -134,7 +134,7 @@ describe("N7 — Initialization Race Condition", () => {
     expect(run("N7", `Promise.all([initialize(a), initialize(b)]); // parallel init without race protection`).some(x => x.rule_id === "N7")).toBe(true);
   });
   it("flags concurrent init without lock", () => {
-    expect(run("N7", `init(serverA); init(serverB); // concurrent initialization race condition`).some(x => x.rule_id === "N7")).toBe(true);
+    expect(run("N7", `Promise.all([initializeServer(a), initializeDB(b)]); // concurrent initialization race condition`).some(x => x.rule_id === "N7")).toBe(true);
   });
   it("does NOT flag sequential init with await", () => {
     expect(run("N7", `await initialize(a); await initialize(b);`).filter(x => x.rule_id === "N7").length).toBe(0);
@@ -151,7 +151,7 @@ describe("N8 — Ping Abuse for Side Channels", () => {
     expect(run("N8", `ws.ping(JSON.stringify({ data: secretData, payload: encoded }));`).some(x => x.rule_id === "N8")).toBe(true);
   });
   it("flags heartbeat with content", () => {
-    expect(run("N8", `send({ type: 'heartbeat', message: exfilData, content: data });`).some(x => x.rule_id === "N8")).toBe(true);
+    expect(run("N8", `function heartbeat() { send({ message: exfilData, content: sensitiveData }); }`).some(x => x.rule_id === "N8")).toBe(true);
   });
   it("flags keepalive with payload", () => {
     expect(run("N8", `keepalive.send({ payload: sensitiveData, content: encoded });`).some(x => x.rule_id === "N8")).toBe(true);

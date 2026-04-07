@@ -39,4 +39,5 @@ test_cases:
   true_negative:
     - { description: "Pure MCP server with no OpenAI/function-calling references", expected: false }
     - { description: "Test file verifying schema translation correctness", expected: false }
-enabled: true
+enabled: false
+retirement_rationale: "Retired 2026-04-07. Detection matched keywords for protocol conversion (openapi/swagger/graphql + mcp/convert/transform) without validation keywords nearby. Any codebase bridging OpenAPI to MCP triggers, including those with proper schema validation in separate modules. Estimated false-positive rate >60%. Cannot verify that schema constraints are actually lost — validation may occur in a different file, middleware, or framework layer. Schema validation quality is better assessed by B1-B7 (Schema Analysis) rules which inspect the actual resulting MCP tool schemas."

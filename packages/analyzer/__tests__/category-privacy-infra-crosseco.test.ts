@@ -108,8 +108,8 @@ describe("P7 — Host Filesystem Mount", () => {
 });
 
 describe("P8 — ECB Mode / Static IV", () => {
-  it("flags ECB mode encryption", () => { expect(run("P8", `// ECB mode cipher is insecure\nconst mode = "ECB";\nencrypt(data, key, { mode: ECB });`).some(x => x.rule_id === "P8")).toBe(true); });
-  it("flags Math.random for crypto", () => { expect(run("P8", `const iv = Math.random().toString(16).slice(2); // use as IV for AES`).some(x => x.rule_id === "P8")).toBe(true); });
+  it("flags ECB mode encryption", () => { expect(run("P8", `const cipher = crypto.createCipheriv('aes-128-ecb', key, null);`).some(x => x.rule_id === "P8")).toBe(true); });
+  it("flags Math.random for crypto", () => { expect(run("P8", `function encryptData(key, secret) { const iv = Math.random().toString(16).slice(2); return cipher(key, iv); }`).some(x => x.rule_id === "P8")).toBe(true); });
 });
 
 describe("P10 — Network Host Mode", () => {

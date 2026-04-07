@@ -5,7 +5,7 @@
  * Each implementation file calls registerTypedRule() on import.
  */
 
-// Core framework
+// Core framework — v1 (legacy, backward-compatible)
 export {
   type TypedRule,
   type TypedFinding,
@@ -13,6 +13,22 @@ export {
   getTypedRule,
   getAllTypedRules,
   hasTypedRule,
+} from "./base.js";
+
+// Core framework — v2 (mandatory evidence chains)
+export {
+  type TypedRuleV2,
+  type RuleResult,
+  type RuleRequirements,
+  type AnalysisTechnique,
+  registerTypedRuleV2,
+  getTypedRuleV2,
+  getAllTypedRulesV2,
+  hasNativeV2Rule,
+  migrationStats,
+  checkRequirements,
+  ruleResultToTypedFinding,
+  V1RuleAdapter,
 } from "./base.js";
 
 // Analyzers (shared analysis toolkits)
@@ -47,4 +63,18 @@ import "./implementations/code-remaining-detector.js";
 import "./implementations/dependency-behavioral-detector.js";
 import "./implementations/ecosystem-adversarial-detector.js";
 import "./implementations/protocol-surface-remaining-detector.js";
+import "./implementations/k1-absent-structured-logging.js";
+import "./implementations/k4-missing-human-confirmation.js";
+import "./implementations/k6-broad-oauth-scopes.js";
+import "./implementations/k7-long-lived-tokens.js";
+import "./implementations/k17-missing-timeout.js";
+import "./implementations/k-remaining-v2.js";
+import "./implementations/m4-tool-squatting.js";
+import "./implementations/m5-context-window-flooding.js";
+import "./implementations/l-supply-chain-v2.js";
+import "./implementations/o4-q10-v2.js";
+import "./implementations/docker-k8s-crypto-v2.js";
+import "./implementations/jsonrpc-protocol-v2.js";
+import "./implementations/k-compliance-v2.js";
+import "./implementations/m-runtime-v2.js";
 import "./implementations/compliance-remaining-detector.js";

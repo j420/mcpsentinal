@@ -52,14 +52,14 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 **Goal:** Run detection rules against every server and produce scored results.
 
 **Deliverables:**
-- [x] 177 detection rules across 17 categories (A-Q) — `rules/` directory (177 YAML files)
+- [x] 164 active detection rules across 17 categories (A-Q) — `rules/` directory (177 YAML files, 13 retired)
   - A: Description Analysis (9), B: Schema Analysis (7), C: Code Analysis (16), D: Dependency Analysis (7)
   - E: Behavioral Analysis (4), F: Ecosystem Context (7), G: Adversarial AI (7), H: 2026 Attack Surface (3)
   - I: Protocol Surface (16), J: 2026 Threat Intelligence (7), K: Compliance & Governance (20)
-  - L: Supply Chain Advanced (15), M: AI Runtime Exploitation (9), N: Protocol Edge Cases (15)
-  - O: Data Privacy Attacks (10), P: Infrastructure Runtime (10), Q: Cross-Ecosystem Emergent (15)
-- [x] Analysis engine — `packages/analyzer/src/engine.ts` (specialized engines + 177 TypedRule dispatch)
-- [x] **ALL 177 rules migrated to TypedRules** — AST taint, capability graph, entropy, structural parsing (23 detector files, ~13K lines)
+  - L: Supply Chain Advanced (15), M: AI Runtime Exploitation (8, 1 retired), N: Protocol Edge Cases (15)
+  - O: Data Privacy Attacks (6, 4 retired), P: Infrastructure Runtime (10), Q: Cross-Ecosystem Emergent (7, 8 retired)
+- [x] Analysis engine — `packages/analyzer/src/engine.ts` (specialized engines + 164 active TypedRule dispatch)
+- [x] **ALL rules migrated to TypedRules** — AST taint, capability graph, entropy, structural parsing (23 detector files, ~13K lines). 13 rules subsequently retired due to high FP rates; 164 active.
 - [x] 1051 tests passing (1002 analyzer + 49 red-team), 30+ per category across 16 test files
 - [x] Rule loader — `packages/analyzer/src/rule-loader.ts` (YAML metadata interpretation)
 - [x] npm package published: `mcp-sentinel-scanner@0.2.0` with all TypedRules bundled
@@ -75,7 +75,7 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 - [x] Accuracy auditing workflow — `.github/workflows/accuracy.yml` (precision/recall metrics)
 - [ ] Scan all 10,000 servers — requires Layer 1 crawl data in production database
 
-**Status:** Code-complete. All 177 rules authored, engine tested, pipeline integrated. Awaiting first live scan against crawled server data.
+**Status:** Code-complete. All 164 active rules authored and tested (13 retired due to high FP rates), engine tested, pipeline integrated. Awaiting first live scan against crawled server data.
 
 **Success Criteria:** 10,000 servers scanned, findings distribution matches expectations (most servers should have some findings).
 
@@ -144,7 +144,7 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 - [x] Ecosystem intelligence reports — `packages/reports/src/` (generator.ts, category-breakdown.ts, ecosystem-stats.ts, trend-analysis.ts, cli.ts)
   - Category breakdown, ecosystem stats, trend analysis, CLI for report generation
 
-**Verification (2026-03-28):** All 1051 tests pass across 21 test files (1002 analyzer + 49 red-team). All 177/177 TypedRules registered. Pipeline audit clean. CI green.
+**Verification (2026-03-28):** All 1051 tests pass across 21 test files (1002 analyzer + 49 red-team). All 164/164 active TypedRules registered (13 retired). Pipeline audit clean. CI green.
 
 **Success Criteria:** Detection precision >80% across all rule categories.
 
@@ -188,7 +188,7 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 | MCP Connector | `packages/connector` | connector.ts | — |
 | Analysis Engine | `packages/analyzer` | engine.ts (73 KB), rule-loader.ts, tool-fingerprint.ts | 2 test files |
 | Python Taint Analysis | `packages/analyzer` | taint.ts, taint-python.ts, taint-ast.ts (2,442 lines) | — |
-| 177 Detection Rules | `rules/` | 177 YAML files across A-Q categories | — |
+| 164 Active Detection Rules | `rules/` | 177 YAML files across A-Q categories (13 retired) | — |
 | Scoring Algorithm | `packages/scorer` | scorer.ts, cli.ts | scorer.test.ts |
 | Scan Pipeline | `packages/scanner` | pipeline.ts (30 KB), fetcher.ts, auditor.ts, enumerate.ts, cli.ts | scanner.test.ts |
 | REST API | `packages/api` | server.ts (20 KB), badge.ts | 2 test files |

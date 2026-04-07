@@ -44,4 +44,5 @@ test_cases:
   true_negative:
     - { description: "MCP server with explicit GDPR compliance checks and data residency enforcement", expected: false }
     - { description: "CDN-based MCP server that routes to nearest region with adequate data protection", expected: false }
-enabled: true
+enabled: false
+retirement_rationale: "Retired 2026-04-07. Detection matched chrome.runtime/browser.runtime API calls combined with MCP/tool/server keywords. Duplicates Q7 (Desktop Extension Privilege Chain) which provides broader extension security coverage. The pattern is too niche and produces false positives in legitimate browser extension MCP integrations (e.g., Claude browser extension, official Anthropic extensions). Estimated false-positive rate >50%. Extension-to-MCP bridging is better analyzed through capability graph inspection of the permission model."

@@ -44,4 +44,5 @@ test_cases:
   true_negative:
     - { description: "Source code uses flock() before all file operations", expected: false }
     - { description: "Source code wraps database read-modify-write in BEGIN/COMMIT transaction", expected: false }
-enabled: true
+enabled: false
+retirement_rationale: "Retired 2026-04-07. Detection required serialize/marshal/encode + python/ruby/java language name + deserialize/unmarshal/decode + javascript/node in a single regex match window. This pattern is virtually unmatchable in real code — cross-language serialization uses library-specific APIs (pickle, msgpack, protobuf), not generic language name references. Estimated false-positive rate near 0% (never fires) making the rule useless rather than noisy. Cross-language serialization vulnerabilities are better detected by C12 (Unsafe Deserialization) which traces actual deserialization of untrusted data regardless of source language."

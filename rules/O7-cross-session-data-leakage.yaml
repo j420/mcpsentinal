@@ -46,4 +46,13 @@ test_cases:
     - { description: "Source code uses a session-scoped Map keyed by req.sessionId for per-user caching", expected: false }
     - { description: "Source code uses Redis with user-specific key prefix for session isolation", expected: false }
 intelligence_source: "Giskard Cross-Session Leak (2025), OWASP LLM02:2025, Palo Alto Unit42 Agent Session Smuggling (2026), Lakera Memory Injection (2026)"
-enabled: true
+enabled: false
+retirement_rationale: >
+  Retired 2026-04-07. Detection matched module-level mutable state (global/shared +
+  session/cache/state) without per-session isolation keywords. Module-level caches,
+  singletons, and shared state are standard Node.js patterns (connection pools, config
+  caches, rate limiters). Estimated false-positive rate >50%. The negative-lookahead for
+  isolation keywords is fragile — legitimate isolation uses different naming conventions
+  than the checked keywords. Actual cross-session data leakage requires runtime analysis
+  showing that sensitive user data persists between requests, which is beyond static
+  analysis scope.

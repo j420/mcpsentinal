@@ -21,7 +21,7 @@
 
 **ADR-005: YAML metadata + TypeScript TypedRules**
 - Decision: YAML files in rules/ define metadata only (id, severity, owasp, mitre, remediation, test_cases). All detection logic lives in TypeScript TypedRule implementations in `packages/analyzer/src/rules/implementations/`.
-- Rationale: TypeScript enables AST taint analysis, capability graph algorithms, entropy scoring, and structural parsing — techniques impossible in YAML regex. All 177 rules migrated to TypedRules.
+- Rationale: TypeScript enables AST taint analysis, capability graph algorithms, entropy scoring, and structural parsing — techniques impossible in YAML regex. All rules migrated to TypedRules. 164 active (13 retired due to high FP rates).
 - History: Originally YAML regex (v0.1). Migrated to TypedRules (v0.2). Zero YAML regex patterns remain.
 
 **ADR-006: No LLM in v1 — all analysis is deterministic**
@@ -136,7 +136,7 @@
 - Input: Server record with tools, parameters, source code (if available)
 - Process: Two-phase analysis:
   1. **Specialized engines** (DescriptionAnalyzer, CodeAnalyzer, SchemaAnalyzer, DependencyAnalyzer, ProtocolAnalyzer) run first for rules they own
-  2. **TypedRule dispatch** for rules not covered by engines — 177 TypedRules using AST taint, capability graph, entropy, structural parsing
+  2. **TypedRule dispatch** for rules not covered by engines — 164 active TypedRules using AST taint, capability graph, entropy, structural parsing (13 retired)
 - Companion rule pattern: Some parent rules emit findings for multiple rule IDs (e.g. F1→F2/F3/F6, I1→I2, L5→L14). Companion rules are registered as stubs returning `[]` to prevent engine warnings — the parent rule produces their findings during its own analysis.
 - Output: `Finding[]` → findings table (with confidence scores 0.0-1.0)
 - Error handling: Per-rule error isolation (one rule failing doesn't stop others)

@@ -40,4 +40,5 @@ test_cases:
   true_negative:
     - { description: "MCP tool returns plain data (JSON, text) with no code suggestion context", expected: false }
     - { description: "Security scanner that detects code suggestion poisoning patterns", expected: false }
-enabled: true
+enabled: false
+retirement_rationale: "Retired 2026-04-07. Detection matched code suggestion/completion keywords combined with inject/manipulate/override keywords. Code generation and suggestion is a primary use case for MCP tools (Copilot integration, code assistants). Estimated false-positive rate >70%. Any MCP tool that returns code (which is legitimate functionality) triggers identically to malicious code injection. Code suggestion integrity is better enforced by the AI client's code review process and sandboxed execution, not static MCP server scanning."

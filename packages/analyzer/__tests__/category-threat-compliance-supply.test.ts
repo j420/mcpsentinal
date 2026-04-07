@@ -57,8 +57,32 @@ describe("J7 — OpenAPI Spec Field Injection", () => {
 // ─── K — Compliance ────────────────────────────────────────────────────────
 
 describe("K1 — Absent Structured Logging", () => {
-  it("flags console.log for request handling", () => { expect(run("K1", `console.log("request received from user");`).some(x => x.rule_id === "K1")).toBe(true); });
-  it("does NOT flag when pino is used", () => { expect(run("K1", `import pino from 'pino';\nconst logger = pino();`).filter(x => x.rule_id === "K1").length).toBe(0); });
+  it("flags console.log inside request handler", () => {
+    const src = `
+      const express = require('express');
+      const app = express();
+      app.get('/api/data', (req, res) => {
+        console.log("request received from user");
+        res.json({ ok: true });
+      });
+    `;
+    expect(run("K1", src).some(x => x.rule_id === "K1")).toBe(true);
+  });
+  it("does NOT flag when pino is used in handler", () => {
+    const src = `
+      import pino from 'pino';
+      const logger = pino();
+      app.get('/api/data', (req, res) => {
+        logger.info({ requestId: req.id }, 'handling request');
+        res.json({ ok: true });
+      });
+    `;
+    expect(run("K1", src).filter(x => x.rule_id === "K1").length).toBe(0);
+  });
+  it("does NOT flag console.log outside handler", () => {
+    // Console.log in utility code is not a compliance issue
+    expect(run("K1", `console.log("request received from user");`).filter(x => x.rule_id === "K1").length).toBe(0);
+  });
 });
 
 describe("K2 — Audit Trail Destruction", () => {
@@ -78,8 +102,8 @@ describe("K5 — Auto-Approve Bypass", () => {
 });
 
 describe("K6 — Overly Broad OAuth Scopes", () => {
-  it("flags scope = 'admin'", () => { expect(run("K6", `const scope = "admin";`).some(x => x.rule_id === "K6")).toBe(true); });
-  it("flags scope = '*'", () => { expect(run("K6", `scope = "*"`).some(x => x.rule_id === "K6")).toBe(true); });
+  it("flags scope: 'admin' in config", () => { expect(run("K6", `const config = { scope: "admin" };`).some(x => x.rule_id === "K6")).toBe(true); });
+  it("flags scope = '*'", () => { expect(run("K6", `config.scope = "*"`).some(x => x.rule_id === "K6")).toBe(true); });
 });
 
 describe("K7 — Long-Lived Tokens", () => {
