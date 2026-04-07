@@ -33,9 +33,9 @@ describe("Rule Loading", () => {
     }
   });
 
-  it("loadRules successfully parses all 177 rules", () => {
+  it("loadRules successfully parses all 164 active rules (13 retired)", () => {
     const rules = loadRules(rulesDir);
-    expect(rules.length).toBe(177);
+    expect(rules.length).toBe(164);
   });
 });
 
@@ -44,7 +44,7 @@ describe("Rule Loading", () => {
 describe("TypedRule Registration", () => {
   it("has TypedRules registered (at least original 6)", () => {
     // In dev/test context, not all TypedRules may auto-register due to module resolution.
-    // The bundled npm package includes all 177 via esbuild. Here we verify at least
+    // The bundled npm package includes all 164 active rules via esbuild. Here we verify at least
     // the original 6 TypedRules (C1, A6, A7, A9, D3, G4, F1) register through the engine import.
     const all = getAllTypedRules();
     expect(all.length).toBeGreaterThanOrEqual(6);

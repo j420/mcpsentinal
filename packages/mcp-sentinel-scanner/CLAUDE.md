@@ -8,12 +8,12 @@
 |------|-------|--------|
 | `scan_server` | Server metadata (name, tools, source code, deps) | Findings + 0-100 score |
 | `scan_endpoint` | Live MCP endpoint URL | Connect → enumerate → analyze → score |
-| `list_rules` | Optional category/severity filter | List of all 177 detection rules |
+| `list_rules` | Optional category/severity filter | List of all 164 active detection rules |
 
 ## Architecture
 
 - **No database required** — scanning is self-contained
-- **Rules loaded from `rules/` directory** at startup (177 YAML files)
+- **Rules loaded from `rules/` directory** at startup (177 YAML files, 164 active / 13 retired)
 - **Uses `@mcp-sentinel/analyzer`** for detection engine
 - **Uses `@mcp-sentinel/scorer`** for scoring
 - **Uses `@mcp-sentinel/connector`** for live endpoint enumeration
