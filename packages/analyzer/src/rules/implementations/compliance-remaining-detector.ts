@@ -270,32 +270,9 @@ const STRAGGLER_RULES: RCfg[] = [
     remediation: "Pin base images to SHA256 digests: FROM image@sha256:abc123...",
     confidence: 0.82,
   },
-  { id: "L8", name: "Version Rollback Attack", source: "code",
-    patterns: [
-      { regex: /(?:overrides|resolutions|pnpm\.overrides).*[:=].*(?:0\.|1\.0\.|<=|<\d)/gi, desc: "dependency override to old version" },
-      { regex: /(?:npm\s+install|pip\s+install).*(?:@0\.|@1\.0\.|==0\.|==1\.0\.).*(?:mcp|server|sdk)/gi, desc: "installing old version of MCP package" },
-    ],
-    severity: "high", owasp: "MCP10-supply-chain", mitre: "AML.T0017",
-    remediation: "Don't override dependencies to old versions. Use automated updates (Dependabot, Renovate).",
-    confidence: 0.78,
-  },
-  { id: "L10", name: "Registry Metadata Spoofing", source: "code",
-    patterns: [
-      { regex: /(?:author|publisher|organization).*[:=].*(?:Anthropic|OpenAI|Google|Microsoft)/gi, desc: "false vendor attribution in metadata" },
-      { regex: /(?:official|verified|certified).*(?:by|from).*(?:Anthropic|OpenAI|Google|Microsoft)/gi, desc: "false official certification" },
-    ],
-    severity: "high", owasp: "MCP10-supply-chain", mitre: "AML.T0017",
-    remediation: "Don't impersonate official vendors in package metadata.",
-    confidence: 0.82,
-  },
-  { id: "L15", name: "Update Notification Spoofing", source: "code",
-    patterns: [
-      { regex: /(?:update|upgrade)\s+(?:available|required|needed).*(?:npm\s+install|pip\s+install|npx)/gi, desc: "fake update notification with install command" },
-    ],
-    severity: "high", owasp: "MCP10-supply-chain", mitre: "AML.T0017",
-    remediation: "Don't display fake update notifications. Updates should come from official package managers.",
-    confidence: 0.78,
-  },
+  // L8 migrated to TypedRuleV2 — see l-supply-chain-v2.ts
+  // L10 migrated to TypedRuleV2 — see l-supply-chain-v2.ts
+  // L15 migrated to TypedRuleV2 — see l-supply-chain-v2.ts
   { id: "M2", name: "Prompt Leaking via Tool Response", source: "code",
     patterns: [
       { regex: /(?:system_prompt|system_message|initial_instructions).*(?:include|append|concat|add).*(?:response|output|result)/gi, desc: "system prompt included in output" },
