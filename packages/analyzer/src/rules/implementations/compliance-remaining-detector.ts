@@ -204,23 +204,8 @@ function buildRule(cfg: RCfg): TypedRule {
 const K_RULES: RCfg[] = [
   // K1 migrated to TypedRuleV2 — see k1-absent-structured-logging.ts
   // K4 migrated to TypedRuleV2 — see k4-missing-human-confirmation.ts
-  { id: "K6", name: "Overly Broad OAuth Scopes", source: "code",
-    patterns: [
-      { regex: /scope\s*[:=]\s*['"](?:admin|root|all|\*|read:all|write:all)/gi, desc: "overly broad OAuth scope" },
-    ],
-    severity: "high", owasp: "ASI03-identity-privilege-abuse", mitre: null,
-    remediation: "Use minimal OAuth scopes. Request only the permissions actually needed.",
-    confidence: 0.85,
-  },
-  { id: "K7", name: "Long-Lived Tokens Without Rotation", source: "code",
-    patterns: [
-      { regex: /(?:expiresIn|expires_in|maxAge|max_age)\s*[:=]\s*['"]?(?:365d|8760h|31536000|\d{8,})/gi, desc: "token with >1 year expiry" },
-      { regex: /(?:token|jwt).*(?:never\s+expire|no\s+expir|immortal)/gi, desc: "non-expiring token" },
-    ],
-    severity: "high", owasp: "ASI03-identity-privilege-abuse", mitre: null,
-    remediation: "Set token expiry to <24h for access tokens, <30d for refresh tokens. Implement token rotation.",
-    confidence: 0.82,
-  },
+  // K6 migrated to TypedRuleV2 — see k6-broad-oauth-scopes.ts
+  // K7 migrated to TypedRuleV2 — see k7-long-lived-tokens.ts
   { id: "K11", name: "Missing Server Integrity Verification", source: "code",
     patterns: [
       { regex: /(?:connect|load|register)\s*(?:mcp|server|tool)(?!.*(?:verify|validate|checksum|hash|sign))/gi, desc: "MCP server loaded without integrity verification" },

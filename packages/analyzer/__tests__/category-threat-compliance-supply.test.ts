@@ -102,8 +102,8 @@ describe("K5 — Auto-Approve Bypass", () => {
 });
 
 describe("K6 — Overly Broad OAuth Scopes", () => {
-  it("flags scope = 'admin'", () => { expect(run("K6", `const scope = "admin";`).some(x => x.rule_id === "K6")).toBe(true); });
-  it("flags scope = '*'", () => { expect(run("K6", `scope = "*"`).some(x => x.rule_id === "K6")).toBe(true); });
+  it("flags scope: 'admin' in config", () => { expect(run("K6", `const config = { scope: "admin" };`).some(x => x.rule_id === "K6")).toBe(true); });
+  it("flags scope = '*'", () => { expect(run("K6", `config.scope = "*"`).some(x => x.rule_id === "K6")).toBe(true); });
 });
 
 describe("K7 — Long-Lived Tokens", () => {
