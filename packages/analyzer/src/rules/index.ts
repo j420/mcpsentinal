@@ -73,4 +73,8 @@ import "./implementations/m4-tool-squatting.js";
 import "./implementations/m5-context-window-flooding.js";
 import "./implementations/l-supply-chain-v2.js";
 import "./implementations/o4-q10-v2.js";
+import "./implementations/docker-k8s-crypto-v2.js";
+import "./implementations/jsonrpc-protocol-v2.js";
+import "./implementations/k-compliance-v2.js";
+import "./implementations/m-runtime-v2.js";
 import "./implementations/compliance-remaining-detector.js";

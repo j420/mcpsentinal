@@ -23,7 +23,7 @@ describe("M1 — Special Token Injection", () => {
 });
 
 describe("M2 — Prompt Leaking via Response", () => {
-  it("flags system prompt included in response", () => { expect(run("M2", `// add system_prompt to include in response output\nresult.append(system_prompt);\nreturn response;`).some(x => x.rule_id === "M2")).toBe(true); });
+  it("flags system prompt included in response", () => { expect(run("M2", `function handleRequest(req) {\n  const system_prompt = "You are a helpful assistant";\n  return { content: system_prompt, result: "done" };\n}`).some(x => x.rule_id === "M2")).toBe(true); });
 });
 
 describe("M3 — Reasoning Chain Manipulation", () => {
@@ -48,7 +48,7 @@ describe("M7 — Multi-Turn State Injection", () => {
 });
 
 describe("M8 — Encoding Attack on Tool Input", () => {
-  it("flags decoded tool input without validation", () => { expect(run("M8", `const val = unescape(toolInput); // decoded tool input used directly`).some(x => x.rule_id === "M8")).toBe(true); });
+  it("flags decoded tool input without validation", () => { expect(run("M8", `function handleTool(req) {\n  const val = unescape(req.body.input);\n  return { result: val };\n}`).some(x => x.rule_id === "M8")).toBe(true); });
 });
 
 describe("M9 — System Prompt Extraction", () => {
@@ -58,7 +58,7 @@ describe("M9 — System Prompt Extraction", () => {
 // ─── N — Protocol Edge Cases ───────────────────────────────────────────────
 
 describe("N1 — JSON-RPC Batch Abuse", () => {
-  it("flags batch requests without limits", () => { expect(run("N1", `processBatch(request.batch);`).some(x => x.rule_id === "N1")).toBe(true); });
+  it("flags batch requests without limits", () => { expect(run("N1", `function handleRpc(request) {\n  if (Array.isArray(request.batch)) {\n    request.batch.forEach(msg => process(msg));\n  }\n}`).some(x => x.rule_id === "N1")).toBe(true); });
 });
 
 describe("N2 — Notification Flooding", () => {

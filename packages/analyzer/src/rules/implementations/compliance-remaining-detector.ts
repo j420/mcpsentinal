@@ -207,146 +207,35 @@ const K_RULES: RCfg[] = [
   // K6 migrated to TypedRuleV2 — see k6-broad-oauth-scopes.ts
   // K7 migrated to TypedRuleV2 — see k7-long-lived-tokens.ts
   // K11 migrated to TypedRuleV2 — see k-remaining-v2.ts
-  { id: "K12", name: "Executable Content in Tool Response", source: "code",
-    patterns: [
-      { regex: /(?:return|respond|output|send).*(?:eval|exec|Function|import|require)\s*\(/gi, desc: "executable code in tool response" },
-      { regex: /(?:content|result|response).*(?:<script|javascript:|on\w+=)/gi, desc: "HTML/JS in tool response" },
-    ],
-    severity: "critical", owasp: "MCP03-command-injection", mitre: "AML.T0054",
-    remediation: "Tool responses must not contain executable code. Sanitize all output.",
-    confidence: 0.80,
-  },
+  // K12 migrated to TypedRuleV2 — see k-compliance-v2.ts
   // K13 migrated to TypedRuleV2 — see k-remaining-v2.ts
-  { id: "K14", name: "Agent Credential Propagation via Shared State", source: "code",
-    patterns: [
-      { regex: /(?:shared|global|common)\s*(?:state|store|memory|context).*(?:token|credential|secret|api_key|password)/gi, desc: "credentials in shared state" },
-      { regex: /(?:token|credential|secret|api_key).*(?:shared|global|common)\s*(?:state|store|memory)/gi, desc: "credentials stored in shared state" },
-    ],
-    severity: "critical", owasp: "ASI03-identity-privilege-abuse", mitre: "AML.T0054",
-    remediation: "Never store credentials in shared state. Use per-agent credential stores with proper isolation.",
-    confidence: 0.80,
-  },
+  // K14 migrated to TypedRuleV2 — see k-compliance-v2.ts
   // K15 migrated to TypedRuleV2 — see k-remaining-v2.ts
-  { id: "K16", name: "Unbounded Recursion", source: "code",
-    patterns: [
-      { regex: /(?:recursive|recurse|self[_\s]?call)(?!.*(?:depth|limit|max|bound|guard))/gi, desc: "recursion without depth limit" },
-      { regex: /(?:while\s*\(\s*true|for\s*\(\s*;\s*;\s*\))(?!.*(?:break|return|limit|max|timeout))/gi, desc: "infinite loop without exit condition" },
-    ],
-    severity: "high", owasp: "MCP07-insecure-config", mitre: null,
-    remediation: "Add recursion depth limits. Add timeout/circuit breakers to all loops.",
-    confidence: 0.72,
-  },
+  // K16 migrated to TypedRuleV2 — see k-compliance-v2.ts
   // K17 migrated to TypedRuleV2 — see k17-missing-timeout.ts
   // K18 migrated to TypedRuleV2 — see k-remaining-v2.ts
-  { id: "K19", name: "Missing Runtime Sandbox", source: "code",
-    patterns: [
-      { regex: /(?:docker|container).*(?:--privileged|--cap-add|--security-opt.*no-new-privileges.*false)/gi, desc: "container security disabled" },
-      { regex: /(?:seccomp|apparmor|selinux).*(?:unconfined|disabled|off|false)/gi, desc: "sandbox enforcement disabled" },
-    ],
-    severity: "high", owasp: "MCP07-insecure-config", mitre: null,
-    remediation: "Enable container sandboxing (seccomp, AppArmor). Never disable security profiles.",
-    confidence: 0.82,
-  },
-  { id: "K20", name: "Insufficient Audit Context", source: "code",
-    patterns: [
-      { regex: /console\.log\s*\(\s*['"](?:request|handling|processing|received)/gi, desc: "console.log for audit events instead of structured logging" },
-      { regex: /logger\.(?:info|warn|error)\s*\(\s*['"][^'"]*['"]\s*\)(?!\s*,)/gi, desc: "logger with string-only (no structured context)" },
-    ],
-    severity: "medium", owasp: "MCP09-logging-monitoring", mitre: null,
-    remediation: "Use structured logging with request ID, user ID, action, and timestamp in every log entry.",
-    confidence: 0.70, excludePatterns: [/pino|winston|structured|correlationId|requestId/i],
-  },
+  // K19 migrated to TypedRuleV2 — see docker-k8s-crypto-v2.ts
+  // K20 migrated to TypedRuleV2 — see k-compliance-v2.ts
 ];
 
 // ─── L/M/N/O/P/Q remaining stragglers ─────────────────────────────────────
 
 const STRAGGLER_RULES: RCfg[] = [
-  { id: "L3", name: "Dockerfile Base Image Risk", source: "code",
-    patterns: [
-      { regex: /^FROM\s+(?!scratch)[\w./-]+:(?:latest|stable|lts)\s/gim, desc: "mutable base image tag (latest/stable/lts)" },
-      { regex: /^FROM\s+(?!scratch)[\w./-]+\s*$/gim, desc: "base image without tag (defaults to latest)" },
-    ],
-    severity: "high", owasp: "MCP10-supply-chain", mitre: "AML.T0017",
-    remediation: "Pin base images to SHA256 digests: FROM image@sha256:abc123...",
-    confidence: 0.82,
-  },
+  // L3 migrated to TypedRuleV2 — see docker-k8s-crypto-v2.ts
   // L8 migrated to TypedRuleV2 — see l-supply-chain-v2.ts
   // L10 migrated to TypedRuleV2 — see l-supply-chain-v2.ts
   // L15 migrated to TypedRuleV2 — see l-supply-chain-v2.ts
-  { id: "M2", name: "Prompt Leaking via Tool Response", source: "code",
-    patterns: [
-      { regex: /(?:system_prompt|system_message|initial_instructions).*(?:include|append|concat|add).*(?:response|output|result)/gi, desc: "system prompt included in output" },
-    ],
-    severity: "high", owasp: "MCP04-data-exfiltration", mitre: "AML.T0057",
-    remediation: "Never include system prompts in tool responses. Filter all output.",
-    confidence: 0.78,
-  },
+  // M2 migrated to TypedRuleV2 — see m-runtime-v2.ts
   // M4 migrated to TypedRuleV2 — see m4-tool-squatting.ts
   // M5 migrated to TypedRuleV2 — see m5-context-window-flooding.ts
-  { id: "M7", name: "Multi-Turn State Injection", source: "code",
-    patterns: [
-      { regex: /(?:conversation|chat|history|context).*(?:inject|insert|prepend|append|modify)/gi, desc: "conversation history manipulation" },
-    ],
-    severity: "high", owasp: "MCP01-prompt-injection", mitre: "AML.T0058",
-    remediation: "Never modify conversation history from tool code. History should be managed by the AI client.",
-    confidence: 0.78,
-  },
-  { id: "M8", name: "Encoding Attack on Tool Input", source: "code",
-    patterns: [
-      { regex: /(?:decode|unescape|fromCharCode|String\.raw).*(?:tool|input|param|arg)(?!.*(?:validate|sanitize))/gi, desc: "decoded tool input without validation" },
-    ],
-    severity: "high", owasp: "MCP03-command-injection", mitre: "AML.T0054",
-    remediation: "Validate tool inputs after decoding. Apply allowlists to decoded values.",
-    confidence: 0.72,
-  },
-  { id: "N1", name: "JSON-RPC Batch Request Abuse", source: "code",
-    patterns: [
-      { regex: /(?:batch|array).*(?:request|rpc|method)(?!.*(?:limit|max|throttle|rate))/gi, desc: "batch requests without limits" },
-    ],
-    severity: "high", owasp: "MCP07-insecure-config", mitre: null,
-    remediation: "Limit batch request size. Add rate limiting per batch.",
-    confidence: 0.68,
-  },
-  { id: "N2", name: "Notification Flooding", source: "code",
-    patterns: [
-      { regex: /(?:notify|notification|emit|push).*(?:loop|interval|setInterval|while)(?!.*(?:throttle|debounce|limit|rate))/gi, desc: "notifications in loop without throttle" },
-    ],
-    severity: "high", owasp: "MCP07-insecure-config", mitre: null,
-    remediation: "Throttle notifications. Add rate limits and debouncing.",
-    confidence: 0.72,
-  },
-  { id: "N3", name: "Progress Token Spoofing", source: "code",
-    patterns: [
-      { regex: /(?:progress|progressToken).*(?:fake|spoof|forge|arbitrary|random)/gi, desc: "progress token manipulation" },
-    ],
-    severity: "high", owasp: "MCP07-insecure-config", mitre: null,
-    remediation: "Validate progress tokens. Use cryptographic tokens, not sequential IDs.",
-    confidence: 0.72,
-  },
-  { id: "N7", name: "Initialization Race Condition", source: "code",
-    patterns: [
-      { regex: /(?:initialize|init).*(?:parallel|concurrent|race|promise\.all)(?!.*(?:lock|mutex|semaphore|await))/gi, desc: "parallel initialization without synchronization" },
-    ],
-    severity: "high", owasp: "MCP07-insecure-config", mitre: null,
-    remediation: "Serialize initialization. Use locks/mutexes for concurrent init attempts.",
-    confidence: 0.68,
-  },
-  { id: "N8", name: "Ping Abuse for Side Channels", source: "code",
-    patterns: [
-      { regex: /(?:ping|heartbeat|keepalive).*(?:data|payload|content|message)(?!.*(?:empty|null|void))/gi, desc: "data in ping/heartbeat messages" },
-    ],
-    severity: "high", owasp: "MCP07-insecure-config", mitre: null,
-    remediation: "Ping messages should be empty or contain only timestamps. Never include data.",
-    confidence: 0.68,
-  },
-  { id: "N10", name: "Cancellation Token Injection", source: "code",
-    patterns: [
-      { regex: /(?:cancel|abort).*(?:token|id)\s*[:=]\s*(?:req\.|request\.|params|body|user)/gi, desc: "cancellation token from user input" },
-    ],
-    severity: "high", owasp: "MCP07-insecure-config", mitre: null,
-    remediation: "Generate cancellation tokens server-side. Never accept them from user input.",
-    confidence: 0.78,
-  },
+  // M7 migrated to TypedRuleV2 — see m-runtime-v2.ts
+  // M8 migrated to TypedRuleV2 — see m-runtime-v2.ts
+  // N1 migrated to TypedRuleV2 — see jsonrpc-protocol-v2.ts
+  // N2 migrated to TypedRuleV2 — see jsonrpc-protocol-v2.ts
+  // N3 migrated to TypedRuleV2 — see jsonrpc-protocol-v2.ts
+  // N7 migrated to TypedRuleV2 — see jsonrpc-protocol-v2.ts
+  // N8 migrated to TypedRuleV2 — see jsonrpc-protocol-v2.ts
+  // N10 migrated to TypedRuleV2 — see jsonrpc-protocol-v2.ts
   // O4 migrated to TypedRuleV2 — see o4-q10-v2.ts
   { id: "O6", name: "Clipboard / Pasteboard Access", source: "code",
     patterns: [
@@ -372,34 +261,9 @@ const STRAGGLER_RULES: RCfg[] = [
     remediation: "MCP servers must not monitor keyboard input. Remove all input capture code.",
     confidence: 0.90,
   },
-  { id: "P8", name: "ECB Mode / Static IV", source: "code",
-    patterns: [
-      { regex: /(?:ECB|ecb)\s*(?:mode|cipher|encrypt)/gi, desc: "ECB mode (pattern-preserving encryption)" },
-      { regex: /(?:iv|IV|nonce)\s*[:=]\s*(?:['"](?:0{8,}|1{8,}|abc|000)|Buffer\.alloc\(\d+\))/gi, desc: "static/zero IV" },
-      { regex: /Math\.random\s*\(\s*\).*(?:key|secret|iv|nonce|salt|token)/gi, desc: "Math.random for cryptographic purpose" },
-    ],
-    severity: "high", owasp: "MCP07-insecure-config", mitre: null,
-    remediation: "Use CBC/GCM mode. Generate random IVs with crypto.randomBytes(). Never use Math.random() for crypto.",
-    confidence: 0.85,
-  },
-  { id: "P9", name: "Excessive Container Resource Limits", source: "code",
-    patterns: [
-      { regex: /(?:memory|mem_limit|memoryLimit)\s*[:=]\s*['"]?(?:\d{5,}|unlimited|0)\s*(?:Mi|Gi|MB|GB)?/gi, desc: "excessive memory allocation" },
-      { regex: /(?:cpu|cpuLimit)\s*[:=]\s*['"]?(?:unlimited|0)\s*$/gim, desc: "unlimited CPU allocation" },
-    ],
-    severity: "high", owasp: "MCP07-insecure-config", mitre: null,
-    remediation: "Set reasonable resource limits for containers. Unlimited resources enable DoS attacks.",
-    confidence: 0.72,
-  },
-  { id: "P10", name: "Network Host Mode", source: "code",
-    patterns: [
-      { regex: /(?:network_mode|networkMode)\s*[:=]\s*['"]?host/gi, desc: "container in host network mode" },
-      { regex: /--net(?:work)?[=\s]+host/gi, desc: "Docker host network flag" },
-    ],
-    severity: "high", owasp: "MCP07-insecure-config", mitre: null,
-    remediation: "Use bridge or overlay networks. Host network mode exposes all host ports to the container.",
-    confidence: 0.88,
-  },
+  // P8 migrated to TypedRuleV2 — see docker-k8s-crypto-v2.ts
+  // P9 migrated to TypedRuleV2 — see docker-k8s-crypto-v2.ts
+  // P10 migrated to TypedRuleV2 — see docker-k8s-crypto-v2.ts
   // Q10 migrated to TypedRuleV2 — see o4-q10-v2.ts
   { id: "Q12", name: "Browser Extension ↔ MCP Bridge", source: "code",
     patterns: [
