@@ -68,4 +68,5 @@ import "./implementations/k4-missing-human-confirmation.js";
 import "./implementations/k6-broad-oauth-scopes.js";
 import "./implementations/k7-long-lived-tokens.js";
 import "./implementations/k17-missing-timeout.js";
+import "./implementations/k-remaining-v2.js";
 import "./implementations/compliance-remaining-detector.js";

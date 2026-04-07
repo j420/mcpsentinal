@@ -206,14 +206,7 @@ const K_RULES: RCfg[] = [
   // K4 migrated to TypedRuleV2 — see k4-missing-human-confirmation.ts
   // K6 migrated to TypedRuleV2 — see k6-broad-oauth-scopes.ts
   // K7 migrated to TypedRuleV2 — see k7-long-lived-tokens.ts
-  { id: "K11", name: "Missing Server Integrity Verification", source: "code",
-    patterns: [
-      { regex: /(?:connect|load|register)\s*(?:mcp|server|tool)(?!.*(?:verify|validate|checksum|hash|sign))/gi, desc: "MCP server loaded without integrity verification" },
-    ],
-    severity: "high", owasp: "MCP10-supply-chain", mitre: null,
-    remediation: "Verify server integrity via checksums, signatures, or registry lookup before connecting.",
-    confidence: 0.68,
-  },
+  // K11 migrated to TypedRuleV2 — see k-remaining-v2.ts
   { id: "K12", name: "Executable Content in Tool Response", source: "code",
     patterns: [
       { regex: /(?:return|respond|output|send).*(?:eval|exec|Function|import|require)\s*\(/gi, desc: "executable code in tool response" },
@@ -223,15 +216,7 @@ const K_RULES: RCfg[] = [
     remediation: "Tool responses must not contain executable code. Sanitize all output.",
     confidence: 0.80,
   },
-  { id: "K13", name: "Unsanitized Tool Output", source: "code",
-    patterns: [
-      { regex: /(?:return|respond|send)\s*\(\s*(?:raw|unsanitized|unescaped)/gi, desc: "explicitly unsanitized output" },
-      { regex: /(?:innerHTML|dangerouslySetInnerHTML|v-html)\s*[:=]/gi, desc: "unsafe HTML rendering" },
-    ],
-    severity: "high", owasp: "MCP03-command-injection", mitre: null,
-    remediation: "Sanitize all tool output. Use text content, not HTML. Escape special characters.",
-    confidence: 0.78,
-  },
+  // K13 migrated to TypedRuleV2 — see k-remaining-v2.ts
   { id: "K14", name: "Agent Credential Propagation via Shared State", source: "code",
     patterns: [
       { regex: /(?:shared|global|common)\s*(?:state|store|memory|context).*(?:token|credential|secret|api_key|password)/gi, desc: "credentials in shared state" },
@@ -241,14 +226,7 @@ const K_RULES: RCfg[] = [
     remediation: "Never store credentials in shared state. Use per-agent credential stores with proper isolation.",
     confidence: 0.80,
   },
-  { id: "K15", name: "Multi-Agent Collusion Preconditions", source: "code",
-    patterns: [
-      { regex: /(?:agent|worker)\s*(?:pool|group|cluster).*(?:share|common|mutual)\s*(?:data|state|memory|context)/gi, desc: "agents sharing state (collusion enabler)" },
-    ],
-    severity: "high", owasp: "ASI07-insecure-inter-agent-comms", mitre: null,
-    remediation: "Isolate agent state. Use message passing instead of shared memory between agents.",
-    confidence: 0.72,
-  },
+  // K15 migrated to TypedRuleV2 — see k-remaining-v2.ts
   { id: "K16", name: "Unbounded Recursion", source: "code",
     patterns: [
       { regex: /(?:recursive|recurse|self[_\s]?call)(?!.*(?:depth|limit|max|bound|guard))/gi, desc: "recursion without depth limit" },
@@ -259,14 +237,7 @@ const K_RULES: RCfg[] = [
     confidence: 0.72,
   },
   // K17 migrated to TypedRuleV2 — see k17-missing-timeout.ts
-  { id: "K18", name: "Cross-Trust-Boundary Data Flow", source: "code",
-    patterns: [
-      { regex: /(?:internal|private|sensitive|secret).*(?:return|respond|send|output|expose).*(?:external|public|client|response)/gi, desc: "sensitive data crossing trust boundary" },
-    ],
-    severity: "high", owasp: "MCP04-data-exfiltration", mitre: null,
-    remediation: "Classify data sensitivity. Prevent sensitive data from crossing trust boundaries without redaction.",
-    confidence: 0.72,
-  },
+  // K18 migrated to TypedRuleV2 — see k-remaining-v2.ts
   { id: "K19", name: "Missing Runtime Sandbox", source: "code",
     patterns: [
       { regex: /(?:docker|container).*(?:--privileged|--cap-add|--security-opt.*no-new-privileges.*false)/gi, desc: "container security disabled" },
