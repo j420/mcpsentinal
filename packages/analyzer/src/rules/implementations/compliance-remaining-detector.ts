@@ -347,14 +347,7 @@ const STRAGGLER_RULES: RCfg[] = [
     remediation: "Generate cancellation tokens server-side. Never accept them from user input.",
     confidence: 0.78,
   },
-  { id: "O4", name: "Timing-Based Data Inference", source: "code",
-    patterns: [
-      { regex: /(?:setTimeout|delay|sleep|wait)\s*\([^)]*(?:if|switch|condition|result|data)/gi, desc: "conditional delay (timing side channel)" },
-    ],
-    severity: "high", owasp: "MCP04-data-exfiltration", mitre: "AML.T0057",
-    remediation: "Use constant-time operations for sensitive data. Add random jitter to response times.",
-    confidence: 0.68,
-  },
+  // O4 migrated to TypedRuleV2 — see o4-q10-v2.ts
   { id: "O6", name: "Clipboard / Pasteboard Access", source: "code",
     patterns: [
       { regex: /(?:clipboard|pasteboard|pbcopy|pbpaste|xclip|xsel).*(?:read|write|get|set|copy|paste)/gi, desc: "clipboard access (data leakage vector)" },
@@ -407,14 +400,7 @@ const STRAGGLER_RULES: RCfg[] = [
     remediation: "Use bridge or overlay networks. Host network mode exposes all host ports to the container.",
     confidence: 0.88,
   },
-  { id: "Q10", name: "Agent Memory Poisoning", source: "tools",
-    patterns: [
-      { regex: /(?:memory|remember|store|persist|save).*(?:instruction|directive|rule|policy|behavior)/i, desc: "tool that stores behavioral instructions in agent memory" },
-    ],
-    severity: "high", owasp: "ASI06-memory-context-poisoning", mitre: "AML.T0058",
-    remediation: "Agent memory should store facts, not behavioral instructions. Validate all stored content.",
-    confidence: 0.72,
-  },
+  // Q10 migrated to TypedRuleV2 — see o4-q10-v2.ts
   { id: "Q12", name: "Browser Extension ↔ MCP Bridge", source: "code",
     patterns: [
       { regex: /(?:chrome|browser)\.runtime\.(?:sendMessage|connect|sendNativeMessage).*(?:mcp|tool|server)/gi, desc: "browser extension to MCP bridge" },
