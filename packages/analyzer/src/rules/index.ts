@@ -69,4 +69,6 @@ import "./implementations/k6-broad-oauth-scopes.js";
 import "./implementations/k7-long-lived-tokens.js";
 import "./implementations/k17-missing-timeout.js";
 import "./implementations/k-remaining-v2.js";
+import "./implementations/m4-tool-squatting.js";
+import "./implementations/m5-context-window-flooding.js";
 import "./implementations/compliance-remaining-detector.js";

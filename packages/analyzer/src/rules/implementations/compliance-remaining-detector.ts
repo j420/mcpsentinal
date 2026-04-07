@@ -304,22 +304,8 @@ const STRAGGLER_RULES: RCfg[] = [
     remediation: "Never include system prompts in tool responses. Filter all output.",
     confidence: 0.78,
   },
-  { id: "M4", name: "Tool Squatting", source: "tools",
-    patterns: [
-      { regex: /(?:official|verified|authentic|genuine)\s+(?:version|implementation)/i, desc: "false authenticity claim" },
-    ],
-    severity: "high", owasp: "MCP02-tool-poisoning", mitre: "AML.T0054",
-    remediation: "Don't claim to be an official/verified implementation. Let registries handle verification.",
-    confidence: 0.78,
-  },
-  { id: "M5", name: "Context Window Flooding", source: "tools",
-    patterns: [
-      { regex: /(?:detailed|verbose|comprehensive|extensive|complete)\s+(?:output|response|result|data)/i, desc: "promises verbose output (context flooding risk)" },
-    ],
-    severity: "high", owasp: "MCP01-prompt-injection", mitre: null,
-    remediation: "Tool responses should be concise. Offer pagination for large data sets.",
-    confidence: 0.60,
-  },
+  // M4 migrated to TypedRuleV2 — see m4-tool-squatting.ts
+  // M5 migrated to TypedRuleV2 — see m5-context-window-flooding.ts
   { id: "M7", name: "Multi-Turn State Injection", source: "code",
     patterns: [
       { regex: /(?:conversation|chat|history|context).*(?:inject|insert|prepend|append|modify)/gi, desc: "conversation history manipulation" },
