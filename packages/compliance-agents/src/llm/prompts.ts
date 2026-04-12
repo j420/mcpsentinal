@@ -20,6 +20,12 @@ export interface SynthesisPromptInput {
   rule_metadata: ComplianceRuleMetadata;
   bundle: EvidenceBundle;
   max_tests: number;
+  /**
+   * Refinement hints produced by the dry-run judge on a previous turn.
+   * When present, the LLM is instructed to rewrite the prior tests so
+   * they reference pointers that actually exist in the evidence bundle.
+   */
+  refinement_hints?: string[];
 }
 
 export interface VerdictPromptInput {
@@ -59,6 +65,16 @@ export function buildSynthesisPrompt(input: SynthesisPromptInput): {
   const strategies = input.rule_metadata.strategies;
   const strategyDescriptions = describeStrategies(strategies);
 
+  const refinementBlock =
+    input.refinement_hints && input.refinement_hints.length > 0
+      ? [
+          ``,
+          `# Refinement feedback (from previous turn's dry-run judge)`,
+          `Your previous tests referenced evidence paths that do NOT exist in the bundle. Rewrite them to reference pointers that literally appear in the "Pointers" section below. Feedback items:`,
+          ...input.refinement_hints.map((hint, i) => `${i + 1}. ${hint}`),
+        ].join("\n")
+      : "";
+
   const user = [
     `# Framework`,
     `${input.framework}`,
@@ -85,6 +101,7 @@ export function buildSynthesisPrompt(input: SynthesisPromptInput): {
     ``,
     `## Pointers (use these in your test references)`,
     JSON.stringify(input.bundle.pointers, null, 2),
+    refinementBlock,
     ``,
     `# Task`,
     `Synthesize up to ${input.max_tests} adversarial tests. Return strict JSON:`,

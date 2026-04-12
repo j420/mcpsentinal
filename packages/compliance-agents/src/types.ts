@@ -59,6 +59,12 @@ export interface FrameworkControlMapping {
   control: string;
   /** Optional sub-control for fine-grained mapping */
   sub_control?: string;
+  /**
+   * Framework version pin — so a compliance report records *which*
+   * revision of EU AI Act / OWASP MCP / etc. the rule was validated
+   * against. Auditors need this for regulatory defensibility.
+   */
+  framework_version?: string;
 }
 
 // ─── Edge-case strategies ──────────────────────────────────────────────────
@@ -113,6 +119,76 @@ export interface EvidenceBundle {
   pointers: EvidencePointer[];
   /** Whether the deterministic gather phase already detected a violation */
   deterministic_violation: boolean;
+  /** Temporal evidence — prior scans feeding longitudinal rules (rug-pull, drift) */
+  temporal?: TemporalEvidence;
+  /** Counterfactual probes — "what would change if we removed X?" causal tests */
+  counterfactual_probes?: CounterfactualProbe[];
+  /** Links to other rules' bundles that form an attack chain with this one */
+  attack_chain_links?: AttackChainLink[];
+  /** Signed provenance receipt for auditor replay */
+  provenance?: ProvenanceReceipt;
+  /** Uncertainty-aware severity dial — overrides the rule's static severity */
+  computed_severity?: ComputedSeverity;
+}
+
+/** Prior observations used by temporal rules (rug-pull, drift) */
+export interface TemporalEvidence {
+  /** Window the history covers */
+  window: { from: string; to: string };
+  /** Summary facts per prior scan — rule-defined shape */
+  prior_scans: Array<{
+    scan_id: string;
+    scanned_at: string;
+    bundle_hash: string;
+    summary: string;
+  }>;
+  /** Delta the rule cares about */
+  delta_detected: boolean;
+  delta_reason?: string;
+}
+
+/** Causal probe: what changes if we remove a specific evidence element? */
+export interface CounterfactualProbe {
+  probe_id: string;
+  /** Evidence element removed from the bundle */
+  removed: string;
+  /** Whether the deterministic_violation still holds without it */
+  still_violates: boolean;
+  /** Rule-authored rationale explaining what this probe tests */
+  rationale: string;
+}
+
+/** A link between two rules' bundles that together form a kill chain */
+export interface AttackChainLink {
+  link_id: string;
+  linked_rule_id: string;
+  /** Stage in the chain (1 = root cause, N = impact) */
+  stage: number;
+  /** Why this link is causal, not just co-occurring */
+  causality_rationale: string;
+}
+
+/** Signed bundle receipt that enables offline replay */
+export interface ProvenanceReceipt {
+  /** sha256 over bundle content, scan_id, timestamp */
+  receipt_hash: string;
+  /** Rule charter SHA when the bundle was generated */
+  charter_sha: string;
+  /** Model id at time of synthesis/verdict (if LLM touched this bundle) */
+  model_id?: string;
+  /** Scan id that produced it */
+  scan_id: string;
+  /** ISO timestamp when the bundle was frozen */
+  generated_at: string;
+}
+
+/** Computed severity = base × evidence_strength × blast_radius */
+export interface ComputedSeverity {
+  base: Severity;
+  evidence_strength: number; // 0..1
+  blast_radius: number; // 0..1 — how far exploitation propagates
+  effective: Severity;
+  rationale: string;
 }
 
 export interface EvidencePointer {
@@ -193,6 +269,8 @@ export interface ComplianceFinding {
   /** Which framework controls this finding satisfies */
   applies_to: FrameworkControlMapping[];
   severity: Severity;
+  /** Uncertainty-aware computed severity (overrides `severity` for reporting) */
+  computed_severity?: ComputedSeverity;
   /** The structured evidence chain (mandatory) */
   chain: EvidenceChain;
   /** The adversarial test that fired (linked back to compliance_agent_runs) */
@@ -201,10 +279,37 @@ export interface ComplianceFinding {
   judge_result: JudgedTestResult;
   /** Remediation guidance from the rule */
   remediation: string;
+  /**
+   * Optional proof-carrying remediation — an executable-ish patch
+   * (e.g. annotation additions, schema tweaks) the user can apply.
+   */
+  remediation_patch?: RemediationPatch;
   /** Confidence score (capped at 0.85 for LLM-derived findings) */
   confidence: number;
   /** Created timestamp (set by orchestrator) */
   created_at?: Date;
+  /**
+   * Outcome status — normally "non-compliant". "compliant-with-rationale" is
+   * a *structured negative proof*: the rule ran, found nothing, and
+   * deterministically attests that the server satisfies the control. These
+   * are surfaced in reports so auditors see positive evidence, not just
+   * gaps.
+   */
+  status?: FindingStatus;
+}
+
+export type FindingStatus = "non-compliant" | "compliant-with-rationale";
+
+/** Patch payload — executable remediation, not just prose */
+export interface RemediationPatch {
+  /** The target artifact this patch applies to */
+  target: "tool-annotation" | "output-schema" | "manifest" | "source-file" | "config";
+  /** Human-readable title */
+  title: string;
+  /** The concrete change (plain-text diff or structured mutation) */
+  mutation: string;
+  /** Why applying this mutation will flip the finding to compliant */
+  expected_effect: string;
 }
 
 // ─── Framework Agent ───────────────────────────────────────────────────────

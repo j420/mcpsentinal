@@ -51,6 +51,97 @@ export interface LLMClient {
   complete<T>(req: LLMRequest): Promise<LLMResponse<T>>;
 }
 
+// ─── Budget guardrails ─────────────────────────────────────────────────────
+
+/**
+ * Per-scan budget — hard stop on runaway LLM consumption. A rule that
+ * somehow synthesizes an infinite loop of tests (e.g. via multi-turn
+ * refinement) cannot exhaust the budget beyond these caps.
+ */
+export interface LLMBudget {
+  /** Maximum LLM calls allowed for one entire scan */
+  max_calls_per_scan: number;
+  /** Maximum LLM calls allowed for a single rule invocation */
+  max_calls_per_rule: number;
+  /** Soft token cap (estimated input+output tokens) for one scan */
+  max_tokens_per_scan: number;
+}
+
+export const DEFAULT_BUDGET: LLMBudget = {
+  max_calls_per_scan: 200,
+  max_calls_per_rule: 15,
+  max_tokens_per_scan: 200_000,
+};
+
+export class BudgetExceededError extends Error {
+  constructor(
+    public readonly reason: "calls-per-scan" | "calls-per-rule" | "tokens-per-scan",
+    public readonly budget: LLMBudget,
+    public readonly observed: number,
+  ) {
+    super(
+      `LLM budget exceeded (${reason}): observed ${observed} vs cap ${
+        reason === "calls-per-scan"
+          ? budget.max_calls_per_scan
+          : reason === "calls-per-rule"
+            ? budget.max_calls_per_rule
+            : budget.max_tokens_per_scan
+      }`,
+    );
+    this.name = "BudgetExceededError";
+  }
+}
+
+/**
+ * BudgetedLLMClient — wraps any LLMClient and enforces a per-scan +
+ * per-rule call cap. The orchestrator instantiates one of these per scan
+ * so running `compliance-scan --framework=all` against a pathological
+ * server cannot blow past the budget.
+ */
+export class BudgetedLLMClient implements LLMClient {
+  private totalCalls = 0;
+  private totalTokens = 0;
+  private perRuleCalls = new Map<string, number>();
+
+  constructor(
+    private readonly inner: LLMClient,
+    private readonly budget: LLMBudget = DEFAULT_BUDGET,
+  ) {}
+
+  async complete<T>(req: LLMRequest): Promise<LLMResponse<T>> {
+    const perRule = (this.perRuleCalls.get(req.rule_id) ?? 0) + 1;
+    if (perRule > this.budget.max_calls_per_rule) {
+      throw new BudgetExceededError("calls-per-rule", this.budget, perRule);
+    }
+    if (this.totalCalls + 1 > this.budget.max_calls_per_scan) {
+      throw new BudgetExceededError(
+        "calls-per-scan",
+        this.budget,
+        this.totalCalls + 1,
+      );
+    }
+    if (this.totalTokens > this.budget.max_tokens_per_scan) {
+      throw new BudgetExceededError(
+        "tokens-per-scan",
+        this.budget,
+        this.totalTokens,
+      );
+    }
+
+    this.perRuleCalls.set(req.rule_id, perRule);
+    this.totalCalls += 1;
+
+    const resp = await this.inner.complete<T>(req);
+    this.totalTokens += (resp.input_tokens ?? 0) + (resp.output_tokens ?? 0);
+    return resp;
+  }
+
+  /** Accessor so the orchestrator can surface budget usage in the report */
+  usage(): { calls: number; tokens: number } {
+    return { calls: this.totalCalls, tokens: this.totalTokens };
+  }
+}
+
 // ─── Mock client (for tests + offline runs) ────────────────────────────────
 
 /**
