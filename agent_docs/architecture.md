@@ -40,6 +40,15 @@
 - Rationale: Score trends and G6 (rug-pull detection) require reliable historical baselines. Mutable records make trend data meaningless.
 - Consequence: Never add UPDATE to findings or scores. If a finding is disputed, set `disputed: true` — never delete.
 
+**ADR-009: LLM exception scoped to `packages/compliance-agents/`**
+- Decision: ADR-006 ("no LLM in v1") is lifted **only** for the new `packages/compliance-agents/` package. Every other package — analyzer, scorer, scanner, crawler, attack-graph, dynamic-tester, red-team — remains 100% deterministic. The compliance agents may call Anthropic Claude to (a) synthesize per-server adversarial test cases, (b) reason about whether evidence violates a control, and (c) produce natural-language compliance narratives.
+- Rationale: The user's product requirement for the compliance framework is *dynamic, non-deterministic, edge-case-only* tests synthesized per server. A purely deterministic implementation cannot satisfy "dynamic test generation per server" — that is exactly what the LLM is for. Keeping the exception scoped means the existing 164-rule deterministic pipeline and its reproducibility guarantees are unaffected.
+- Hallucination firewall: every LLM verdict is re-validated by a deterministic `judge()` method on the rule. The LLM only sees a typed `EvidenceBundle` produced by a deterministic gather step — never raw server source code on its own. Verdicts the judge cannot confirm are discarded.
+- Reproducibility: every prompt + response + model + temperature + token counts is persisted to `compliance_agent_runs` (append-only per ADR-008). Auditors can replay any compliance scan by re-running the cached prompts.
+- Confidence cap: LLM-derived findings are capped at confidence 0.85 (vs 0.99 for deterministic rules) and tagged `analysis_technique: 'llm-reasoning'`.
+- Default mode: compliance scans default to `MockLLMClient` (recorded responses keyed by cache_key). The live Anthropic SDK client is only invoked with `--live` and a valid `ANTHROPIC_API_KEY`.
+- Enforcement: only files under `packages/compliance-agents/src/llm/` may import the Anthropic SDK. Two CI guards (`__tests__/no-static-patterns.test.ts` and `__tests__/charter-traceability.test.ts`) enforce the dual-persona authoring protocol — no regex literals or long string-array constants in `src/rules/`, and every rule's CHARTER.md must agree with its TypeScript implementation on rule id, threat refs, and edge-case strategies.
+
 ---
 
 ### Data Model

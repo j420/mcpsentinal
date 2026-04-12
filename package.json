@@ -20,6 +20,7 @@
     "red-team": "pnpm --filter=@mcp-sentinel/red-team run audit",
     "dynamic-test": "pnpm --filter=@mcp-sentinel/scanner run scan -- --dynamic",
     "cli": "pnpm --filter=@mcp-sentinel/cli run cli",
+    "compliance-scan": "pnpm --filter=@mcp-sentinel/compliance-agents run compliance-scan",
     "validate:evidence": "tsx tools/scripts/validate-evidence-chains.ts"
   },
   "devDependencies": {

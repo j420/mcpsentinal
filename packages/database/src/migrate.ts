@@ -508,6 +508,94 @@ const MIGRATIONS = [
         ON server_profiles(server_id, scan_id);
     `,
   },
+  {
+    id: "012_compliance_agents",
+    sql: `
+      -- Compliance Agents (ADR-009 LLM exception, scoped to packages/compliance-agents).
+      --
+      -- Three append-only tables back the adversarial compliance framework:
+      --
+      --   1. compliance_findings   — judge-confirmed compliance violations,
+      --                              one row per (server, framework, rule, test).
+      --   2. compliance_agent_runs — every LLM call (prompt, response, model,
+      --                              temperature, latency, cache state) for
+      --                              full audit reproducibility.
+      --   3. compliance_test_cache — cached per-(server, rule, framework) test
+      --                              synthesis output keyed by EvidenceBundle hash.
+      --
+      -- These tables are independent of the existing findings/scores tables —
+      -- they do NOT alter the deterministic vulnerability scoring pipeline.
+      -- ADR-008 (append-only) applies: never UPDATE, only INSERT.
+
+      CREATE TABLE IF NOT EXISTS compliance_findings (
+        id                 UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
+        scan_id            UUID         NOT NULL,
+        server_id          UUID         NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+        framework          VARCHAR(40)  NOT NULL,
+        rule_id            VARCHAR(120) NOT NULL,
+        category_control   VARCHAR(120) NOT NULL,
+        severity           VARCHAR(20)  NOT NULL,
+        confidence         REAL         NOT NULL CHECK (confidence >= 0.0 AND confidence <= 1.0),
+        bundle_id          VARCHAR(120) NOT NULL,
+        test_id            VARCHAR(120) NOT NULL,
+        test_hypothesis    TEXT         NOT NULL,
+        judge_rationale    TEXT         NOT NULL,
+        evidence_chain     JSONB        NOT NULL,
+        remediation        TEXT         NOT NULL,
+        created_at         TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_cf_scan_id    ON compliance_findings(scan_id);
+      CREATE INDEX IF NOT EXISTS idx_cf_server_id  ON compliance_findings(server_id);
+      CREATE INDEX IF NOT EXISTS idx_cf_framework  ON compliance_findings(framework);
+      CREATE INDEX IF NOT EXISTS idx_cf_rule_id    ON compliance_findings(rule_id);
+      CREATE INDEX IF NOT EXISTS idx_cf_severity   ON compliance_findings(severity);
+      CREATE INDEX IF NOT EXISTS idx_cf_created_at ON compliance_findings(created_at DESC);
+
+      CREATE TABLE IF NOT EXISTS compliance_agent_runs (
+        id              UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
+        scan_id         UUID         NOT NULL,
+        server_id       UUID         NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+        rule_id         VARCHAR(120) NOT NULL,
+        framework       VARCHAR(40)  NOT NULL,
+        phase           VARCHAR(20)  NOT NULL,
+        cache_key       VARCHAR(200) NOT NULL,
+        model           VARCHAR(80)  NOT NULL,
+        temperature     REAL         NOT NULL,
+        max_tokens      INTEGER      NOT NULL,
+        prompt          JSONB        NOT NULL,
+        response        JSONB        NOT NULL,
+        cached          BOOLEAN      NOT NULL DEFAULT false,
+        duration_ms     INTEGER      NOT NULL DEFAULT 0,
+        input_tokens    INTEGER,
+        output_tokens   INTEGER,
+        created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_car_scan_id    ON compliance_agent_runs(scan_id);
+      CREATE INDEX IF NOT EXISTS idx_car_server_id  ON compliance_agent_runs(server_id);
+      CREATE INDEX IF NOT EXISTS idx_car_rule_id    ON compliance_agent_runs(rule_id);
+      CREATE INDEX IF NOT EXISTS idx_car_cache_key  ON compliance_agent_runs(cache_key);
+      CREATE INDEX IF NOT EXISTS idx_car_created_at ON compliance_agent_runs(created_at DESC);
+
+      CREATE TABLE IF NOT EXISTS compliance_test_cache (
+        id            UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
+        cache_key     VARCHAR(200) NOT NULL UNIQUE,
+        server_id     UUID         NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+        rule_id       VARCHAR(120) NOT NULL,
+        framework     VARCHAR(40)  NOT NULL,
+        bundle_id     VARCHAR(120) NOT NULL,
+        content_hash  VARCHAR(64)  NOT NULL,
+        tests         JSONB        NOT NULL,
+        model         VARCHAR(80)  NOT NULL,
+        created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_ctc_server_id    ON compliance_test_cache(server_id);
+      CREATE INDEX IF NOT EXISTS idx_ctc_rule_id      ON compliance_test_cache(rule_id);
+      CREATE INDEX IF NOT EXISTS idx_ctc_content_hash ON compliance_test_cache(content_hash);
+    `,
+  },
 ];
 
 export async function migrate(connectionString: string): Promise<void> {
