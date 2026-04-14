@@ -40,8 +40,29 @@ export * as taintAST from "./analyzers/taint-ast.js";
 export * as capabilityGraph from "./analyzers/capability-graph.js";
 export * as schemaInference from "./analyzers/schema-inference.js";
 
-// Rule implementations (self-registering on import)
-import "./implementations/c1-command-injection.js";
+// Examiner base + TrustedConstant (new discipline-enforced base class)
+export {
+  Examiner,
+  TrustedConstant,
+  registerExaminer,
+  type Hypothesis,
+  type ThreatReference,
+  type ThreatSource,
+  type EdgeCaseManifest,
+  type EdgeCaseVariant,
+  type AdversarialMutation,
+  type KnownSafePattern,
+  type CVEReplay,
+  type RuleInteraction,
+  type BypassTechnique,
+  type VariantKind,
+} from "./examiner.js";
+
+// Migrated Examiners (self-registering on import)
+import "./examiners/code/c1.js";
+
+// Legacy v1 rule implementations (self-registering on import)
+// As rules migrate, entries move from this block into the examiners/ block above.
 import "./implementations/a6-unicode-homoglyph.js";
 import "./implementations/a9-encoded-instructions.js";
 import "./implementations/d3-typosquatting.js";

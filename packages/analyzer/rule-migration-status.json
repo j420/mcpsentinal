@@ -1,0 +1,78 @@
+{
+  "$schema_note": "Tracks which detection rules have migrated from the v1 TypedRule pattern to the Examiner model with 9-point thoroughness discipline. Read by tools/scripts/validate-examiners.ts to decide which rules to gate. Legacy rules are skipped by the validator during rollout.",
+  "updated_at": "2026-04-14",
+  "total_active": 164,
+  "total_retired": 13,
+  "migrated": [
+    {
+      "rule_id": "C1",
+      "examiner_path": "packages/analyzer/src/rules/examiners/code/c1.ts",
+      "migrated_at": "2026-04-14",
+      "batch": 2,
+      "cve_backed": true,
+      "primary_citation": "CVE-2025-6514"
+    }
+  ],
+  "legacy": [
+    "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9",
+    "B1", "B2", "B3", "B4", "B5", "B6", "B7",
+    "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9",
+    "C10", "C11", "C12", "C13", "C14", "C15", "C16",
+    "D1", "D2", "D3", "D4", "D5", "D6", "D7",
+    "E1", "E2", "E3", "E4",
+    "F1", "F2", "F3", "F4", "F5", "F6", "F7",
+    "G1", "G2", "G3", "G4", "G5", "G6", "G7",
+    "H1", "H2", "H3",
+    "I1", "I2", "I3", "I4", "I5", "I6", "I7", "I8", "I9",
+    "I10", "I11", "I12", "I13", "I14", "I15", "I16",
+    "J1", "J2", "J3", "J4", "J5", "J6", "J7",
+    "K1", "K2", "K3", "K4", "K5", "K6", "K7", "K8", "K9",
+    "K10", "K11", "K12", "K13", "K14", "K15", "K16", "K17", "K18", "K19", "K20",
+    "L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9",
+    "L10", "L11", "L12", "L13", "L14", "L15",
+    "M1", "M2", "M4", "M5", "M6", "M7", "M8", "M9",
+    "N1", "N2", "N3", "N4", "N5", "N6", "N7", "N8", "N9",
+    "N10", "N11", "N12", "N13", "N14", "N15",
+    "O4", "O5", "O6", "O8", "O9", "O10",
+    "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10",
+    "Q3", "Q4", "Q6", "Q7", "Q10", "Q13", "Q15"
+  ],
+  "retired": [
+    "O1", "O2", "O3", "O7",
+    "Q1", "Q2", "Q5", "Q8", "Q9", "Q11", "Q12", "Q14",
+    "M3"
+  ],
+  "migration_batches": {
+    "1": {
+      "categories": ["J", "H", "I"],
+      "rule_count": 26,
+      "priority": "Every rule here is CVE-backed or spec-grounded — richest targets for examination discipline"
+    },
+    "2": {
+      "categories": ["C", "F", "G"],
+      "rule_count": 30,
+      "priority": "Highest static-confidence detectors; migration mostly adds discipline, not new logic",
+      "in_flight": ["C1"]
+    },
+    "3": {
+      "categories": ["A", "B"],
+      "rule_count": 16,
+      "priority": "Heavy users of linguistic scoring — benefit most from baseline-calibrated confidence"
+    },
+    "4": {
+      "categories": ["D", "E"],
+      "rule_count": 11,
+      "priority": "Thin detectors; migration mostly adds edge-case manifest + CVE replay"
+    },
+    "5": {
+      "categories": ["K", "L"],
+      "rule_count": 35,
+      "priority": "Framework-mapped rules, require ISO/NIST/MAESTRO primary source citations"
+    },
+    "6": {
+      "categories": ["M", "N", "O", "P", "Q"],
+      "rule_count": 46,
+      "priority": "Factory-built rules; migration is repetitive but benefits most from tooling"
+    }
+  }
+}

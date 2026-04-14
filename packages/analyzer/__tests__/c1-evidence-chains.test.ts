@@ -669,8 +669,8 @@ exec(userCmd);
   it("evidence string includes confidence percentage", () => {
     const findings = getCriticalFindings(run(EXPLOIT));
     const evidence = findings[0].evidence;
-    // Should contain "Confidence: XX%"
-    expect(evidence).toMatch(/[Cc]onfidence.*\d+%/);
+    // Evidence is built by buildEvidenceText() which emits "CONFIDENCE: XX%"
+    expect(evidence).toMatch(/CONFIDENCE:\s*\d+%/);
   });
 
   it("remediation is specific and actionable", () => {

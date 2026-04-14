@@ -15,6 +15,7 @@ import { ALL_N_FIXTURES } from "./n-protocol-edge.js";
 import { ALL_O_FIXTURES } from "./o-data-privacy.js";
 import { ALL_P_FIXTURES } from "./p-infrastructure.js";
 import { ALL_Q_FIXTURES } from "./q-cross-ecosystem.js";
+import { ALL_CVE_REPLAY_FIXTURES } from "./cve-replays.js";
 import type { RuleFixtureSet } from "../types.js";
 
 /**

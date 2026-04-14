@@ -114,6 +114,62 @@ const result = fs.readFileSync(path);`),
       expect_finding: true, // still matches pattern (execSync present) — rule is conservative
       kind: "edge_case",
     },
+    // ── Adversarial mutations (bypass techniques the rule must still catch) ──
+    {
+      description: "adversarial alias-rename execSync",
+      context: srcCtx(`const { execSync } = require('child_process');
+const runCmd = execSync;
+runCmd(req.body.cmd);`),
+      expect_finding: true,
+      kind: "edge_case",
+      threat_ref: "C1-adv1-alias-rename",
+    },
+    {
+      description: "adversarial base64-wrapped eval",
+      context: srcCtx(`const payload = Buffer.from(req.query.data, 'base64').toString();
+eval(payload);`),
+      expect_finding: true,
+      kind: "edge_case",
+      threat_ref: "C1-adv2-base64-wrapped",
+    },
+    {
+      description: "adversarial spread-args join",
+      context: srcCtx(`const { exec } = require('child_process');
+const parts = ['git', 'log', req.query.ref];
+exec(parts.join(' '));`),
+      expect_finding: true,
+      kind: "edge_case",
+      threat_ref: "C1-adv3-spread-args",
+    },
+    {
+      description: "adversarial unicode homoglyph parameter",
+      // Parameter name uses Cyrillic 'о' (U+043E) instead of Latin 'o'
+      context: srcCtx(`function runTool(соmmand) {
+  const { execSync } = require('child_process');
+  execSync(соmmand);
+}`),
+      expect_finding: true,
+      kind: "edge_case",
+      threat_ref: "C1-adv4-unicode-homoglyph",
+    },
+    // ── Additional negative controls ──
+    {
+      description: "Safe: shellQuote escape library wraps user input",
+      context: srcCtx(`const shellQuote = require('shell-quote');
+const safeArg = shellQuote.quote([userInput]);
+exec(\`git log \${safeArg}\`);`),
+      expect_finding: false,
+      kind: "true_negative",
+    },
+    {
+      description: "Safe: allowlist indirection, no user input reaches sink",
+      context: srcCtx(`const ALLOWED = { status: 'git status', log: 'git log' };
+const cmd = ALLOWED[req.query.action];
+if (!cmd) throw new Error('bad action');
+exec(cmd);`),
+      expect_finding: false,
+      kind: "true_negative",
+    },
   ],
 };
 
