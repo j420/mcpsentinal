@@ -10,6 +10,8 @@ import AttackChainCard from "@/components/AttackChainCard";
 import type { AttackChainItem } from "@/components/AttackChainCard";
 import EvidenceChainViz from "@/components/EvidenceChainViz";
 import type { EvidenceChainData } from "@/components/EvidenceChainViz";
+import ServerTabs, { type ServerTab } from "./ServerTabs";
+import ComplianceTab from "./ComplianceTab";
 
 export const dynamic = "force-dynamic";
 
@@ -283,80 +285,115 @@ export default async function ServerDetailPage({
         currentServerId={server.id}
       />
 
-      {/* ── Security Findings ─────────────────────────────── */}
-      <section id="findings" className="sd-section">
-        <h2 className="sd-section-title">
-          Security Findings
-          <span className="sd-section-count">{findings.length}</span>
-        </h2>
-        {findings.length === 0 ? (
-          <p className="sd-section-sub">No findings detected. This server passed all 177 detection rules.</p>
-        ) : (
-          <>
-            <p className="sd-section-sub">
-              {findings.length} finding{findings.length !== 1 ? "s" : ""} detected across {new Set(findings.map(f => f.severity)).size} severity level{new Set(findings.map(f => f.severity)).size !== 1 ? "s" : ""}.
-              Each finding includes a structured evidence chain answering: WHAT, WHERE, WHY, HOW CONFIDENT, and HOW TO VERIFY.
-            </p>
-            <div className="sd-findings-list">
-              {findings.map((f) => (
-                <div key={f.id} className={`sd-finding-card sd-finding-${f.severity}`}>
-                  <div className="sd-finding-header">
-                    <span className={`sev-badge sev-${f.severity}`}>{f.severity}</span>
-                    <span className="sd-finding-rule-id">{f.rule_id}</span>
-                    <span className="sd-finding-rule-name">{RULE_NAMES[f.rule_id] ?? f.rule_id}</span>
-                    {f.owasp_category && <span className="sd-finding-tag sd-finding-owasp">{f.owasp_category}</span>}
-                    {f.mitre_technique && <span className="sd-finding-tag sd-finding-mitre">{f.mitre_technique}</span>}
-                  </div>
-                  <div className="sd-finding-evidence">{f.evidence}</div>
-                  <EvidenceChainViz
-                    chain={f.evidence_chain as EvidenceChainData | null | undefined}
-                    confidence={f.confidence}
-                  />
-                  {f.remediation && (
-                    <div className="sd-finding-remediation">
-                      <strong>Remediation:</strong> {f.remediation}
+      {/* ── Tabbed Detail Sections ─────────────────────────── */}
+      {(() => {
+        const findingsPanel = (
+          <section id="findings" className="sd-section">
+            <h2 className="sd-section-title">
+              Security Findings
+              <span className="sd-section-count">{findings.length}</span>
+            </h2>
+            {findings.length === 0 ? (
+              <p className="sd-section-sub">No findings detected. This server passed all 177 detection rules.</p>
+            ) : (
+              <>
+                <p className="sd-section-sub">
+                  {findings.length} finding{findings.length !== 1 ? "s" : ""} detected across {new Set(findings.map(f => f.severity)).size} severity level{new Set(findings.map(f => f.severity)).size !== 1 ? "s" : ""}.
+                  Each finding includes a structured evidence chain answering: WHAT, WHERE, WHY, HOW CONFIDENT, and HOW TO VERIFY.
+                </p>
+                <div className="sd-findings-list">
+                  {findings.map((f) => (
+                    <div key={f.id} className={`sd-finding-card sd-finding-${f.severity}`}>
+                      <div className="sd-finding-header">
+                        <span className={`sev-badge sev-${f.severity}`}>{f.severity}</span>
+                        <span className="sd-finding-rule-id">{f.rule_id}</span>
+                        <span className="sd-finding-rule-name">{RULE_NAMES[f.rule_id] ?? f.rule_id}</span>
+                        {f.owasp_category && <span className="sd-finding-tag sd-finding-owasp">{f.owasp_category}</span>}
+                        {f.mitre_technique && <span className="sd-finding-tag sd-finding-mitre">{f.mitre_technique}</span>}
+                      </div>
+                      <div className="sd-finding-evidence">{f.evidence}</div>
+                      <EvidenceChainViz
+                        chain={f.evidence_chain as EvidenceChainData | null | undefined}
+                        confidence={f.confidence}
+                      />
+                      {f.remediation && (
+                        <div className="sd-finding-remediation">
+                          <strong>Remediation:</strong> {f.remediation}
+                        </div>
+                      )}
                     </div>
-                  )}
+                  ))}
                 </div>
-              ))}
-            </div>
-          </>
-        )}
-      </section>
+              </>
+            )}
+          </section>
+        );
 
-      {/* ── Tools ──────────────────────────────────────────── */}
-      {tools.length > 0 && (
-        <section id="tools" className="sd-section">
-          <h2 className="sd-section-title">
-            Tools
-            <span className="sd-section-count">{tools.length}</span>
-          </h2>
-          <div className="sd-tools-grid">
-            {tools.map((tool) => (
-              <div key={tool.name} className="sd-tool">
-                <div className="sd-tool-name">{tool.name}</div>
-                {tool.description && (
-                  <div className="sd-tool-desc">{tool.description}</div>
-                )}
-                {tool.capability_tags.length > 0 && (
-                  <div className="sd-tool-caps">
-                    {tool.capability_tags.map((tag) => (
-                      <span key={tag} className={`cap-tag cap-${tag}`}>
-                        {tag.replace(/-/g, " ")}
-                      </span>
-                    ))}
+        const toolsPanel = (
+          <section id="tools" className="sd-section">
+            <h2 className="sd-section-title">
+              Tools
+              <span className="sd-section-count">{tools.length}</span>
+            </h2>
+            {tools.length === 0 ? (
+              <p className="sd-section-sub">No tools enumerated for this server.</p>
+            ) : (
+              <div className="sd-tools-grid">
+                {tools.map((tool) => (
+                  <div key={tool.name} className="sd-tool">
+                    <div className="sd-tool-name">{tool.name}</div>
+                    {tool.description && (
+                      <div className="sd-tool-desc">{tool.description}</div>
+                    )}
+                    {tool.capability_tags.length > 0 && (
+                      <div className="sd-tool-caps">
+                        {tool.capability_tags.map((tag) => (
+                          <span key={tag} className={`cap-tag cap-${tag}`}>
+                            {tag.replace(/-/g, " ")}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
+                ))}
               </div>
-            ))}
-          </div>
-        </section>
-      )}
+            )}
+          </section>
+        );
 
-      {/* ── Category Deep Dive ─────────────────────────────── */}
-      <div id="deep-dive">
-        <CategoryDeepDivePanel findings={cddFindings} fullFindings={findings} />
-      </div>
+        const deepDivePanel = (
+          <div id="deep-dive">
+            <CategoryDeepDivePanel findings={cddFindings} fullFindings={findings} />
+          </div>
+        );
+
+        const tabs: ServerTab[] = [
+          {
+            id: "findings",
+            label: "Findings",
+            count: findings.length,
+            content: findingsPanel,
+          },
+          {
+            id: "tools",
+            label: "Tools",
+            count: tools.length,
+            content: toolsPanel,
+          },
+          {
+            id: "deep-dive",
+            label: "Deep Dive",
+            content: deepDivePanel,
+          },
+          {
+            id: "compliance",
+            label: "Compliance",
+            content: <ComplianceTab slug={slug} />,
+          },
+        ];
+
+        return <ServerTabs tabs={tabs} />;
+      })()}
 
     </div>
   );

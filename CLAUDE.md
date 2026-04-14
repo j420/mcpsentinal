@@ -47,7 +47,8 @@ mcp-sentinel/
 │   ├── dynamic-tester/          ← Gated dynamic tool invocation with consent + audit (has CLAUDE.md)
 │   ├── red-team/                ← 900+ adversarial fixtures across A-Q categories (has CLAUDE.md)
 │   ├── benchmark/               ← Competitive benchmark framework (has CLAUDE.md)
-│   └── reports/                 ← Ecosystem intelligence report generation (has CLAUDE.md)
+│   ├── reports/                 ← Ecosystem intelligence report generation (has CLAUDE.md)
+│   └── compliance-agents/       ← 6 framework agents (OWASP MCP/ASI, CoSAI, MAESTRO, EU AI Act, MITRE ATLAS) — only LLM-using package per ADR-009 (has CLAUDE.md)
 ├── docs/
 │   └── runbooks/                ← Operational runbooks: add-new-rule, new-cve-response, full-crawl
 ├── tools/
@@ -80,6 +81,10 @@ pnpm lint                        # ESLint + Prettier check
 # CLI (local development)
 pnpm cli check                   # Test CLI against local MCP configs
 pnpm cli check --json            # JSON output for CI
+# Compliance scanning (LLM-driven, ADR-009)
+pnpm compliance-scan --server=<id> --framework=eu_ai_act    # single framework
+pnpm compliance-scan --server=<id> --framework=all          # combined mode
+pnpm compliance-scan --server=<id> --framework=all --live   # use real Anthropic API
 # Build & Deploy
 pnpm build                       # Build all packages
 pnpm deploy:web                  # Deploy registry website

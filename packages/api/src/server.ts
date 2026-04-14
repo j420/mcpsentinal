@@ -3,8 +3,17 @@ import cors from "cors";
 import pg from "pg";
 import pino from "pino";
 import { z } from "zod";
-import { DatabaseQueries, ServerListQuerySchema, migrate } from "@mcp-sentinel/database";
-import type { Server } from "@mcp-sentinel/database";
+import {
+  DatabaseQueries,
+  ServerListQuerySchema,
+  ComplianceFrameworkId,
+  migrate,
+} from "@mcp-sentinel/database";
+import type {
+  ComplianceFindingRecord,
+  ComplianceFrameworkId as ComplianceFrameworkIdType,
+  Server,
+} from "@mcp-sentinel/database";
 import { RiskMatrixAnalyzer } from "@mcp-sentinel/risk-matrix";
 import { createBadgeSvg } from "./badge.js";
 
@@ -201,6 +210,170 @@ app.get(
       res.json({ data: findings });
     } catch (err) {
       logger.error(err, "Findings error");
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+// ─── Compliance routes ────────────────────────────────────────────────────────
+// Judge-confirmed compliance findings grouped by framework. Powers the
+// Compliance tab on the server detail page. Only judge-confirmed rows ever
+// reach this endpoint (the persistence layer drops anything else at write
+// time), and LLM-only fields — `judge_rationale`, prompts, response text —
+// are NEVER exposed publicly. Regulators can replay via the private
+// `compliance_agent_runs` audit trail; the public surface is deliberately
+// narrow so we don't accidentally leak LLM reasoning text that might contain
+// server source code excerpts.
+
+/** Redact LLM-derived narrative fields before returning over the wire. */
+function publicComplianceRow(row: ComplianceFindingRecord): {
+  id: string;
+  framework: ComplianceFrameworkIdType;
+  rule_id: string;
+  category_control: string;
+  severity: ComplianceFindingRecord["severity"];
+  confidence: number;
+  bundle_id: string;
+  test_id: string;
+  test_hypothesis: string;
+  evidence_chain: ComplianceFindingRecord["evidence_chain"];
+  remediation: string;
+  created_at: Date;
+} {
+  return {
+    id: row.id,
+    framework: row.framework,
+    rule_id: row.rule_id,
+    category_control: row.category_control,
+    severity: row.severity,
+    confidence: row.confidence,
+    bundle_id: row.bundle_id,
+    test_id: row.test_id,
+    test_hypothesis: row.test_hypothesis,
+    evidence_chain: row.evidence_chain,
+    remediation: row.remediation,
+    created_at: row.created_at,
+  };
+}
+
+// GET /api/v1/servers/:slug/compliance — All frameworks, grouped
+//
+// Response shape:
+//   { data: {
+//       eu_ai_act:   [ ...publicComplianceRow ],
+//       mitre_atlas: [ ... ],
+//       owasp_mcp:   [ ... ],
+//       owasp_asi:   [ ... ],
+//       cosai:       [ ... ],
+//       maestro:     [ ... ],
+//     },
+//     meta: { total_findings, frameworks_with_findings, last_scan_at }
+//   }
+//
+// Frameworks with zero findings are still included as empty arrays so the
+// UI can distinguish "nothing found" from "not scanned".
+app.get(
+  "/api/v1/servers/:slug/compliance",
+  rateLimitMiddleware(),
+  async (req: Request, res: Response) => {
+    const { slug } = req.params;
+    if (!slug || !isValidSlug(slug)) {
+      res.status(400).json({ error: "Invalid server slug" });
+      return;
+    }
+    try {
+      const server = await db.findServerBySlug(slug);
+      if (!server) {
+        res.status(404).json({ error: "Server not found" });
+        return;
+      }
+      const rows = await db.getComplianceFindingsForServer(server.id);
+      const grouped: Record<ComplianceFrameworkIdType, ReturnType<typeof publicComplianceRow>[]> = {
+        eu_ai_act: [],
+        mitre_atlas: [],
+        owasp_mcp: [],
+        owasp_asi: [],
+        cosai: [],
+        maestro: [],
+      };
+      let lastScanAt: Date | null = null;
+      for (const row of rows) {
+        grouped[row.framework].push(publicComplianceRow(row));
+        if (!lastScanAt || row.created_at > lastScanAt) {
+          lastScanAt = row.created_at;
+        }
+      }
+      const frameworksWithFindings = (
+        Object.keys(grouped) as ComplianceFrameworkIdType[]
+      ).filter((k) => grouped[k].length > 0).length;
+      res.json({
+        data: grouped,
+        meta: {
+          total_findings: rows.length,
+          frameworks_with_findings: frameworksWithFindings,
+          last_scan_at: lastScanAt,
+        },
+      });
+    } catch (err) {
+      logger.error(err, "Compliance findings error");
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+// GET /api/v1/servers/:slug/compliance/:framework — Single framework
+//
+// Response shape:
+//   { data: [ ...publicComplianceRow ],
+//     meta: { framework, total_findings, last_scan_at } }
+//
+// Returns 400 on unknown framework id. Returns 200 with an empty `data`
+// array when the server has no findings for that framework (so the UI can
+// render a confident "no findings in this framework" state rather than
+// showing an error).
+app.get(
+  "/api/v1/servers/:slug/compliance/:framework",
+  rateLimitMiddleware(),
+  async (req: Request, res: Response) => {
+    const { slug, framework } = req.params;
+    if (!slug || !isValidSlug(slug)) {
+      res.status(400).json({ error: "Invalid server slug" });
+      return;
+    }
+    const parsedFramework = ComplianceFrameworkId.safeParse(framework);
+    if (!parsedFramework.success) {
+      res.status(400).json({
+        error: "Invalid framework id",
+        valid: ComplianceFrameworkId.options,
+      });
+      return;
+    }
+    try {
+      const server = await db.findServerBySlug(slug);
+      if (!server) {
+        res.status(404).json({ error: "Server not found" });
+        return;
+      }
+      const rows = await db.getComplianceFindingsForServer(
+        server.id,
+        parsedFramework.data
+      );
+      let lastScanAt: Date | null = null;
+      for (const row of rows) {
+        if (!lastScanAt || row.created_at > lastScanAt) {
+          lastScanAt = row.created_at;
+        }
+      }
+      res.json({
+        data: rows.map(publicComplianceRow),
+        meta: {
+          framework: parsedFramework.data,
+          total_findings: rows.length,
+          last_scan_at: lastScanAt,
+        },
+      });
+    } catch (err) {
+      logger.error(err, "Compliance per-framework error");
       res.status(500).json({ error: "Internal server error" });
     }
   }

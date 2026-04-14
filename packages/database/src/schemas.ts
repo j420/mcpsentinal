@@ -564,6 +564,82 @@ export const ServerListQuerySchema = z.object({
 });
 export type ServerListQuery = z.infer<typeof ServerListQuerySchema>;
 
+// ─── Compliance Agents (ADR-009) ────────────────────────────────────────────
+
+/**
+ * Framework agent identifiers — kept here so other packages can validate
+ * compliance scan inputs without importing from `@mcp-sentinel/compliance-agents`
+ * (which would create a circular dependency on `@mcp-sentinel/database`).
+ */
+export const ComplianceFrameworkId = z.enum([
+  "owasp_mcp",
+  "owasp_asi",
+  "cosai",
+  "maestro",
+  "eu_ai_act",
+  "mitre_atlas",
+]);
+export type ComplianceFrameworkId = z.infer<typeof ComplianceFrameworkId>;
+
+export const ComplianceAgentPhase = z.enum(["synthesis", "execution"]);
+export type ComplianceAgentPhase = z.infer<typeof ComplianceAgentPhase>;
+
+export const ComplianceFindingRecordSchema = z.object({
+  id: z.string().uuid(),
+  scan_id: z.string().uuid(),
+  server_id: z.string().uuid(),
+  framework: ComplianceFrameworkId,
+  rule_id: z.string().min(1).max(120),
+  category_control: z.string().min(1).max(120),
+  severity: Severity,
+  confidence: z.number().min(0).max(1),
+  bundle_id: z.string().min(1).max(120),
+  test_id: z.string().min(1).max(120),
+  test_hypothesis: z.string(),
+  judge_rationale: z.string(),
+  evidence_chain: z.record(z.unknown()),
+  remediation: z.string(),
+  created_at: z.coerce.date(),
+});
+export type ComplianceFindingRecord = z.infer<typeof ComplianceFindingRecordSchema>;
+
+export const ComplianceAgentRunSchema = z.object({
+  id: z.string().uuid(),
+  scan_id: z.string().uuid(),
+  server_id: z.string().uuid(),
+  rule_id: z.string().min(1).max(120),
+  framework: ComplianceFrameworkId,
+  phase: ComplianceAgentPhase,
+  cache_key: z.string().min(1).max(200),
+  model: z.string().min(1).max(80),
+  temperature: z.number().min(0).max(2),
+  max_tokens: z.number().int().nonnegative(),
+  prompt: z.record(z.unknown()),
+  response: z.record(z.unknown()),
+  cached: z.boolean().default(false),
+  duration_ms: z.number().int().nonnegative().default(0),
+  input_tokens: z.number().int().nonnegative().nullable(),
+  output_tokens: z.number().int().nonnegative().nullable(),
+  created_at: z.coerce.date(),
+});
+export type ComplianceAgentRun = z.infer<typeof ComplianceAgentRunSchema>;
+
+export const ComplianceTestCacheSchema = z.object({
+  id: z.string().uuid(),
+  cache_key: z.string().min(1).max(200),
+  server_id: z.string().uuid(),
+  rule_id: z.string().min(1).max(120),
+  framework: ComplianceFrameworkId,
+  bundle_id: z.string().min(1).max(120),
+  content_hash: z.string().min(1).max(64),
+  tests: z.array(z.record(z.unknown())),
+  model: z.string().min(1).max(80),
+  created_at: z.coerce.date(),
+});
+export type ComplianceTestCache = z.infer<typeof ComplianceTestCacheSchema>;
+
+// ─── API Response Schemas ────────────────────────────────────────────────────
+
 export const EcosystemStatsSchema = z.object({
   total_servers: z.number(),
   total_scanned: z.number(),

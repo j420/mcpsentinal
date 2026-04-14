@@ -155,6 +155,17 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 **Goal:** Compliance mapping, enterprise features, "State of MCP Security" report.
 
 **Deliverables:**
+- [x] **Adversarial Compliance Framework** — `packages/compliance-agents/` (ADR-009 LLM exception)
+  - 6 framework agents: OWASP MCP, OWASP ASI, CoSAI, MAESTRO, EU AI Act, MITRE ATLAS
+  - Hierarchy: FrameworkAgent → Category → ComplianceRule → ComplianceTest → ComplianceFinding
+  - Dual-persona authoring protocol (CHARTER.md + sibling index.ts) with traceability guard
+  - 4-step pipeline: deterministic gather → LLM synthesis → LLM execution → deterministic judge (hallucination firewall)
+  - Shared rules across frameworks via `appliesTo[]`; orchestrator demultiplexes findings into per-framework reports
+  - Isolation + combined modes: `pnpm compliance-scan --framework=eu_ai_act|all`
+  - 3 new tables: `compliance_findings`, `compliance_agent_runs`, `compliance_test_cache` (append-only)
+  - LLM audit log: every prompt/response/model/temperature persisted for replay
+  - Confidence cap at 0.85 for LLM-derived findings; mock LLM client default for reproducibility
+  - No-static-patterns guard + charter-traceability guard enforce "no regex, nothing static" in `src/rules/`
 - [ ] OWASP MCP Top 10 mapping complete
 - [ ] MITRE ATLAS mapping complete
 - [ ] EU AI Act readiness assessment template
@@ -172,7 +183,7 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 ### What NOT To Build Now
 - User authentication
 - Payment/billing
-- LLM-powered analysis
+- LLM-powered analysis _outside_ `packages/compliance-agents/` (ADR-009 keeps the exception scoped)
 - Performance optimization
 - Mobile UI
 
