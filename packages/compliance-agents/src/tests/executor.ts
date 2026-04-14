@@ -62,6 +62,8 @@ export class TestExecutor {
       rule_id: input.rule.metadata.id,
       server_id: input.bundle.server_id,
       scan_id: input.scan_id,
+      framework: input.framework,
+      phase: "execution",
     });
 
     return response.parsed;

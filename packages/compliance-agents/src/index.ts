@@ -35,3 +35,11 @@ export {
   LLM_CONFIDENCE_CAP,
   applyLLMCap,
 } from "./llm/confidence.js";
+export {
+  persistComplianceScanResult,
+  loadAnalysisContextFromDb,
+  type PersistComplianceScanInput,
+  type PersistComplianceScanReport,
+  type PersistLogger,
+  type LoadContextResult,
+} from "./persistence.js";

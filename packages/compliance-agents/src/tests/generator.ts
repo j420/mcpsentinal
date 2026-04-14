@@ -95,6 +95,8 @@ export class TestGenerator {
           rule_id: input.rule.metadata.id,
           server_id: input.bundle.server_id,
           scan_id: input.scan_id,
+          framework: input.framework,
+          phase: "synthesis",
         });
       } catch (err) {
         // Budget exhausted or recording missing → return what we have

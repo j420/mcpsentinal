@@ -15,6 +15,7 @@
  */
 
 import { z } from "zod";
+import type { ComplianceAgentPhase, ComplianceFrameworkId } from "@mcp-sentinel/database";
 import type { LLMAuditEvent, LLMAuditLog } from "./audit-log.js";
 
 export interface LLMRequest {
@@ -35,6 +36,10 @@ export interface LLMRequest {
   rule_id: string;
   server_id: string;
   scan_id: string;
+  /** Framework agent that originated this call — required for audit trail */
+  framework: ComplianceFrameworkId;
+  /** synthesis = test generation, execution = verdict rendering */
+  phase: ComplianceAgentPhase;
 }
 
 export interface LLMResponse<T> {
@@ -169,6 +174,8 @@ export class MockLLMClient implements LLMClient {
       scan_id: req.scan_id,
       rule_id: req.rule_id,
       server_id: req.server_id,
+      framework: req.framework,
+      phase: req.phase,
       cache_key: req.cache_key,
       model: req.model,
       temperature: req.temperature,
@@ -220,6 +227,8 @@ export class LiveLLMClient implements LLMClient {
         scan_id: req.scan_id,
         rule_id: req.rule_id,
         server_id: req.server_id,
+        framework: req.framework,
+        phase: req.phase,
         cache_key: req.cache_key,
         model: req.model,
         temperature: req.temperature,
@@ -288,6 +297,8 @@ export class LiveLLMClient implements LLMClient {
       scan_id: req.scan_id,
       rule_id: req.rule_id,
       server_id: req.server_id,
+      framework: req.framework,
+      phase: req.phase,
       cache_key: req.cache_key,
       model: req.model,
       temperature: req.temperature,

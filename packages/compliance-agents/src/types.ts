@@ -378,6 +378,15 @@ export interface ComplianceScanRequest {
   model?: string;
   /** Maximum tests to synthesize per rule (default: 5) */
   max_tests_per_rule?: number;
+  /**
+   * Optional caller-supplied scan id. When set, the orchestrator uses this
+   * value as the canonical scan_id in every generated LLM audit event and
+   * in the returned `ComplianceScanResult`, so a DB-backed caller can
+   * persist findings + audit rows under the same scan row they already
+   * created via `createScan()`. If omitted, the orchestrator mints a
+   * fresh UUID (the default for hermetic fixture runs).
+   */
+  scan_id?: string;
 }
 
 export interface ComplianceScanResult {

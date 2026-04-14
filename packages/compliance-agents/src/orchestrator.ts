@@ -58,7 +58,11 @@ export class ComplianceOrchestrator {
     request: ComplianceScanRequest,
   ): Promise<ComplianceScanResult> {
     const start = Date.now();
-    const scanId = randomUUID();
+    // Use caller-supplied scan_id when provided (DB-backed CLI path) so that
+    // LLM audit events + persisted findings + the pre-created `scans` row all
+    // share one canonical id. Fall back to a fresh UUID for hermetic fixture
+    // runs and unit tests.
+    const scanId = request.scan_id ?? randomUUID();
     const frameworks: FrameworkId[] =
       request.frameworks === "all" ? [...ALL_FRAMEWORKS] : [...request.frameworks];
 

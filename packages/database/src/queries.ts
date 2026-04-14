@@ -1,5 +1,9 @@
 import pg from "pg";
 import type {
+  ComplianceAgentRun,
+  ComplianceFindingRecord,
+  ComplianceFrameworkId,
+  ComplianceTestCache,
   DiscoveredServer,
   FindingInput,
   Server,
@@ -1503,6 +1507,306 @@ export class DatabaseQueries {
       [serverId, limit]
     );
     return result.rows;
+  }
+
+  /**
+   * Return the enriched dependency rows previously persisted by
+   * `upsertDependencies()`. Used by the compliance-agents package to assemble
+   * an `AnalysisContext` from DB state without re-running the OSV audit —
+   * compliance scans run after regular scans and reuse the already-audited
+   * dependency snapshot.
+   */
+  async getDependenciesForServer(serverId: string): Promise<Array<{
+    name: string;
+    version: string | null;
+    has_known_cve: boolean;
+    cve_ids: string[];
+    last_updated: Date | null;
+  }>> {
+    const result = await this.pool.query(
+      `SELECT name, version, has_known_cve, cve_ids, last_updated
+         FROM dependencies
+         WHERE server_id = $1
+         ORDER BY name`,
+      [serverId]
+    );
+    return result.rows.map((r) => ({
+      name: r.name as string,
+      version: (r.version as string | null) ?? null,
+      has_known_cve: Boolean(r.has_known_cve),
+      cve_ids: (r.cve_ids as string[] | null) ?? [],
+      last_updated: (r.last_updated as Date | null) ?? null,
+    }));
+  }
+
+  // ─── Compliance Agents (ADR-009) ───────────────────────────────────────────
+  //
+  // Persistence for the adversarial compliance framework. Three tables back
+  // this module (migrate.ts → 012_compliance_agents):
+  //
+  //   compliance_findings   — append-only, judge-confirmed rows only. The
+  //                           orchestrator filters out non-confirmed verdicts
+  //                           in orchestrator.ts before we ever reach this
+  //                           layer, so a SELECT here is always safe to
+  //                           surface publicly.
+  //   compliance_agent_runs — append-only LLM audit trail. Required by ADR-009
+  //                           for regulator-grade replayability. Every single
+  //                           LLM call (synthesis + execution, cached or live)
+  //                           must land here before the caller exits.
+  //   compliance_test_cache — mutable by design: ON CONFLICT (cache_key) DO
+  //                           UPDATE refreshes the content_hash so stale
+  //                           bundles invalidate themselves automatically on
+  //                           next scan. This is the ONE compliance table
+  //                           where UPSERT is allowed (cache semantics, not
+  //                           audit semantics).
+  //
+  // Every "latest scan" resolution uses the `compliance_findings` table
+  // directly (not the generic `scans` table) because a server may have had
+  // many `pnpm scan` passes without a compliance run — only compliance runs
+  // produce compliance_findings rows.
+
+  async insertComplianceFinding(
+    record: Omit<ComplianceFindingRecord, "id" | "created_at">
+  ): Promise<string> {
+    const result = await this.pool.query(
+      `INSERT INTO compliance_findings (
+         scan_id, server_id, framework, rule_id, category_control,
+         severity, confidence, bundle_id, test_id, test_hypothesis,
+         judge_rationale, evidence_chain, remediation
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       RETURNING id`,
+      [
+        record.scan_id,
+        record.server_id,
+        record.framework,
+        record.rule_id,
+        record.category_control,
+        record.severity,
+        record.confidence,
+        record.bundle_id,
+        record.test_id,
+        record.test_hypothesis,
+        record.judge_rationale,
+        JSON.stringify(record.evidence_chain),
+        record.remediation,
+      ]
+    );
+    return result.rows[0].id as string;
+  }
+
+  async insertComplianceAgentRun(
+    record: Omit<ComplianceAgentRun, "id" | "created_at">
+  ): Promise<string> {
+    const result = await this.pool.query(
+      `INSERT INTO compliance_agent_runs (
+         scan_id, server_id, rule_id, framework, phase, cache_key,
+         model, temperature, max_tokens, prompt, response,
+         cached, duration_ms, input_tokens, output_tokens
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+       RETURNING id`,
+      [
+        record.scan_id,
+        record.server_id,
+        record.rule_id,
+        record.framework,
+        record.phase,
+        record.cache_key,
+        record.model,
+        record.temperature,
+        record.max_tokens,
+        JSON.stringify(record.prompt),
+        JSON.stringify(record.response),
+        record.cached,
+        record.duration_ms,
+        record.input_tokens,
+        record.output_tokens,
+      ]
+    );
+    return result.rows[0].id as string;
+  }
+
+  async upsertComplianceTestCache(
+    record: Omit<ComplianceTestCache, "id" | "created_at">
+  ): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO compliance_test_cache (
+         cache_key, server_id, rule_id, framework, bundle_id,
+         content_hash, tests, model
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       ON CONFLICT (cache_key) DO UPDATE SET
+         content_hash = EXCLUDED.content_hash,
+         tests = EXCLUDED.tests,
+         bundle_id = EXCLUDED.bundle_id,
+         model = EXCLUDED.model,
+         created_at = NOW()`,
+      [
+        record.cache_key,
+        record.server_id,
+        record.rule_id,
+        record.framework,
+        record.bundle_id,
+        record.content_hash,
+        JSON.stringify(record.tests),
+        record.model,
+      ]
+    );
+  }
+
+  /**
+   * Freshness-gated cache lookup. Returns the cached entry ONLY when the
+   * stored `content_hash` matches the caller's expected hash, so a drift
+   * in the underlying EvidenceBundle silently invalidates the cache and
+   * forces a re-synthesis. Never returns a stale entry.
+   */
+  async getComplianceTestCacheByKey(
+    cacheKey: string,
+    expectedContentHash: string
+  ): Promise<ComplianceTestCache | null> {
+    const result = await this.pool.query(
+      `SELECT id, cache_key, server_id, rule_id, framework, bundle_id,
+              content_hash, tests, model, created_at
+         FROM compliance_test_cache
+         WHERE cache_key = $1 AND content_hash = $2
+         LIMIT 1`,
+      [cacheKey, expectedContentHash]
+    );
+    const row = result.rows[0];
+    if (!row) return null;
+    return row as ComplianceTestCache;
+  }
+
+  /**
+   * Resolve the latest compliance scan for a server. Returns null if the
+   * server has never been run through the compliance pipeline.
+   */
+  async getLatestComplianceScanId(serverId: string): Promise<string | null> {
+    const result = await this.pool.query(
+      `SELECT scan_id
+         FROM compliance_findings
+         WHERE server_id = $1
+         ORDER BY created_at DESC
+         LIMIT 1`,
+      [serverId]
+    );
+    return (result.rows[0]?.scan_id as string | undefined) ?? null;
+  }
+
+  /**
+   * Judge-confirmed compliance findings from the latest compliance scan for
+   * a server. Optional framework filter. Ordered by framework (regulator
+   * priority: EU AI Act first → MITRE ATLAS → OWASP MCP → OWASP ASI → CoSAI
+   * → MAESTRO) then severity (critical → informational).
+   */
+  async getComplianceFindingsForServer(
+    serverId: string,
+    framework?: ComplianceFrameworkId
+  ): Promise<ComplianceFindingRecord[]> {
+    const params: unknown[] = [serverId];
+    let frameworkClause = "";
+    if (framework) {
+      params.push(framework);
+      frameworkClause = ` AND framework = $2`;
+    }
+    const result = await this.pool.query(
+      `SELECT id, scan_id, server_id, framework, rule_id, category_control,
+              severity, confidence, bundle_id, test_id, test_hypothesis,
+              judge_rationale, evidence_chain, remediation, created_at
+         FROM compliance_findings
+         WHERE server_id = $1
+           AND scan_id = (
+             SELECT scan_id FROM compliance_findings
+               WHERE server_id = $1
+               ORDER BY created_at DESC
+               LIMIT 1
+           )
+           ${frameworkClause}
+         ORDER BY
+           CASE framework
+             WHEN 'eu_ai_act'   THEN 1
+             WHEN 'mitre_atlas' THEN 2
+             WHEN 'owasp_mcp'   THEN 3
+             WHEN 'owasp_asi'   THEN 4
+             WHEN 'cosai'       THEN 5
+             WHEN 'maestro'     THEN 6
+             ELSE 7
+           END,
+           CASE severity
+             WHEN 'critical'      THEN 1
+             WHEN 'high'          THEN 2
+             WHEN 'medium'        THEN 3
+             WHEN 'low'           THEN 4
+             WHEN 'informational' THEN 5
+             ELSE 6
+           END,
+           rule_id`,
+      params
+    );
+    return result.rows as ComplianceFindingRecord[];
+  }
+
+  /**
+   * Ecosystem-wide compliance posture. Aggregates the latest compliance scan
+   * per server and groups findings by framework. Used by the future
+   * regulator-facing `/api/v1/ecosystem/compliance/stats` endpoint.
+   *
+   * Caveat: this reports observed findings only. "Clean" servers (zero
+   * findings for a framework) cannot be attributed without a separate
+   * compliance_scans table — deferred to a follow-up. Totals below
+   * therefore describe violation density, not compliance coverage.
+   */
+  async getEcosystemComplianceStats(): Promise<{
+    by_framework: Array<{
+      framework: ComplianceFrameworkId;
+      servers_with_findings: number;
+      total_findings: number;
+      critical: number;
+      high: number;
+      medium: number;
+      low: number;
+      informational: number;
+    }>;
+    total_servers_scanned: number;
+    last_scan_at: Date | null;
+  }> {
+    const frameworkRows = await this.pool.query(
+      `WITH latest_per_server AS (
+         SELECT DISTINCT ON (server_id)
+           server_id, scan_id, created_at
+         FROM compliance_findings
+         ORDER BY server_id, created_at DESC
+       )
+       SELECT cf.framework,
+              COUNT(DISTINCT cf.server_id)                                       AS servers_with_findings,
+              COUNT(*)                                                           AS total_findings,
+              SUM(CASE WHEN cf.severity = 'critical'      THEN 1 ELSE 0 END)     AS critical,
+              SUM(CASE WHEN cf.severity = 'high'          THEN 1 ELSE 0 END)     AS high,
+              SUM(CASE WHEN cf.severity = 'medium'        THEN 1 ELSE 0 END)     AS medium,
+              SUM(CASE WHEN cf.severity = 'low'           THEN 1 ELSE 0 END)     AS low,
+              SUM(CASE WHEN cf.severity = 'informational' THEN 1 ELSE 0 END)     AS informational
+         FROM compliance_findings cf
+         JOIN latest_per_server lps
+           ON cf.server_id = lps.server_id AND cf.scan_id = lps.scan_id
+         GROUP BY cf.framework
+         ORDER BY cf.framework`
+    );
+    const totals = await this.pool.query(
+      `SELECT COUNT(DISTINCT server_id) AS cnt, MAX(created_at) AS last_at
+         FROM compliance_findings`
+    );
+    return {
+      by_framework: frameworkRows.rows.map((r) => ({
+        framework: r.framework as ComplianceFrameworkId,
+        servers_with_findings: parseInt(r.servers_with_findings, 10) || 0,
+        total_findings: parseInt(r.total_findings, 10) || 0,
+        critical: parseInt(r.critical, 10) || 0,
+        high: parseInt(r.high, 10) || 0,
+        medium: parseInt(r.medium, 10) || 0,
+        low: parseInt(r.low, 10) || 0,
+        informational: parseInt(r.informational, 10) || 0,
+      })),
+      total_servers_scanned: parseInt(totals.rows[0]?.cnt ?? "0", 10) || 0,
+      last_scan_at: (totals.rows[0]?.last_at as Date | null) ?? null,
+    };
   }
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
