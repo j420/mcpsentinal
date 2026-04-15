@@ -369,18 +369,6 @@ export default async function ServerDetailPage({
 
         const tabs: ServerTab[] = [
           {
-            id: "findings",
-            label: "Findings",
-            count: findings.length,
-            content: findingsPanel,
-          },
-          {
-            id: "tools",
-            label: "Tools",
-            count: tools.length,
-            content: toolsPanel,
-          },
-          {
             id: "deep-dive",
             label: "Deep Dive",
             content: deepDivePanel,
@@ -389,6 +377,18 @@ export default async function ServerDetailPage({
             id: "compliance",
             label: "Compliance",
             content: <ComplianceTab slug={slug} />,
+          },
+          {
+            id: "tools",
+            label: "Tools",
+            count: tools.length,
+            content: toolsPanel,
+          },
+          {
+            id: "findings",
+            label: "Findings",
+            count: findings.length,
+            content: findingsPanel,
           },
         ];
 
