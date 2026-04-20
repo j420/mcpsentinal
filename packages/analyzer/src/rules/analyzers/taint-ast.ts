@@ -819,3 +819,89 @@ class TaintEngine {
 export function getUnsanitizedASTFlows(source: string): ASTTaintFlow[] {
   return analyzeASTTaint(source).filter((f) => !f.sanitized);
 }
+
+// ─── Reachability API (Phase 0, Chunk 0.5 — used by evidence-integrity) ─────
+
+/** Minimal location shape — intentionally a subset of `Location` from the
+ *  v2 standard so callers can pass evidence-chain source/sink links directly. */
+export interface ReachabilitySite {
+  file: string;
+  line: number;
+  col?: number;
+}
+
+export interface ReachabilityResult {
+  /** Whether the source is known to reach the sink through data flow. */
+  reachable: boolean;
+  /** The file:line sequence along the proven flow. Empty when !reachable. */
+  path: Array<{ file: string; line: number }>;
+  /**
+   * Discriminator: why the function decided what it did. Distinguishes
+   * "provably reachable", "provably unreachable", and "out-of-scope for
+   * the current analyzer" — which callers need to route to a conservative
+   * (assume-reachable) fallback in Phase 1.
+   */
+  reason:
+    | "taint-flow-matches"
+    | "no-flow-in-file"
+    | "different-files-not-supported-yet"
+    | "source-code-unavailable"
+    | "location-outside-file";
+}
+
+/**
+ * Answer the question: does data from `src` reach `sink`?
+ *
+ * Phase 0 scope (current): within-file only. If both sites live in the
+ * same file and that file's source is in `sources`, the function runs
+ * `analyzeASTTaint` and reports whether a recorded flow has its source
+ * on `src.line` and its sink on `sink.line`.
+ *
+ * Phase 2.1 (later) extends this to cross-file flows using module-graph.ts.
+ * Until then, cross-file calls return `different-files-not-supported-yet`
+ * with `reachable: false` — and callers MUST treat that as a signal to
+ * NOT downgrade confidence solely because reachability couldn't be proven.
+ *
+ * Why this signature (Location-shaped, not AST-node-shaped)? Because the
+ * v2 evidence chain stores structured `Location` values. Having an API
+ * that consumes a `Location` directly avoids every caller re-parsing the
+ * same file just to hand taint-ast a node.
+ */
+export function isReachable(
+  src: ReachabilitySite,
+  sink: ReachabilitySite,
+  sources: Map<string, string>,
+): ReachabilityResult {
+  if (src.file !== sink.file) {
+    return {
+      reachable: false,
+      path: [],
+      reason: "different-files-not-supported-yet",
+    };
+  }
+
+  const text = sources.get(src.file);
+  if (typeof text !== "string") {
+    return { reachable: false, path: [], reason: "source-code-unavailable" };
+  }
+
+  // Cheap sanity check: both lines must actually exist in the file.
+  const lineCount = text.split("\n").length;
+  if (src.line > lineCount || sink.line > lineCount) {
+    return { reachable: false, path: [], reason: "location-outside-file" };
+  }
+
+  const flows = analyzeASTTaint(text);
+  for (const flow of flows) {
+    if (flow.source.line === src.line && flow.sink.line === sink.line) {
+      const path = [
+        { file: src.file, line: flow.source.line },
+        ...flow.path.map((p) => ({ file: src.file, line: p.line })),
+        { file: sink.file, line: flow.sink.line },
+      ];
+      return { reachable: true, path, reason: "taint-flow-matches" };
+    }
+  }
+
+  return { reachable: false, path: [], reason: "no-flow-in-file" };
+}
