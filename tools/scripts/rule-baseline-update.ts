@@ -20,10 +20,25 @@
  *   pnpm rule:baseline
  */
 
-import { readFileSync, readdirSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, readdirSync, statSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join, relative, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as ts from "typescript";
+
+/** Recursively list TypeScript source files under a directory, skipping fixtures and tests. */
+function walkTsFiles(dir: string, out: string[] = []): string[] {
+  for (const name of readdirSync(dir)) {
+    const full = join(dir, name);
+    const st = statSync(full);
+    if (st.isDirectory()) {
+      if (name === "__fixtures__" || name === "__tests__" || name === "data") continue;
+      walkTsFiles(full, out);
+    } else if (st.isFile() && name.endsWith(".ts") && !name.endsWith(".test.ts")) {
+      out.push(full);
+    }
+  }
+  return out;
+}
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(HERE, "..", "..");
@@ -79,9 +94,7 @@ function main(): void {
     process.exit(1);
   }
   const files: Record<string, FileCounts> = {};
-  for (const name of readdirSync(RULES_ROOT)) {
-    if (!name.endsWith(".ts") || name.endsWith(".test.ts")) continue;
-    const full = join(RULES_ROOT, name);
+  for (const full of walkTsFiles(RULES_ROOT)) {
     files[relative(REPO_ROOT, full)] = countStaticPatterns(full);
   }
 

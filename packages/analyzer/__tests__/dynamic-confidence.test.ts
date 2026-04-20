@@ -194,8 +194,12 @@ app.post('/api/tool', async (req, res) => {
     const protFindings = k1Engine.analyzeRich(protectedCtx).filter(f => f.rule_id === "K1");
 
     if (unprotFindings.length > 0 && protFindings.length > 0) {
-      // Unprotected code should have higher confidence
-      expect(unprotFindings[0].confidence).toBeGreaterThan(protFindings[0].confidence);
+      // Unprotected code should have at least as much confidence as protected.
+      // The v2 rule (Phase 1, chunk 1.1) caps K1 confidence at 0.9 per the charter
+      // (middleware-wrapped logging invisible at file scope) — so when both signals
+      // hit the cap, they're equal, and the strict `>` no longer holds. Signal
+      // DIFFERENCES are still observable in confidence_factors.
+      expect(unprotFindings[0].confidence).toBeGreaterThanOrEqual(protFindings[0].confidence);
     }
   });
 

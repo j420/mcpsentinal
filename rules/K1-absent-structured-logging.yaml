@@ -24,6 +24,10 @@ mitre: AML.T0054
 
 detect:
   type: typed
+# Phase 1, chunk 1.1 — first rule migrated to Rule Standard v2 (see
+# docs/standards/rule-standard-v2.md). Findings from this rule contribute
+# to the shadow total_score_v2 column alongside the public score.
+engine_v2: true
 remediation: "Implement structured logging (pino, winston, or equivalent) for all tool call handlers. Every tool invocation should log: timestamp, tool name, caller identity, parameters (sanitized), result status, and duration. Required by ISO 27001 A.8.15, CoSAI MCP-T12, and NIST AI RMF MEASURE 2.6."
 test_cases:
   true_positive:

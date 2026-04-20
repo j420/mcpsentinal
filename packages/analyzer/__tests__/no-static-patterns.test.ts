@@ -29,7 +29,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { readFileSync, readdirSync, existsSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, readdirSync, statSync, existsSync, writeFileSync, mkdirSync } from "node:fs";
 import { join, relative, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as ts from "typescript";
@@ -56,11 +56,18 @@ interface Baseline {
   files: Record<string, FileCounts>;
 }
 
-function listRuleFiles(dir: string): string[] {
-  const out: string[] = [];
+function listRuleFiles(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {
-    if (!name.endsWith(".ts") || name.endsWith(".test.ts")) continue;
-    out.push(join(dir, name));
+    const full = join(dir, name);
+    const st = statSync(full);
+    if (st.isDirectory()) {
+      // Skip fixtures, test suites, and static data directories — they
+      // are not rule implementation code.
+      if (name === "__fixtures__" || name === "__tests__" || name === "data") continue;
+      listRuleFiles(full, out);
+    } else if (st.isFile() && name.endsWith(".ts") && !name.endsWith(".test.ts")) {
+      out.push(full);
+    }
   }
   return out;
 }
