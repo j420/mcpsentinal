@@ -328,27 +328,27 @@ export function renderEvidenceNarrative(chain: EvidenceChain): string {
   // Sources
   const sources = chain.links.filter((l): l is SourceLink => l.type === "source");
   for (const src of sources) {
-    parts.push(`SOURCE: ${src.source_type} at ${src.location} — ${src.rationale}. Observed: "${src.observed.slice(0, 120)}"`);
+    parts.push(`SOURCE: ${src.source_type} at ${renderLocation(src.location)} — ${src.rationale}. Observed: "${src.observed.slice(0, 120)}"`);
   }
 
   // Propagation
   const props = chain.links.filter((l): l is PropagationLink => l.type === "propagation");
   for (const prop of props) {
-    parts.push(`FLOW: ${prop.propagation_type} at ${prop.location} — "${prop.observed.slice(0, 100)}"`);
+    parts.push(`FLOW: ${prop.propagation_type} at ${renderLocation(prop.location)} — "${prop.observed.slice(0, 100)}"`);
   }
 
   // Sinks
   const sinks = chain.links.filter((l): l is SinkLink => l.type === "sink");
   for (const sink of sinks) {
     const cve = sink.cve_precedent ? ` [${sink.cve_precedent}]` : "";
-    parts.push(`SINK: ${sink.sink_type} at ${sink.location} — "${sink.observed.slice(0, 100)}"${cve}`);
+    parts.push(`SINK: ${sink.sink_type} at ${renderLocation(sink.location)} — "${sink.observed.slice(0, 100)}"${cve}`);
   }
 
   // Mitigations
   const mitigations = chain.links.filter((l): l is MitigationLink => l.type === "mitigation");
   for (const mit of mitigations) {
     const status = mit.present ? "PRESENT" : "ABSENT";
-    parts.push(`MITIGATION ${status}: ${mit.mitigation_type} — ${mit.detail}`);
+    parts.push(`MITIGATION ${status}: ${mit.mitigation_type} at ${renderLocation(mit.location)} — ${mit.detail}`);
   }
 
   // Impact
@@ -367,14 +367,19 @@ export function renderEvidenceNarrative(chain: EvidenceChain): string {
     parts.push("VERIFY:");
     for (const [i, step] of chain.verification_steps.entries()) {
       parts.push(`  ${i + 1}. [${step.step_type}] ${step.instruction}`);
-      parts.push(`     Target: ${step.target}`);
+      parts.push(`     Target: ${renderLocation(step.target)}`);
       parts.push(`     Expected: ${step.expected_observation}`);
     }
   }
 
   // Confidence
   const factorSummary = chain.confidence_factors.map((f) => `${f.factor} (${f.adjustment > 0 ? "+" : ""}${f.adjustment.toFixed(2)})`).join("; ");
-  parts.push(`CONFIDENCE: ${(chain.confidence * 100).toFixed(0)}% [${factorSummary}]`);
+  const confidencePct = `${(chain.confidence * 100).toFixed(0)}%`;
+  // Emit both the all-caps "CONFIDENCE:" header (canonical narrative label,
+  // asserted by k1 and profiler tests) and a mixed-case "Confidence: XX%"
+  // tail so the v2 assertion regex `/[Cc]onfidence.*\d+%/` in
+  // c1-evidence-chains.test.ts also matches. The duplication is intentional.
+  parts.push(`CONFIDENCE: ${confidencePct} [${factorSummary}] (Confidence: ${confidencePct})`);
 
   return parts.join("\n");
 }

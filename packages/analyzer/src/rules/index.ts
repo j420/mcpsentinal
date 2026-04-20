@@ -41,7 +41,7 @@ export * as capabilityGraph from "./analyzers/capability-graph.js";
 export * as schemaInference from "./analyzers/schema-inference.js";
 
 // Rule implementations (self-registering on import)
-import "./implementations/c1-command-injection.js";
+import "./implementations/c1-command-injection/index.js";
 import "./implementations/a6-unicode-homoglyph.js";
 import "./implementations/a9-encoded-instructions.js";
 import "./implementations/d3-typosquatting.js";

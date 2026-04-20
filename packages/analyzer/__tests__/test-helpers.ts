@@ -14,6 +14,7 @@ import { expect } from "vitest";
 import type { AnalysisContext } from "../src/engine.js";
 import type { TypedFinding } from "../src/rules/base.js";
 import type { EvidenceChain, EvidenceLink, SourceLink, SinkLink } from "../src/evidence.js";
+import { renderLocation } from "../src/rules/location.js";
 
 // ─── Context Factory ─────────────────────────────────────────────────────────
 
@@ -125,7 +126,9 @@ export function expectSourceLink(
 
   // Source must have location and observed text
   expect(source.location).toBeDefined();
-  expect(source.location.length).toBeGreaterThan(0);
+  // v2 locations are structured objects (or legacy strings); both render to
+  // a non-empty human label via renderLocation().
+  expect(renderLocation(source.location).length).toBeGreaterThan(0);
   expect(source.observed).toBeDefined();
   expect(source.observed.length).toBeGreaterThan(0);
   expect(source.rationale).toBeDefined();
@@ -158,7 +161,9 @@ export function expectSinkLink(
 
   // Sink must have location and observed text
   expect(sink.location).toBeDefined();
-  expect(sink.location.length).toBeGreaterThan(0);
+  // v2 locations are structured objects (or legacy strings); both render to
+  // a non-empty human label via renderLocation().
+  expect(renderLocation(sink.location).length).toBeGreaterThan(0);
   expect(sink.observed).toBeDefined();
   expect(sink.observed.length).toBeGreaterThan(0);
 
@@ -178,7 +183,9 @@ export function expectVerificationSteps(chain: EvidenceChain, minSteps = 1): voi
     expect(step.instruction).toBeDefined();
     expect(step.instruction.length).toBeGreaterThan(0);
     expect(step.target).toBeDefined();
-    expect(step.target.length).toBeGreaterThan(0);
+    // v2 target is a structured Location (or legacy string); both render to
+    // a non-empty human label via renderLocation().
+    expect(renderLocation(step.target).length).toBeGreaterThan(0);
     expect(step.expected_observation).toBeDefined();
     expect(step.expected_observation.length).toBeGreaterThan(0);
   }

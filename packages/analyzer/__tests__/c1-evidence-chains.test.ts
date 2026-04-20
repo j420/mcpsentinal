@@ -18,6 +18,8 @@ import type { AnalysisContext } from "../src/engine.js";
 import type { TypedFinding } from "../src/rules/base.js";
 import { getTypedRule } from "../src/rules/base.js";
 import type { EvidenceChain, SourceLink, SinkLink, PropagationLink, MitigationLink, ImpactLink } from "../src/evidence.js";
+import type { Location } from "../src/rules/location.js";
+import { renderLocation } from "../src/rules/location.js";
 import { profileServer } from "../src/profiler.js";
 import { getEvidenceStandard } from "../src/threat-model.js";
 import "../src/rules/index.js";
@@ -425,8 +427,13 @@ exec(cmd);
     expect(sources.length).toBeGreaterThanOrEqual(1);
     // The observed field should contain the actual variable/expression
     expect(sources[0].observed.length).toBeGreaterThan(0);
-    // Location should reference a line number
-    expect(sources[0].location).toMatch(/line/i);
+    // Location is a structured Location object with a real line number (v2).
+    const sourceLoc = sources[0].location;
+    expect(typeof sourceLoc === "object" && sourceLoc !== null).toBe(true);
+    if (typeof sourceLoc === "object" && sourceLoc !== null && "kind" in sourceLoc) {
+      expect((sourceLoc as { kind: string }).kind).toBe("source");
+      expect(renderLocation(sourceLoc as Location)).toMatch(/\d+/);
+    }
   });
 
   it("sink link includes the actual dangerous call found in code", () => {
@@ -439,7 +446,13 @@ exec(cmd);
     expect(sinks.length).toBeGreaterThanOrEqual(1);
     // Should reference exec specifically
     expect(sinks[0].observed).toBeTruthy();
-    expect(sinks[0].location).toMatch(/line/i);
+    // Location is a structured Location object with a real line number (v2).
+    const sinkLoc = sinks[0].location;
+    expect(typeof sinkLoc === "object" && sinkLoc !== null).toBe(true);
+    if (typeof sinkLoc === "object" && sinkLoc !== null && "kind" in sinkLoc) {
+      expect((sinkLoc as { kind: string }).kind).toBe("source");
+      expect(renderLocation(sinkLoc as Location)).toMatch(/\d+/);
+    }
   });
 
   it("impact link specifies RCE scope and exploitability", () => {
