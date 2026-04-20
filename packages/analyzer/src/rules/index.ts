@@ -41,7 +41,7 @@ export * as capabilityGraph from "./analyzers/capability-graph.js";
 export * as schemaInference from "./analyzers/schema-inference.js";
 
 // Rule implementations (self-registering on import)
-import "./implementations/c1-command-injection.js";
+import "./implementations/c1-command-injection/index.js";
 import "./implementations/a6-unicode-homoglyph.js";
 import "./implementations/a9-encoded-instructions.js";
 import "./implementations/d3-typosquatting.js";
@@ -63,7 +63,7 @@ import "./implementations/code-remaining-detector.js";
 import "./implementations/dependency-behavioral-detector.js";
 import "./implementations/ecosystem-adversarial-detector.js";
 import "./implementations/protocol-surface-remaining-detector.js";
-import "./implementations/k1-absent-structured-logging.js";
+import "./implementations/k1-absent-structured-logging/index.js";
 import "./implementations/k4-missing-human-confirmation.js";
 import "./implementations/k6-broad-oauth-scopes.js";
 import "./implementations/k7-long-lived-tokens.js";

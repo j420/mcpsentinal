@@ -556,10 +556,13 @@ export class DatabaseQueries {
     behavior_score: number;
     owasp_coverage: Record<string, boolean>;
     rules_version?: string;
+    // Phase 0, chunk 0.2 — shadow score from engine_v2 rules only.
+    total_score_v2?: number | null;
+    techniques_v2?: Record<string, string> | null;
   }): Promise<void> {
     await this.pool.query(
-      `INSERT INTO scores (server_id, scan_id, total_score, code_score, deps_score, config_score, description_score, behavior_score, owasp_coverage)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO scores (server_id, scan_id, total_score, code_score, deps_score, config_score, description_score, behavior_score, owasp_coverage, total_score_v2, techniques_v2)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        ON CONFLICT (server_id, scan_id) DO UPDATE SET
          total_score = EXCLUDED.total_score,
          code_score = EXCLUDED.code_score,
@@ -567,7 +570,9 @@ export class DatabaseQueries {
          config_score = EXCLUDED.config_score,
          description_score = EXCLUDED.description_score,
          behavior_score = EXCLUDED.behavior_score,
-         owasp_coverage = EXCLUDED.owasp_coverage`,
+         owasp_coverage = EXCLUDED.owasp_coverage,
+         total_score_v2 = EXCLUDED.total_score_v2,
+         techniques_v2 = EXCLUDED.techniques_v2`,
       [
         score.server_id,
         score.scan_id,
@@ -578,6 +583,8 @@ export class DatabaseQueries {
         score.description_score,
         score.behavior_score,
         JSON.stringify(score.owasp_coverage),
+        score.total_score_v2 ?? null,
+        score.techniques_v2 ? JSON.stringify(score.techniques_v2) : null,
       ]
     );
 

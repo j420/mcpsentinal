@@ -176,14 +176,17 @@ describe("K1 True Negatives", () => {
     expect(run(src).filter(f => f.rule_id === "K1").length).toBe(0);
   });
 
-  it("does NOT flag test files", () => {
-    // The source contains test file indicators
+  it("does NOT flag test files (structurally identified, not by filename)", () => {
+    // v2 rule identifies test files structurally: test-runner import + describe/it block.
+    // Comments alone are not a safe signal (the old regex rule was tricked by them).
     const src = `
-      // __tests__/api.test.ts
+      import { describe, it, expect } from 'vitest';
       describe('API', () => {
-        app.get('/test', (req, res) => {
-          console.log("test handler");
-          res.json({});
+        it('handles a request', () => {
+          app.get('/test', (req, res) => {
+            console.log("test handler");
+            res.json({});
+          });
         });
       });
     `;
@@ -328,7 +331,10 @@ describe("K1 Evidence Chain", () => {
     expect(chain.verification_steps.length).toBeGreaterThanOrEqual(1);
     expect(chain.verification_steps[0].step_type).toBeDefined();
     expect(chain.verification_steps[0].instruction).toBeDefined();
-    expect(chain.verification_steps[0].target).toMatch(/source_code:/);
+    // v2 rule standard: step.target is a structured Location (kind: "source"),
+    // not a prose string. Check its kind instead of matching a regex.
+    expect(chain.verification_steps[0].target).toBeTypeOf("object");
+    expect(chain.verification_steps[0].target.kind).toBe("source");
   });
 
   it("evidence references ISO 27001 A.8.15", () => {

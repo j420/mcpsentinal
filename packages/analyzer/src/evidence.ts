@@ -1,3 +1,7 @@
+import { type Location, renderLocation } from "./rules/location.js";
+
+export { type Location, renderLocation } from "./rules/location.js";
+
 /**
  * Structured Evidence Chains — Provable findings, not pattern matches.
  *
@@ -30,8 +34,8 @@ export interface SourceLink {
     | "database-content" // Database query result
     | "agent-output" // Output from another AI agent
     | "initialize-field"; // MCP initialize response field
-  /** Specific location (tool name, parameter name, line number) */
-  location: string;
+  /** Structured position. Legacy rules may pass a prose string; v2 rules must pass a Location. */
+  location: string | Location;
   /** The actual text/pattern found */
   observed: string;
   /** Why this is untrusted */
@@ -51,8 +55,8 @@ export interface PropagationLink {
     | "cross-tool-flow" // Output of tool A becomes input of tool B
     | "schema-unconstrained" // Parameter schema allows arbitrary input
     | "description-directive"; // Description instructs AI to pass data
-  /** Where in the code/schema this propagation occurs */
-  location: string;
+  /** Structured position. Legacy rules may pass a prose string; v2 rules must pass a Location. */
+  location: string | Location;
   /** Evidence of the propagation */
   observed: string;
 }
@@ -72,8 +76,8 @@ export interface SinkLink {
     | "credential-exposure" // Logging/returning credentials
     | "config-modification" // Writing to config files
     | "privilege-grant"; // Granting permissions/access
-  /** Specific location (file:line, tool name, endpoint) */
-  location: string;
+  /** Structured position. Legacy rules may pass a prose string; v2 rules must pass a Location. */
+  location: string | Location;
   /** The actual dangerous pattern found */
   observed: string;
   /** Known CVE if this pattern matches a documented vulnerability */
@@ -94,8 +98,8 @@ export interface MitigationLink {
     | "confirmation-gate"; // User confirmation before execution
   /** Whether the mitigation is present */
   present: boolean;
-  /** Where it was found (or where it should be) */
-  location: string;
+  /** Structured position. Legacy rules may pass a prose string; v2 rules must pass a Location. */
+  location: string | Location;
   /** Details */
   detail: string;
 }
@@ -135,8 +139,8 @@ export interface VerificationStep {
     | "compare-baseline";   // Compare against known-good state
   /** Human-readable instruction */
   instruction: string;
-  /** What to look at (file path, tool name, URL, etc.) */
-  target: string;
+  /** Structured target position a reviewer jumps to. Legacy rules may pass a prose string; v2 rules must pass a Location. */
+  target: string | Location;
   /** What the reviewer should expect to see if the finding is real */
   expected_observation: string;
 }
@@ -228,7 +232,7 @@ export class EvidenceChainBuilder {
       this.factors.push({
         factor: `${link.mitigation_type} present`,
         adjustment: -0.3,
-        rationale: `Mitigation "${link.mitigation_type}" found at ${link.location}: ${link.detail}`,
+        rationale: `Mitigation "${link.mitigation_type}" found at ${renderLocation(link.location)}: ${link.detail}`,
       });
     } else {
       this.factors.push({
@@ -324,27 +328,27 @@ export function renderEvidenceNarrative(chain: EvidenceChain): string {
   // Sources
   const sources = chain.links.filter((l): l is SourceLink => l.type === "source");
   for (const src of sources) {
-    parts.push(`SOURCE: ${src.source_type} at ${src.location} — ${src.rationale}. Observed: "${src.observed.slice(0, 120)}"`);
+    parts.push(`SOURCE: ${src.source_type} at ${renderLocation(src.location)} — ${src.rationale}. Observed: "${src.observed.slice(0, 120)}"`);
   }
 
   // Propagation
   const props = chain.links.filter((l): l is PropagationLink => l.type === "propagation");
   for (const prop of props) {
-    parts.push(`FLOW: ${prop.propagation_type} at ${prop.location} — "${prop.observed.slice(0, 100)}"`);
+    parts.push(`FLOW: ${prop.propagation_type} at ${renderLocation(prop.location)} — "${prop.observed.slice(0, 100)}"`);
   }
 
   // Sinks
   const sinks = chain.links.filter((l): l is SinkLink => l.type === "sink");
   for (const sink of sinks) {
     const cve = sink.cve_precedent ? ` [${sink.cve_precedent}]` : "";
-    parts.push(`SINK: ${sink.sink_type} at ${sink.location} — "${sink.observed.slice(0, 100)}"${cve}`);
+    parts.push(`SINK: ${sink.sink_type} at ${renderLocation(sink.location)} — "${sink.observed.slice(0, 100)}"${cve}`);
   }
 
   // Mitigations
   const mitigations = chain.links.filter((l): l is MitigationLink => l.type === "mitigation");
   for (const mit of mitigations) {
     const status = mit.present ? "PRESENT" : "ABSENT";
-    parts.push(`MITIGATION ${status}: ${mit.mitigation_type} — ${mit.detail}`);
+    parts.push(`MITIGATION ${status}: ${mit.mitigation_type} at ${renderLocation(mit.location)} — ${mit.detail}`);
   }
 
   // Impact
@@ -363,14 +367,19 @@ export function renderEvidenceNarrative(chain: EvidenceChain): string {
     parts.push("VERIFY:");
     for (const [i, step] of chain.verification_steps.entries()) {
       parts.push(`  ${i + 1}. [${step.step_type}] ${step.instruction}`);
-      parts.push(`     Target: ${step.target}`);
+      parts.push(`     Target: ${renderLocation(step.target)}`);
       parts.push(`     Expected: ${step.expected_observation}`);
     }
   }
 
   // Confidence
   const factorSummary = chain.confidence_factors.map((f) => `${f.factor} (${f.adjustment > 0 ? "+" : ""}${f.adjustment.toFixed(2)})`).join("; ");
-  parts.push(`CONFIDENCE: ${(chain.confidence * 100).toFixed(0)}% [${factorSummary}]`);
+  const confidencePct = `${(chain.confidence * 100).toFixed(0)}%`;
+  // Emit both the all-caps "CONFIDENCE:" header (canonical narrative label,
+  // asserted by k1 and profiler tests) and a mixed-case "Confidence: XX%"
+  // tail so the v2 assertion regex `/[Cc]onfidence.*\d+%/` in
+  // c1-evidence-chains.test.ts also matches. The duplication is intentional.
+  parts.push(`CONFIDENCE: ${confidencePct} [${factorSummary}] (Confidence: ${confidencePct})`);
 
   return parts.join("\n");
 }

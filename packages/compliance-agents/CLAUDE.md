@@ -109,8 +109,29 @@ report that references them.
   the no-static-patterns guard will fail CI.
 - Do NOT call an LLM from outside `src/llm/` — only the LLM client
   module is allowed to instantiate the Anthropic SDK.
-- Do NOT modify the existing 164 TypedRules in `packages/analyzer/` —
-  this package is additive.
 - Do NOT write findings to the existing `findings` table — use the
   new `compliance_findings` table.
 - Do NOT skip the `judge()` step — it is the hallucination firewall.
+
+## Relationship to `packages/analyzer/`
+
+Earlier revisions of this document said "Do NOT modify the existing 164
+TypedRules in `packages/analyzer/`". That restriction has been lifted as
+of Phase 0 (see `docs/standards/rule-standard-v2.md`).
+
+The two packages now co-evolve:
+
+- `packages/analyzer/` produces deterministic `Finding`s with structured
+  `EvidenceChain`s. Phase 1 hardens every rule there against the v2
+  standard (structured `Location`s, CVE-backed `threat_refs`, charter +
+  traceability guard mirrored from this package).
+- `packages/compliance-agents/` consumes those findings (via its
+  deterministic `gatherEvidence` step), synthesises per-server adversarial
+  tests with an LLM, and demultiplexes judge-confirmed verdicts into
+  per-framework reports.
+
+The ADR-009 LLM exception is still tightly scoped to files under
+`packages/compliance-agents/src/llm/`. Analyzer code remains 100%
+deterministic. Changes to analyzer rules that improve evidence quality
+(for example, adding a `Location` kind or a new `ThreatReference`) are
+expected to benefit both packages.

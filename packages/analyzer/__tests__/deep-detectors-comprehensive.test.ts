@@ -13,7 +13,7 @@ import type { AnalysisContext } from "../src/engine.js";
 import { getTypedRule, getAllTypedRules } from "../src/rules/base.js";
 
 // Import all implementations
-import "../src/rules/implementations/c1-command-injection.js";
+import "../src/rules/implementations/c1-command-injection/index.js";
 import "../src/rules/implementations/a6-unicode-homoglyph.js";
 import "../src/rules/implementations/a9-encoded-instructions.js";
 import "../src/rules/implementations/d3-typosquatting.js";

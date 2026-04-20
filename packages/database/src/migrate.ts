@@ -596,6 +596,40 @@ const MIGRATIONS = [
       CREATE INDEX IF NOT EXISTS idx_ctc_content_hash ON compliance_test_cache(content_hash);
     `,
   },
+  {
+    id: "013_engine_v2_shadow_scores",
+    sql: `
+      -- Phase 0, Chunk 0.2 — engine_v2 shadow score.
+      --
+      -- Each rule now carries an optional \`engine_v2: boolean\` flag in its
+      -- YAML metadata (default false). When true, findings from that rule are
+      -- counted toward a SECOND total score, stored here as total_score_v2,
+      -- alongside the existing total_score. Until at least one rule is
+      -- flipped to engine_v2, total_score_v2 is NULL.
+      --
+      -- This lets Phase 1 migrate rules one at a time and observe the v2
+      -- score drift against production without changing any public-facing
+      -- number. See docs/standards/rule-standard-v2.md.
+      --
+      -- ADR-008 compliance: both columns are NULL by default and only
+      -- populated by new INSERTs. Historical rows remain untouched.
+
+      ALTER TABLE scores
+        ADD COLUMN IF NOT EXISTS total_score_v2 INTEGER NULL
+          CHECK (total_score_v2 IS NULL OR (total_score_v2 >= 0 AND total_score_v2 <= 100));
+
+      -- Technique attribution map for the v2 findings that contributed to
+      -- total_score_v2. Shape: {"C1": "ast-taint", "F1": "capability-graph", ...}
+      ALTER TABLE scores
+        ADD COLUMN IF NOT EXISTS techniques_v2 JSONB NULL;
+
+      -- Queries that filter by v2 readiness should use a partial index so we
+      -- don't bloat the B-tree with the NULL majority during the rollout.
+      CREATE INDEX IF NOT EXISTS idx_scores_total_score_v2
+        ON scores(total_score_v2)
+        WHERE total_score_v2 IS NOT NULL;
+    `,
+  },
 ];
 
 export async function migrate(connectionString: string): Promise<void> {

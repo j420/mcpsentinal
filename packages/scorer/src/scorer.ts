@@ -51,6 +51,17 @@ export interface ScoreResult {
     penalty: number;
   }>;
 
+  // ── Phase 0, chunk 0.2: shadow score from engine_v2 rules only ──────────
+  // `total_score_v2` is the same `100 - Σ penalty` computation applied
+  // ONLY to findings whose rule was flagged `engine_v2: true` in YAML.
+  // Null means no rule has flipped to v2 yet — the shadow score is not
+  // meaningful until there is at least one contributing rule.
+  total_score_v2: number | null;
+  // Per-rule attribution of the techniques observed for v2 findings. Empty
+  // map when no v2 rules are active. Value is the rule's category (until a
+  // finer-grained AnalysisTechnique tag is threaded through in Phase 1.2).
+  techniques_v2: Record<string, string>;
+
   /**
    * Analysis coverage from the engine — included when the caller provides it.
    * Tells orgs: "This score of 85 is based on [high/medium/low/minimal] coverage."
@@ -170,6 +181,10 @@ export function computeScore(
   findings: FindingInput[] | FindingWithConfidence[],
   ruleCategories: Record<string, string>,
   coverage?: AnalysisCoverageInput,
+  // Phase 0, chunk 0.2: optional map of ruleId → engine_v2 flag. When any
+  // rule is flagged true, total_score_v2 is populated alongside total_score.
+  // Omit or pass an empty object to preserve pre-0.2 behaviour.
+  ruleEngineV2Flags?: Record<string, boolean>,
 ): ScoreResult {
   // Legacy sub-scores (5 — backward-compatible)
   const legacyScores = {
@@ -196,6 +211,15 @@ export function computeScore(
   const penalties: ScoreResult["penalty_breakdown"] = [];
   let totalPenalty = 0;
   let hasLethalTrifecta = false;
+
+  // Phase 0, chunk 0.2: parallel accumulator for rules opted into engine_v2.
+  // Stays at 0 when no rule is engine_v2, which maps to a null shadow score
+  // after the loop (a null signal is clearer than "perfect 100").
+  let totalPenaltyV2 = 0;
+  let hasLethalTrifectaV2 = false;
+  const techniquesV2: Record<string, string> = {};
+  const v2Eligible = ruleEngineV2Flags ?? {};
+  const anyV2Rule = Object.values(v2Eligible).some((v) => v === true);
 
   // Track OWASP coverage
   const owaspHits = new Set<string>();
@@ -224,6 +248,18 @@ export function computeScore(
     const v2Key = (ruleCategory && CATEGORY_MAP_V2[ruleCategory]) || "infrastructure_score";
     v2Scores[v2Key] = Math.max(0, v2Scores[v2Key] - penalty);
 
+    // Shadow accumulator for engine_v2 findings only.
+    if (v2Eligible[finding.rule_id]) {
+      totalPenaltyV2 += penalty;
+      if (finding.rule_id === "F1" || finding.rule_id === "I13") {
+        hasLethalTrifectaV2 = true;
+      }
+      // Until Phase 1.2 threads AnalysisTechnique through FindingInput, we
+      // record the rule's category as the technique proxy. The attribution
+      // is coarse but identifies WHICH v2 rule contributed.
+      if (ruleCategory) techniquesV2[finding.rule_id] = ruleCategory;
+    }
+
     // Track OWASP
     if (finding.owasp_category) {
       owaspHits.add(finding.owasp_category);
@@ -241,6 +277,16 @@ export function computeScore(
   if (hasLethalTrifecta && totalScore > 40) {
     totalScore = 40;
     logger.info("Lethal trifecta detected — capping score at 40");
+  }
+
+  // Shadow v2 score — only meaningful when at least one rule is engine_v2.
+  let totalScoreV2: number | null = null;
+  if (anyV2Rule) {
+    totalScoreV2 = Math.max(0, Math.min(100, 100 - totalPenaltyV2));
+    if (hasLethalTrifectaV2 && totalScoreV2 > 40) {
+      totalScoreV2 = 40;
+    }
+    totalScoreV2 = Math.round(totalScoreV2);
   }
 
   // Build OWASP coverage map
@@ -282,6 +328,8 @@ export function computeScore(
     infrastructure_score: v2Scores.infrastructure_score,
     owasp_coverage: owaspCoverage,
     penalty_breakdown: penalties,
+    total_score_v2: totalScoreV2,
+    techniques_v2: techniquesV2,
     ...(coverage ? { analysis_coverage: coverage } : {}),
   };
 }

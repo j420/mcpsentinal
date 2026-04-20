@@ -290,3 +290,70 @@ describe("coverage-aware scoring", () => {
     // — telling the org that most rules couldn't run due to missing data
   });
 });
+
+describe("computeScore — engine_v2 shadow score (Phase 0, chunk 0.2)", () => {
+  const baseCategories: Record<string, string> = {
+    A1: "description-analysis",
+    C1: "code-analysis",
+    F1: "ecosystem-context",
+  };
+
+  const critical = (rule_id: string): FindingInput => ({
+    rule_id,
+    severity: "critical",
+    evidence: "e",
+    remediation: "r",
+    owasp_category: null,
+    mitre_technique: null,
+  });
+
+  it("returns total_score_v2:null when no rule opts into engine_v2", () => {
+    const result = computeScore([critical("C1")], baseCategories);
+    expect(result.total_score).toBe(75);
+    expect(result.total_score_v2).toBeNull();
+    expect(result.techniques_v2).toEqual({});
+  });
+
+  it("returns total_score_v2:null even with an empty flag map", () => {
+    const result = computeScore([critical("C1")], baseCategories, undefined, {});
+    expect(result.total_score_v2).toBeNull();
+  });
+
+  it("penalises only the v2-flagged rule when some rules are opted in", () => {
+    // Two critical findings, only C1 is engine_v2. Public score takes both
+    // hits (−25 ×2 = 50 → 50); shadow v2 score only takes the C1 hit (−25 → 75).
+    const result = computeScore(
+      [critical("C1"), critical("A1")],
+      baseCategories,
+      undefined,
+      { C1: true, A1: false },
+    );
+    expect(result.total_score).toBe(50);
+    expect(result.total_score_v2).toBe(75);
+    expect(result.techniques_v2).toEqual({ C1: "code-analysis" });
+  });
+
+  it("caps shadow score at 40 when F1 is engine_v2 (lethal-trifecta parity)", () => {
+    const result = computeScore(
+      [critical("F1")],
+      baseCategories,
+      undefined,
+      { F1: true },
+    );
+    expect(result.total_score).toBe(40);
+    expect(result.total_score_v2).toBe(40);
+  });
+
+  it("does NOT cap the shadow score at 40 when F1 is NOT engine_v2", () => {
+    // If F1 is not yet migrated, the v2 score must not inherit the cap —
+    // otherwise the shadow number would be misleadingly capped during rollout.
+    const result = computeScore(
+      [critical("F1"), critical("C1")],
+      baseCategories,
+      undefined,
+      { C1: true },
+    );
+    expect(result.total_score).toBe(40); // public score still capped by F1
+    expect(result.total_score_v2).toBe(75); // shadow only sees C1's −25
+  });
+});

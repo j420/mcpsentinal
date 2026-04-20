@@ -108,8 +108,12 @@ export class ScanPipeline {
 
     const rulesVersion = getRulesVersion(rules);
     const ruleCategories: Record<string, string> = {};
+    // Phase 0, chunk 0.2: which rules are opted into the engine_v2 shadow score.
+    // Stays empty until a rule sets `engine_v2: true` in its YAML metadata.
+    const ruleEngineV2: Record<string, boolean> = {};
     for (const rule of rules) {
       ruleCategories[rule.id] = rule.category;
+      if (rule.engine_v2) ruleEngineV2[rule.id] = true;
     }
     const engine = new AnalysisEngine(rules);
 
@@ -183,7 +187,7 @@ export class ScanPipeline {
     const results: ScanServerResult[] = await Promise.all(
       servers.map((server) =>
         semaphore.run(() =>
-          this.scanOneServer(server, engine, ruleCategories, rulesVersion, dynamicEnabled, dynamicAllowlist)
+          this.scanOneServer(server, engine, ruleCategories, ruleEngineV2, rulesVersion, dynamicEnabled, dynamicAllowlist)
         )
       )
     );
@@ -218,6 +222,7 @@ export class ScanPipeline {
     server: Server,
     engine: AnalysisEngine,
     ruleCategories: Record<string, string>,
+    ruleEngineV2: Record<string, boolean>,
     rulesVersion: string,
     dynamicEnabled: boolean = false,
     dynamicAllowlist: string[] = []
@@ -572,7 +577,10 @@ export class ScanPipeline {
       }
 
       // ── Stage 6: Compute composite score ──────────────────────────────────
-      const score = computeScore(findings, ruleCategories);
+      // Chunk 0.2: thread the engine_v2 flag map so the scorer can emit a
+      // shadow `total_score_v2` alongside the public score (null when no
+      // rule is v2-flagged yet).
+      const score = computeScore(findings, ruleCategories, undefined, ruleEngineV2);
       const hasLethalTrifecta = findings.some((f) => f.rule_id === "F1");
       log.info(
         {
@@ -645,6 +653,10 @@ export class ScanPipeline {
         behavior_score: score.behavior_score,
         owasp_coverage: score.owasp_coverage,
         rules_version: rulesVersion,
+        // Chunk 0.2: persist the shadow score. Null until any rule opts in.
+        total_score_v2: score.total_score_v2,
+        techniques_v2:
+          Object.keys(score.techniques_v2).length === 0 ? null : score.techniques_v2,
       });
 
       await this.db.completeScan(scanId, findings.length, null, stages);
