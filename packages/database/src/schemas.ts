@@ -190,6 +190,13 @@ export const ScoreSchema = z.object({
   behavior_score: z.number().int().min(0).max(100),
   owasp_coverage: z.record(z.boolean()),
   created_at: z.coerce.date(),
+  // Phase 0, chunk 0.2 — shadow score from engine_v2 rules only. Null until
+  // at least one rule has engine_v2:true. When populated it is computed with
+  // the same 100 - Σ(penalty) formula as total_score but scoped to v2 rules.
+  total_score_v2: z.number().int().min(0).max(100).nullable().default(null),
+  // Technique attribution for the v2 findings that contributed to total_score_v2.
+  // Shape: Record<ruleId, AnalysisTechnique> — the analyzer's technique taxonomy.
+  techniques_v2: z.record(z.string()).nullable().default(null),
 });
 export type Score = z.infer<typeof ScoreSchema>;
 
@@ -475,6 +482,11 @@ export const DetectionRuleSchema = z.object({
   }),
   remediation: z.string().min(1),
   enabled: z.boolean().default(true),
+  // Phase 0, chunk 0.2 — per-rule opt-in to the v2 engine path. When true,
+  // findings produced by this rule are counted toward the shadow `score_v2`
+  // in addition to the public score. Always false until a rule has been
+  // migrated to the Rule Standard v2 contract (see docs/standards/rule-standard-v2.md).
+  engine_v2: z.boolean().default(false),
 });
 export type DetectionRule = z.infer<typeof DetectionRuleSchema>;
 
