@@ -67,7 +67,7 @@ import "./implementations/k1-absent-structured-logging/index.js";
 import "./implementations/k4-missing-human-confirmation/index.js";
 import "./implementations/k6-overly-broad-oauth-scopes/index.js";
 import "./implementations/k7-long-lived-tokens/index.js";
-import "./implementations/k17-missing-timeout.js";
+import "./implementations/k17-missing-timeout/index.js";
 import "./implementations/k-remaining-v2.js";
 import "./implementations/m4-tool-squatting.js";
 import "./implementations/m5-context-window-flooding.js";
