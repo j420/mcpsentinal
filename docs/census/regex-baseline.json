@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated_at": "2026-04-20T13:18:50.626Z",
+  "generated_at": "2026-04-20T16:19:56.790Z",
   "notes": "Phase 0, Chunk 0.3 regex baseline for packages/analyzer/src/rules/implementations/. The analyzer no-static-patterns guard fails CI if any file exceeds the counts recorded here. Phase 1's per-rule migrations reduce the baseline file-by-file toward zero. Regenerate with `pnpm rule:baseline`.",
   "files": {
     "packages/analyzer/src/rules/implementations/a6-unicode-homoglyph.ts": {
@@ -143,10 +143,25 @@
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
-    "packages/analyzer/src/rules/implementations/k4-missing-human-confirmation.ts": {
-      "regex_literals": 13,
+    "packages/analyzer/src/rules/implementations/k4-missing-human-confirmation/gather-ast.ts": {
+      "regex_literals": 0,
       "new_regexp_calls": 0,
-      "string_arrays_over_5": 3
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k4-missing-human-confirmation/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k4-missing-human-confirmation/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k4-missing-human-confirmation/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
     },
     "packages/analyzer/src/rules/implementations/k6-broad-oauth-scopes.ts": {
       "regex_literals": 15,
