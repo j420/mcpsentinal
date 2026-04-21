@@ -39,8 +39,8 @@ _Per-chunk template: charter → v2 refactor → regex→structural → Location
 - [x] **1.3 — `k6-broad-oauth-scopes.ts` (K6)** — commit `15b00a2` (+ orphan cleanup `71f8a4a`). Full v2 split; structural first/last-segment suffix check; two-signal OAuth context resolution.
 - [x] **1.4 — `k7-long-lived-tokens.ts` (K7)** — commit `be6d808`. Full v2 split; char-level duration parser (s/m/h/d/w/y/ms); per-receiver global-timeout coverage.
 - [x] **1.5 — `k17-missing-timeout.ts` (K17)** — commit `02efd33`. Full v2 split; two-layer HTTP-client classification; AbortSignal scope walk; circuit-breaker dep mitigation.
-- [~] **1.6 — `k-compliance-v2.ts` (K12, K14, K16, K20)** — **chunk 1.6a K12 complete** (commit `965d67c`) split into `k12-executable-content-response/`; **chunk 1.6c K16 complete** (this commit) split into `k16-unbounded-recursion/` with full call-graph SCC + depth-guard + cycle-breaker analysis, 3-kind recursion edge taxonomy (direct / mutual / tool-call / emit), and charter-capped 0.88 confidence. K14 and K20 remain in legacy file pending chunks 1.6b/d. Note: original plan description misidentified the contents of `k-compliance-v2.ts` — actual rules are K12/K14/K16/K20 (not K8/K10–K13/K18, which live in supply-chain detectors).
-- [ ] **1.7 — `k-remaining-v2.ts` (K2, K3, K5, K14–K16, K19, K20)**
+- [x] **1.6 — `k-compliance-v2.ts` (K12, K14, K16, K20)** — fully complete. **1.6a K12** (`965d67c`) → `k12-executable-content-response/`. **1.6b K14** (`eb3b97a`, PR #188) → `k14-agent-credential-propagation/` with credential-vocab taxonomy + shared-state sink analysis. **1.6c K16** (`431f0f1`, PR #185) → `k16-unbounded-recursion/` with Tarjan SCC call-graph + depth-guard + cycle-breaker + 3-kind recursion edge taxonomy (direct / mutual / tool-call / emit), charter-capped 0.88 confidence. **1.6d K20** (`e046197`, PR #186) → `k20-insufficient-audit-context/` with ISO 27001 A.8.15 five-group audit-skeleton classifier (correlation / identity / tool / timestamp / outcome), confidence cap 0.85. Only K12 remains in the legacy `k-compliance-v2.ts` scaffold file. Note: original plan description misidentified the contents of `k-compliance-v2.ts` — actual rules are K12/K14/K16/K20 (not K8/K10–K13/K18, which live in supply-chain detectors).
+- [x] **1.7 — `k-remaining-v2.ts` (K11, K13, K15, K18)** — commit `8dbed07` (PR #189) + fix `a4bfa06`. Migrated all four rules out of `k-remaining-v2.ts` into their own v2 dirs and deleted the legacy file: **K11** `k11-missing-server-integrity-verification/` (integrity-verification + signed-manifest coverage), **K13** `k13-unsanitized-tool-output/` (output-sanitiser taint chain), **K15** `k15-multi-agent-collusion-preconditions/` (cross-agent shared-state precondition graph), **K18** `k18-cross-trust-boundary-data-flow/` (trust-boundary taint with redactor/crypto-artifact vocabulary). Post-merge fix `a4bfa06` resolved a K18 infinite-loop in the fixed-point propagator (added kind-comparison idempotency + MAX_TAINT_ITERATIONS=32 cap) and a `jwt.sign()` false-positive (crypto-artifact producers added to redactor receiver vocabulary). Note: original plan description listed "K2, K3, K5, K14–K16, K19, K20" — actual contents of `k-remaining-v2.ts` were K11/K13/K15/K18.
 - [ ] **1.8 — `jsonrpc-protocol-v2.ts` (N4–N15)** — 32 regex → ≤8 via JSON-RPC schema validation
 - [ ] **1.9 — `l-supply-chain-v2.ts` (L1, L2, L6, L13)**
 - [ ] **1.10 — `advanced-supply-chain-detector.ts` (L1–L2, L6–L7, L13, K3, K5, K8)** — v1→v2; 20 regex to drop
@@ -108,19 +108,33 @@ _Per-chunk template: charter → v2 refactor → regex→structural → Location
 
 ---
 
-## Completion summary (updated 2026-04-21)
+## Completion summary (updated 2026-04-21, post wave-1)
 
 | Phase | Done | Partial | Total | % |
 |---|---:|---:|---:|---:|
 | 0 | 5 | — | 5 | 100% |
-| 1 | 9 | 1 (1.6) | 28 | 32% |
+| 1 | 12 | 0 | 28 | 43% |
 | 2 | 0 | — | 4 | 0% |
 | 3 | 0 | — | 3 | 0% |
 | 4 | 0 | — | 2 | 0% |
 | 5 | 0 | — | 4 | 0% |
-| **Total** | **14** | **1** | **46** | **30%** |
+| **Total** | **17** | **0** | **46** | **37%** |
 
-### Completed this session (branch `claude/understand-codebase-cqUGI`)
+### Completed in wave 1 (branch `claude/phase-1/k-remaining-split`, 2026-04-21)
+
+Five PRs merged in parallel + one hardening fix + one tombstone cleanup. Net delivered: 13 new v2 rule directories (full CHARTER + gather + verification + index + data + fixtures + tests each), two legacy files deleted (`tainted-execution-detector.ts`, `k-remaining-v2.ts`), regex literals 853 → 653 (−200, −23%). All 1791 analyzer tests green; strict-mode guards pass.
+
+| Chunk | Deliverable | Commit(s) |
+|---|---|---|
+| 1.6b | K14 — `k14-agent-credential-propagation/` full v2 split | `eb3b97a` (PR #188) |
+| 1.6c | K16 — `k16-unbounded-recursion/` full v2 split (Tarjan SCC + recursion taxonomy) | `431f0f1` (PR #185) |
+| 1.6d | K20 — `k20-insufficient-audit-context/` full v2 split (ISO 27001 A.8.15 audit-skeleton classifier) | `e046197` (PR #186) |
+| 1.7  | K11/K13/K15/K18 — four v2 splits + delete `k-remaining-v2.ts` | `8dbed07` (PR #189) |
+| 1.16 | C4/C12/C13/C16/K9/J2 — six v2 splits (shared `_shared/taint-rule-kit/`) + delete `tainted-execution-detector.ts` | `45b74d8` (PR #187) |
+| K18 fix | prevent infinite taint-propagation loop (kind-comparison idempotency + 32-iteration cap) + false-positive on `jwt.sign()` output (crypto-artifact producers added to redactor vocabulary) | `a4bfa06` |
+| tombstone cleanup | repair stale migration breadcrumbs in `compliance-remaining-detector.ts` | `a4aa0ad` |
+
+### Completed in prior session (branch `claude/understand-codebase-cqUGI`)
 
 | Chunk | Deliverable | Commit(s) |
 |---|---|---|
@@ -153,7 +167,7 @@ Running 3 migration sub-agents in parallel worked, but with two discovered const
 
 ### Next chunk
 
-Per plan order: 1.6b K14 (Agent Credential Propagation via Shared State) — fills out the remainder of `k-compliance-v2.ts`. Alternative leverage picks: 1.16 (`tainted-execution-detector.ts`, 6 rules, reuses C1 taint pattern) or 1.20 (`description-schema-detector.ts`, 13 rules, largest single-chunk yield).
+Wave 2 candidates: **1.18** (`code-security-deep-detector.ts`, C2/C5/C10/C14 — 4 rules) and **1.19** (`code-remaining-detector.ts`, C3/C6–C9/C11/C15 — 7 rules). Both re-use the taint-rule-kit shared infra landed in 1.16. High-density alternative: **1.20** (`description-schema-detector.ts`, 13 rules, largest single-chunk yield). Parallel-execution playbook refined in wave 1: agents run one-rule-per-worktree with typecheck + own-rule tests + strict guards only; orchestrator adds imports, regenerates census, updates plan in a single cleanup PR per wave.
 
 ---
 
