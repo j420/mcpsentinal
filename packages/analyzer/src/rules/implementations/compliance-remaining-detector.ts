@@ -202,20 +202,21 @@ function buildRule(cfg: RCfg): TypedRule {
 // ─── K-remaining ───────────────────────────────────────────────────────────
 
 const K_RULES: RCfg[] = [
-  // K1 migrated to TypedRuleV2 — see k1-absent-structured-logging.ts
-  // K4 migrated to TypedRuleV2 — see k4-missing-human-confirmation.ts
-  // K6 migrated to TypedRuleV2 — see k6-broad-oauth-scopes.ts
-  // K7 migrated to TypedRuleV2 — see k7-long-lived-tokens.ts
-  // K11 migrated to TypedRuleV2 — see k-remaining-v2.ts
-  // K12 migrated to TypedRuleV2 — see k-compliance-v2.ts
-  // K13 migrated to TypedRuleV2 — see k-remaining-v2.ts
-  // K14 migrated to TypedRuleV2 — see k-compliance-v2.ts
-  // K15 migrated to TypedRuleV2 — see k-remaining-v2.ts
-  // K16 migrated to TypedRuleV2 — see k-compliance-v2.ts
-  // K17 migrated to TypedRuleV2 — see k17-missing-timeout.ts
-  // K18 migrated to TypedRuleV2 — see k-remaining-v2.ts
+  // K1 migrated to TypedRuleV2 — see k1-absent-structured-logging/
+  // K4 migrated to TypedRuleV2 — see k4-missing-human-confirmation/
+  // K6 migrated to TypedRuleV2 — see k6-overly-broad-oauth-scopes/
+  // K7 migrated to TypedRuleV2 — see k7-long-lived-tokens/
+  // K9 migrated to TypedRuleV2 — see k9-dangerous-post-install-hooks/
+  // K11 migrated to TypedRuleV2 — see k11-missing-server-integrity-verification/
+  // K12 migrated to TypedRuleV2 — see k12-executable-content-response/
+  // K13 migrated to TypedRuleV2 — see k13-unsanitized-tool-output/
+  // K14 migrated to TypedRuleV2 — see k14-agent-credential-propagation/
+  // K15 migrated to TypedRuleV2 — see k15-multi-agent-collusion-preconditions/
+  // K16 migrated to TypedRuleV2 — see k16-unbounded-recursion/
+  // K17 migrated to TypedRuleV2 — see k17-missing-timeout/
+  // K18 migrated to TypedRuleV2 — see k18-cross-trust-boundary-data-flow/
   // K19 migrated to TypedRuleV2 — see docker-k8s-crypto-v2.ts
-  // K20 migrated to TypedRuleV2 — see k-compliance-v2.ts
+  // K20 migrated to TypedRuleV2 — see k20-insufficient-audit-context/
 ];
 
 // ─── L/M/N/O/P/Q remaining stragglers ─────────────────────────────────────
