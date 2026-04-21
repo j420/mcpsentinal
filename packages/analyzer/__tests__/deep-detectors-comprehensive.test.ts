@@ -20,7 +20,7 @@ import "../src/rules/implementations/a9-encoded-instructions/index.js";
 import "../src/rules/implementations/d3-typosquatting/index.js";
 import "../src/rules/implementations/f1-lethal-trifecta.js";
 import "../src/rules/implementations/g4-context-saturation.js";
-import "../src/rules/implementations/tainted-execution-detector.js";
+// tainted-execution-detector.ts deleted in Phase 1 Chunk 1.16.
 import "../src/rules/implementations/c4-sql-injection/index.js";
 import "../src/rules/implementations/c12-unsafe-deserialization/index.js";
 import "../src/rules/implementations/c13-ssti/index.js";

@@ -13,9 +13,7 @@ import { getTypedRule, getAllTypedRules } from "../src/rules/base.js";
 
 // Import all implementations to trigger registration. Detector 1's six
 // rules (C4, C12, C13, C16, K9, J2) are migrated to their own directories
-// in Phase 1 Chunk 1.16; the old tainted-execution-detector.js shim is
-// still imported for legacy symbol exports but no longer registers rules.
-import "../src/rules/implementations/tainted-execution-detector.js";
+// in Phase 1 Chunk 1.16; tainted-execution-detector.ts has been deleted.
 import "../src/rules/implementations/c4-sql-injection/index.js";
 import "../src/rules/implementations/c12-unsafe-deserialization/index.js";
 import "../src/rules/implementations/c13-ssti/index.js";

@@ -54,7 +54,8 @@ import "./implementations/a9-encoded-instructions/index.js";
 import "./implementations/d3-typosquatting/index.js";
 import "./implementations/f1-lethal-trifecta.js";
 import "./implementations/g4-context-saturation.js";
-import "./implementations/tainted-execution-detector.js";
+// tainted-execution-detector.ts removed in Phase 1 Chunk 1.16; its six rules
+// (C4, C12, C13, C16, K9, J2) have each been migrated to their own directory.
 import "./implementations/cross-tool-risk-detector.js";
 import "./implementations/config-poisoning-detector.js";
 import "./implementations/secret-exfil-detector.js";
