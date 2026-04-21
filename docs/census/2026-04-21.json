@@ -60,13 +60,18 @@
         "new_regexp_calls": 0
       },
       {
-        "file": "packages/analyzer/src/rules/implementations/k-compliance-v2.ts",
-        "regex_literals": 36,
+        "file": "packages/analyzer/src/rules/implementations/code-security-deep-detector.ts",
+        "regex_literals": 35,
         "new_regexp_calls": 0
       },
       {
-        "file": "packages/analyzer/src/rules/implementations/k-remaining-v2.ts",
-        "regex_literals": 36,
+        "file": "packages/analyzer/src/rules/implementations/supply-chain-detector.ts",
+        "regex_literals": 35,
+        "new_regexp_calls": 0
+      },
+      {
+        "file": "packages/analyzer/src/rules/implementations/protocol-ai-runtime-detector.ts",
+        "regex_literals": 33,
         "new_regexp_calls": 0
       },
       {
@@ -2432,23 +2437,12 @@
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
       "registered_v1": false,
-      "registered_v2": true,
-      "detector_file": "packages/analyzer/src/rules/implementations/k-remaining-v2.ts",
-      "technique_observed": {
-        "regex_literals": 36,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": true,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "registered_v2": false,
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "K12",
@@ -2475,23 +2469,12 @@
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
       "registered_v1": false,
-      "registered_v2": true,
-      "detector_file": "packages/analyzer/src/rules/implementations/k-remaining-v2.ts",
-      "technique_observed": {
-        "regex_literals": 36,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": true,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "registered_v2": false,
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "K14",
@@ -2502,23 +2485,12 @@
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
       "registered_v1": false,
-      "registered_v2": true,
-      "detector_file": "packages/analyzer/src/rules/implementations/k-compliance-v2.ts",
-      "technique_observed": {
-        "regex_literals": 36,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": true,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "registered_v2": false,
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "K15",
@@ -2529,23 +2501,12 @@
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
       "registered_v1": false,
-      "registered_v2": true,
-      "detector_file": "packages/analyzer/src/rules/implementations/k-remaining-v2.ts",
-      "technique_observed": {
-        "regex_literals": 36,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": true,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "registered_v2": false,
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "K16",
@@ -2588,23 +2549,12 @@
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
       "registered_v1": false,
-      "registered_v2": true,
-      "detector_file": "packages/analyzer/src/rules/implementations/k-remaining-v2.ts",
-      "technique_observed": {
-        "regex_literals": 36,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": true,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "registered_v2": false,
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "K19",
@@ -2642,23 +2592,12 @@
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
       "registered_v1": false,
-      "registered_v2": true,
-      "detector_file": "packages/analyzer/src/rules/implementations/k-compliance-v2.ts",
-      "technique_observed": {
-        "regex_literals": 36,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": true,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "registered_v2": false,
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "L1",
