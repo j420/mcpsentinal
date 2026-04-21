@@ -1,0 +1,16 @@
+name: safe-with-runtime-guard
+
+on: [push]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: step-security/harden-runner@17d0e2bd7d51742c71671bd19fa12bdc9d40a3d6
+        with:
+          egress-policy: block
+      - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29
+      - name: run tests
+        run: |
+          echo "hello" | awk '{print $1}'
+          ls | sort > files.txt
