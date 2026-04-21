@@ -1,0 +1,8 @@
+name: caller
+
+on: [push]
+
+jobs:
+  call-reusable:
+    uses: some-org/reusable-workflows/.github/workflows/ci.yml@main
+    secrets: inherit

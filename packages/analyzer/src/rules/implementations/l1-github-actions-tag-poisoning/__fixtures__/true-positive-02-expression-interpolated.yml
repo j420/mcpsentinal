@@ -1,0 +1,13 @@
+name: matrix-action
+
+on: [pull_request]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        action-version: [v1, v5]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29
+      - uses: some/third-party@${{ matrix.action-version }}

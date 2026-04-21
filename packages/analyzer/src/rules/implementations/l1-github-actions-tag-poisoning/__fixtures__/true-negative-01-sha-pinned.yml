@@ -1,0 +1,13 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29
+      - uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b
+      - run: npm ci && npm test
