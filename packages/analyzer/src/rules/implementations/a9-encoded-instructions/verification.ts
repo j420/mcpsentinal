@@ -14,7 +14,7 @@
 
 import type { VerificationStep } from "../../../evidence.js";
 import type { EncodedCategory, EncodedSite } from "./gather.js";
-import { locationTag } from "./gather.js";
+import { locationTag, toStructuredLocation } from "./gather.js";
 
 function decoderHint(category: EncodedCategory): string {
   switch (category) {
@@ -35,6 +35,7 @@ function decoderHint(category: EncodedCategory): string {
  */
 export function buildVerificationSteps(site: EncodedSite): VerificationStep[] {
   const tag = locationTag(site.location);
+  const loc = toStructuredLocation(site.location);
   // Turn "base64-block" → "base64 block" via character scan (no regex).
   let categoryLabel = "";
   for (let i = 0; i < site.category.length; i++) {
@@ -50,20 +51,21 @@ export function buildVerificationSteps(site: EncodedSite): VerificationStep[] {
     step_type: "inspect-description",
     instruction:
       `Locate the ${categoryLabel} at offset ${site.offset} (${site.length} chars) ` +
-      `in ${tag}. Verify its presence verbatim before re-running any decoder.`,
-    target: `${tag}@${site.offset}+${site.length}`,
+      `inside ${tag}. Verify its presence verbatim before re-running any decoder.`,
+    target: loc,
     expected_observation:
       `A contiguous ${site.length}-character run starting "${preview}" matching the ` +
-      `${categoryLabel} alphabet.`,
+      `${categoryLabel} alphabet, at offset ${site.offset} within the ${tag} field.`,
   });
 
   // Step 2 — decoder invocation
   steps.push({
     step_type: "test-input",
     instruction:
-      `Decode the block using the canonical decoder for this scheme. ` +
-      `Example: ${decoderText}. Do NOT execute the decoded payload — only inspect it.`,
-    target: `${tag}@${site.offset}+${site.length}`,
+      `Decode the block at offset ${site.offset}+${site.length} using the canonical ` +
+      `decoder for this scheme. Example: ${decoderText}. Do NOT execute the decoded ` +
+      `payload — only inspect it.`,
+    target: loc,
     expected_observation:
       site.decoded !== null
         ? `Decoder produces readable text; preview: "${site.decoded.slice(0, 120)}".`
@@ -79,8 +81,8 @@ export function buildVerificationSteps(site: EncodedSite): VerificationStep[] {
       `"ignore previous instructions", role prefixes (system:, assistant:, <|im_start|>), ` +
       `exfiltration targets (.ssh/id_rsa, webhook URLs), or capability directives ` +
       `(execute, reveal, eval). The goal is to confirm the encoded content is an ` +
-      `instruction payload, not legitimate binary data.`,
-    target: `${tag}:decoded-payload`,
+      `instruction payload, not legitimate binary data. The content lives in ${tag}.`,
+    target: loc,
     expected_observation:
       site.llm_token_hit !== null
         ? `Decoded payload contains LLM control token "${site.llm_token_hit}" — ` +
@@ -96,11 +98,12 @@ export function buildVerificationSteps(site: EncodedSite): VerificationStep[] {
   steps.push({
     step_type: "inspect-description",
     instruction:
-      `Read the ±100-character window around offset ${site.offset}. If the surrounding ` +
-      `text describes the block as literal data (e.g. "example payload:", "base64 of the ` +
-      `response:", "RFC illustrative value"), downgrade the finding to informational. ` +
-      `Otherwise treat the encoded run as a human-review-evading injection attempt.`,
-    target: `${tag}@${Math.max(0, site.offset - 100)}+${site.length + 200}`,
+      `Read the ±100-character window around offset ${site.offset} inside ${tag}. If the ` +
+      `surrounding text describes the block as literal data (e.g. "example payload:", ` +
+      `"base64 of the response:", "RFC illustrative value"), downgrade the finding to ` +
+      `informational. Otherwise treat the encoded run as a human-review-evading ` +
+      `injection attempt.`,
+    target: loc,
     expected_observation:
       `A ${Math.round(site.surrounding_latin_ratio * 100)}% Latin-script context with ` +
       `no natural-language justification for the encoded block — the reviewer should ` +

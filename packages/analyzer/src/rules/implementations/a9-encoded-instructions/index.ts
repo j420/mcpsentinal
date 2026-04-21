@@ -51,6 +51,7 @@ import { EvidenceChainBuilder } from "../../../evidence.js";
 import {
   gather,
   locationTag,
+  toStructuredLocation,
   type EncodedCategory,
   type EncodedSite,
 } from "./gather.js";
@@ -122,6 +123,7 @@ class A9EncodedInstructionsRule implements TypedRuleV2 {
     const builder = new EvidenceChainBuilder();
 
     const tag = locationTag(primary.location);
+    const primaryLoc = toStructuredLocation(primary.location);
     const preview = primary.raw.slice(0, 120);
 
     // ── source: where the encoded run lives ──────────────────────────────────
@@ -131,10 +133,11 @@ class A9EncodedInstructionsRule implements TypedRuleV2 {
         primary.location.kind === "server-version"
           ? "initialize-field"
           : "external-content",
-      location: `${tag}@offset=${primary.offset}+${primary.length}`,
+      location: primaryLoc,
       observed: preview,
       rationale:
-        `A ${primary.length}-char ${primary.category} run is present inside ${tag}. ` +
+        `A ${primary.length}-char ${primary.category} run is present inside ${tag} ` +
+        `at offset ${primary.offset} (length ${primary.length}). ` +
         `Human reviewers see an opaque character string; the LLM receives the same ` +
         `bytes verbatim and can decode them using built-in capabilities. ` +
         `The field is published by the server operator and is read by the AI client ` +
@@ -148,7 +151,7 @@ class A9EncodedInstructionsRule implements TypedRuleV2 {
     // ── propagation: description flows into AI context ───────────────────────
     builder.propagation({
       propagation_type: "description-directive",
-      location: tag,
+      location: primaryLoc,
       observed:
         `${primary.category} payload is embedded in metadata the MCP client sends to ` +
         `the model as part of the tool-catalog system context. No sanitization layer ` +
@@ -158,7 +161,7 @@ class A9EncodedInstructionsRule implements TypedRuleV2 {
     // ── sink: model decodes and may follow instructions ──────────────────────
     builder.sink({
       sink_type: "code-evaluation",
-      location: "AI model instruction processing",
+      location: primaryLoc,
       observed:
         primary.decoded !== null
           ? `Decoded payload preview: "${flattenWhitespace(primary.decoded.slice(0, 140))}"` +
@@ -177,10 +180,10 @@ class A9EncodedInstructionsRule implements TypedRuleV2 {
     builder.mitigation({
       mitigation_type: "sanitizer-function",
       present: false,
-      location: "MCP client tool-description ingestion",
+      location: primaryLoc,
       detail:
         "No entropy or encoding filter is applied to tool descriptions or initialize " +
-        "instructions before they enter the model context window.",
+        "instructions before they enter the model context window at the MCP client boundary.",
     });
 
     // ── impact: cross-agent propagation via injected directives ──────────────

@@ -100,6 +100,44 @@ export function locationTag(loc: EncodedLocation): string {
   }
 }
 
+/**
+ * Convert an internal `EncodedLocation` to the v2 Rule Standard `Location`
+ * discriminated union. Required for regulatory admissibility per Rule
+ * Standard v2 §2 — reviewers must be able to navigate to the cited
+ * position via a structured identifier, not a prose string.
+ *
+ * Mapping rules:
+ *   tool-name / tool-description  → { kind: "tool", tool_name }
+ *     (offset + field distinction captured in the link's `observed` text
+ *     and in the verification step's instruction)
+ *   parameter-description          → { kind: "parameter", tool_name,
+ *                                     parameter_path }
+ *     (parameter_path = "input_schema.properties.<name>.description")
+ *   server-instructions            → { kind: "initialize", field: "instructions" }
+ *   server-version                 → { kind: "initialize", field: "server_version" }
+ *
+ * See packages/analyzer/src/rules/location.ts for the full union.
+ */
+export function toStructuredLocation(
+  loc: EncodedLocation,
+): import("../../location.js").Location {
+  switch (loc.kind) {
+    case "tool-name":
+    case "tool-description":
+      return { kind: "tool", tool_name: loc.tool_name };
+    case "parameter-description":
+      return {
+        kind: "parameter",
+        tool_name: loc.tool_name,
+        parameter_path: `input_schema.properties.${loc.parameter_name}.description`,
+      };
+    case "server-instructions":
+      return { kind: "initialize", field: "instructions" };
+    case "server-version":
+      return { kind: "initialize", field: "server_version" };
+  }
+}
+
 // ─── Emitted site type ───────────────────────────────────────────────────────
 
 export type EncodedCategory =

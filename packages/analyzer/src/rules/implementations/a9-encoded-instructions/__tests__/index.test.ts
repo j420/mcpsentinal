@@ -14,6 +14,7 @@
 import { describe, it, expect } from "vitest";
 import "../index.js"; // side-effect: registerTypedRuleV2
 import { getTypedRuleV2 } from "../../../base.js";
+import { isLocation, type Location } from "../../../location.js";
 
 import { buildContext as tp01 } from "../__fixtures__/true-positive-01-base64-payload.js";
 import { buildContext as tp02 } from "../__fixtures__/true-positive-02-url-encoded-instruction.js";
@@ -44,9 +45,14 @@ describe("A9 True Positives", () => {
     const results = rule().analyze(tp02());
     expect(results.some((f) => f.rule_id === "A9")).toBe(true);
     const finding = results.find((f) => f.rule_id === "A9")!;
-    // Source location must reference the parameter path
+    // Source location must be a structured Location pointing at the parameter path
     const sourceLink = finding.chain.links.find((l) => l.type === "source");
-    expect(sourceLink?.location).toContain("param:query");
+    expect(isLocation(sourceLink!.location)).toBe(true);
+    const loc = sourceLink!.location as Location;
+    expect(loc.kind).toBe("parameter");
+    if (loc.kind === "parameter") {
+      expect(loc.parameter_path).toContain("query");
+    }
   });
 
   it("TP-03: detects \\xNN hex escapes in initialize instructions field", () => {
@@ -54,11 +60,15 @@ describe("A9 True Positives", () => {
     expect(results.some((f) => f.rule_id === "A9")).toBe(true);
     const finding = results.find((f) => f.rule_id === "A9")!;
     // Must be sourced from the initialize surface
-    const sourceLink = finding.chain.links.find((l) => l.type === "source") as
-      | { source_type?: string; location: string }
-      | undefined;
-    expect(sourceLink?.source_type).toBe("initialize-field");
-    expect(sourceLink?.location).toContain("initialize:instructions");
+    const sourceLink = finding.chain.links.find((l) => l.type === "source");
+    const sl = sourceLink as { source_type?: string; location: unknown } | undefined;
+    expect(sl?.source_type).toBe("initialize-field");
+    expect(isLocation(sl!.location)).toBe(true);
+    const loc = sl!.location as Location;
+    expect(loc.kind).toBe("initialize");
+    if (loc.kind === "initialize") {
+      expect(loc.field).toBe("instructions");
+    }
     // Decoded payload hits the "system:" LLM role prefix → critical factor
     const factors = finding.chain.confidence_factors.map((f) => f.factor);
     expect(factors).toContain("llm_control_token_after_decode");
@@ -108,18 +118,29 @@ describe("A9 Evidence Chain Structure", () => {
     expect(types).toContain("impact");
   });
 
-  it("evidence chain has ≥4 verification steps, each with a structured target", () => {
+  it("evidence chain has ≥4 verification steps, each with a structured Location target", () => {
     const results = rule().analyze(tp01());
     const finding = results.find((f) => f.rule_id === "A9")!;
     const steps = finding.chain.verification_steps!;
     expect(steps.length).toBeGreaterThanOrEqual(4);
     for (const s of steps) {
-      // Target must be non-empty and reference the rule's location format
-      expect(s.target).toBeTruthy();
-      expect(s.target.length).toBeGreaterThan(0);
+      // v2 contract: every verification step target must be a structured Location
+      expect(isLocation(s.target)).toBe(true);
       expect(s.step_type).toBeDefined();
       expect(s.instruction.length).toBeGreaterThan(20);
       expect(s.expected_observation.length).toBeGreaterThan(10);
+    }
+  });
+
+  it("every evidence link location is a structured Location (v2 contract)", () => {
+    const results = rule().analyze(tp01());
+    const finding = results.find((f) => f.rule_id === "A9")!;
+    for (const link of finding.chain.links) {
+      if (link.type === "impact") continue; // impact has no location field
+      expect(
+        isLocation(link.location),
+        `${link.type} link location must be a Location, got ${JSON.stringify(link.location)}`,
+      ).toBe(true);
     }
   });
 
