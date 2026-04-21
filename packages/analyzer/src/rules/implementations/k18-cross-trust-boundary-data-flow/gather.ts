@@ -215,8 +215,16 @@ function analyzeFunction(
   // Pass 1 — scan for sensitive source bindings with a fixed-point walk to
   // propagate taint through variable assignments AND object literal
   // composition that carries a tainted identifier.
+  //
+  // Belt-and-suspenders cap: taint classification is monotonic per variable,
+  // so the loop must converge in at most O(unique-variables) iterations.
+  // The cap stops runaway loops from turning any future idempotency bug
+  // into a CI-killer — we'd rather emit slightly fewer findings than hang.
+  const MAX_TAINT_ITERATIONS = 32;
+  let iterations = 0;
   let changed = true;
-  while (changed) {
+  while (changed && iterations < MAX_TAINT_ITERATIONS) {
+    iterations++;
     changed = false;
     function scanVars(n: ts.Node): void {
       if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.initializer) {
@@ -233,24 +241,39 @@ function analyzeFunction(
         }
         const direct = classifyExpressionAsSensitive(n.initializer, sf, file);
         if (direct !== null) {
-          tainted.set(name, { ...direct, identifier: name });
-          paramNameOnlyTainted.delete(name);
-          changed = true;
+          const existing = tainted.get(name);
+          const wasParamNameOnly = paramNameOnlyTainted.has(name);
+          // Only mark as changed when the classification strengthens — either
+          // first time we're tainting this name, kind changed, or we're
+          // upgrading from paramName-only to a concrete source.
+          if (!existing || existing.kind !== direct.kind || wasParamNameOnly) {
+            tainted.set(name, { ...direct, identifier: name });
+            paramNameOnlyTainted.delete(name);
+            changed = true;
+          }
         } else {
           // Propagate taint via reference.
           const origin = findTaintedInitializerSource(n.initializer, tainted);
           if (origin !== null) {
-            tainted.set(name, {
-              ...origin,
-              location: sourceLocation(sf, file, n),
-              identifier: name,
-              observed: lineTextAt(sf, n.getStart(sf)).trim().slice(0, 200),
-            });
-            // Preserve paramNameOnly if the origin was paramName-only.
-            if (origin.identifier && paramNameOnlyTainted.has(origin.identifier)) {
-              paramNameOnlyTainted.add(name);
+            const existing = tainted.get(name);
+            // Only mark as changed when the propagated taint is actually new.
+            // Without this guard, a propagation that re-sets the same origin
+            // on every iteration causes an infinite fixed-point loop (the
+            // tainted Map keeps being overwritten with an equivalent value
+            // — same kind, just a new object identity).
+            if (!existing || existing.kind !== origin.kind) {
+              tainted.set(name, {
+                ...origin,
+                location: sourceLocation(sf, file, n),
+                identifier: name,
+                observed: lineTextAt(sf, n.getStart(sf)).trim().slice(0, 200),
+              });
+              // Preserve paramNameOnly if the origin was paramName-only.
+              if (origin.identifier && paramNameOnlyTainted.has(origin.identifier)) {
+                paramNameOnlyTainted.add(name);
+              }
+              changed = true;
             }
-            changed = true;
           }
         }
       }

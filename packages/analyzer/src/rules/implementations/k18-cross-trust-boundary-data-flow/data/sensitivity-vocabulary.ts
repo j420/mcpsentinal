@@ -124,6 +124,15 @@ export const REDACTOR_RECEIVER_METHODS: Record<string, Record<string, true>> = {
   security: { redact: true, mask: true, scrub: true },
   lodash: { omit: true, pick: true },
   underscore: { omit: true, pick: true },
+  // Cryptographic artifact producers — the output is a NEW signed/hashed
+  // artifact, not the raw input. Returning a jwt.sign() result to the caller
+  // who owns the subject (refresh-token rotation, session mint, ID-token
+  // issuance) is the definition of a correct OAuth endpoint, not exfiltration.
+  jwt: { sign: true, verify: true, decode: true },
+  jsonwebtoken: { sign: true, verify: true, decode: true },
+  bcrypt: { hash: true, compare: true, hashsync: true, comparesync: true },
+  argon2: { hash: true, verify: true },
+  scrypt: { hash: true, verify: true },
 };
 
 /**
