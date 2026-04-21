@@ -1,6 +1,6 @@
 # Rule Census
 
-_Generated: 2026-04-21T12:08:07.814Z_
+_Generated: 2026-04-21T12:25:24.288Z_
 
 ## Summary
 
@@ -8,19 +8,19 @@ _Generated: 2026-04-21T12:08:07.814Z_
 |---|---|
 | YAML rules (total) | 177 |
 | YAML rules (enabled) | 164 |
-| Registered rules (unique ids) | 157 |
+| Registered rules (unique ids) | 153 |
 | Registered v1 | 132 |
-| Registered v2 | 25 |
-| Enabled but unregistered | 20 |
-| Detector files | 27 |
-| Files with any regex | 24 |
+| Registered v2 | 21 |
+| Enabled but unregistered | 24 |
+| Detector files | 26 |
+| Files with any regex | 23 |
 | Files with any technique import | 14 |
 
 ## Aggregate Technique Observations
 
 | Signal | Count |
 |---|---|
-| Regex literals | 688 |
+| Regex literals | 652 |
 | new RegExp(...) calls | 3 |
 | String-literal arrays > 5 | 7 |
 | Rules using taint-ast | 49 |
@@ -28,7 +28,7 @@ _Generated: 2026-04-21T12:08:07.814Z_
 | Rules using module-graph | 0 |
 | Rules using entropy | 5 |
 | Rules using similarity | 15 |
-| Rules using EvidenceChainBuilder | 157 |
+| Rules using EvidenceChainBuilder | 153 |
 
 ## Top Regex Offenders (detector files)
 
@@ -41,9 +41,9 @@ _Generated: 2026-04-21T12:08:07.814Z_
 | `packages/analyzer/src/rules/implementations/m-runtime-v2.ts` | 43 | 0 |
 | `packages/analyzer/src/rules/implementations/data-privacy-cross-ecosystem-detector.ts` | 38 | 0 |
 | `packages/analyzer/src/rules/implementations/advanced-supply-chain-detector.ts` | 36 | 0 |
-| `packages/analyzer/src/rules/implementations/k-remaining-v2.ts` | 36 | 0 |
 | `packages/analyzer/src/rules/implementations/code-security-deep-detector.ts` | 35 | 0 |
 | `packages/analyzer/src/rules/implementations/supply-chain-detector.ts` | 35 | 0 |
+| `packages/analyzer/src/rules/implementations/protocol-ai-runtime-detector.ts` | 33 | 0 |
 
 ## Per-Rule Detail
 
@@ -147,14 +147,14 @@ T = first-letter tags: a=ast-taint, c=capability-graph, m=module-graph, e=entrop
 | K8 | Cross-Boundary Credential Sharing | compliance-governance | critical | Y | Y |  | 36 | av | `advanced-supply-chain-detector.ts` |
 | K9 | Dangerous Post-Install Hooks | compliance-governance | critical | Y |  |  | 0 | — | — |
 | K10 | Package Registry Substitution | compliance-governance | high | Y | Y |  | 35 | v | `supply-chain-detector.ts` |
-| K11 | Missing Server Integrity Verification | compliance-governance | high | Y |  | Y | 36 | v | `k-remaining-v2.ts` |
+| K11 | Missing Server Integrity Verification | compliance-governance | high | Y |  |  | 0 | — | — |
 | K12 | Executable Content in Tool Response | compliance-governance | critical | Y |  |  | 0 | — | — |
-| K13 | Unsanitized Tool Output | compliance-governance | high | Y |  | Y | 36 | v | `k-remaining-v2.ts` |
+| K13 | Unsanitized Tool Output | compliance-governance | high | Y |  |  | 0 | — | — |
 | K14 | Agent Credential Propagation via Shared State | compliance-governance | critical | Y |  |  | 0 | — | — |
-| K15 | Multi-Agent Collusion Preconditions | compliance-governance | high | Y |  | Y | 36 | v | `k-remaining-v2.ts` |
+| K15 | Multi-Agent Collusion Preconditions | compliance-governance | high | Y |  |  | 0 | — | — |
 | K16 | Unbounded Recursion / Missing Depth Limits | compliance-governance | high | Y |  |  | 0 | — | — |
 | K17 | Missing Timeout or Circuit Breaker | compliance-governance | medium | Y |  |  | 0 | — | — |
-| K18 | Cross-Trust-Boundary Data Flow in Tool Response | compliance-governance | high | Y |  | Y | 36 | v | `k-remaining-v2.ts` |
+| K18 | Cross-Trust-Boundary Data Flow in Tool Response | compliance-governance | high | Y |  |  | 0 | — | — |
 | K19 | Missing Runtime Sandbox Enforcement | compliance-governance | high | Y |  | Y | 47 | v | `docker-k8s-crypto-v2.ts` |
 | K20 | Insufficient Audit Context in Logging | compliance-governance | medium | Y |  |  | 0 | — | — |
 | L1 | GitHub Actions Tag Poisoning | supply-chain-advanced | critical | Y | Y |  | 36 | av | `advanced-supply-chain-detector.ts` |
@@ -249,10 +249,14 @@ T = first-letter tags: a=ast-taint, c=capability-graph, m=module-graph, e=entrop
 - **K6**: enabled in YAML but no TypedRule registration found
 - **K7**: enabled in YAML but no TypedRule registration found
 - **K9**: enabled in YAML but no TypedRule registration found
+- **K11**: enabled in YAML but no TypedRule registration found
 - **K12**: enabled in YAML but no TypedRule registration found
+- **K13**: enabled in YAML but no TypedRule registration found
 - **K14**: enabled in YAML but no TypedRule registration found
+- **K15**: enabled in YAML but no TypedRule registration found
 - **K16**: enabled in YAML but no TypedRule registration found
 - **K17**: enabled in YAML but no TypedRule registration found
+- **K18**: enabled in YAML but no TypedRule registration found
 - **K20**: enabled in YAML but no TypedRule registration found
 - **M3**: disabled in YAML but still registered
 - **O1**: disabled in YAML but still registered
