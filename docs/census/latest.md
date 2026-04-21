@@ -1,6 +1,6 @@
 # Rule Census
 
-_Generated: 2026-04-21T07:42:39.315Z_
+_Generated: 2026-04-21T12:08:07.814Z_
 
 ## Summary
 
@@ -8,19 +8,19 @@ _Generated: 2026-04-21T07:42:39.315Z_
 |---|---|
 | YAML rules (total) | 177 |
 | YAML rules (enabled) | 164 |
-| Registered rules (unique ids) | 165 |
-| Registered v1 | 138 |
-| Registered v2 | 27 |
-| Enabled but unregistered | 12 |
-| Detector files | 28 |
-| Files with any regex | 25 |
-| Files with any technique import | 15 |
+| Registered rules (unique ids) | 157 |
+| Registered v1 | 132 |
+| Registered v2 | 25 |
+| Enabled but unregistered | 20 |
+| Detector files | 27 |
+| Files with any regex | 24 |
+| Files with any technique import | 14 |
 
 ## Aggregate Technique Observations
 
 | Signal | Count |
 |---|---|
-| Regex literals | 751 |
+| Regex literals | 688 |
 | new RegExp(...) calls | 3 |
 | String-literal arrays > 5 | 7 |
 | Rules using taint-ast | 55 |
@@ -28,7 +28,7 @@ _Generated: 2026-04-21T07:42:39.315Z_
 | Rules using module-graph | 0 |
 | Rules using entropy | 5 |
 | Rules using similarity | 15 |
-| Rules using EvidenceChainBuilder | 165 |
+| Rules using EvidenceChainBuilder | 157 |
 
 ## Top Regex Offenders (detector files)
 
@@ -151,7 +151,7 @@ T = first-letter tags: a=ast-taint, c=capability-graph, m=module-graph, e=entrop
 | K11 | Missing Server Integrity Verification | compliance-governance | high | Y |  | Y | 36 | v | `k-remaining-v2.ts` |
 | K12 | Executable Content in Tool Response | compliance-governance | critical | Y |  |  | 0 | — | — |
 | K13 | Unsanitized Tool Output | compliance-governance | high | Y |  | Y | 36 | v | `k-remaining-v2.ts` |
-| K14 | Agent Credential Propagation via Shared State | compliance-governance | critical | Y |  | Y | 36 | v | `k-compliance-v2.ts` |
+| K14 | Agent Credential Propagation via Shared State | compliance-governance | critical | Y |  |  | 0 | — | — |
 | K15 | Multi-Agent Collusion Preconditions | compliance-governance | high | Y |  | Y | 36 | v | `k-remaining-v2.ts` |
 | K16 | Unbounded Recursion / Missing Depth Limits | compliance-governance | high | Y |  |  | 0 | — | — |
 | K17 | Missing Timeout or Circuit Breaker | compliance-governance | medium | Y |  |  | 0 | — | — |
@@ -245,6 +245,7 @@ T = first-letter tags: a=ast-taint, c=capability-graph, m=module-graph, e=entrop
 - **K6**: enabled in YAML but no TypedRule registration found
 - **K7**: enabled in YAML but no TypedRule registration found
 - **K12**: enabled in YAML but no TypedRule registration found
+- **K14**: enabled in YAML but no TypedRule registration found
 - **K16**: enabled in YAML but no TypedRule registration found
 - **K17**: enabled in YAML but no TypedRule registration found
 - **M3**: disabled in YAML but still registered

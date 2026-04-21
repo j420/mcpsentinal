@@ -1,10 +1,9 @@
 /**
- * K14, K20 — K-Compliance structural rules (TypedRuleV2)
+ * K12 — K-Compliance structural rules (TypedRuleV2)
  *
- * K14: Agent Credential Propagation — credentials in shared state
- * K20: Insufficient Audit Context — logging without structured context
+ * K12: Executable Content in Tool Response
  *
- * K12 migrated to `k12-executable-content-response/` in chunk 1.6a.
+ * K14 migrated to `k14-agent-credential-propagation/` in chunk 1.6b.
  * K16 migrated to `k16-unbounded-recursion/` in chunk 1.6c.
  */
 
@@ -181,134 +180,6 @@ class K12Rule implements TypedRuleV2 {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// K14 — Agent Credential Propagation via Shared State
-// ═══════════════════════════════════════════════════════════════════════════════
-
-const SHARED_STATE_NAMES = /\b(?:shared|global|common|central|unified|cross[\s_-]?agent)\s*[\s_-]*(?:state|store|memory|context|cache|registry|config)/i;
-const CREDENTIAL_NAMES = /\b(?:token|credential|secret|api[\s_-]?key|password|auth[\s_-]?token|access[\s_-]?token|refresh[\s_-]?token|private[\s_-]?key|passphrase|bearer)\b/i;
-const ISOLATION_PATTERNS = [
-  /\bper[\s_-]?agent\b/i, /\bisolat/i, /\bscoped\b/i,
-  /\bencrypt\s*\(/i, /\bseal\s*\(/i, /\bhash\s*\(/i,
-];
-
-class K14Rule implements TypedRuleV2 {
-  readonly id = "K14";
-  readonly name = "Agent Credential Propagation via Shared State";
-  readonly requires: RuleRequirements = { source_code: true };
-  readonly technique: AnalysisTechnique = "structural";
-
-  analyze(context: AnalysisContext): RuleResult[] {
-    if (!context.source_code || isTestFile(context.source_code)) return [];
-    const source = context.source_code;
-    const findings: RuleResult[] = [];
-
-    try {
-      const sf = ts.createSourceFile("scan.ts", source, ts.ScriptTarget.Latest, true);
-
-      const visit = (node: ts.Node): void => {
-        // Property assignments: sharedState.token = ...
-        if (ts.isPropertyAccessExpression(node) && node.parent && ts.isBinaryExpression(node.parent) &&
-            node.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken && node.parent.left === node) {
-          const obj = node.expression.getText(sf);
-          const prop = node.name.getText(sf);
-          if (SHARED_STATE_NAMES.test(obj) && CREDENTIAL_NAMES.test(prop)) {
-            this.addFinding(findings, node, sf, source, `${obj}.${prop}`, "property assignment");
-          }
-        }
-
-        // Method calls: sharedStore.set('token', value)
-        if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
-          const obj = node.expression.expression.getText(sf);
-          const method = node.expression.name.getText(sf);
-          if (SHARED_STATE_NAMES.test(obj) && /set|put|store|save|write/.test(method)) {
-            const argsText = node.arguments.map(a => a.getText(sf)).join(" ");
-            if (CREDENTIAL_NAMES.test(argsText)) {
-              this.addFinding(findings, node, sf, source, `${obj}.${method}(...)`, "method call");
-            }
-          }
-        }
-
-        // Variable declarations with both shared state and credential patterns
-        if (ts.isVariableDeclaration(node) && node.initializer) {
-          const fullText = node.getText(sf);
-          if (SHARED_STATE_NAMES.test(fullText) && CREDENTIAL_NAMES.test(fullText)) {
-            const initText = node.initializer.getText(sf);
-            if (CREDENTIAL_NAMES.test(initText)) {
-              this.addFinding(findings, node, sf, source, node.name.getText(sf), "variable declaration");
-            }
-          }
-        }
-
-        ts.forEachChild(node, visit);
-      };
-
-      ts.forEachChild(sf, visit);
-    } catch { /* AST failure */ }
-    return findings.slice(0, 3);
-  }
-
-  private addFinding(findings: RuleResult[], node: ts.Node, sf: ts.SourceFile, source: string, pattern: string, context: string) {
-    const enclosing = getEnclosingFunc(node, sf);
-    const funcText = enclosing ? enclosing.node.getText(sf) : source;
-    const hasIsolation = ISOLATION_PATTERNS.some(p => p.test(funcText));
-    if (hasIsolation) return;
-
-    const line = sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1;
-    const lineText = source.split("\n")[line - 1]?.trim() || "";
-
-    const builder = new EvidenceChainBuilder()
-      .source({
-        source_type: "file-content",
-        location: `line ${line}`,
-        observed: lineText.slice(0, 120),
-        rationale: `Credentials stored in shared state via ${context}: ${pattern}. Any agent can read another's credentials.`,
-      })
-      .propagation({
-        propagation_type: "cross-tool-flow",
-        location: `line ${line}`,
-        observed: `Credential flows into shared state: ${pattern}`,
-      })
-      .sink({
-        sink_type: "credential-exposure",
-        location: `line ${line}`,
-        observed: `Shared state credential exposure: ${pattern}`,
-      })
-      .mitigation({
-        mitigation_type: "auth-check",
-        present: false,
-        location: `enclosing function of line ${line}`,
-        detail: "No per-agent isolation, encryption, or scoping found",
-      })
-      .impact({
-        impact_type: "credential-theft",
-        scope: "other-agents",
-        exploitability: "moderate",
-        scenario: `Credentials in shared state (${pattern}). Compromised agent reads other agents' credentials.`,
-      })
-      .factor("credential_in_shared_state", 0.12, `${pattern} via ${context}`)
-      .reference({
-        id: "OWASP-ASI03",
-        title: "OWASP Agentic ASI03 — Identity & Privilege Abuse",
-        relevance: "Shared credential stores violate agent identity isolation.",
-      })
-      .verification({
-        step_type: "trace-flow",
-        instruction: `Trace credential at line ${line}: ${pattern}. Verify per-agent isolation.`,
-        target: `source_code:${line}`,
-        expected_observation: "Credentials in shared state without isolation",
-      });
-
-    findings.push({
-      rule_id: "K14",
-      severity: "critical",
-      owasp_category: "ASI03-identity-privilege-abuse",
-      mitre_technique: "AML.T0054",
-      remediation: "Never store credentials in shared state. Use per-agent credential stores with proper isolation.",
-      chain: builder.build(),
-    });
-  }
-}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // K16 migrated to `k16-unbounded-recursion/` in chunk 1.6c.
@@ -441,5 +312,3 @@ class K20Rule implements TypedRuleV2 {
 // in chunk 1.6a (Phase 1 Rule Standard v2).
 // K16 migrated to `packages/analyzer/src/rules/implementations/k16-unbounded-recursion/`
 // in chunk 1.6c (Phase 1 Rule Standard v2).
-registerTypedRuleV2(new K14Rule());
-registerTypedRuleV2(new K20Rule());
