@@ -33,6 +33,6 @@ export const expectation = {
   rule_id: "A6",
   min_findings: 1,
   expected_severity: "critical" as const,
-  expected_location_substring: "tool:reаd_file:name",
+  expected_tool_name: "reаd_file",
   expected_script: "Cyrillic",
 };

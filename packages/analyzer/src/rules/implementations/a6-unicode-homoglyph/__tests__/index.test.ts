@@ -10,6 +10,7 @@
 
 import { describe, it, expect } from "vitest";
 import { getTypedRuleV2 } from "../../../base.js";
+import { isLocation, type Location } from "../../../location.js";
 import "../index.js"; // side-effect: register A6
 
 import { fixture as tp01, expectation as tp01x } from "../__fixtures__/true-positive-01-cyrillic-in-tool-name.js";
@@ -38,7 +39,14 @@ describe("A6 — Unicode Homoglyph Attack (v2)", () => {
       expect(results.length).toBeGreaterThanOrEqual(tp01x.min_findings);
       const nameFinding = results.find((r) =>
         r.chain.links.some(
-          (l: any) => l.type === "source" && l.location.includes(tp01x.expected_location_substring),
+          (l) =>
+            l.type === "source" &&
+            isLocation(l.location) &&
+            (l.location as Location).kind === "tool" &&
+            ((l.location as { kind: "tool"; tool_name: string }).tool_name ===
+              tp01x.expected_tool_name) &&
+            // The source's observed text carries the "tool name" scope indicator
+            (l as { observed: string }).observed.includes("tool name"),
         ),
       );
       expect(nameFinding).toBeDefined();
@@ -55,30 +63,45 @@ describe("A6 — Unicode Homoglyph Attack (v2)", () => {
       const results = rule!.analyze(tp02);
       const descFinding = results.find((r) =>
         r.chain.links.some(
-          (l: any) => l.type === "source" && l.location.includes("tool:run_task:description"),
+          (l) =>
+            l.type === "source" &&
+            isLocation(l.location) &&
+            (l.location as Location).kind === "tool" &&
+            ((l.location as { kind: "tool"; tool_name: string }).tool_name ===
+              tp02x.expected_tool_name) &&
+            (l as { observed: string }).observed.includes("description"),
         ),
       );
       expect(descFinding).toBeDefined();
       expect(tp02x.expected_severity_in).toContain(descFinding!.severity);
       // Source rationale must reference the Fullwidth-Latin script explicitly
-      const src = descFinding!.chain.links.find((l) => l.type === "source") as any;
-      expect(src.observed.length + src.rationale.length).toBeGreaterThan(0);
+      const src = descFinding!.chain.links.find((l) => l.type === "source") as
+        | { observed: string; rationale: string }
+        | undefined;
+      expect(src!.observed.length + src!.rationale.length).toBeGreaterThan(0);
       expect(descFinding!.chain.confidence).toBeLessThanOrEqual(0.95);
     });
 
     it("TP-03: shadow collision between two tools → emits collision finding", () => {
       const results = rule!.analyze(tp03);
       expect(results.length).toBeGreaterThanOrEqual(tp03x.min_findings);
+      // Collision findings carry a tool Location for the LEFT tool and an
+      // observed text that names BOTH tools. Identify them structurally.
       const collision = results.find((r) =>
         r.chain.links.some(
-          (l: any) =>
-            l.type === "source" && typeof l.location === "string" && l.location.includes(" vs "),
+          (l) =>
+            l.type === "source" &&
+            isLocation(l.location) &&
+            (l.location as Location).kind === "tool" &&
+            (l as { observed: string }).observed.includes("Collision between tool"),
         ),
       );
       expect(collision).toBeDefined();
       expect(collision!.severity).toBe("critical");
-      const sink = collision!.chain.links.find((l) => l.type === "sink") as any;
-      expect(sink.sink_type).toBe("privilege-grant");
+      const sink = collision!.chain.links.find((l) => l.type === "sink") as
+        | { sink_type: string }
+        | undefined;
+      expect(sink!.sink_type).toBe("privilege-grant");
     });
   });
 
@@ -109,9 +132,10 @@ describe("A6 — Unicode Homoglyph Attack (v2)", () => {
         expect(sources.length).toBeGreaterThanOrEqual(1);
         // Name and shadow-collision findings have a sink; description findings
         // are informational (they cannot prove routing impact deterministically).
-        const src = sources[0] as { location: string };
+        const src = sources[0] as { observed: string };
         const isNameOrShadow =
-          /:name$/.test(src.location) || src.location.includes(" vs tool:");
+          src.observed.includes("tool name") ||
+          src.observed.includes("Collision between tool");
         if (isNameOrShadow) {
           expect(sinks.length).toBeGreaterThanOrEqual(1);
         }
@@ -123,15 +147,36 @@ describe("A6 — Unicode Homoglyph Attack (v2)", () => {
       }
     });
 
-    it("source Locations use the structured 'tool:<name>:<field>' or 'tool:<a> vs tool:<b>' pattern", () => {
-      const results = rule!.analyze(tp01).concat(rule!.analyze(tp03));
+    it("every evidence link location is a structured Location (v2 contract)", () => {
+      const results = [
+        ...rule!.analyze(tp01),
+        ...rule!.analyze(tp02),
+        ...rule!.analyze(tp03),
+      ];
+      expect(results.length).toBeGreaterThan(0);
       for (const r of results) {
-        const src = r.chain.links.find((l) => l.type === "source") as any;
-        expect(typeof src.location).toBe("string");
-        const ok =
-          /^tool:[^:]+:(name|description)$/.test(src.location) ||
-          src.location.includes(" vs tool:");
-        expect(ok).toBe(true);
+        for (const link of r.chain.links) {
+          if (link.type === "impact") continue;
+          expect(
+            isLocation(link.location),
+            `${link.type} link location must be a Location`,
+          ).toBe(true);
+          const loc = link.location as Location;
+          expect(["tool", "capability"]).toContain(loc.kind);
+        }
+      }
+    });
+
+    it("every VerificationStep.target is a structured Location (v2 contract)", () => {
+      const results = [
+        ...rule!.analyze(tp01),
+        ...rule!.analyze(tp02),
+        ...rule!.analyze(tp03),
+      ];
+      for (const r of results) {
+        for (const step of r.chain.verification_steps ?? []) {
+          expect(isLocation(step.target)).toBe(true);
+        }
       }
     });
   });

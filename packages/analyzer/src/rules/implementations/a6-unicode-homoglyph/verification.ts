@@ -7,7 +7,13 @@
  */
 
 import type { VerificationStep } from "../../../evidence.js";
+import type { Location } from "../../location.js";
 import type { FieldAnalysis, HomoglyphHit } from "./gather.js";
+
+function toolLoc(tool_name: string): Location {
+  return { kind: "tool", tool_name };
+}
+const TOOL_CAPABILITY_LOC: Location = { kind: "capability", capability: "tools" };
 
 function summariseHits(hits: HomoglyphHit[]): string {
   return hits
@@ -32,20 +38,20 @@ export function toolNameVerificationSteps(
         `Character Database. Compare suspicious codepoints against Unicode TR39 ` +
         `(confusables.txt). Example: Latin "a" is U+0061 while Cyrillic "а" is ` +
         `U+0430 — they are visually identical but different characters.`,
-      target: `tool:${toolName}:name`,
+      target: toolLoc(toolName),
       expected_observation:
-        `${hits.length} confusable codepoint(s) present in the tool name. ` +
+        `${hits.length} confusable codepoint(s) present in the name of tool "${toolName}". ` +
         `Scripts observed: ${scripts}. Hits: ${summariseHits(hits)}.`,
     },
     {
       step_type: "compare-baseline",
       instruction:
-        `Apply Unicode TR39 confusable normalisation to the tool name and ` +
-        `compare the normalised form against every other tool name in this ` +
-        `server and known legitimate tool names in the same ecosystem ` +
+        `Apply Unicode TR39 confusable normalisation to the name of tool "${toolName}" ` +
+        `(normalised form: "${normalisedForm}") and compare against every other tool ` +
+        `name in this server and known legitimate tool names in the same ecosystem ` +
         `(e.g. Anthropic reference servers). Any collision confirms visual ` +
         `impersonation of an existing tool identity.`,
-      target: `tool:${toolName}:name → normalised:"${normalisedForm}"`,
+      target: toolLoc(toolName),
       expected_observation:
         normalisedForm !== toolName
           ? `Normalised form "${normalisedForm}" differs from the raw tool ` +
@@ -71,20 +77,20 @@ export function descriptionVerificationSteps(
         `Unicode script. Count non-Latin codepoints that are confusables for ` +
         `Latin letters — those are the candidates for steganographic prompt ` +
         `payloads embedded in apparently-English prose.`,
-      target: `tool:${toolName}:description`,
+      target: toolLoc(toolName),
       expected_observation:
         `${analysis.hits.length} homoglyph codepoint(s) distributed across ` +
         `${analysis.lookalike_scripts.length} script block(s): ` +
-        `${analysis.lookalike_scripts.join(", ")}.`,
+        `${analysis.lookalike_scripts.join(", ")} — inside the description of tool "${toolName}".`,
     },
     {
       step_type: "compare-baseline",
       instruction:
-        `Normalise the description using TR39 confusables and diff against the ` +
-        `original. If the normalised text contains different words than the ` +
+        `Normalise the description of tool "${toolName}" using TR39 confusables and diff ` +
+        `against the original. If the normalised text contains different words than the ` +
         `original, the description is using confusables to bypass keyword-based ` +
         `prompt-injection filters while remaining fully legible to an LLM.`,
-      target: `tool:${toolName}:description`,
+      target: toolLoc(toolName),
       expected_observation:
         `Normalised description reveals words/phrases that were obscured by ` +
         `confusable substitution — confirming obfuscation intent.`,
@@ -105,19 +111,18 @@ export function shadowCollisionVerificationSteps(
         `Print the codepoint sequences of both tool names side by side. ` +
         `Find the differing indices — each difference is where one name uses a ` +
         `non-Latin lookalike in place of a Latin letter.`,
-      target: `tool:${leftToolName}:name vs tool:${rightToolName}:name`,
+      target: toolLoc(leftToolName),
       expected_observation:
-        `At least one index where the codepoints differ but the rendered glyphs ` +
-        `are visually identical.`,
+        `At least one index where the codepoints of "${leftToolName}" and "${rightToolName}" ` +
+        `differ but the rendered glyphs are visually identical.`,
     },
     {
       step_type: "compare-baseline",
       instruction:
-        `Confirm that both tool names normalise to the same Latin string ` +
-        `"${normalisedForm}". The AI client cannot distinguish these tools ` +
-        `from one another — invocation routing is a coin-flip controlled by ` +
-        `the attacker.`,
-      target: `normalised:"${normalisedForm}"`,
+        `Confirm that both tool names "${leftToolName}" and "${rightToolName}" normalise to ` +
+        `the same Latin string "${normalisedForm}". The AI client cannot distinguish these ` +
+        `tools from one another — invocation routing is a coin-flip controlled by the attacker.`,
+      target: TOOL_CAPABILITY_LOC,
       expected_observation:
         `Both tool names collapse to the identical normalised form — any ` +
         `AI client that routes by raw-identifier equality but displays to a ` +

@@ -37,12 +37,30 @@ import {
   registerTypedRuleV2,
 } from "../../base.js";
 import { EvidenceChainBuilder } from "../../../evidence.js";
+import type { Location } from "../../location.js";
 import { gather, type A7FieldAnalysis, type A7ToolGather, type A7ParamAnalysis } from "./gather.js";
 import {
   nameFieldVerificationSteps,
   descriptionFieldVerificationSteps,
   parameterVerificationSteps,
 } from "./verification.js";
+
+/**
+ * Structured Location builders (Rule Standard v2 §2). Every evidence link
+ * carries a v2 `Location`; the name/description/registration/invocation
+ * distinction is captured in the link's `observed`/`rationale` narrative.
+ */
+function toolLoc(tool_name: string): Location {
+  return { kind: "tool", tool_name };
+}
+function paramLoc(tool_name: string, parameter_name: string): Location {
+  return {
+    kind: "parameter",
+    tool_name,
+    parameter_path: `input_schema.properties.${parameter_name}.description`,
+  };
+}
+const TOOL_CAPABILITY_LOC: Location = { kind: "capability", capability: "tools" };
 
 const RULE_ID = "A7";
 const RULE_NAME = "Zero-Width and Invisible Character Injection";
@@ -95,7 +113,7 @@ class ZeroWidthInjectionRuleV2 implements TypedRuleV2 {
 
     builder.source({
       source_type: "external-content",
-      location: `tool:${t.tool_name}:name`,
+      location: toolLoc(t.tool_name),
       observed: a.hits
         .slice(0, 5)
         .map((h) => `${h.label} (${h.range_name}) at index ${h.position}`)
@@ -108,7 +126,7 @@ class ZeroWidthInjectionRuleV2 implements TypedRuleV2 {
 
     builder.propagation({
       propagation_type: "description-directive",
-      location: `tool:${t.tool_name}:registration`,
+      location: toolLoc(t.tool_name),
       observed:
         `AI client receives the tool name verbatim during tools/list. Invisible codepoints ` +
         `are transmitted as UTF-8 bytes and retained in every downstream lookup and display, ` +
@@ -117,7 +135,7 @@ class ZeroWidthInjectionRuleV2 implements TypedRuleV2 {
 
     builder.sink({
       sink_type: "privilege-grant",
-      location: `ai-client:tool-invocation`,
+      location: TOOL_CAPABILITY_LOC,
       observed:
         `Two tool names identical to the human eye but differing by an invisible codepoint ` +
         `cause non-deterministic routing — any invocation intended for the legitimate tool may ` +
@@ -127,7 +145,7 @@ class ZeroWidthInjectionRuleV2 implements TypedRuleV2 {
     builder.mitigation({
       mitigation_type: "input-validation",
       present: false,
-      location: `tool:${t.tool_name}:registration`,
+      location: toolLoc(t.tool_name),
       detail: `No invisible-codepoint stripping or rejection is applied at MCP tool registration.`,
     });
 
@@ -193,7 +211,7 @@ class ZeroWidthInjectionRuleV2 implements TypedRuleV2 {
 
     builder.source({
       source_type: "external-content",
-      location: `tool:${t.tool_name}:description`,
+      location: toolLoc(t.tool_name),
       observed: a.hits
         .slice(0, 5)
         .map((h) => `${h.label} (${h.range_name}) at index ${h.position}`)
@@ -208,7 +226,7 @@ class ZeroWidthInjectionRuleV2 implements TypedRuleV2 {
 
     builder.propagation({
       propagation_type: "description-directive",
-      location: `ai-client:context-window`,
+      location: TOOL_CAPABILITY_LOC,
       observed:
         `Tool description is included verbatim in the AI client's tool-selection context. ` +
         `Invisible codepoints are preserved byte-for-byte and consumed by the LLM as part of the text.`,
@@ -216,7 +234,7 @@ class ZeroWidthInjectionRuleV2 implements TypedRuleV2 {
 
     builder.sink({
       sink_type: "code-evaluation",
-      location: `ai-client:instruction-processing`,
+      location: TOOL_CAPABILITY_LOC,
       observed: hasTagMessage
         ? `Hidden instructions decoded from tag characters: "${a.hidden_tag_message}" — the LLM processes these as text in its context window.`
         : `Invisible codepoints may encode directives (via tokenisation artefacts, bidi reordering, or width-space substitution) that the LLM processes but human reviewers cannot see.`,
@@ -225,7 +243,7 @@ class ZeroWidthInjectionRuleV2 implements TypedRuleV2 {
     builder.mitigation({
       mitigation_type: "input-validation",
       present: false,
-      location: `tool:${t.tool_name}:description`,
+      location: toolLoc(t.tool_name),
       detail: `No invisible-codepoint stripping is applied to descriptions before AI processing.`,
     });
 
@@ -295,7 +313,7 @@ class ZeroWidthInjectionRuleV2 implements TypedRuleV2 {
 
     builder.source({
       source_type: "external-content",
-      location: `tool:${t.tool_name}:description`,
+      location: toolLoc(t.tool_name),
       observed: bidiHits.map((h) => `${h.label} at index ${h.position}`).join(", "),
       rationale:
         `Tool description contains ${bidiHits.length} bidirectional-control codepoint(s). ` +
@@ -305,7 +323,7 @@ class ZeroWidthInjectionRuleV2 implements TypedRuleV2 {
 
     builder.propagation({
       propagation_type: "description-directive",
-      location: `ai-client:context-window`,
+      location: TOOL_CAPABILITY_LOC,
       observed:
         `Bidi overrides cause divergence between rendered and logical text. Human reviewers ` +
         `see "deetsurT" while the LLM reads "Trusted" (or vice versa).`,
@@ -313,7 +331,7 @@ class ZeroWidthInjectionRuleV2 implements TypedRuleV2 {
 
     builder.sink({
       sink_type: "code-evaluation",
-      location: `ai-client:instruction-processing`,
+      location: TOOL_CAPABILITY_LOC,
       observed:
         `LLM consumes the description in logical order and executes embedded instructions — ` +
         `the Trojan Source style (CVE-2021-42574) attack against the AI review loop.`,
@@ -347,7 +365,7 @@ class ZeroWidthInjectionRuleV2 implements TypedRuleV2 {
         `Render the description in a bidi-naive environment (e.g. a raw hex dump) and compare to ` +
         `the rendering in a terminal or browser. If the two representations differ, the description ` +
         `is using bidi overrides to deceive reviewers.`,
-      target: `tool:${t.tool_name}:description`,
+      target: toolLoc(t.tool_name),
       expected_observation:
         `Logical-order byte sequence differs from the rendered order at bidi-override boundaries.`,
     });
@@ -374,7 +392,7 @@ class ZeroWidthInjectionRuleV2 implements TypedRuleV2 {
 
     builder.source({
       source_type: "user-parameter",
-      location: `tool:${t.tool_name}:parameter:${p.parameter_name}:description`,
+      location: paramLoc(t.tool_name, p.parameter_name),
       observed: p.hits.slice(0, 3).map((h) => `${h.label} (${h.range_name})`).join(", "),
       rationale:
         `Parameter description contains ${p.hits.length} invisible codepoint(s). Parameter ` +
@@ -384,7 +402,7 @@ class ZeroWidthInjectionRuleV2 implements TypedRuleV2 {
 
     builder.propagation({
       propagation_type: "description-directive",
-      location: `tool:${t.tool_name}:parameter:${p.parameter_name}`,
+      location: paramLoc(t.tool_name, p.parameter_name),
       observed:
         `Invisible codepoints in the parameter description are preserved through tools/list and ` +
         `fed to the LLM during argument filling.`,

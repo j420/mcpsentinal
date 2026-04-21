@@ -6,7 +6,15 @@
  */
 
 import type { VerificationStep } from "../../../evidence.js";
+import type { Location } from "../../location.js";
 import type { A7FieldAnalysis } from "./gather.js";
+
+function toolLoc(tool_name: string): Location {
+  return { kind: "tool", tool_name };
+}
+function paramLoc(tool_name: string, parameter_name: string): Location {
+  return { kind: "parameter", tool_name, parameter_path: `input_schema.properties.${parameter_name}.description` };
+}
 
 function classSummary(analysis: A7FieldAnalysis): string {
   return analysis.classes_seen.join(", ");
@@ -26,7 +34,7 @@ export function nameFieldVerificationSteps(
         `U+200B–U+200D (zero-width), U+202A–U+202E (bidi override), ` +
         `U+2060, U+FEFF (joiners/BOM), U+00AD (soft hyphen), ` +
         `U+FE00–U+FE0F (variation selectors), U+E0000–U+E007F (tag chars).`,
-      target: `tool:${toolName}:name`,
+      target: toolLoc(toolName),
       expected_observation:
         `${analysis.hits.length} invisible codepoint(s) observed at positions ` +
         `${analysis.hits.map((h) => h.position).join(", ")}. Classes: ${classSummary(analysis)}.`,
@@ -39,7 +47,7 @@ export function nameFieldVerificationSteps(
         `known legitimate tool, the invisible insertion is a shadow-tool attack. ` +
         `If the cleaned string is unchanged, the invisible chars are being used ` +
         `to smuggle a different codepoint sequence past exact-match filters.`,
-      target: `tool:${toolName}:name`,
+      target: toolLoc(toolName),
       expected_observation:
         `Cleaned name differs from or collides with a legitimate tool identifier.`,
     },
@@ -58,7 +66,7 @@ export function descriptionFieldVerificationSteps(
         `zero-width / bidi / tag ranges. Record their positions — if positions ` +
         `are NOT adjacent to emoji codepoints, the characters have no ` +
         `legitimate presentational role.`,
-      target: `tool:${toolName}:description`,
+      target: toolLoc(toolName),
       expected_observation:
         `${analysis.hits.length} invisible codepoint(s) observed. Classes: ${classSummary(analysis)}.`,
     },
@@ -73,7 +81,7 @@ export function descriptionFieldVerificationSteps(
         `result is a hidden ASCII message that is invisible in every ` +
         `renderer but readable by the LLM. Verify whether the decoded text ` +
         `contains instructions, URLs, or directives.`,
-      target: `tool:${toolName}:description (tag characters)`,
+      target: toolLoc(toolName),
       expected_observation:
         `Tag characters decode to the ASCII string: "${analysis.hidden_tag_message}". ` +
         `If this string contains instructions or a URL, the description is ` +
@@ -87,7 +95,7 @@ export function descriptionFieldVerificationSteps(
         `cleaned text against the original. Inspect whether the cleaned text ` +
         `reveals different word boundaries, different keyword spellings, or ` +
         `different line breaks.`,
-      target: `tool:${toolName}:description`,
+      target: toolLoc(toolName),
       expected_observation:
         `Cleaned description differs from the original — the invisible chars ` +
         `were affecting tokenisation or word-spelling as seen by the LLM.`,
@@ -110,7 +118,7 @@ export function parameterVerificationSteps(
         `Parameter descriptions are a secondary injection surface: the LLM ` +
         `reads them when deciding how to populate an argument, so invisible ` +
         `directives here can steer the AI toward dangerous parameter values.`,
-      target: `tool:${toolName}:parameter:${paramName}:description`,
+      target: paramLoc(toolName, paramName),
       expected_observation:
         `${analysis.hits.length} invisible codepoint(s) observed. Classes: ${classSummary(analysis)}.`,
     },

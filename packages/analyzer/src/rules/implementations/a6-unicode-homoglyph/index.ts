@@ -35,12 +35,24 @@ import {
   registerTypedRuleV2,
 } from "../../base.js";
 import { EvidenceChainBuilder } from "../../../evidence.js";
+import type { Location } from "../../location.js";
 import { gather, normaliseConfusables, type A6ToolGather, type FieldAnalysis } from "./gather.js";
 import {
   toolNameVerificationSteps,
   descriptionVerificationSteps,
   shadowCollisionVerificationSteps,
 } from "./verification.js";
+
+/**
+ * Structured Location builders (Rule Standard v2 §2). Every link cites a
+ * v2 `Location`; the "name vs description vs registration vs invocation"
+ * distinction is preserved in the link's `observed`/`rationale` narrative
+ * rather than encoded in a prose string.
+ */
+function toolLoc(tool_name: string): Location {
+  return { kind: "tool", tool_name };
+}
+const TOOL_CAPABILITY_LOC: Location = { kind: "capability", capability: "tools" };
 
 const RULE_ID = "A6";
 const RULE_NAME = "Unicode Homoglyph Attack";
@@ -101,11 +113,13 @@ class UnicodeHomoglyphRuleV2 implements TypedRuleV2 {
 
     builder.source({
       source_type: "external-content",
-      location: `tool:${t.tool_name}:name`,
-      observed: a.hits
-        .slice(0, 5)
-        .map((h) => `${h.label} impersonating "${h.latin_letter}"`)
-        .join(", "),
+      location: toolLoc(t.tool_name),
+      observed:
+        `tool name "${t.tool_name}" — ` +
+        a.hits
+          .slice(0, 5)
+          .map((h) => `${h.label} impersonating "${h.latin_letter}"`)
+          .join(", "),
       rationale:
         `Tool name is Latin-dominant but contains ${a.hits.length} confusable codepoint(s) ` +
         `from lookalike script(s): ${a.lookalike_scripts.join(", ")}. Tool names are registered ` +
@@ -115,19 +129,20 @@ class UnicodeHomoglyphRuleV2 implements TypedRuleV2 {
 
     builder.propagation({
       propagation_type: "description-directive",
-      location: `tool:${t.tool_name}:registration`,
+      location: toolLoc(t.tool_name),
       observed:
-        `AI client receives tool name "${t.tool_name}" during tools/list and treats it as a ` +
-        `unique identifier. No Unicode-script validation is part of the MCP initialize/list ` +
-        `handshake — the mixed-script name propagates into tool-selection context untouched.`,
+        `Registration of tool "${t.tool_name}" during tools/list — AI client receives the name ` +
+        `and treats it as a unique identifier. No Unicode-script validation is part of the MCP ` +
+        `initialize/list handshake — the mixed-script name propagates into tool-selection context ` +
+        `untouched.`,
     });
 
     builder.sink({
       sink_type: "privilege-grant",
-      location: `tool:${t.tool_name}:invocation`,
+      location: toolLoc(t.tool_name),
       observed:
-        `Identity confusion: the AI client cannot distinguish "${t.tool_name}" from ` +
-        `"${normalised}" when selecting a tool by name — invocation is routed to the attacker's ` +
+        `Invocation routing for "${t.tool_name}" — the AI client cannot distinguish it from ` +
+        `"${normalised}" when selecting a tool by name; invocation is routed to the attacker's ` +
         `tool, which receives the user's parameters and privileges.`,
       cve_precedent: "CWE-1007",
     });
@@ -135,7 +150,7 @@ class UnicodeHomoglyphRuleV2 implements TypedRuleV2 {
     builder.mitigation({
       mitigation_type: "input-validation",
       present: false,
-      location: `tool:${t.tool_name}:registration`,
+      location: toolLoc(t.tool_name),
       detail:
         `No Unicode-script validation or TR39 confusable normalisation is applied to tool names ` +
         `during registration or during AI-client routing.`,
@@ -212,8 +227,9 @@ class UnicodeHomoglyphRuleV2 implements TypedRuleV2 {
 
     builder.source({
       source_type: "external-content",
-      location: `tool:${t.tool_name}:description`,
+      location: toolLoc(t.tool_name),
       observed:
+        `tool "${t.tool_name}" description — ` +
         `${a.hits.length} confusable codepoint(s) across ` +
         `${a.lookalike_scripts.length} script block(s): ${a.lookalike_scripts.join(", ")}`,
       rationale:
@@ -225,9 +241,9 @@ class UnicodeHomoglyphRuleV2 implements TypedRuleV2 {
 
     builder.propagation({
       propagation_type: "description-directive",
-      location: `tool:${t.tool_name}:description`,
+      location: toolLoc(t.tool_name),
       observed:
-        `Mixed-script description is transmitted verbatim to the LLM as part of the tool-selection ` +
+        `Mixed-script description for "${t.tool_name}" is transmitted verbatim to the LLM as part of the tool-selection ` +
         `context. LLMs normalise reading internally — they "see" the Latin word that the attacker ` +
         `intended — while human reviewers scrutinising the raw bytes see only Unicode "noise".`,
     });
@@ -296,8 +312,10 @@ class UnicodeHomoglyphRuleV2 implements TypedRuleV2 {
 
     builder.source({
       source_type: "external-content",
-      location: `tool:${c.left_tool_name}:name vs tool:${c.right_tool_name}:name`,
-      observed: `Both names normalise to "${c.normalised_form}" yet are distinct strings`,
+      location: toolLoc(c.left_tool_name),
+      observed:
+        `Collision between tool "${c.left_tool_name}" and tool "${c.right_tool_name}" — ` +
+        `both names normalise to "${c.normalised_form}" yet are distinct raw strings`,
       rationale:
         `Two tools in the same MCP server have names that are visually indistinguishable after ` +
         `TR39 confusable normalisation. The AI client routes by raw-string equality while the ` +
@@ -306,18 +324,18 @@ class UnicodeHomoglyphRuleV2 implements TypedRuleV2 {
 
     builder.propagation({
       propagation_type: "cross-tool-flow",
-      location: `server:tool-registry`,
+      location: TOOL_CAPABILITY_LOC,
       observed:
-        `AI client sees two tools with identical rendered names. Tool selection by name is ` +
+        `Server tool-registry (capability:tools) — AI client sees two tools with identical rendered names. Tool selection by name is ` +
         `undefined — which entry the client routes to depends on implementation details ` +
         `(insertion order, hash iteration) that are outside the user's or the reviewer's control.`,
     });
 
     builder.sink({
       sink_type: "privilege-grant",
-      location: `ai-client:tool-invocation`,
+      location: TOOL_CAPABILITY_LOC,
       observed:
-        `Tool invocation for the rendered name "${c.normalised_form}" can be routed to either tool; ` +
+        `AI-client tool-invocation (capability:tools) — for the rendered name "${c.normalised_form}" can be routed to either tool; ` +
         `the attacker-controlled tool captures the user's parameters and privileges whenever ` +
         `its entry is selected.`,
     });

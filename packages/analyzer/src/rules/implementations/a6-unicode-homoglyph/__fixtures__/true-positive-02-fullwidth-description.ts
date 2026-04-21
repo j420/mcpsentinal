@@ -35,6 +35,6 @@ export const expectation = {
   rule_id: "A6",
   min_findings: 1,
   expected_severity_in: ["critical", "high"] as const,
-  expected_location_substring: "tool:run_task:description",
+  expected_tool_name: "run_task",
   expected_script: "Fullwidth-Latin",
 };
