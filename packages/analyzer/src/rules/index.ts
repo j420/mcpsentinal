@@ -43,7 +43,7 @@ export * as schemaInference from "./analyzers/schema-inference.js";
 // Rule implementations (self-registering on import)
 import "./implementations/c1-command-injection/index.js";
 import "./implementations/a6-unicode-homoglyph.js";
-import "./implementations/a9-encoded-instructions.js";
+import "./implementations/a9-encoded-instructions/index.js";
 import "./implementations/d3-typosquatting/index.js";
 import "./implementations/f1-lethal-trifecta.js";
 import "./implementations/g4-context-saturation.js";
