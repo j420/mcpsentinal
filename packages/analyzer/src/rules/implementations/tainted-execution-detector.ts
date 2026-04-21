@@ -181,29 +181,6 @@ const EVIDENCE_CONFIGS: Record<string, EvidenceConfig> = {
 
 // ─── Rule definitions ──────────────────────────────────────────────────────
 
-const C4_SQL_INJECTION: RuleDef = {
-  id: "C4",
-  name: "SQL Injection (Taint-Aware)",
-  severity: "critical",
-  astSinkCategories: ["sql_injection"],
-  taintSinkCategories: ["sql_query"],
-  owasp: "MCP03-command-injection",
-  mitre: "AML.T0054",
-  remediation:
-    "Use parameterized queries or prepared statements. Never concatenate user input into SQL strings. " +
-    "Use an ORM (Prisma, Drizzle, SQLAlchemy) or query builder (Knex) that parameterizes by default.",
-  fallbackPatterns: [
-    { regex: /(?:query|execute|raw)\s*\(\s*`[^`]*\$\{/g, desc: "template literal in SQL query", confidence: 0.80 },
-    { regex: /(?:query|execute|raw)\s*\([^)]*\+\s*(?!['"`])\w+/g, desc: "string concatenation in SQL query", confidence: 0.70 },
-    { regex: /cursor\.execute\s*\(\s*(?:f['"]|['"].*%s|['"].*\{)/g, desc: "Python f-string/format in SQL execute", confidence: 0.75 },
-  ],
-  safePatterns: [
-    /\.prepare\s*\(/, // Prepared statements
-    /\$\d+/,          // Parameterized placeholders ($1, $2)
-    /\?\s*,/,         // ? placeholders
-  ],
-};
-
 const C12_UNSAFE_DESERIALIZATION: RuleDef = {
   id: "C12",
   name: "Unsafe Deserialization (Taint-Aware)",
@@ -723,7 +700,7 @@ class TaintBasedRule implements TypedRule {
 
 // ─── Register all rules ────────────────────────────────────────────────────
 
-registerTypedRule(new TaintBasedRule(C4_SQL_INJECTION));
+// C4 migrated to packages/analyzer/src/rules/implementations/c4-sql-injection/
 registerTypedRule(new TaintBasedRule(C12_UNSAFE_DESERIALIZATION));
 registerTypedRule(new TaintBasedRule(C13_TEMPLATE_INJECTION));
 registerTypedRule(new TaintBasedRule(C16_DYNAMIC_CODE_EVAL));
