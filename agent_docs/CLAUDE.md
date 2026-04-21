@@ -18,6 +18,7 @@ Deep reference documentation for the MCP Sentinel project. These docs are the au
 | Competitive landscape | **competitive-intelligence.md** — Competitor analysis, differentiation points |
 | Framework compliance gaps | **framework-gap-analysis.md** — Gap analysis across 8+ security frameworks |
 | Technical roadmap | **technical-roadmap.md** — Future technical direction and priorities |
+| Fanning out parallel sub-agents (rule migration waves, multi-rule refactors) | **sub-agent-orchestration.md** — One-rule-per-worktree protocol, allowed test commands, forbidden shared files, orchestrator cleanup-commit rules, agent briefing template |
 
 ## Doc Ownership and Update Rules
 
@@ -33,6 +34,7 @@ Deep reference documentation for the MCP Sentinel project. These docs are the au
 | **competitive-intelligence.md** | P3 (Competitive Intelligence) | New competitor identified, feature comparison updated |
 | **framework-gap-analysis.md** | P11 (Compliance Mapper) | New framework mapped, gap closed |
 | **technical-roadmap.md** | P4 (Registry Architect) | Technical direction changed |
+| **sub-agent-orchestration.md** | Orchestrator | Protocol change after a parallel-agent wave surfaces a new failure mode |
 
 ## Critical Cross-References
 
