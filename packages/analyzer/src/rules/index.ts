@@ -57,14 +57,24 @@ import "./implementations/g4-context-saturation.js";
 // tainted-execution-detector.ts removed in Phase 1 Chunk 1.16; its six rules
 // (C4, C12, C13, C16, K9, J2) have each been migrated to their own directory.
 import "./implementations/cross-tool-risk-detector.js";
-import "./implementations/config-poisoning-detector.js";
+// config-poisoning-detector.ts removed in Phase 1 Chunk 1.15; its four rules
+// (J1, L4, L11, Q4) have each been migrated to their own directory.
+import "./implementations/j1-cross-agent-config-poisoning/index.js";
+import "./implementations/l4-mcp-config-code-injection/index.js";
+import "./implementations/l11-env-var-injection-via-config/index.js";
+import "./implementations/q4-ide-mcp-config-injection/index.js";
 // secret-exfil-detector.ts removed in Phase 1 Chunk 1.14; its three rules
 // (L9, K2, G7) have each been migrated to their own directory.
 import "./implementations/l9-ci-secret-exfiltration/index.js";
 import "./implementations/k2-audit-trail-destruction/index.js";
 import "./implementations/g7-dns-exfiltration-channel/index.js";
 import "./implementations/supply-chain-detector.js";
-import "./implementations/code-security-deep-detector.js";
+// code-security-deep-detector.ts removed in Phase 1 Chunk 1.18; its four rules
+// (C2, C5, C10, C14) have each been migrated to their own directory.
+import "./implementations/c2-path-traversal/index.js";
+import "./implementations/c5-hardcoded-secrets/index.js";
+import "./implementations/c10-prototype-pollution/index.js";
+import "./implementations/c14-jwt-algorithm-confusion/index.js";
 import "./implementations/ai-manipulation-detector.js";
 import "./implementations/infrastructure-detector.js";
 import "./implementations/advanced-supply-chain-detector.js";
