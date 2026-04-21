@@ -21,7 +21,8 @@ mcp-sentinel/
 │   ├── scoring-algorithm.md     ← How composite scores are calculated
 │   ├── prompt-execution.md      ← Meta-prompt execution order and workflow
 │   ├── research-path.md         ← Continuous 8-track research intelligence system
-│   └── product-milestones.md    ← Current milestone, what to build, what NOT to build
+│   ├── product-milestones.md    ← Current milestone, what to build, what NOT to build
+│   └── sub-agent-orchestration.md ← How to fan out parallel sub-agents (wave protocol, briefing template)
 ├── .claude/
 │   ├── settings.json            ← Claude Code permissions and hook configuration
 │   ├── hooks/                   ← Enforced guardrails (run automatically on edits)
@@ -289,5 +290,7 @@ Read @agent_docs/product-milestones.md for the current sprint focus.
 **Active layer:** Check the milestones doc. Only work on the active layer unless explicitly told otherwise. Each layer depends on the one below it. Don't skip ahead.
 ## Meta-Prompt Execution (For the Orchestrator)
 Read @agent_docs/prompt-execution.md for the complete prompt execution workflow with all 20 personas, their run schedule, and dependency chain.
+## Sub-Agent Orchestration Protocol
+Read @agent_docs/sub-agent-orchestration.md BEFORE fanning out parallel sub-agents for any rule-migration wave or multi-rule refactor. Covers one-rule-per-worktree, allowed test commands, forbidden shared files (census / plan / rules index / regex baseline), no-agent-iteration rule, orchestrator cleanup-commit responsibilities, and the per-agent briefing template. Wave 1 of Phase 1 validated this protocol (20min/wave vs 50min+ without it).
 ## When Compacting
 When compacting, always preserve: the current milestone and active layer, the list of all modified files in this session, any failing tests or unresolved issues, and the pipeline stage being worked on.
