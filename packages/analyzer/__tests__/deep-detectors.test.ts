@@ -22,7 +22,11 @@ import "../src/rules/implementations/k9-dangerous-post-install-hooks/index.js";
 import "../src/rules/implementations/j2-git-argument-injection/index.js";
 import "../src/rules/implementations/cross-tool-risk-detector.js";
 import "../src/rules/implementations/config-poisoning-detector.js";
-import "../src/rules/implementations/secret-exfil-detector.js";
+// secret-exfil-detector.ts removed in Phase 1 Chunk 1.14 — its three
+// rules (L9, K2, G7) each moved to their own directory.
+import "../src/rules/implementations/l9-ci-secret-exfiltration/index.js";
+import "../src/rules/implementations/k2-audit-trail-destruction/index.js";
+import "../src/rules/implementations/g7-dns-exfiltration-channel/index.js";
 import "../src/rules/implementations/supply-chain-detector.js";
 import "../src/rules/implementations/code-security-deep-detector.js";
 import "../src/rules/implementations/ai-manipulation-detector.js";

@@ -58,7 +58,11 @@ import "./implementations/g4-context-saturation.js";
 // (C4, C12, C13, C16, K9, J2) have each been migrated to their own directory.
 import "./implementations/cross-tool-risk-detector.js";
 import "./implementations/config-poisoning-detector.js";
-import "./implementations/secret-exfil-detector.js";
+// secret-exfil-detector.ts removed in Phase 1 Chunk 1.14; its three rules
+// (L9, K2, G7) have each been migrated to their own directory.
+import "./implementations/l9-ci-secret-exfiltration/index.js";
+import "./implementations/k2-audit-trail-destruction/index.js";
+import "./implementations/g7-dns-exfiltration-channel/index.js";
 import "./implementations/supply-chain-detector.js";
 import "./implementations/code-security-deep-detector.js";
 import "./implementations/ai-manipulation-detector.js";
