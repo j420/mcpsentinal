@@ -22,6 +22,7 @@ export const MIGRATED_RULES: ReadonlySet<string> = new Set([
   "C1", // command injection — AST taint + verification steps (reference implementation)
   "A1", // prompt injection in description — linguistic scoring + verification
   "C5", // hardcoded secrets — entropy + token prefix + verification
+  "D3", // typosquatting — multi-algorithm similarity + scope squat + visual confusable
   "G1", // indirect prompt injection gateway — content ingestion + cross-tool flow
   "H2", // initialize response injection — pattern match + session-hijack impact
   "F1", // lethal trifecta — capability graph / schema structural + data flow verification

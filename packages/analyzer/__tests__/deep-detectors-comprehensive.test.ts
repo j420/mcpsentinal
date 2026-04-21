@@ -16,7 +16,7 @@ import { getTypedRule, getAllTypedRules } from "../src/rules/base.js";
 import "../src/rules/implementations/c1-command-injection/index.js";
 import "../src/rules/implementations/a6-unicode-homoglyph.js";
 import "../src/rules/implementations/a9-encoded-instructions.js";
-import "../src/rules/implementations/d3-typosquatting.js";
+import "../src/rules/implementations/d3-typosquatting/index.js";
 import "../src/rules/implementations/f1-lethal-trifecta.js";
 import "../src/rules/implementations/g4-context-saturation.js";
 import "../src/rules/implementations/tainted-execution-detector.js";
