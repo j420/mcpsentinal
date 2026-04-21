@@ -1,14 +1,49 @@
 {
   "version": 1,
-  "generated_at": "2026-04-21T05:34:57.092Z",
+  "generated_at": "2026-04-21T05:44:31.515Z",
   "notes": "Phase 0, Chunk 0.3 regex baseline for packages/analyzer/src/rules/implementations/. The analyzer no-static-patterns guard fails CI if any file exceeds the counts recorded here. Phase 1's per-rule migrations reduce the baseline file-by-file toward zero. Regenerate with `pnpm rule:baseline`.",
   "files": {
-    "packages/analyzer/src/rules/implementations/a6-unicode-homoglyph.ts": {
+    "packages/analyzer/src/rules/implementations/a6-unicode-homoglyph/gather.ts": {
       "regex_literals": 0,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
-    "packages/analyzer/src/rules/implementations/a9-encoded-instructions.ts": {
+    "packages/analyzer/src/rules/implementations/a6-unicode-homoglyph/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/a6-unicode-homoglyph/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/a7-zero-width-injection/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/a7-zero-width-injection/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/a7-zero-width-injection/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/a9-encoded-instructions/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/a9-encoded-instructions/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/a9-encoded-instructions/verification.ts": {
       "regex_literals": 0,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
