@@ -1,19 +1,19 @@
 {
   "summary": {
-    "generated_at": "2026-04-21T11:47:58.829Z",
+    "generated_at": "2026-04-21T11:58:19.249Z",
     "total_yaml_rules": 177,
     "enabled_yaml_rules": 164,
-    "registered_rules": 159,
+    "registered_rules": 158,
     "registered_v1": 132,
-    "registered_v2": 27,
-    "unregistered_enabled": 18,
+    "registered_v2": 26,
+    "unregistered_enabled": 19,
     "detectors": {
       "total_files": 27,
       "files_with_any_regex": 24,
       "files_with_any_technique": 14
     },
     "aggregate": {
-      "regex_literals": 709,
+      "regex_literals": 697,
       "new_regexp_calls": 3,
       "string_arrays_over_5": 7,
       "uses_taint_ast": 49,
@@ -21,7 +21,7 @@
       "uses_module_graph": 0,
       "uses_entropy": 5,
       "uses_similarity": 15,
-      "uses_evidence_chain_builder": 159
+      "uses_evidence_chain_builder": 158
     },
     "top_regex_offenders": [
       {
@@ -60,22 +60,17 @@
         "new_regexp_calls": 0
       },
       {
+        "file": "packages/analyzer/src/rules/implementations/k-remaining-v2.ts",
+        "regex_literals": 36,
+        "new_regexp_calls": 0
+      },
+      {
         "file": "packages/analyzer/src/rules/implementations/code-security-deep-detector.ts",
         "regex_literals": 35,
         "new_regexp_calls": 0
       },
       {
         "file": "packages/analyzer/src/rules/implementations/supply-chain-detector.ts",
-        "regex_literals": 35,
-        "new_regexp_calls": 0
-      },
-      {
-        "file": "packages/analyzer/src/rules/implementations/protocol-ai-runtime-detector.ts",
-        "regex_literals": 33,
-        "new_regexp_calls": 0
-      },
-      {
-        "file": "packages/analyzer/src/rules/implementations/code-security-deep-detector.ts",
         "regex_literals": 35,
         "new_regexp_calls": 0
       }
@@ -2485,12 +2480,23 @@
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
       "registered_v1": false,
-      "registered_v2": false,
-      "detector_file": null,
-      "technique_observed": null,
-      "notes": [
-        "enabled in YAML but no TypedRule registration found"
-      ]
+      "registered_v2": true,
+      "detector_file": "packages/analyzer/src/rules/implementations/k-compliance-v2.ts",
+      "technique_observed": {
+        "regex_literals": 24,
+        "new_regexp_calls": 0,
+        "string_arrays_over_5": 0,
+        "ts_compiler_api_import": true,
+        "tree_sitter_import": false,
+        "uses_taint_ast": false,
+        "uses_capability_graph": false,
+        "uses_module_graph": false,
+        "uses_entropy": false,
+        "uses_similarity": false,
+        "uses_schema_inference": false,
+        "uses_evidence_chain_builder": true
+      },
+      "notes": []
     },
     {
       "rule_id": "K15",

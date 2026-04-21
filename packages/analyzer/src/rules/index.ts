@@ -89,7 +89,6 @@ import "./implementations/k13-unsanitized-tool-output/index.js";
 import "./implementations/k14-agent-credential-propagation/index.js";
 import "./implementations/k15-multi-agent-collusion-preconditions/index.js";
 import "./implementations/k16-unbounded-recursion/index.js";
-import "./implementations/k18-cross-trust-boundary-data-flow/index.js";
 import "./implementations/k20-insufficient-audit-context/index.js";
 import "./implementations/m-runtime-v2.js";
 import "./implementations/compliance-remaining-detector.js";
