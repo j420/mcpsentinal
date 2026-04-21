@@ -1,11 +1,11 @@
 /**
- * K14, K20 — K-Compliance structural rules (TypedRuleV2)
+ * K12, K14 — K-Compliance structural rules (TypedRuleV2)
  *
+ * K12: Executable Content in Tool Response
  * K14: Agent Credential Propagation — credentials in shared state
- * K20: Insufficient Audit Context — logging without structured context
  *
- * K12 migrated to `k12-executable-content-response/` in chunk 1.6a.
  * K16 migrated to `k16-unbounded-recursion/` in chunk 1.6c.
+ * K20 migrated to `k20-insufficient-audit-context/` in chunk 1.6d.
  */
 
 import ts from "typescript";
@@ -310,136 +310,9 @@ class K14Rule implements TypedRuleV2 {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// K16 migrated to `k16-unbounded-recursion/` in chunk 1.6c.
-// ═══════════════════════════════════════════════════════════════════════════════
-// K20 — Insufficient Audit Context in Logging
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/** Audit-relevant event keywords in log messages */
-const AUDIT_EVENT_KEYWORDS = /\b(?:request|handling|processing|received|creating|deleting|updating|authenticat|authoriz|login|logout|access|denied|granted|failed|error|reject)\b/i;
-
-/** Structured logging context patterns */
-const STRUCTURED_CONTEXT = [
-  /\bcorrelationId\b/i, /\brequestId\b/i, /\buserId\b/i,
-  /\btraceId\b/i, /\bspanId\b/i, /\bsessionId\b/i,
-  /\baction\b/i, /\bresource\b/i,
-];
-
-/** Structured logger libraries — if imported, the file likely has structured logging */
-const STRUCTURED_LOGGERS = /\b(?:pino|winston|bunyan|log4js|structured|correlationId|requestId)\b/i;
-
-class K20Rule implements TypedRuleV2 {
-  readonly id = "K20";
-  readonly name = "Insufficient Audit Context in Logging";
-  readonly requires: RuleRequirements = { source_code: true };
-  readonly technique: AnalysisTechnique = "structural";
-
-  analyze(context: AnalysisContext): RuleResult[] {
-    if (!context.source_code || isTestFile(context.source_code)) return [];
-    const source = context.source_code;
-
-    // Skip if file uses structured logger
-    if (STRUCTURED_LOGGERS.test(source)) return [];
-
-    const findings: RuleResult[] = [];
-
-    try {
-      const sf = ts.createSourceFile("scan.ts", source, ts.ScriptTarget.Latest, true);
-
-      const visit = (node: ts.Node): void => {
-        if (ts.isCallExpression(node)) {
-          const callText = node.expression.getText(sf);
-
-          // console.log("request...") — no structured context
-          if (/^console\.(?:log|info|warn|error)$/.test(callText)) {
-            if (node.arguments.length >= 1 && ts.isStringLiteral(node.arguments[0])) {
-              const msg = node.arguments[0].text;
-              if (AUDIT_EVENT_KEYWORDS.test(msg)) {
-                // Check if any argument provides structured context
-                const hasContext = node.arguments.length > 1 &&
-                  node.arguments.slice(1).some(a => {
-                    const t = a.getText(sf);
-                    return STRUCTURED_CONTEXT.some(p => p.test(t));
-                  });
-                if (!hasContext) {
-                  const line = sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1;
-                  findings.push(this.buildFinding(line, callText, msg, source));
-                }
-              }
-            }
-          }
-
-          // logger.info("message") without object context — string-only logging
-          if (/^(?:logger|log)\.(?:info|warn|error|debug)$/.test(callText)) {
-            if (node.arguments.length === 1 && ts.isStringLiteral(node.arguments[0])) {
-              const msg = node.arguments[0].text;
-              if (AUDIT_EVENT_KEYWORDS.test(msg)) {
-                const line = sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1;
-                findings.push(this.buildFinding(line, callText, msg, source));
-              }
-            }
-          }
-        }
-        ts.forEachChild(node, visit);
-      };
-
-      ts.forEachChild(sf, visit);
-    } catch { /* AST failure */ }
-    return findings.slice(0, 3);
-  }
-
-  private buildFinding(line: number, callText: string, msg: string, source: string): RuleResult {
-    const lineText = source.split("\n")[line - 1]?.trim() || "";
-    const builder = new EvidenceChainBuilder()
-      .source({
-        source_type: "file-content",
-        location: `line ${line}`,
-        observed: lineText.slice(0, 120),
-        rationale:
-          `Audit event "${msg.slice(0, 40)}" logged via ${callText}() without structured context. ` +
-          `Missing request ID, user ID, or action context makes audit trails unusable for incident investigation.`,
-      })
-      .sink({
-        sink_type: "credential-exposure",
-        location: `line ${line}`,
-        observed: `Unstructured audit log: ${callText}("${msg.slice(0, 40)}")`,
-      })
-      .impact({
-        impact_type: "config-poisoning",
-        scope: "connected-services",
-        exploitability: "complex",
-        scenario:
-          `Audit event logged without correlation ID or user context. During incident investigation, ` +
-          `this log entry cannot be correlated with the request, user, or session that triggered it.`,
-      })
-      .factor("unstructured_audit_log", 0.05, `${callText}() with string-only audit message, no structured context`)
-      .reference({
-        id: "ISO-27001-A.8.15",
-        title: "ISO 27001 A.8.15 — Logging",
-        relevance: "Audit logs must contain sufficient context for investigation.",
-      })
-      .verification({
-        step_type: "inspect-source",
-        instruction: `Review line ${line}: ${callText}("${msg.slice(0, 30)}"). Add { requestId, userId, action } context.`,
-        target: `source_code:${line}`,
-        expected_observation: "Audit log without structured context",
-      });
-
-    return {
-      rule_id: "K20",
-      severity: "medium",
-      owasp_category: "MCP09-logging-monitoring",
-      mitre_technique: null,
-      remediation: "Use structured logging with request ID, user ID, action, and timestamp in every log entry.",
-      chain: builder.build(),
-    };
-  }
-}
 
 // K12 migrated to `packages/analyzer/src/rules/implementations/k12-executable-content-response/`
 // in chunk 1.6a (Phase 1 Rule Standard v2).
 // K16 migrated to `packages/analyzer/src/rules/implementations/k16-unbounded-recursion/`
 // in chunk 1.6c (Phase 1 Rule Standard v2).
 registerTypedRuleV2(new K14Rule());
-registerTypedRuleV2(new K20Rule());
