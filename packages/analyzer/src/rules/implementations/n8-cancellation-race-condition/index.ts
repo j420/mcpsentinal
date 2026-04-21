@@ -16,11 +16,13 @@ import {
   registerTypedRuleV2,
 } from "../../base.js";
 import { EvidenceChainBuilder } from "../../../evidence.js";
+import type { Location } from "../../location.js";
 import { gather, type CancelRaceFact } from "./gather.js";
 import {
   verifyCancelHandlerMutates,
   verifyNoTransactionOrLock,
   verifyRuntimeRaceIsReproducible,
+  toLocation,
 } from "./verification.js";
 
 const RULE_ID = "N8";
@@ -60,10 +62,11 @@ export class N8CancellationRaceCondition implements TypedRuleV2 {
 
   private buildFinding(fact: CancelRaceFact): RuleResult {
     const b = new EvidenceChainBuilder();
+    const loc: Location = toLocation(fact.location);
 
     b.source({
       source_type: "external-content",
-      location: `source_code:line ${fact.location.line}`,
+      location: loc,
       observed: fact.location.snippet,
       rationale:
         `Cancellation arrives asynchronously via ${fact.handler_kind}. MCP spec ` +
@@ -72,7 +75,7 @@ export class N8CancellationRaceCondition implements TypedRuleV2 {
 
     b.propagation({
       propagation_type: "function-call",
-      location: `source_code:line ${fact.location.line}`,
+      location: loc,
       observed:
         `Cancel signal reaches a mutation call (${fact.mutation_verb}) in the same ` +
         `scope. No atomic bracket separates read-state-then-mutate.`,
@@ -80,7 +83,7 @@ export class N8CancellationRaceCondition implements TypedRuleV2 {
 
     b.sink({
       sink_type: "file-write",
-      location: `source_code:line ${fact.location.line}`,
+      location: loc,
       observed:
         `${fact.mutation_verb} executed on the cancel path. If the original operation ` +
         `has already committed, this mutation corrupts now-valid state.`,
@@ -89,12 +92,13 @@ export class N8CancellationRaceCondition implements TypedRuleV2 {
     b.mitigation({
       mitigation_type: "sanitizer-function",
       present: false,
-      location: fact.location.enclosing_function
-        ? `function ${fact.location.enclosing_function}`
-        : `enclosing scope of line ${fact.location.line}`,
+      location: loc,
       detail:
-        `No transaction/atomic/lock/mutex vocabulary in the enclosing scope. The ` +
-        `cancel-and-mutate path is a CWE-367 TOCTOU race.`,
+        `No transaction/atomic/lock/mutex vocabulary in the enclosing scope` +
+        (fact.location.enclosing_function
+          ? ` (${fact.location.enclosing_function})`
+          : "") +
+        `. The cancel-and-mutate path is a CWE-367 TOCTOU race.`,
     });
 
     b.impact({

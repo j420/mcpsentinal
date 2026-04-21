@@ -14,11 +14,13 @@ import {
   registerTypedRuleV2,
 } from "../../base.js";
 import { EvidenceChainBuilder } from "../../../evidence.js";
+import type { Location } from "../../location.js";
 import { gather, type ProgressTokenFact } from "./gather.js";
 import {
   verifyTokenSource,
   verifyNoOwnershipValidation,
   verifyNotificationsEmit,
+  toLocation,
 } from "./verification.js";
 
 const RULE_ID = "N7";
@@ -57,12 +59,13 @@ export class N7ProgressTokenAbuse implements TypedRuleV2 {
 
   private buildFinding(fact: ProgressTokenFact): RuleResult {
     const b = new EvidenceChainBuilder();
+    const loc: Location = toLocation(fact.location);
 
     const sourceType = fact.source_kind === "user-input" ? "user-parameter" : "file-content";
 
     b.source({
       source_type: sourceType,
-      location: `source_code:line ${fact.location.line}`,
+      location: loc,
       observed: fact.location.snippet,
       rationale:
         fact.source_kind === "user-input"
@@ -74,7 +77,7 @@ export class N7ProgressTokenAbuse implements TypedRuleV2 {
 
     b.propagation({
       propagation_type: fact.source_kind === "user-input" ? "direct-pass" : "variable-assignment",
-      location: `source_code:line ${fact.location.line}`,
+      location: loc,
       observed:
         `Token value ${fact.rhs_expression} assigned to ${fact.target_identifier} and ` +
         `subsequently used as the correlation key for notifications/progress emissions.`,
@@ -82,7 +85,7 @@ export class N7ProgressTokenAbuse implements TypedRuleV2 {
 
     b.sink({
       sink_type: "config-modification",
-      location: `source_code:line ${fact.location.line}`,
+      location: loc,
       observed:
         `Untrusted/predictable token reaches the progress-correlation field that drives ` +
         `notifications/progress dispatch.`,

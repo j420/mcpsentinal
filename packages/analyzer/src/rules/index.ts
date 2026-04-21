@@ -108,5 +108,9 @@ import "./implementations/k11-missing-server-integrity-verification/index.js";
 import "./implementations/k12-executable-content-response/index.js";
 import "./implementations/k14-agent-credential-propagation/index.js";
 import "./implementations/k16-unbounded-recursion/index.js";
+// k20 migrated in chunk 1.6d but the import was never wired — surfaced during
+// wave-2 integration. Re-importing after k-compliance-v2 ensures the per-rule
+// v2 implementation supersedes the legacy K20Rule embedded in k-compliance-v2.
+import "./implementations/k20-insufficient-audit-context/index.js";
 import "./implementations/m-runtime-v2.js";
 import "./implementations/compliance-remaining-detector.js";

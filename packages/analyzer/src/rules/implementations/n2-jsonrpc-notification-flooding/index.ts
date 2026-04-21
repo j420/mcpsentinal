@@ -14,11 +14,13 @@ import {
   registerTypedRuleV2,
 } from "../../base.js";
 import { EvidenceChainBuilder } from "../../../evidence.js";
+import type { Location } from "../../location.js";
 import { gather, type NotificationFlood } from "./gather.js";
 import {
   verifyEmissionInLoop,
   verifyNoThrottleVocabulary,
   verifyBackpressureAbsent,
+  toLocation,
 } from "./verification.js";
 
 const RULE_ID = "N2";
@@ -55,10 +57,11 @@ export class N2JsonRpcNotificationFlooding implements TypedRuleV2 {
 
   private buildFinding(fact: NotificationFlood): RuleResult {
     const b = new EvidenceChainBuilder();
+    const loc: Location = toLocation(fact.location);
 
     b.source({
       source_type: "external-content",
-      location: `source_code:line ${fact.location.line}`,
+      location: loc,
       observed: fact.location.snippet,
       rationale:
         `Notification emission via ${fact.call_expression}() inside a ${fact.loop_context}. ` +
@@ -68,7 +71,7 @@ export class N2JsonRpcNotificationFlooding implements TypedRuleV2 {
 
     b.sink({
       sink_type: "network-send",
-      location: `source_code:line ${fact.location.line}`,
+      location: loc,
       observed:
         `${fact.call_expression}() — per-iteration unsolicited wire emit. ` +
         `Loop context: ${fact.loop_context}.`,
@@ -77,12 +80,14 @@ export class N2JsonRpcNotificationFlooding implements TypedRuleV2 {
     b.mitigation({
       mitigation_type: "rate-limit",
       present: false,
-      location: fact.location.enclosing_function
-        ? `function ${fact.location.enclosing_function}`
-        : `enclosing scope of line ${fact.location.line}`,
+      location: loc,
       detail:
         `No throttle/debounce/rateLimit/sleep/delay/setTimeout call and no break or ` +
-        `return in the emission path. Parity JSON-RPC resilience guidance (issue #557) ` +
+        `return in the emission path` +
+        (fact.location.enclosing_function
+          ? ` (${fact.location.enclosing_function})`
+          : "") +
+        `. Parity JSON-RPC resilience guidance (issue #557) ` +
         `and the broader slowloris WebSocket class require bounded outbound queues.`,
     });
 

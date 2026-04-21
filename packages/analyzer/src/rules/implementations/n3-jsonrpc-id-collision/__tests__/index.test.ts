@@ -12,6 +12,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { AnalysisContext } from "../../../../engine.js";
 import type { EvidenceChain, EvidenceLink } from "../../../../evidence.js";
+import { isLocation } from "../../../location.js";
 import "../index.js";
 import { getTypedRuleV2 } from "../../../base.js";
 
@@ -37,9 +38,7 @@ function runN3(src: string) {
   return rule!.analyze(ctx(src));
 }
 
-function isStructuredTarget(t: string): boolean {
-  return /^source_code:line \d+(:column \d+)?$/.test(t);
-}
+// Locations validated via `isLocation` (Rule Standard v2 §2/§4).
 
 describe("N3 — JSON-RPC Request ID Collision", () => {
   describe("true positives (CHARTER lethal edge cases)", () => {
@@ -106,11 +105,21 @@ describe("N3 — JSON-RPC Request ID Collision", () => {
       expect(chain.confidence).toBeLessThanOrEqual(0.85);
     });
 
+    it("evidence link locations are structured Locations", () => {
+      const findings = runN3(loadFixture("tp-counter-increment.ts"));
+      const chain = (findings[0] as unknown as { chain: EvidenceChain }).chain;
+      for (const link of chain.links) {
+        if ("location" in link) {
+          expect(isLocation(link.location), `${link.type} link Location`).toBe(true);
+        }
+      }
+    });
+
     it("verification step targets are structured Locations", () => {
       const findings = runN3(loadFixture("tp-counter-increment.ts"));
       const chain = (findings[0] as unknown as { chain: EvidenceChain }).chain;
       for (const step of chain.verification_steps ?? []) {
-        expect(isStructuredTarget(step.target)).toBe(true);
+        expect(isLocation(step.target), "verification step target").toBe(true);
       }
     });
   });

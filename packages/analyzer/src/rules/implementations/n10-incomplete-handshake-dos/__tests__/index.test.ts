@@ -9,6 +9,7 @@ import type { AnalysisContext } from "../../../../engine.js";
 import type { EvidenceChain, EvidenceLink } from "../../../../evidence.js";
 import "../index.js";
 import { getTypedRuleV2 } from "../../../base.js";
+import { isLocation } from "../../../location.js";
 
 const FIXTURES_DIR = join(__dirname, "..", "__fixtures__");
 
@@ -32,9 +33,7 @@ function runN10(src: string) {
   return rule!.analyze(ctx(src));
 }
 
-function isStructuredTarget(t: string): boolean {
-  return /^source_code:line \d+(:column \d+)?$/.test(t);
-}
+// Locations validated via `isLocation` (Rule Standard v2 §2/§4).
 
 describe("N10 — Incomplete Handshake DoS", () => {
   describe("true positives (CHARTER lethal edge cases)", () => {
@@ -102,11 +101,21 @@ describe("N10 — Incomplete Handshake DoS", () => {
       expect(chain.confidence).toBeLessThanOrEqual(0.82);
     });
 
+    it("evidence link locations are structured Locations", () => {
+      const findings = runN10(loadFixture("tp-http-no-maxconnections.ts"));
+      const chain = (findings[0] as unknown as { chain: EvidenceChain }).chain;
+      for (const link of chain.links) {
+        if ("location" in link) {
+          expect(isLocation(link.location), `${link.type} link Location`).toBe(true);
+        }
+      }
+    });
+
     it("every verification step target is a structured Location", () => {
       const findings = runN10(loadFixture("tp-http-no-maxconnections.ts"));
       const chain = (findings[0] as unknown as { chain: EvidenceChain }).chain;
       for (const step of chain.verification_steps ?? []) {
-        expect(isStructuredTarget(step.target)).toBe(true);
+        expect(isLocation(step.target), "verification step target").toBe(true);
       }
     });
   });

@@ -9,6 +9,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { AnalysisContext } from "../../../../engine.js";
 import type { EvidenceChain, EvidenceLink } from "../../../../evidence.js";
+import { isLocation } from "../../../location.js";
 // Side-effect import registers the rule.
 import "../index.js";
 import { getTypedRuleV2 } from "../../../base.js";
@@ -35,10 +36,9 @@ function runN1(source: string) {
   return rule!.analyze(ctx(source));
 }
 
-function isStructuredTarget(target: string): boolean {
-  // Structured format: "source_code:line N:column M" or "function <name>" etc.
-  return /^source_code:line \d+(:column \d+)?$/.test(target) || /^function /.test(target);
-}
+// Locations are narrowed via `isLocation` imported from ../../../location.js —
+// every v2 rule's evidence links + verification steps must carry a structured
+// Location (not prose). See docs/standards/rule-standard-v2.md §2 + §4.
 
 describe("N1 — JSON-RPC Batch Request Abuse", () => {
   describe("true positives (lethal edge cases)", () => {
@@ -120,13 +120,23 @@ describe("N1 — JSON-RPC Batch Request Abuse", () => {
       expect(chain.confidence).toBeGreaterThanOrEqual(0.05);
     });
 
+    it("every evidence link location is a structured Location, not prose", () => {
+      const findings = runN1(loadFixture("tp-forEach-without-limit.ts"));
+      const chain = (findings[0] as unknown as { chain: EvidenceChain }).chain;
+      for (const link of chain.links) {
+        if ("location" in link) {
+          expect(isLocation(link.location), `${link.type} link carries a Location`).toBe(true);
+        }
+      }
+    });
+
     it("every verification step target is a structured Location, not prose", () => {
       const findings = runN1(loadFixture("tp-forEach-without-limit.ts"));
       const chain = (findings[0] as unknown as { chain: EvidenceChain }).chain;
       expect(chain.verification_steps).toBeDefined();
       expect(chain.verification_steps!.length).toBeGreaterThanOrEqual(2);
       for (const step of chain.verification_steps!) {
-        expect(isStructuredTarget(step.target)).toBe(true);
+        expect(isLocation(step.target), "verification step target is a Location").toBe(true);
       }
     });
 

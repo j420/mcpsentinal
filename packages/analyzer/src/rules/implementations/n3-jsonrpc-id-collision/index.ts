@@ -19,11 +19,13 @@ import {
   registerTypedRuleV2,
 } from "../../base.js";
 import { EvidenceChainBuilder } from "../../../evidence.js";
+import type { Location } from "../../location.js";
 import { gather, type IdAssignment } from "./gather.js";
 import {
   verifyRhsIsPredictable,
   verifyNoCryptoGenerator,
   verifyTransportAllowsSpoofing,
+  toLocation,
 } from "./verification.js";
 
 const RULE_ID = "N3";
@@ -62,10 +64,11 @@ export class N3JsonRpcIdCollision implements TypedRuleV2 {
 
   private buildFinding(fact: IdAssignment): RuleResult {
     const b = new EvidenceChainBuilder();
+    const loc: Location = toLocation(fact.location);
 
     b.source({
       source_type: "file-content",
-      location: `source_code:line ${fact.location.line}`,
+      location: loc,
       observed: fact.location.snippet,
       rationale:
         `Request id assignment uses a ${fact.generator_kind} source ` +
@@ -75,7 +78,7 @@ export class N3JsonRpcIdCollision implements TypedRuleV2 {
 
     b.sink({
       sink_type: "network-send",
-      location: `source_code:line ${fact.location.line}`,
+      location: loc,
       observed:
         `Predictable id "${fact.target_identifier}" reaches the wire as the response-` +
         `correlation key. Any concurrent producer on the transport can forge a reply.`,
@@ -85,12 +88,14 @@ export class N3JsonRpcIdCollision implements TypedRuleV2 {
     b.mitigation({
       mitigation_type: "sanitizer-function",
       present: false,
-      location: fact.location.enclosing_function
-        ? `function ${fact.location.enclosing_function}`
-        : `enclosing scope of line ${fact.location.line}`,
+      location: loc,
       detail:
         `No crypto.randomUUID/randomBytes/getRandomValues/uuid/nanoid/cuid call in ` +
-        `the id-assignment path. The attacker can enumerate the next id.`,
+        `the id-assignment path` +
+        (fact.location.enclosing_function
+          ? ` (${fact.location.enclosing_function})`
+          : "") +
+        `. The attacker can enumerate the next id.`,
     });
 
     b.impact({

@@ -17,11 +17,13 @@ import {
   registerTypedRuleV2,
 } from "../../base.js";
 import { EvidenceChainBuilder } from "../../../evidence.js";
+import type { Location } from "../../location.js";
 import { gather, type HandshakeFact } from "./gather.js";
 import {
   verifyAcceptWithoutDeadline,
   verifyNoMaxConnections,
   verifySlowlorisReproducible,
+  toLocation,
 } from "./verification.js";
 
 const RULE_ID = "N10";
@@ -59,10 +61,11 @@ export class N10IncompleteHandshakeDoS implements TypedRuleV2 {
 
   private buildFinding(fact: HandshakeFact): RuleResult {
     const b = new EvidenceChainBuilder();
+    const loc: Location = toLocation(fact.location);
 
     b.source({
       source_type: "external-content",
-      location: `source_code:line ${fact.location.line}`,
+      location: loc,
       observed: fact.location.snippet,
       rationale:
         `Server accept site (${fact.accept_kind}: ${fact.accept_expression}) — ` +
@@ -73,7 +76,7 @@ export class N10IncompleteHandshakeDoS implements TypedRuleV2 {
 
     b.sink({
       sink_type: "network-send",
-      location: `source_code:line ${fact.location.line}`,
+      location: loc,
       observed:
         `${fact.accept_expression} — every accepted connection consumes an FD, a ` +
         `tracking entry, and (for WS/SSE) a heartbeat worker. Without a handshake ` +
@@ -83,12 +86,14 @@ export class N10IncompleteHandshakeDoS implements TypedRuleV2 {
     b.mitigation({
       mitigation_type: "rate-limit",
       present: false,
-      location: fact.location.enclosing_function
-        ? `function ${fact.location.enclosing_function}`
-        : `module scope near line ${fact.location.line}`,
+      location: loc,
       detail:
         `No handshakeTimeout/headersTimeout/requestTimeout/AbortSignal.timeout/` +
-        `Promise.race/setTimeout present. No maxConnections/backlog/maxClients set. ` +
+        `Promise.race/setTimeout present` +
+        (fact.location.enclosing_function
+          ? ` in ${fact.location.enclosing_function}`
+          : "") +
+        `. No maxConnections/backlog/maxClients set. ` +
         `CWE-400 Slowloris-class resource exhaustion is live.`,
     });
 

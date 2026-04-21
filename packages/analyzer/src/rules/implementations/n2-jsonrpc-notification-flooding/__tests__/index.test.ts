@@ -7,6 +7,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { AnalysisContext } from "../../../../engine.js";
 import type { EvidenceChain, EvidenceLink } from "../../../../evidence.js";
+import { isLocation } from "../../../location.js";
 import "../index.js";
 import { getTypedRuleV2 } from "../../../base.js";
 
@@ -32,9 +33,9 @@ function runN2(src: string) {
   return rule!.analyze(ctx(src));
 }
 
-function isStructuredTarget(t: string): boolean {
-  return /^source_code:line \d+(:column \d+)?$/.test(t);
-}
+// Locations validated via `isLocation` (see ../../../location.ts). Every v2
+// evidence link + verification step must carry a structured Location per
+// Rule Standard v2 §2/§4.
 
 describe("N2 — JSON-RPC Notification Flooding", () => {
   describe("true positives", () => {
@@ -97,13 +98,23 @@ describe("N2 — JSON-RPC Notification Flooding", () => {
       expect(chain.confidence).toBeLessThanOrEqual(0.85);
     });
 
+    it("every evidence link location is a structured Location", () => {
+      const findings = runN2(loadFixture("tp-while-forever.ts"));
+      const chain = (findings[0] as unknown as { chain: EvidenceChain }).chain;
+      for (const link of chain.links) {
+        if ("location" in link) {
+          expect(isLocation(link.location), `${link.type} link Location`).toBe(true);
+        }
+      }
+    });
+
     it("every verification target is a structured Location", () => {
       const findings = runN2(loadFixture("tp-while-forever.ts"));
       const chain = (findings[0] as unknown as { chain: EvidenceChain }).chain;
       expect(chain.verification_steps).toBeDefined();
       expect(chain.verification_steps!.length).toBeGreaterThanOrEqual(3);
       for (const step of chain.verification_steps!) {
-        expect(isStructuredTarget(step.target)).toBe(true);
+        expect(isLocation(step.target), "verification step target").toBe(true);
       }
     });
   });

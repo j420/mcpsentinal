@@ -17,11 +17,13 @@ import {
   registerTypedRuleV2,
 } from "../../base.js";
 import { EvidenceChainBuilder } from "../../../evidence.js";
+import type { Location } from "../../location.js";
 import { gather, type BatchFact } from "./gather.js";
 import {
   verifyIterationIsUnbounded,
   verifyEnclosingScopeHasNoLimit,
   verifyNoTransportLayerLimit,
+  toLocation,
 } from "./verification.js";
 
 const RULE_ID = "N1";
@@ -60,10 +62,11 @@ export class N1JsonRpcBatchRequestAbuse implements TypedRuleV2 {
 
   private buildFinding(fact: BatchFact): RuleResult {
     const builder = new EvidenceChainBuilder();
+    const callLocation: Location = toLocation(fact.location);
 
     builder.source({
       source_type: "external-content",
-      location: `source_code:line ${fact.location.line}`,
+      location: callLocation,
       observed: fact.location.snippet || `${fact.receiver_name}.${fact.iteration_method}(...)`,
       rationale:
         `A JSON-RPC request body reaches this call as an attacker-controlled array ` +
@@ -74,7 +77,7 @@ export class N1JsonRpcBatchRequestAbuse implements TypedRuleV2 {
 
     builder.sink({
       sink_type: "code-evaluation",
-      location: `source_code:line ${fact.location.line}`,
+      location: callLocation,
       observed:
         `${fact.receiver_name}.${fact.iteration_method}(...) — synchronous per-entry ` +
         `dispatch multiplies server work by batch length.`,
@@ -83,14 +86,14 @@ export class N1JsonRpcBatchRequestAbuse implements TypedRuleV2 {
     builder.mitigation({
       mitigation_type: "rate-limit",
       present: false,
-      location:
-        fact.location.enclosing_function
-          ? `function ${fact.location.enclosing_function}`
-          : `enclosing scope of line ${fact.location.line}`,
+      location: callLocation,
       detail:
         `No size guard, .slice, throttle, debounce, or rateLimit vocabulary detected ` +
-        `in the enclosing function scope. JSON-RPC batch amplification class (CometBFT ` +
-        `issue #2867, LSP PR #1651) remains open.`,
+        `in the enclosing function scope` +
+        (fact.location.enclosing_function
+          ? ` (${fact.location.enclosing_function})`
+          : "") +
+        `. JSON-RPC batch amplification class (CometBFT issue #2867, LSP PR #1651) remains open.`,
     });
 
     builder.impact({
