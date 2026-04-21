@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated_at": "2026-04-21T13:40:33.015Z",
+  "generated_at": "2026-04-21T11:47:55.508Z",
   "notes": "Phase 0, Chunk 0.3 regex baseline for packages/analyzer/src/rules/implementations/. The analyzer no-static-patterns guard fails CI if any file exceeds the counts recorded here. Phase 1's per-rule migrations reduce the baseline file-by-file toward zero. Regenerate with `pnpm rule:baseline`.",
   "files": {
     "packages/analyzer/src/rules/implementations/_shared/taint-rule-kit/build-chain.ts": {
@@ -235,6 +235,21 @@
     },
     "packages/analyzer/src/rules/implementations/j2-git-argument-injection/gather.ts": {
       "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/j2-git-argument-injection/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/j2-git-argument-injection/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/jsonrpc-protocol-v2.ts": {
+      "regex_literals": 64,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },

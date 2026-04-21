@@ -1,19 +1,19 @@
 {
   "summary": {
-    "generated_at": "2026-04-21T13:40:36.439Z",
+    "generated_at": "2026-04-21T11:47:58.829Z",
     "total_yaml_rules": 177,
     "enabled_yaml_rules": 164,
-    "registered_rules": 153,
+    "registered_rules": 159,
     "registered_v1": 132,
-    "registered_v2": 21,
-    "unregistered_enabled": 24,
+    "registered_v2": 27,
+    "unregistered_enabled": 18,
     "detectors": {
-      "total_files": 26,
-      "files_with_any_regex": 23,
+      "total_files": 27,
+      "files_with_any_regex": 24,
       "files_with_any_technique": 14
     },
     "aggregate": {
-      "regex_literals": 652,
+      "regex_literals": 709,
       "new_regexp_calls": 3,
       "string_arrays_over_5": 7,
       "uses_taint_ast": 49,
@@ -21,7 +21,7 @@
       "uses_module_graph": 0,
       "uses_entropy": 5,
       "uses_similarity": 15,
-      "uses_evidence_chain_builder": 153
+      "uses_evidence_chain_builder": 159
     },
     "top_regex_offenders": [
       {
@@ -72,6 +72,11 @@
       {
         "file": "packages/analyzer/src/rules/implementations/protocol-ai-runtime-detector.ts",
         "regex_literals": 33,
+        "new_regexp_calls": 0
+      },
+      {
+        "file": "packages/analyzer/src/rules/implementations/code-security-deep-detector.ts",
+        "regex_literals": 35,
         "new_regexp_calls": 0
       }
     ]

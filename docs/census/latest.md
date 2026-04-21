@@ -1,6 +1,6 @@
 # Rule Census
 
-_Generated: 2026-04-21T13:40:36.439Z_
+_Generated: 2026-04-21T11:47:58.829Z_
 
 ## Summary
 
@@ -8,19 +8,19 @@ _Generated: 2026-04-21T13:40:36.439Z_
 |---|---|
 | YAML rules (total) | 177 |
 | YAML rules (enabled) | 164 |
-| Registered rules (unique ids) | 153 |
+| Registered rules (unique ids) | 159 |
 | Registered v1 | 132 |
-| Registered v2 | 21 |
-| Enabled but unregistered | 24 |
-| Detector files | 26 |
-| Files with any regex | 23 |
+| Registered v2 | 27 |
+| Enabled but unregistered | 18 |
+| Detector files | 27 |
+| Files with any regex | 24 |
 | Files with any technique import | 14 |
 
 ## Aggregate Technique Observations
 
 | Signal | Count |
 |---|---|
-| Regex literals | 652 |
+| Regex literals | 709 |
 | new RegExp(...) calls | 3 |
 | String-literal arrays > 5 | 7 |
 | Rules using taint-ast | 49 |
@@ -28,7 +28,7 @@ _Generated: 2026-04-21T13:40:36.439Z_
 | Rules using module-graph | 0 |
 | Rules using entropy | 5 |
 | Rules using similarity | 15 |
-| Rules using EvidenceChainBuilder | 153 |
+| Rules using EvidenceChainBuilder | 159 |
 
 ## Top Regex Offenders (detector files)
 
@@ -41,9 +41,9 @@ _Generated: 2026-04-21T13:40:36.439Z_
 | `packages/analyzer/src/rules/implementations/m-runtime-v2.ts` | 43 | 0 |
 | `packages/analyzer/src/rules/implementations/data-privacy-cross-ecosystem-detector.ts` | 38 | 0 |
 | `packages/analyzer/src/rules/implementations/advanced-supply-chain-detector.ts` | 36 | 0 |
+| `packages/analyzer/src/rules/implementations/k-compliance-v2.ts` | 36 | 0 |
+| `packages/analyzer/src/rules/implementations/k-remaining-v2.ts` | 36 | 0 |
 | `packages/analyzer/src/rules/implementations/code-security-deep-detector.ts` | 35 | 0 |
-| `packages/analyzer/src/rules/implementations/supply-chain-detector.ts` | 35 | 0 |
-| `packages/analyzer/src/rules/implementations/protocol-ai-runtime-detector.ts` | 33 | 0 |
 
 ## Per-Rule Detail
 
@@ -249,7 +249,6 @@ T = first-letter tags: a=ast-taint, c=capability-graph, m=module-graph, e=entrop
 - **K6**: enabled in YAML but no TypedRule registration found
 - **K7**: enabled in YAML but no TypedRule registration found
 - **K9**: enabled in YAML but no TypedRule registration found
-- **K11**: enabled in YAML but no TypedRule registration found
 - **K12**: enabled in YAML but no TypedRule registration found
 - **K13**: enabled in YAML but no TypedRule registration found
 - **K14**: enabled in YAML but no TypedRule registration found
