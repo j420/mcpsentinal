@@ -541,12 +541,18 @@ describe("K16 — Unbounded Recursion", () => {
     expect(findings.some(f => f.rule_id === "K16")).toBe(true);
   });
 
-  it("flags while(true) without break", () => {
+  it("flags mutual recursion across two handlers", () => {
+    // v2 K16 charter (packages/analyzer/src/rules/implementations/
+    // k16-unbounded-recursion/CHARTER.md) builds a call graph and runs SCC
+    // detection — mutual recursion cycles fire even when no individual
+    // function self-calls.
     const src = `
-      function process() {
-        while (true) {
-          doWork();
-        }
+      function renderItem(item) {
+        if (item.kind === "leaf") return String(item.value);
+        return renderGroup(item);
+      }
+      function renderGroup(item) {
+        return (item.children || []).map(c => renderItem(c)).join(",");
       }
     `;
     const findings = run("K16", src);
@@ -564,9 +570,13 @@ describe("K16 — Unbounded Recursion", () => {
     expect(findings.filter(f => f.rule_id === "K16").length).toBe(0);
   });
 
-  it("does NOT flag loop with break", () => {
+  it("does NOT flag infinite loop without recursion — v2 charter scope", () => {
+    // v2 K16 charter narrows this rule to recursion only (direct, mutual,
+    // tool-call roundtrip, emitter-dispatch). Bare `while (true)` without a
+    // recursive call is a different DoS primitive covered by K17 (missing
+    // timeout / circuit breaker) and by runtime bounding primitives.
     const src = `
-      function process() {
+      function processLoop() {
         while (true) {
           if (done()) break;
           doWork();

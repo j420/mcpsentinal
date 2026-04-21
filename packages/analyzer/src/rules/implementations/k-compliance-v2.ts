@@ -1,10 +1,11 @@
 /**
- * K12, K14, K16, K20 — K-Compliance structural rules (TypedRuleV2)
+ * K14, K20 — K-Compliance structural rules (TypedRuleV2)
  *
- * K12: Executable Content in Tool Response — AST detection of executable code in responses
  * K14: Agent Credential Propagation — credentials in shared state
- * K16: Unbounded Recursion — recursive functions without depth limits
  * K20: Insufficient Audit Context — logging without structured context
+ *
+ * K12 migrated to `k12-executable-content-response/` in chunk 1.6a.
+ * K16 migrated to `k16-unbounded-recursion/` in chunk 1.6c.
  */
 
 import ts from "typescript";
@@ -310,157 +311,7 @@ class K14Rule implements TypedRuleV2 {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// K16 — Unbounded Recursion / Missing Depth Limits
-// ═══════════════════════════════════════════════════════════════════════════════
-
-const DEPTH_PATTERNS = [
-  /\bdepth\b/i, /\blevel\b/i, /\bmax(?:Depth|Level|Recursion)\b/i,
-  /\blimit\b/i, /\bbound\b/i, /\bguard\b/i, /\bMAX_/,
-];
-
-class K16Rule implements TypedRuleV2 {
-  readonly id = "K16";
-  readonly name = "Unbounded Recursion";
-  readonly requires: RuleRequirements = { source_code: true };
-  readonly technique: AnalysisTechnique = "structural";
-
-  analyze(context: AnalysisContext): RuleResult[] {
-    if (!context.source_code || isTestFile(context.source_code)) return [];
-    const source = context.source_code;
-    const findings: RuleResult[] = [];
-
-    try {
-      const sf = ts.createSourceFile("scan.ts", source, ts.ScriptTarget.Latest, true);
-
-      const visit = (node: ts.Node): void => {
-        // Check function declarations for self-recursion
-        if (ts.isFunctionDeclaration(node) && node.name && node.body) {
-          const funcName = node.name.getText(sf);
-          this.checkRecursion(node, funcName, sf, source, findings);
-        }
-
-        // Check method declarations
-        if (ts.isMethodDeclaration(node) && node.name && node.body) {
-          const funcName = node.name.getText(sf);
-          this.checkRecursion(node, funcName, sf, source, findings);
-        }
-
-        // Check variable-declared functions
-        if (ts.isVariableDeclaration(node) && node.initializer &&
-            (ts.isFunctionExpression(node.initializer) || ts.isArrowFunction(node.initializer))) {
-          const funcName = node.name.getText(sf);
-          this.checkRecursion(node.initializer, funcName, sf, source, findings);
-        }
-
-        // Check infinite loops
-        if (ts.isWhileStatement(node)) {
-          const cond = node.expression.getText(sf);
-          if (cond === "true" || cond === "1") {
-            const bodyText = node.statement.getText(sf);
-            const hasExit = /\bbreak\b|\breturn\b|\bthrow\b/.test(bodyText);
-            const hasTimeout = /\btimeout\b|\bsetTimeout\b|\bdeadline\b/i.test(bodyText);
-            if (!hasExit && !hasTimeout) {
-              const line = sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1;
-              findings.push(this.buildFinding("Infinite loop without exit", line, source, "while(true) without break/return/timeout"));
-            }
-          }
-        }
-
-        if (ts.isForStatement(node) && !node.condition) {
-          const bodyText = node.statement.getText(sf);
-          const hasExit = /\bbreak\b|\breturn\b|\bthrow\b/.test(bodyText);
-          if (!hasExit) {
-            const line = sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1;
-            findings.push(this.buildFinding("Infinite for loop without exit", line, source, "for(;;) without break/return"));
-          }
-        }
-
-        ts.forEachChild(node, visit);
-      };
-
-      ts.forEachChild(sf, visit);
-    } catch { /* AST failure */ }
-    return findings.slice(0, 3);
-  }
-
-  private checkRecursion(funcNode: ts.Node, funcName: string, sf: ts.SourceFile, source: string, findings: RuleResult[]) {
-    let hasSelfCall = false;
-
-    const checkCalls = (n: ts.Node): void => {
-      if (ts.isCallExpression(n)) {
-        const callText = n.expression.getText(sf);
-        if (callText === funcName || callText.endsWith(`.${funcName}`)) {
-          hasSelfCall = true;
-        }
-      }
-      ts.forEachChild(n, checkCalls);
-    };
-    ts.forEachChild(funcNode, checkCalls);
-
-    if (!hasSelfCall) return;
-
-    // Check if function has depth limiting
-    const funcText = funcNode.getText(sf);
-    const hasDepthCheck = DEPTH_PATTERNS.some(p => p.test(funcText));
-    if (hasDepthCheck) return;
-
-    const line = sf.getLineAndCharacterOfPosition(funcNode.getStart(sf)).line + 1;
-    findings.push(this.buildFinding(
-      `Recursive function "${funcName}" without depth limit`, line, source,
-      `${funcName}() calls itself without depth/level/limit parameter`,
-    ));
-  }
-
-  private buildFinding(desc: string, line: number, source: string, detail: string): RuleResult {
-    const lineText = source.split("\n")[line - 1]?.trim() || "";
-    const builder = new EvidenceChainBuilder()
-      .source({
-        source_type: "file-content",
-        location: `line ${line}`,
-        observed: lineText.slice(0, 120),
-        rationale: `${desc}. Unbounded recursion causes stack overflow; infinite loops cause CPU exhaustion.`,
-      })
-      .sink({
-        sink_type: "code-evaluation",
-        location: `line ${line}`,
-        observed: detail,
-      })
-      .mitigation({
-        mitigation_type: "rate-limit",
-        present: false,
-        location: `function at line ${line}`,
-        detail: "No depth limit, max recursion, or timeout guard found",
-      })
-      .impact({
-        impact_type: "denial-of-service",
-        scope: "server-host",
-        exploitability: "moderate",
-        scenario: `${desc}. Stack overflow or CPU exhaustion crashes the server.`,
-      })
-      .factor("unbounded_recursion", 0.10, detail)
-      .reference({
-        id: "OWASP-ASI08",
-        title: "OWASP Agentic ASI08 — Denial of Service",
-        relevance: "Unbounded recursion/loops are a primary DoS vector.",
-      })
-      .verification({
-        step_type: "inspect-source",
-        instruction: `Check line ${line}: "${lineText.slice(0, 60)}". Add depth limit parameter.`,
-        target: `source_code:${line}`,
-        expected_observation: desc,
-      });
-
-    return {
-      rule_id: "K16",
-      severity: "high",
-      owasp_category: "MCP07-insecure-config",
-      mitre_technique: null,
-      remediation: "Add recursion depth limits. Add timeout/circuit breakers to all loops.",
-      chain: builder.build(),
-    };
-  }
-}
-
+// K16 migrated to `k16-unbounded-recursion/` in chunk 1.6c.
 // ═══════════════════════════════════════════════════════════════════════════════
 // K20 — Insufficient Audit Context in Logging
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -587,7 +438,8 @@ class K20Rule implements TypedRuleV2 {
 }
 
 // K12 migrated to `packages/analyzer/src/rules/implementations/k12-executable-content-response/`
-// in chunk 1.6 (Phase 1 Rule Standard v2). Legacy K12Rule class removed from this file.
+// in chunk 1.6a (Phase 1 Rule Standard v2).
+// K16 migrated to `packages/analyzer/src/rules/implementations/k16-unbounded-recursion/`
+// in chunk 1.6c (Phase 1 Rule Standard v2).
 registerTypedRuleV2(new K14Rule());
-registerTypedRuleV2(new K16Rule());
 registerTypedRuleV2(new K20Rule());
