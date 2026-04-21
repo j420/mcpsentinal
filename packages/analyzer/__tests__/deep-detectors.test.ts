@@ -11,8 +11,15 @@ import { describe, it, expect } from "vitest";
 import type { AnalysisContext } from "../src/engine.js";
 import { getTypedRule, getAllTypedRules } from "../src/rules/base.js";
 
-// Import all implementations to trigger registration
-import "../src/rules/implementations/tainted-execution-detector.js";
+// Import all implementations to trigger registration. Detector 1's six
+// rules (C4, C12, C13, C16, K9, J2) are migrated to their own directories
+// in Phase 1 Chunk 1.16; tainted-execution-detector.ts has been deleted.
+import "../src/rules/implementations/c4-sql-injection/index.js";
+import "../src/rules/implementations/c12-unsafe-deserialization/index.js";
+import "../src/rules/implementations/c13-ssti/index.js";
+import "../src/rules/implementations/c16-eval-injection/index.js";
+import "../src/rules/implementations/k9-dangerous-post-install-hooks/index.js";
+import "../src/rules/implementations/j2-git-argument-injection/index.js";
 import "../src/rules/implementations/cross-tool-risk-detector.js";
 import "../src/rules/implementations/config-poisoning-detector.js";
 import "../src/rules/implementations/secret-exfil-detector.js";

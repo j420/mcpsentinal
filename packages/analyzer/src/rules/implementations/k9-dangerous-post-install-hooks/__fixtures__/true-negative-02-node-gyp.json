@@ -1,0 +1,7 @@
+{
+  "name": "native-module-pkg",
+  "version": "1.0.0",
+  "scripts": {
+    "install": "node-gyp rebuild"
+  }
+}

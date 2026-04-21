@@ -42,13 +42,20 @@ export * as schemaInference from "./analyzers/schema-inference.js";
 
 // Rule implementations (self-registering on import)
 import "./implementations/c1-command-injection/index.js";
+import "./implementations/c4-sql-injection/index.js";
+import "./implementations/c12-unsafe-deserialization/index.js";
+import "./implementations/c13-ssti/index.js";
+import "./implementations/c16-eval-injection/index.js";
+import "./implementations/k9-dangerous-post-install-hooks/index.js";
+import "./implementations/j2-git-argument-injection/index.js";
 import "./implementations/a6-unicode-homoglyph/index.js";
 import "./implementations/a7-zero-width-injection/index.js";
 import "./implementations/a9-encoded-instructions/index.js";
 import "./implementations/d3-typosquatting/index.js";
 import "./implementations/f1-lethal-trifecta.js";
 import "./implementations/g4-context-saturation.js";
-import "./implementations/tainted-execution-detector.js";
+// tainted-execution-detector.ts removed in Phase 1 Chunk 1.16; its six rules
+// (C4, C12, C13, C16, K9, J2) have each been migrated to their own directory.
 import "./implementations/cross-tool-risk-detector.js";
 import "./implementations/config-poisoning-detector.js";
 import "./implementations/secret-exfil-detector.js";

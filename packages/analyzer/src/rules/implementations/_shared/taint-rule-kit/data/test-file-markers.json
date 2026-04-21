@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "notes": "Substring markers (no regex) that mark source input as a test fixture. All six taint-based rules (C4, C12, C13, C16, K9, J2) skip test fixtures so that intentionally-vulnerable fixtures do not drown the findings list. This JSON mirrors test-file-markers.ts and is kept for human diffability.",
+  "markers": [
+    "__tests__",
+    "__test__",
+    ".test.",
+    ".spec.",
+    "from 'vitest'",
+    "from \"vitest\"",
+    "describe(",
+    "it.only(",
+    "it.each(",
+    "test(",
+    "beforeEach(",
+    "afterEach("
+  ]
+}
