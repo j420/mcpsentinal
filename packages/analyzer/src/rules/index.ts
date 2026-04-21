@@ -95,7 +95,14 @@ import "./implementations/m5-context-window-flooding.js";
 import "./implementations/l-supply-chain-v2.js";
 import "./implementations/o4-q10-v2.js";
 import "./implementations/docker-k8s-crypto-v2.js";
-import "./implementations/jsonrpc-protocol-v2.js";
+// Phase 1 chunk 1.8: N1-N3, N7, N8, N10 migrated out of jsonrpc-protocol-v2.ts
+// into per-rule Rule Standard v2 directories. The legacy file is deleted.
+import "./implementations/n1-jsonrpc-batch-request-abuse/index.js";
+import "./implementations/n2-jsonrpc-notification-flooding/index.js";
+import "./implementations/n3-jsonrpc-id-collision/index.js";
+import "./implementations/n7-progress-token-abuse/index.js";
+import "./implementations/n8-cancellation-race-condition/index.js";
+import "./implementations/n10-incomplete-handshake-dos/index.js";
 import "./implementations/k-compliance-v2.js";
 import "./implementations/k11-missing-server-integrity-verification/index.js";
 import "./implementations/k12-executable-content-response/index.js";
