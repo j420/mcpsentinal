@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated_at": "2026-04-21T08:25:21.324Z",
+  "generated_at": "2026-04-21T11:47:55.508Z",
   "notes": "Phase 0, Chunk 0.3 regex baseline for packages/analyzer/src/rules/implementations/. The analyzer no-static-patterns guard fails CI if any file exceeds the counts recorded here. Phase 1's per-rule migrations reduce the baseline file-by-file toward zero. Regenerate with `pnpm rule:baseline`.",
   "files": {
     "packages/analyzer/src/rules/implementations/_shared/taint-rule-kit/build-chain.ts": {
@@ -254,7 +254,7 @@
       "string_arrays_over_5": 0
     },
     "packages/analyzer/src/rules/implementations/k-compliance-v2.ts": {
-      "regex_literals": 46,
+      "regex_literals": 36,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
@@ -289,6 +289,26 @@
       "string_arrays_over_5": 0
     },
     "packages/analyzer/src/rules/implementations/k12-executable-content-response/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k16-unbounded-recursion/gather-ast.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k16-unbounded-recursion/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k16-unbounded-recursion/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k16-unbounded-recursion/verification.ts": {
       "regex_literals": 0,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
