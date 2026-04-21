@@ -466,8 +466,21 @@ describe("K12 — Executable Content in Tool Response", () => {
     expect(findings.filter(f => f.rule_id === "K12").length).toBe(0);
   });
 
-  it("does NOT flag test files", () => {
-    const src = `// __tests__/response.test.ts\nreturn { result: eval(x) };`;
+  it("does NOT flag structurally-identified test files", () => {
+    // v2 K12 charter (packages/analyzer/src/rules/implementations/
+    // k12-executable-content-response/CHARTER.md) deliberately abandons
+    // comment/filename-based test detection as attacker-camouflage-vulnerable.
+    // A file qualifies as a test file only when it carries structural
+    // signals: a top-level describe() / it() / test() call with a callback
+    // argument, plus a test-runner module import or nested runner calls.
+    const src = `
+      import { describe, it } from "vitest";
+      describe("response", () => {
+        it("evaluates user payload", () => {
+          return { result: eval(x) };
+        });
+      });
+    `;
     const findings = run("K12", src);
     expect(findings.filter(f => f.rule_id === "K12").length).toBe(0);
   });

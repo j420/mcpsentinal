@@ -255,11 +255,12 @@ function runRule(ruleId: string, context: AnalysisContext): TypedFinding[] {
 // ─── 1. Migration Tracker ───────────────────────────────────────────────────
 
 describe("Migration Tracker", () => {
-  it("tracks all 6 migrated rules", () => {
-    expect(MIGRATED_RULES.size).toBe(6);
+  it("tracks all 7 migrated rules", () => {
+    expect(MIGRATED_RULES.size).toBe(7);
     expect(isMigrated("C1")).toBe(true);
     expect(isMigrated("A1")).toBe(true);
     expect(isMigrated("C5")).toBe(true);
+    expect(isMigrated("D3")).toBe(true);
     expect(isMigrated("G1")).toBe(true);
     expect(isMigrated("H2")).toBe(true);
     expect(isMigrated("F1")).toBe(true);
@@ -267,15 +268,15 @@ describe("Migration Tracker", () => {
 
   it("reports non-migrated rules correctly", () => {
     expect(isMigrated("B1")).toBe(false);
-    expect(isMigrated("D3")).toBe(false);
+    expect(isMigrated("D1")).toBe(false);
     expect(isMigrated("I1")).toBe(false);
   });
 
   it("reports accurate migration progress", () => {
     const progress = migrationProgress();
     expect(progress.total).toBe(177);
-    expect(progress.migrated).toBe(6);
-    expect(progress.percent).toBe(3); // 6/177 ≈ 3%
+    expect(progress.migrated).toBe(7);
+    expect(progress.percent).toBe(4); // 7/177 ≈ 4%
   });
 });
 

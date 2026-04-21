@@ -1,14 +1,49 @@
 {
   "version": 1,
-  "generated_at": "2026-04-20T13:18:50.626Z",
+  "generated_at": "2026-04-21T06:08:56.403Z",
   "notes": "Phase 0, Chunk 0.3 regex baseline for packages/analyzer/src/rules/implementations/. The analyzer no-static-patterns guard fails CI if any file exceeds the counts recorded here. Phase 1's per-rule migrations reduce the baseline file-by-file toward zero. Regenerate with `pnpm rule:baseline`.",
   "files": {
-    "packages/analyzer/src/rules/implementations/a6-unicode-homoglyph.ts": {
+    "packages/analyzer/src/rules/implementations/a6-unicode-homoglyph/gather.ts": {
       "regex_literals": 0,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
-    "packages/analyzer/src/rules/implementations/a9-encoded-instructions.ts": {
+    "packages/analyzer/src/rules/implementations/a6-unicode-homoglyph/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/a6-unicode-homoglyph/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/a7-zero-width-injection/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/a7-zero-width-injection/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/a7-zero-width-injection/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/a9-encoded-instructions/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/a9-encoded-instructions/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/a9-encoded-instructions/verification.ts": {
       "regex_literals": 0,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
@@ -63,10 +98,20 @@
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
-    "packages/analyzer/src/rules/implementations/d3-typosquatting.ts": {
+    "packages/analyzer/src/rules/implementations/d3-typosquatting/gather.ts": {
       "regex_literals": 0,
       "new_regexp_calls": 0,
-      "string_arrays_over_5": 1
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/d3-typosquatting/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/d3-typosquatting/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
     },
     "packages/analyzer/src/rules/implementations/data-privacy-cross-ecosystem-detector.ts": {
       "regex_literals": 38,
@@ -138,23 +183,98 @@
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
-    "packages/analyzer/src/rules/implementations/k17-missing-timeout.ts": {
-      "regex_literals": 19,
+    "packages/analyzer/src/rules/implementations/k12-executable-content-response/gather.ts": {
+      "regex_literals": 0,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
-    "packages/analyzer/src/rules/implementations/k4-missing-human-confirmation.ts": {
-      "regex_literals": 13,
-      "new_regexp_calls": 0,
-      "string_arrays_over_5": 3
-    },
-    "packages/analyzer/src/rules/implementations/k6-broad-oauth-scopes.ts": {
-      "regex_literals": 15,
+    "packages/analyzer/src/rules/implementations/k12-executable-content-response/index.ts": {
+      "regex_literals": 1,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
-    "packages/analyzer/src/rules/implementations/k7-long-lived-tokens.ts": {
-      "regex_literals": 19,
+    "packages/analyzer/src/rules/implementations/k12-executable-content-response/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k17-missing-timeout/gather-ast.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k17-missing-timeout/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k17-missing-timeout/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k17-missing-timeout/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k4-missing-human-confirmation/gather-ast.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k4-missing-human-confirmation/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k4-missing-human-confirmation/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k4-missing-human-confirmation/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k6-overly-broad-oauth-scopes/gather-ast.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k6-overly-broad-oauth-scopes/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k6-overly-broad-oauth-scopes/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k6-overly-broad-oauth-scopes/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k7-long-lived-tokens/gather-ast.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k7-long-lived-tokens/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k7-long-lived-tokens/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k7-long-lived-tokens/verification.ts": {
+      "regex_literals": 0,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },

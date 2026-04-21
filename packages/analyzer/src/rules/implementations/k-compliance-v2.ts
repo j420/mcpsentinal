@@ -586,8 +586,8 @@ class K20Rule implements TypedRuleV2 {
   }
 }
 
-// Register all rules
-registerTypedRuleV2(new K12Rule());
+// K12 migrated to `packages/analyzer/src/rules/implementations/k12-executable-content-response/`
+// in chunk 1.6 (Phase 1 Rule Standard v2). Legacy K12Rule class removed from this file.
 registerTypedRuleV2(new K14Rule());
 registerTypedRuleV2(new K16Rule());
 registerTypedRuleV2(new K20Rule());
