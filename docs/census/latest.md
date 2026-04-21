@@ -147,14 +147,14 @@ T = first-letter tags: a=ast-taint, c=capability-graph, m=module-graph, e=entrop
 | K8 | Cross-Boundary Credential Sharing | compliance-governance | critical | Y | Y |  | 36 | av | `advanced-supply-chain-detector.ts` |
 | K9 | Dangerous Post-Install Hooks | compliance-governance | critical | Y |  |  | 0 | — | — |
 | K10 | Package Registry Substitution | compliance-governance | high | Y | Y |  | 35 | v | `supply-chain-detector.ts` |
-| K11 | Missing Server Integrity Verification | compliance-governance | high | Y |  | Y | 36 | v | `k-remaining-v2.ts` |
+| K11 | Missing Server Integrity Verification | compliance-governance | high | Y |  |  | 0 | — | — |
 | K12 | Executable Content in Tool Response | compliance-governance | critical | Y |  |  | 0 | — | — |
 | K13 | Unsanitized Tool Output | compliance-governance | high | Y |  | Y | 36 | v | `k-remaining-v2.ts` |
 | K14 | Agent Credential Propagation via Shared State | compliance-governance | critical | Y |  | Y | 24 | v | `k-compliance-v2.ts` |
 | K15 | Multi-Agent Collusion Preconditions | compliance-governance | high | Y |  | Y | 36 | v | `k-remaining-v2.ts` |
 | K16 | Unbounded Recursion / Missing Depth Limits | compliance-governance | high | Y |  |  | 0 | — | — |
 | K17 | Missing Timeout or Circuit Breaker | compliance-governance | medium | Y |  |  | 0 | — | — |
-| K18 | Cross-Trust-Boundary Data Flow in Tool Response | compliance-governance | high | Y |  | Y | 36 | v | `k-remaining-v2.ts` |
+| K18 | Cross-Trust-Boundary Data Flow in Tool Response | compliance-governance | high | Y |  |  | 0 | — | — |
 | K19 | Missing Runtime Sandbox Enforcement | compliance-governance | high | Y |  | Y | 47 | v | `docker-k8s-crypto-v2.ts` |
 | K20 | Insufficient Audit Context in Logging | compliance-governance | medium | Y |  |  | 0 | — | — |
 | L1 | GitHub Actions Tag Poisoning | supply-chain-advanced | critical | Y | Y |  | 36 | av | `advanced-supply-chain-detector.ts` |
@@ -250,6 +250,9 @@ T = first-letter tags: a=ast-taint, c=capability-graph, m=module-graph, e=entrop
 - **K7**: enabled in YAML but no TypedRule registration found
 - **K9**: enabled in YAML but no TypedRule registration found
 - **K12**: enabled in YAML but no TypedRule registration found
+- **K13**: enabled in YAML but no TypedRule registration found
+- **K14**: enabled in YAML but no TypedRule registration found
+- **K15**: enabled in YAML but no TypedRule registration found
 - **K16**: enabled in YAML but no TypedRule registration found
 - **K17**: enabled in YAML but no TypedRule registration found
 - **K20**: enabled in YAML but no TypedRule registration found
