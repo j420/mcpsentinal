@@ -181,30 +181,6 @@ const EVIDENCE_CONFIGS: Record<string, EvidenceConfig> = {
 
 // ─── Rule definitions ──────────────────────────────────────────────────────
 
-const K9_DANGEROUS_POSTINSTALL: RuleDef = {
-  id: "K9",
-  name: "Dangerous Post-Install Hooks (Taint-Aware)",
-  severity: "critical",
-  astSinkCategories: ["command_execution", "ssrf"],
-  taintSinkCategories: ["command_execution", "url_request"],
-  owasp: "MCP10-supply-chain",
-  mitre: "AML.T0054",
-  remediation:
-    "Remove network calls and exec() from install hooks. Use postinstall only for " +
-    "compilation (node-gyp, tsc). Never curl|bash in install scripts. " +
-    "If a binary download is needed, use a dedicated prebuilt package.",
-  fallbackPatterns: [
-    { regex: /["'](?:postinstall|preinstall|install)["']\s*:\s*["'][^"']*(?:curl|wget|fetch)\s+[^"']*\|/g, desc: "pipe-to-shell in install hook", confidence: 0.95 },
-    { regex: /["'](?:postinstall|preinstall)["']\s*:\s*["'][^"']*(?:eval|base64|atob|Buffer\.from)/g, desc: "encoded payload in install hook", confidence: 0.90 },
-    { regex: /["'](?:postinstall|preinstall)["']\s*:\s*["'](?:bash|sh|zsh|cmd)\s/g, desc: "shell invocation in install hook", confidence: 0.85 },
-    { regex: /cmdclass\s*=.*(?:install|build|develop).*(?:subprocess|os\.system|exec)/g, desc: "Python setup.py cmdclass with exec", confidence: 0.85 },
-    { regex: /class\s+\w*(?:Install|PostInstall)\w*.*(?:subprocess|os\.system|urllib|requests\.get)/g, desc: "Python install class with network/exec", confidence: 0.80 },
-  ],
-  safePatterns: [
-    /node-gyp|prebuild|esbuild|tsc|npx\s+tsc|compile|cmake/,
-  ],
-};
-
 const J2_GIT_ARGUMENT_INJECTION: RuleDef = {
   id: "J2",
   name: "Git Argument Injection (Taint-Aware)",
@@ -627,5 +603,5 @@ class TaintBasedRule implements TypedRule {
 // C12 migrated to packages/analyzer/src/rules/implementations/c12-unsafe-deserialization/
 // C13 migrated to packages/analyzer/src/rules/implementations/c13-ssti/
 // C16 migrated to packages/analyzer/src/rules/implementations/c16-eval-injection/
-registerTypedRule(new TaintBasedRule(K9_DANGEROUS_POSTINSTALL));
+// K9 migrated to packages/analyzer/src/rules/implementations/k9-dangerous-post-install-hooks/
 registerTypedRule(new TaintBasedRule(J2_GIT_ARGUMENT_INJECTION));

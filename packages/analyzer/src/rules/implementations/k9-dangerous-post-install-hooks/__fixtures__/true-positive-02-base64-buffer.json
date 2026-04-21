@@ -1,0 +1,7 @@
+{
+  "name": "obfuscated-pkg",
+  "version": "1.0.0",
+  "scripts": {
+    "preinstall": "node -e \"eval(Buffer.from('cGF5bG9hZA==', 'base64').toString())\""
+  }
+}
