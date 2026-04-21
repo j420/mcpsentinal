@@ -1,12 +1,15 @@
 /**
- * Category N — Protocol Edge Cases (N1-N15) — 45 tests
+ * Category N — Protocol Edge Cases — integration tests
  *
- * Tests for protocol-level attack surfaces: JSON-RPC abuse, SSE hijacking,
- * capability downgrade, chunked transfer smuggling, method name confusion, etc.
- *
- * Implementations in:
- *   - protocol-ai-runtime-detector.ts (N4, N5, N6, N9, N11-N15)
- *   - compliance-remaining-detector.ts (N1, N2, N3, N7, N8, N10)
+ * Covers rules that still live in the shared legacy file
+ * protocol-ai-runtime-detector.ts (N4, N5, N6, N9, N11-N15). N1, N2, N3, N7,
+ * N8, N10 migrated in Phase 1 chunk 1.8 to per-rule Rule Standard v2
+ * directories; comprehensive tests for those six rules live alongside the
+ * rule implementations at
+ *   packages/analyzer/src/rules/implementations/n{1,2,3,7,8,10}-*\/__tests__/index.test.ts
+ * The legacy assertions for N1/N2/N3/N7/N8/N10 in this file asserted the
+ * drifted jsonrpc-protocol-v2.ts semantics (N3/N7/N8/N10 targeted
+ * orthogonal concerns) and have been removed as part of the chunk 1.8 cleanup.
  */
 import { describe, it, expect } from "vitest";
 import type { AnalysisContext } from "../src/engine.js";
@@ -20,91 +23,8 @@ function ctx(overrides: Partial<AnalysisContext> = {}): AnalysisContext {
 function run(id: string, src: string) { return getTypedRule(id)!.analyze(ctx({ source_code: src })); }
 function runCtx(id: string, c: AnalysisContext) { return getTypedRule(id)!.analyze(c); }
 
-// ─── N1 — JSON-RPC Batch Request Abuse ────────────────────────────────────
-
-describe("N1 — JSON-RPC Batch Request Abuse", () => {
-  it("flags batch processing without limits", () => {
-    const f = run("N1", `function handleRpc(request) {\n  if (Array.isArray(request.batch)) {\n    request.batch.forEach(msg => process(msg));\n  }\n}`);
-    expect(f.some(x => x.rule_id === "N1")).toBe(true);
-    const finding = findingFor(f, "N1");
-    const chain = expectEvidenceChain(finding);
-    expectConfidenceRange(chain, 0.30, 0.99);
-  });
-  it("flags array request processing", () => {
-    const f = run("N1", `function handleRpc(request) {\n  if (Array.isArray(request.body)) {\n    request.body.map(msg => dispatch(msg));\n  }\n}`);
-    expect(f.some(x => x.rule_id === "N1")).toBe(true);
-    const finding = findingFor(f, "N1");
-    const chain = expectEvidenceChain(finding);
-    expectConfidenceRange(chain, 0.30, 0.99);
-  });
-  it("flags batch rpc method dispatch", () => {
-    const f = run("N1", `function processAll(ctx) {\n  const results = batch.map(msg => rpc.method(msg));\n  return results;\n}`);
-    expect(f.some(x => x.rule_id === "N1")).toBe(true);
-    const finding = findingFor(f, "N1");
-    const chain = expectEvidenceChain(finding);
-    expectConfidenceRange(chain, 0.30, 0.99);
-  });
-  it("does NOT flag batch with rate limit", () => {
-    expect(run("N1", `if (batch.request.length > maxLimit) throw new Error('too many'); throttle(batch);`).filter(x => x.rule_id === "N1").length).toBe(0);
-  });
-  it("does NOT flag single request processing", () => {
-    expect(run("N1", `const result = processRequest(req);`).filter(x => x.rule_id === "N1").length).toBe(0);
-  });
-});
-
-// ─── N2 — Notification Flooding ──────────────────────────────────────────
-
-describe("N2 — Notification Flooding", () => {
-  it("flags notification in loop without throttle", () => {
-    const f = run("N2", `while (running) { notify(msg); } // emit loop continuously`);
-    expect(f.some(x => x.rule_id === "N2")).toBe(true);
-    const finding = findingFor(f, "N2");
-    const chain = expectEvidenceChain(finding);
-    expectConfidenceRange(chain, 0.30, 0.99);
-  });
-  it("flags emit in while loop", () => {
-    const f = run("N2", `while (running) { emit('update'); }`);
-    expect(f.some(x => x.rule_id === "N2")).toBe(true);
-    const finding = findingFor(f, "N2");
-    const chain = expectEvidenceChain(finding);
-    expectConfidenceRange(chain, 0.30, 0.99);
-  });
-  it("flags push notification in interval", () => {
-    const f = run("N2", `setInterval(() => { push(events); }, 100); // notification interval handler`);
-    expect(f.some(x => x.rule_id === "N2")).toBe(true);
-    const finding = findingFor(f, "N2");
-    const chain = expectEvidenceChain(finding);
-    expectConfidenceRange(chain, 0.30, 0.99);
-  });
-  it("does NOT flag throttled notifications", () => {
-    expect(run("N2", `const throttledNotify = throttle(() => emit('update', data), 1000);`).filter(x => x.rule_id === "N2").length).toBe(0);
-  });
-  it("does NOT flag debounced notifications", () => {
-    expect(run("N2", `const debouncedNotify = debounce(() => emit('update'), 500);`).filter(x => x.rule_id === "N2").length).toBe(0);
-  });
-});
-
-// ─── N3 — Progress Token Spoofing ────────────────────────────────────────
-
-describe("N3 — Progress Token Spoofing", () => {
-  it("flags fake progress token", () => {
-    const f = run("N3", `const progressToken = req.body.progressId;`);
-    expect(f.some(x => x.rule_id === "N3")).toBe(true);
-    const finding = findingFor(f, "N3");
-    const chain = expectEvidenceChain(finding);
-    expectConfidenceRange(chain, 0.30, 0.99);
-  });
-  it("flags arbitrary progress token", () => {
-    const f = run("N3", `const progressToken = counter++;`);
-    expect(f.some(x => x.rule_id === "N3")).toBe(true);
-    const finding = findingFor(f, "N3");
-    const chain = expectEvidenceChain(finding);
-    expectConfidenceRange(chain, 0.30, 0.99);
-  });
-  it("does NOT flag validated progress token", () => {
-    expect(run("N3", `const token = crypto.randomUUID(); validateProgressToken(token);`).filter(x => x.rule_id === "N3").length).toBe(0);
-  });
-});
+// N1, N2, N3: migrated to per-rule directories in Phase 1 chunk 1.8.
+// Comprehensive tests at src/rules/implementations/n{1,2,3}-*\/__tests__/index.test.ts.
 
 // ─── N4 — JSON-RPC Error Object Injection ────────────────────────────────
 
@@ -192,59 +112,10 @@ describe("N6 — SSE Reconnection Hijacking", () => {
   });
 });
 
-// ─── N7 — Initialization Race Condition ──────────────────────────────────
-
-describe("N7 — Initialization Race Condition", () => {
-  it("flags parallel initialization without sync", () => {
-    const f = run("N7", `Promise.all([initialize(a), initialize(b)]); // parallel init without race protection`);
-    expect(f.some(x => x.rule_id === "N7")).toBe(true);
-    const finding = findingFor(f, "N7");
-    const chain = expectEvidenceChain(finding);
-    expectConfidenceRange(chain, 0.30, 0.99);
-  });
-  it("flags concurrent init without lock", () => {
-    const f = run("N7", `Promise.all([initializeServer(a), initializeDB(b)]); // concurrent initialization race condition`);
-    expect(f.some(x => x.rule_id === "N7")).toBe(true);
-    const finding = findingFor(f, "N7");
-    const chain = expectEvidenceChain(finding);
-    expectConfidenceRange(chain, 0.30, 0.99);
-  });
-  it("does NOT flag sequential init with await", () => {
-    expect(run("N7", `await initialize(a); await initialize(b);`).filter(x => x.rule_id === "N7").length).toBe(0);
-  });
-  it("does NOT flag init with mutex", () => {
-    expect(run("N7", `const lock = new Mutex(); await lock.acquire(); await initialize(server); lock.release();`).filter(x => x.rule_id === "N7").length).toBe(0);
-  });
-});
-
-// ─── N8 — Ping Abuse for Side Channels ──────────────────────────────────
-
-describe("N8 — Ping Abuse for Side Channels", () => {
-  it("flags data in ping message", () => {
-    const f = run("N8", `ws.ping(JSON.stringify({ data: secretData, payload: encoded }));`);
-    expect(f.some(x => x.rule_id === "N8")).toBe(true);
-    const finding = findingFor(f, "N8");
-    const chain = expectEvidenceChain(finding);
-    expectConfidenceRange(chain, 0.30, 0.99);
-  });
-  it("flags heartbeat with content", () => {
-    const f = run("N8", `function heartbeat() { send({ message: exfilData, content: sensitiveData }); }`);
-    expect(f.some(x => x.rule_id === "N8")).toBe(true);
-    const finding = findingFor(f, "N8");
-    const chain = expectEvidenceChain(finding);
-    expectConfidenceRange(chain, 0.30, 0.99);
-  });
-  it("flags keepalive with payload", () => {
-    const f = run("N8", `keepalive.send({ payload: sensitiveData, content: encoded });`);
-    expect(f.some(x => x.rule_id === "N8")).toBe(true);
-    const finding = findingFor(f, "N8");
-    const chain = expectEvidenceChain(finding);
-    expectConfidenceRange(chain, 0.30, 0.99);
-  });
-  it("does NOT flag empty ping", () => {
-    expect(run("N8", `ws.ping(); // empty heartbeat`).filter(x => x.rule_id === "N8").length).toBe(0);
-  });
-});
+// N7 and N8: migrated to per-rule directories in Phase 1 chunk 1.8.
+// Legacy implementations under these ids targeted orthogonal concerns
+// (init race / ping side-channel). New implementations align with YAML.
+// Comprehensive tests at src/rules/implementations/n{7,8}-*\/__tests__/index.test.ts.
 
 // ─── N9 — Logging Protocol Injection ─────────────────────────────────────
 
@@ -275,27 +146,9 @@ describe("N9 — Logging Protocol Injection", () => {
   });
 });
 
-// ─── N10 — Cancellation Token Injection ──────────────────────────────────
-
-describe("N10 — Cancellation Token Injection", () => {
-  it("flags cancellation token from request body", () => {
-    const f = run("N10", `const cancelToken = req.body.cancelId;`);
-    expect(f.some(x => x.rule_id === "N10")).toBe(true);
-    const finding = findingFor(f, "N10");
-    const chain = expectEvidenceChain(finding);
-    expectConfidenceRange(chain, 0.30, 0.99);
-  });
-  it("flags abort token from user input", () => {
-    const f = run("N10", `abort.token = params.abortToken;`);
-    expect(f.some(x => x.rule_id === "N10")).toBe(true);
-    const finding = findingFor(f, "N10");
-    const chain = expectEvidenceChain(finding);
-    expectConfidenceRange(chain, 0.30, 0.99);
-  });
-  it("does NOT flag server-generated cancellation token", () => {
-    expect(run("N10", `const cancelToken = crypto.randomUUID();`).filter(x => x.rule_id === "N10").length).toBe(0);
-  });
-});
+// N10: migrated to per-rule directory in Phase 1 chunk 1.8. New
+// implementation aligns with rules/N10-incomplete-handshake-dos.yaml.
+// Comprehensive tests at src/rules/implementations/n10-incomplete-handshake-dos/__tests__/index.test.ts.
 
 // ─── N11 — Protocol Version Downgrade ────────────────────────────────────
 
