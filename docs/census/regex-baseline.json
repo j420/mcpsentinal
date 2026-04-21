@@ -3,6 +3,26 @@
   "generated_at": "2026-04-21T07:42:29.486Z",
   "notes": "Phase 0, Chunk 0.3 regex baseline for packages/analyzer/src/rules/implementations/. The analyzer no-static-patterns guard fails CI if any file exceeds the counts recorded here. Phase 1's per-rule migrations reduce the baseline file-by-file toward zero. Regenerate with `pnpm rule:baseline`.",
   "files": {
+    "packages/analyzer/src/rules/implementations/_shared/taint-rule-kit/build-chain.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/_shared/taint-rule-kit/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/_shared/taint-rule-kit/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/_shared/taint-rule-kit/types.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
     "packages/analyzer/src/rules/implementations/a6-unicode-homoglyph/gather.ts": {
       "regex_literals": 0,
       "new_regexp_calls": 0,
@@ -69,6 +89,66 @@
       "string_arrays_over_5": 0
     },
     "packages/analyzer/src/rules/implementations/c1-command-injection/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/c12-unsafe-deserialization/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/c12-unsafe-deserialization/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/c12-unsafe-deserialization/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/c13-ssti/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/c13-ssti/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/c13-ssti/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/c16-eval-injection/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/c16-eval-injection/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/c16-eval-injection/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/c4-sql-injection/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/c4-sql-injection/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/c4-sql-injection/verification.ts": {
       "regex_literals": 0,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
@@ -153,6 +233,21 @@
       "new_regexp_calls": 0,
       "string_arrays_over_5": 1
     },
+    "packages/analyzer/src/rules/implementations/j2-git-argument-injection/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/j2-git-argument-injection/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/j2-git-argument-injection/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
     "packages/analyzer/src/rules/implementations/jsonrpc-protocol-v2.ts": {
       "regex_literals": 64,
       "new_regexp_calls": 0,
@@ -163,8 +258,18 @@
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
-    "packages/analyzer/src/rules/implementations/k-remaining-v2.ts": {
-      "regex_literals": 36,
+    "packages/analyzer/src/rules/implementations/j2-git-argument-injection/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/jsonrpc-protocol-v2.ts": {
+      "regex_literals": 64,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k-compliance-v2.ts": {
+      "regex_literals": 15,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
@@ -179,6 +284,21 @@
       "string_arrays_over_5": 0
     },
     "packages/analyzer/src/rules/implementations/k1-absent-structured-logging/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k11-missing-server-integrity-verification/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k11-missing-server-integrity-verification/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k11-missing-server-integrity-verification/verification.ts": {
       "regex_literals": 0,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
@@ -234,6 +354,21 @@
       "string_arrays_over_5": 0
     },
     "packages/analyzer/src/rules/implementations/k17-missing-timeout/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k20-insufficient-audit-context/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k20-insufficient-audit-context/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k20-insufficient-audit-context/verification.ts": {
       "regex_literals": 0,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
@@ -298,6 +433,21 @@
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
+    "packages/analyzer/src/rules/implementations/k9-dangerous-post-install-hooks/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k9-dangerous-post-install-hooks/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k9-dangerous-post-install-hooks/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
     "packages/analyzer/src/rules/implementations/l-supply-chain-v2.ts": {
       "regex_literals": 15,
       "new_regexp_calls": 2,
@@ -342,11 +492,6 @@
       "regex_literals": 35,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 1
-    },
-    "packages/analyzer/src/rules/implementations/tainted-execution-detector.ts": {
-      "regex_literals": 42,
-      "new_regexp_calls": 0,
-      "string_arrays_over_5": 0
     }
   }
 }

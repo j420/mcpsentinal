@@ -39,11 +39,12 @@ _Generated: 2026-04-21T07:42:39.315Z_
 | `packages/analyzer/src/rules/implementations/config-poisoning-detector.ts` | 44 | 1 |
 | `packages/analyzer/src/rules/implementations/infrastructure-detector.ts` | 44 | 0 |
 | `packages/analyzer/src/rules/implementations/m-runtime-v2.ts` | 43 | 0 |
-| `packages/analyzer/src/rules/implementations/tainted-execution-detector.ts` | 42 | 0 |
 | `packages/analyzer/src/rules/implementations/data-privacy-cross-ecosystem-detector.ts` | 38 | 0 |
 | `packages/analyzer/src/rules/implementations/advanced-supply-chain-detector.ts` | 36 | 0 |
 | `packages/analyzer/src/rules/implementations/k-compliance-v2.ts` | 36 | 0 |
 | `packages/analyzer/src/rules/implementations/k-remaining-v2.ts` | 36 | 0 |
+| `packages/analyzer/src/rules/implementations/code-security-deep-detector.ts` | 35 | 0 |
+| `packages/analyzer/src/rules/implementations/supply-chain-detector.ts` | 35 | 0 |
 
 ## Per-Rule Detail
 
@@ -73,7 +74,7 @@ T = first-letter tags: a=ast-taint, c=capability-graph, m=module-graph, e=entrop
 | C1 | Command Injection | code-analysis | critical | Y |  |  | 0 | — | — |
 | C2 | Path Traversal | code-analysis | critical | Y | Y |  | 35 | aev | `code-security-deep-detector.ts` |
 | C3 | Server-Side Request Forgery (SSRF) | code-analysis | high | Y | Y |  | 19 | av | `code-remaining-detector.ts` |
-| C4 | SQL Injection | code-analysis | critical | Y | Y |  | 42 | av | `tainted-execution-detector.ts` |
+| C4 | SQL Injection | code-analysis | critical | Y |  |  | 0 | — | — |
 | C5 | Hardcoded Secrets in Source Code | code-analysis | critical | Y | Y |  | 35 | aev | `code-security-deep-detector.ts` |
 | C6 | Error Message Information Leakage | code-analysis | medium | Y | Y |  | 19 | av | `code-remaining-detector.ts` |
 | C7 | Wildcard CORS Configuration | code-analysis | high | Y | Y |  | 19 | av | `code-remaining-detector.ts` |
@@ -81,11 +82,11 @@ T = first-letter tags: a=ast-taint, c=capability-graph, m=module-graph, e=entrop
 | C9 | Excessive Filesystem Scope | code-analysis | high | Y | Y |  | 19 | av | `code-remaining-detector.ts` |
 | C10 | Prototype Pollution | code-analysis | critical | Y | Y |  | 35 | aev | `code-security-deep-detector.ts` |
 | C11 | ReDoS — Catastrophic Regex Backtracking | code-analysis | high | Y | Y |  | 19 | av | `code-remaining-detector.ts` |
-| C12 | Unsafe Deserialization | code-analysis | critical | Y | Y |  | 42 | av | `tainted-execution-detector.ts` |
-| C13 | Server-Side Template Injection (SSTI) | code-analysis | critical | Y | Y |  | 42 | av | `tainted-execution-detector.ts` |
+| C12 | Unsafe Deserialization | code-analysis | critical | Y |  |  | 0 | — | — |
+| C13 | Server-Side Template Injection (SSTI) | code-analysis | critical | Y |  |  | 0 | — | — |
 | C14 | JWT Algorithm Confusion / None Algorithm Attack | code-analysis | critical | Y | Y |  | 35 | aev | `code-security-deep-detector.ts` |
 | C15 | Timing Attack on Secret or Token Comparison | code-analysis | high | Y | Y |  | 19 | av | `code-remaining-detector.ts` |
-| C16 | Dynamic Code Evaluation with User Input | code-analysis | critical | Y | Y |  | 42 | av | `tainted-execution-detector.ts` |
+| C16 | Dynamic Code Evaluation with User Input | code-analysis | critical | Y |  |  | 0 | — | — |
 | D1 | Known CVEs in Dependencies | dependency-analysis | high | Y | Y |  | 0 | sv | `dependency-behavioral-detector.ts` |
 | D2 | Abandoned Dependencies | dependency-analysis | medium | Y | Y |  | 0 | sv | `dependency-behavioral-detector.ts` |
 | D3 | Typosquatting Risk in Dependencies | dependency-analysis | high | Y |  |  | 0 | — | — |
@@ -131,7 +132,7 @@ T = first-letter tags: a=ast-taint, c=capability-graph, m=module-graph, e=entrop
 | I15 | Transport Session Security | protocol-surface | high | Y | Y |  | 33 | cv | `protocol-surface-remaining-detector.ts` |
 | I16 | Consent Fatigue Exploitation | protocol-surface | high | Y | Y |  | 23 | civ | `cross-tool-risk-detector.ts` |
 | J1 | Cross-Agent Configuration Poisoning | threat-intelligence | critical | Y | Y |  | 45 | av | `config-poisoning-detector.ts` |
-| J2 | Git Argument Injection | threat-intelligence | critical | Y | Y |  | 42 | av | `tainted-execution-detector.ts` |
+| J2 | Git Argument Injection | threat-intelligence | critical | Y |  |  | 0 | — | — |
 | J3 | Full Schema Poisoning | threat-intelligence | critical | Y | Y |  | 33 | cv | `protocol-surface-remaining-detector.ts` |
 | J4 | Health Endpoint Information Disclosure | threat-intelligence | high | Y | Y |  | 33 | cv | `protocol-surface-remaining-detector.ts` |
 | J5 | Tool Output Poisoning Patterns | threat-intelligence | critical | Y | Y |  | 33 | cv | `protocol-surface-remaining-detector.ts` |
@@ -145,7 +146,7 @@ T = first-letter tags: a=ast-taint, c=capability-graph, m=module-graph, e=entrop
 | K6 | Overly Broad OAuth Scopes | compliance-governance | high | Y |  |  | 0 | — | — |
 | K7 | Long-Lived Tokens Without Rotation | compliance-governance | high | Y |  |  | 0 | — | — |
 | K8 | Cross-Boundary Credential Sharing | compliance-governance | critical | Y | Y |  | 36 | av | `advanced-supply-chain-detector.ts` |
-| K9 | Dangerous Post-Install Hooks | compliance-governance | critical | Y | Y |  | 42 | av | `tainted-execution-detector.ts` |
+| K9 | Dangerous Post-Install Hooks | compliance-governance | critical | Y |  |  | 0 | — | — |
 | K10 | Package Registry Substitution | compliance-governance | high | Y | Y |  | 35 | v | `supply-chain-detector.ts` |
 | K11 | Missing Server Integrity Verification | compliance-governance | high | Y |  | Y | 36 | v | `k-remaining-v2.ts` |
 | K12 | Executable Content in Tool Response | compliance-governance | critical | Y |  |  | 0 | — | — |

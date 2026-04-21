@@ -42,13 +42,20 @@ export * as schemaInference from "./analyzers/schema-inference.js";
 
 // Rule implementations (self-registering on import)
 import "./implementations/c1-command-injection/index.js";
+import "./implementations/c4-sql-injection/index.js";
+import "./implementations/c12-unsafe-deserialization/index.js";
+import "./implementations/c13-ssti/index.js";
+import "./implementations/c16-eval-injection/index.js";
+import "./implementations/k9-dangerous-post-install-hooks/index.js";
+import "./implementations/j2-git-argument-injection/index.js";
 import "./implementations/a6-unicode-homoglyph/index.js";
 import "./implementations/a7-zero-width-injection/index.js";
 import "./implementations/a9-encoded-instructions/index.js";
 import "./implementations/d3-typosquatting/index.js";
 import "./implementations/f1-lethal-trifecta.js";
 import "./implementations/g4-context-saturation.js";
-import "./implementations/tainted-execution-detector.js";
+// tainted-execution-detector.ts removed in Phase 1 Chunk 1.16; its six rules
+// (C4, C12, C13, C16, K9, J2) have each been migrated to their own directory.
 import "./implementations/cross-tool-risk-detector.js";
 import "./implementations/config-poisoning-detector.js";
 import "./implementations/secret-exfil-detector.js";
@@ -69,7 +76,6 @@ import "./implementations/k4-missing-human-confirmation/index.js";
 import "./implementations/k6-overly-broad-oauth-scopes/index.js";
 import "./implementations/k7-long-lived-tokens/index.js";
 import "./implementations/k17-missing-timeout/index.js";
-import "./implementations/k-remaining-v2.js";
 import "./implementations/m4-tool-squatting.js";
 import "./implementations/m5-context-window-flooding.js";
 import "./implementations/l-supply-chain-v2.js";
@@ -77,6 +83,7 @@ import "./implementations/o4-q10-v2.js";
 import "./implementations/docker-k8s-crypto-v2.js";
 import "./implementations/jsonrpc-protocol-v2.js";
 import "./implementations/k-compliance-v2.js";
+import "./implementations/k11-missing-server-integrity-verification/index.js";
 import "./implementations/k12-executable-content-response/index.js";
 import "./implementations/k16-unbounded-recursion/index.js";
 import "./implementations/m-runtime-v2.js";

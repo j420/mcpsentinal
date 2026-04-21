@@ -1,0 +1,7 @@
+{
+  "name": "well-behaved-pkg",
+  "version": "1.0.0",
+  "scripts": {
+    "postinstall": "npx tsc --build"
+  }
+}

@@ -49,7 +49,7 @@ _Per-chunk template: charter → v2 refactor → regex→structural → Location
 - [ ] **1.13 — `infrastructure-detector.ts` (P1–P7)** — split/merge decision vs 1.12
 - [ ] **1.14 — `secret-exfil-detector.ts` (L9, K2, G7)** — entropy-heavy
 - [ ] **1.15 — `config-poisoning-detector.ts` (J1, L4, L11, Q4)** — 19 regex; CVE-backed
-- [ ] **1.16 — `tainted-execution-detector.ts` (C4, C12, C13, C16, K9, J2)**
+- [x] **1.16 — `tainted-execution-detector.ts` (C4, C12, C13, C16, K9, J2)** — commits `ab813c7` (shared taint-rule-kit) + `e72e507` (C4) + `5245d38` (C12) + `ab7a6de` (C13) + `80ca4d4` (C16) + `6a965ea` (K9) + `c6d2779` (J2 + test updates) + `479f0ce` (delete tainted-execution-detector.ts) + `be5719f` (baseline/census). Every rule is in its own directory with CHARTER + sibling index + data/*.ts + __fixtures__ + __tests__. Zero regex in any of the six directories. Baseline -134 regex literals (853 → 720).
 - [x] **1.17 — `c1-command-injection.ts` (C1)** — commit `b8362ca`. (Note: commit message labelled this "chunk 1.2" — the plan's chunk 1.2 is K4; C1 is 1.17.)
 - [ ] **1.18 — `code-security-deep-detector.ts` (C2, C5, C10, C14)**
 - [ ] **1.19 — `code-remaining-detector.ts` (C3, C6–C9, C11, C15)**
