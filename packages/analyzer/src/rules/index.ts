@@ -85,6 +85,7 @@ import "./implementations/docker-k8s-crypto-v2.js";
 import "./implementations/jsonrpc-protocol-v2.js";
 import "./implementations/k-compliance-v2.js";
 import "./implementations/k12-executable-content-response/index.js";
+import "./implementations/k14-agent-credential-propagation/index.js";
 import "./implementations/k16-unbounded-recursion/index.js";
 import "./implementations/k20-insufficient-audit-context/index.js";
 import "./implementations/m-runtime-v2.js";
