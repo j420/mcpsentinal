@@ -181,32 +181,6 @@ const EVIDENCE_CONFIGS: Record<string, EvidenceConfig> = {
 
 // ─── Rule definitions ──────────────────────────────────────────────────────
 
-const C12_UNSAFE_DESERIALIZATION: RuleDef = {
-  id: "C12",
-  name: "Unsafe Deserialization (Taint-Aware)",
-  severity: "critical",
-  astSinkCategories: ["deserialization"],
-  taintSinkCategories: ["deserialization"],
-  owasp: "MCP03-command-injection",
-  mitre: "AML.T0054",
-  remediation:
-    "Replace pickle.loads() with json.loads(). Replace yaml.load() with yaml.safe_load(). " +
-    "Never deserialize untrusted data with pickle, marshal, or node-serialize. " +
-    "Use SafeLoader for YAML: yaml.load(data, Loader=yaml.SafeLoader).",
-  fallbackPatterns: [
-    { regex: /pickle\.loads?\s*\(\s*(?!b['"])\w+/g, desc: "pickle.load with variable input", confidence: 0.85 },
-    { regex: /yaml\.load\s*\([^)]*(?!SafeLoader|safe_load)/g, desc: "yaml.load without SafeLoader", confidence: 0.80 },
-    { regex: /(?:unserialize|deserialize)\s*\(\s*(?!\s*['"`])\w+/g, desc: "deserialize with variable input", confidence: 0.75 },
-    { regex: /marshal\.loads?\s*\(/g, desc: "marshal.loads (always unsafe)", confidence: 0.90 },
-    { regex: /require\s*\(\s*['"]node-serialize['"]\s*\)/g, desc: "node-serialize (CVE-2017-5941)", confidence: 0.95 },
-  ],
-  safePatterns: [
-    /safe_load/,
-    /SafeLoader/,
-    /json\.loads?/,
-  ],
-};
-
 const C13_TEMPLATE_INJECTION: RuleDef = {
   id: "C13",
   name: "Server-Side Template Injection (Taint-Aware)",
@@ -701,7 +675,7 @@ class TaintBasedRule implements TypedRule {
 // ─── Register all rules ────────────────────────────────────────────────────
 
 // C4 migrated to packages/analyzer/src/rules/implementations/c4-sql-injection/
-registerTypedRule(new TaintBasedRule(C12_UNSAFE_DESERIALIZATION));
+// C12 migrated to packages/analyzer/src/rules/implementations/c12-unsafe-deserialization/
 registerTypedRule(new TaintBasedRule(C13_TEMPLATE_INJECTION));
 registerTypedRule(new TaintBasedRule(C16_DYNAMIC_CODE_EVAL));
 registerTypedRule(new TaintBasedRule(K9_DANGEROUS_POSTINSTALL));
