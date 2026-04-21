@@ -181,30 +181,6 @@ const EVIDENCE_CONFIGS: Record<string, EvidenceConfig> = {
 
 // ─── Rule definitions ──────────────────────────────────────────────────────
 
-const J2_GIT_ARGUMENT_INJECTION: RuleDef = {
-  id: "J2",
-  name: "Git Argument Injection (Taint-Aware)",
-  severity: "critical",
-  astSinkCategories: ["command_execution"],
-  taintSinkCategories: ["command_execution"],
-  owasp: "MCP03-command-injection",
-  mitre: "AML.T0054",
-  remediation:
-    "Never pass user input to git commands via exec(). Use a git library (simple-git, nodegit) " +
-    "that doesn't invoke shell. Validate git refs against ^[a-zA-Z0-9._/-]+$. " +
-    "Block arguments starting with '--' from user input.",
-  fallbackPatterns: [
-    { regex: /(?:exec|spawn)(?:Sync)?\s*\(\s*[`"']git\s+(?:clone|fetch|pull|push|init|remote)[^)]*(?:\$\{|\+\s*\w+)/g, desc: "git command with injected variable", confidence: 0.85 },
-    { regex: /--(?:upload-pack|exec|receive-pack)\s*[=\s]+(?:\$\{|\w+)/g, desc: "git --upload-pack/--exec with variable", confidence: 0.90 },
-    { regex: /git_init|git\.init/g, desc: "unrestricted git_init (CVE-2025-68143)", confidence: 0.70 },
-    { regex: /(?:exec|spawn)(?:Sync)?\s*\(\s*[`"']git\s[^)]*\.\.\//g, desc: "git command with path traversal", confidence: 0.80 },
-  ],
-  safePatterns: [
-    /execFile(?:Sync)?\s*\(\s*['"]git['"]/,  // execFile is safe (no shell injection)
-    /simple-git/,                              // Library usage (safe)
-  ],
-};
-
 // ─── Generic taint-based rule implementation ───────────────────────────────
 
 class TaintBasedRule implements TypedRule {
@@ -599,9 +575,9 @@ class TaintBasedRule implements TypedRule {
 
 // ─── Register all rules ────────────────────────────────────────────────────
 
-// C4 migrated to packages/analyzer/src/rules/implementations/c4-sql-injection/
-// C12 migrated to packages/analyzer/src/rules/implementations/c12-unsafe-deserialization/
-// C13 migrated to packages/analyzer/src/rules/implementations/c13-ssti/
-// C16 migrated to packages/analyzer/src/rules/implementations/c16-eval-injection/
-// K9 migrated to packages/analyzer/src/rules/implementations/k9-dangerous-post-install-hooks/
-registerTypedRule(new TaintBasedRule(J2_GIT_ARGUMENT_INJECTION));
+// All six rules (C4, C12, C13, C16, K9, J2) have been migrated to their
+// own directories under `packages/analyzer/src/rules/implementations/<rule>/`.
+// This file no longer registers any rules; the infrastructure below
+// (TaintBasedRule, EVIDENCE_CONFIGS, formatASTEvidence, formatTaintEvidence,
+// isTestFile) is kept only as a reference for future taint-based rule
+// authors until a follow-up commit deletes it.

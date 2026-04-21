@@ -106,18 +106,21 @@ export class DangerousPostInstallRule implements TypedRuleV2 {
       })
       .factor(
         "install_hook_location_identified",
-        0.1,
+        0.2,
         `Hook identified: ${fact.hook}. The finding's Location points at ` +
           `${fact.location.kind === "config" ? fact.location.json_pointer : "the cmdclass run() method"} so a ` +
-          `reviewer can open the exact entry in package.json / setup.py.`,
+          `reviewer can open the exact entry in package.json / setup.py. ` +
+          `The structural parse produced a specific JSON pointer, the ` +
+          `strongest non-taint evidence this rule can produce.`,
       )
       .factor(
         "dangerous_command_family",
-        fact.family === "fetch-and-exec" || fact.family === "inline-base64" ? 0.15 : 0.1,
+        fact.family === "fetch-and-exec" || fact.family === "inline-base64" ? 0.25 : 0.15,
         `Family: ${fact.family}. Matched token: \`${fact.matchedToken.slice(0, 80)}\`. ` +
           `Fetch-and-exec and inline-base64 are the highest-priority ` +
           `families per CHARTER lethal edge case 5 (pipe-to-shell canonical ` +
-          `pattern) and 6 (base64 decode in hook).`,
+          `pattern) and 6 (base64 decode in hook). Token match on a known ` +
+          `supply-chain-attack primitive carries the strongest factor.`,
       )
       .factor(
         "severity_adjustment",

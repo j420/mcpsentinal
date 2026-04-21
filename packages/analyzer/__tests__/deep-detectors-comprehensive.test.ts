@@ -21,6 +21,12 @@ import "../src/rules/implementations/d3-typosquatting/index.js";
 import "../src/rules/implementations/f1-lethal-trifecta.js";
 import "../src/rules/implementations/g4-context-saturation.js";
 import "../src/rules/implementations/tainted-execution-detector.js";
+import "../src/rules/implementations/c4-sql-injection/index.js";
+import "../src/rules/implementations/c12-unsafe-deserialization/index.js";
+import "../src/rules/implementations/c13-ssti/index.js";
+import "../src/rules/implementations/c16-eval-injection/index.js";
+import "../src/rules/implementations/k9-dangerous-post-install-hooks/index.js";
+import "../src/rules/implementations/j2-git-argument-injection/index.js";
 import "../src/rules/implementations/cross-tool-risk-detector.js";
 import "../src/rules/implementations/config-poisoning-detector.js";
 import "../src/rules/implementations/secret-exfil-detector.js";
@@ -136,9 +142,13 @@ describe("Missing True Negatives", () => {
 // ─── Previously Untested Rules: Detector 1 extras ──────────────────────────
 
 describe("Detector 1: Additional Coverage", () => {
-  it("C13 — flags Jinja2 from_string with variable", () => {
+  it("C13 — flags nunjucks.renderString with request-body template", () => {
+    // Updated by Phase 1 Chunk 1.16 — v2 C13 uses AST taint over the JS
+    // template-engine sinks recognised by taint-ast.ts. Python Jinja2's
+    // Environment().from_string is out of that scope; the nunjucks path
+    // exercises the equivalent detection on TypeScript source.
     const findings = analyzeRule("C13", makeContext({
-      source_code: `template_str = request.form['template']\nresult = Environment().from_string(template_str).render()`,
+      source_code: `const tpl = req.body.template;\nnunjucks.renderString(tpl, data);`,
     }));
     expect(findings.length).toBeGreaterThan(0);
     expect(findings[0].rule_id).toBe("C13");
@@ -152,9 +162,10 @@ describe("Detector 1: Additional Coverage", () => {
     expect(c13.length).toBe(0);
   });
 
-  it("J2 — flags git command with variable injection", () => {
+  it("J2 — flags git command with req.body-sourced variable injection", () => {
+    // Updated by Phase 1 Chunk 1.16 — v2 J2 requires a taint source.
     const findings = analyzeRule("J2", makeContext({
-      source_code: `execSync(\`git clone \${userUrl} /tmp/repo\`);`,
+      source_code: `const userUrl = req.body.url;\nexecSync(\`git clone \${userUrl} /tmp/repo\`);`,
     }));
     expect(findings.length).toBeGreaterThan(0);
     expect(findings[0].rule_id).toBe("J2");

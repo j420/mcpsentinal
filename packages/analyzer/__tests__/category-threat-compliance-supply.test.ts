@@ -27,15 +27,16 @@ describe("J1 — Cross-Agent Config Poisoning", () => {
 });
 
 describe("J2 — Git Argument Injection", () => {
-  it("flags git clone with user URL", () => {
-    const f = run("J2", "execSync(`git clone ${userUrl}`);");
+  it("flags git clone with req.body-sourced URL", () => {
+    // Updated by Phase 1 Chunk 1.16 — v2 J2 requires a taint source.
+    const f = run("J2", "const userUrl = req.body.url;\nexecSync(`git clone ${userUrl}`);");
     expect(f.some(x => x.rule_id === "J2")).toBe(true);
     const finding = findingFor(f, "J2");
     const chain = expectEvidenceChain(finding);
     expectConfidenceRange(chain, 0.30, 0.99);
   });
-  it("flags --upload-pack injection", () => {
-    const f = run("J2", `execSync("git fetch --upload-pack=" + payload);`);
+  it("flags --upload-pack injection with req.body-sourced payload", () => {
+    const f = run("J2", `const payload = req.body.uploadPack;\nexecSync("git fetch --upload-pack=" + payload);`);
     expect(f.some(x => x.rule_id === "J2")).toBe(true);
     const finding = findingFor(f, "J2");
     const chain = expectEvidenceChain(finding);
