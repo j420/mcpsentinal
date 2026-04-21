@@ -45,6 +45,7 @@ import "./implementations/c1-command-injection/index.js";
 import "./implementations/c4-sql-injection/index.js";
 import "./implementations/c12-unsafe-deserialization/index.js";
 import "./implementations/c13-ssti/index.js";
+import "./implementations/c16-eval-injection/index.js";
 import "./implementations/a6-unicode-homoglyph/index.js";
 import "./implementations/a7-zero-width-injection/index.js";
 import "./implementations/a9-encoded-instructions/index.js";

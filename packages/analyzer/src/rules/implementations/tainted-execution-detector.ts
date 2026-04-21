@@ -181,31 +181,6 @@ const EVIDENCE_CONFIGS: Record<string, EvidenceConfig> = {
 
 // ─── Rule definitions ──────────────────────────────────────────────────────
 
-const C16_DYNAMIC_CODE_EVAL: RuleDef = {
-  id: "C16",
-  name: "Dynamic Code Evaluation (Taint-Aware)",
-  severity: "critical",
-  astSinkCategories: ["code_eval", "vm_escape"],
-  taintSinkCategories: ["code_eval"],
-  owasp: "MCP03-command-injection",
-  mitre: "AML.T0054",
-  remediation:
-    "Remove eval() and new Function() calls. Use JSON.parse() for data, " +
-    "a proper expression parser for math, or a sandboxed VM with restricted globals. " +
-    "For Python: replace eval/exec with ast.literal_eval() for data parsing.",
-  fallbackPatterns: [
-    { regex: /\beval\s*\(\s*(?!['"`])\w+/g, desc: "eval() with variable input", confidence: 0.80 },
-    { regex: /new\s+Function\s*\(\s*(?!['"`])\w+/g, desc: "new Function() with variable", confidence: 0.80 },
-    { regex: /setTimeout\s*\(\s*(?!['"`(]|function)\w+/g, desc: "setTimeout with string (not function)", confidence: 0.70 },
-    { regex: /importlib\.import_module\s*\(\s*(?!['"`])\w+/g, desc: "importlib with variable module name", confidence: 0.75 },
-    { regex: /__import__\s*\(\s*(?!['"`])\w+/g, desc: "__import__ with variable", confidence: 0.75 },
-  ],
-  safePatterns: [
-    /JSON\.parse/,
-    /ast\.literal_eval/,
-  ],
-};
-
 const K9_DANGEROUS_POSTINSTALL: RuleDef = {
   id: "K9",
   name: "Dangerous Post-Install Hooks (Taint-Aware)",
@@ -651,6 +626,6 @@ class TaintBasedRule implements TypedRule {
 // C4 migrated to packages/analyzer/src/rules/implementations/c4-sql-injection/
 // C12 migrated to packages/analyzer/src/rules/implementations/c12-unsafe-deserialization/
 // C13 migrated to packages/analyzer/src/rules/implementations/c13-ssti/
-registerTypedRule(new TaintBasedRule(C16_DYNAMIC_CODE_EVAL));
+// C16 migrated to packages/analyzer/src/rules/implementations/c16-eval-injection/
 registerTypedRule(new TaintBasedRule(K9_DANGEROUS_POSTINSTALL));
 registerTypedRule(new TaintBasedRule(J2_GIT_ARGUMENT_INJECTION));
