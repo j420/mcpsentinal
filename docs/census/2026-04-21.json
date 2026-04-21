@@ -8,15 +8,15 @@
     "registered_v2": 25,
     "unregistered_enabled": 20,
     "detectors": {
-      "total_files": 27,
-      "files_with_any_regex": 24,
-      "files_with_any_technique": 14
+      "total_files": 28,
+      "files_with_any_regex": 25,
+      "files_with_any_technique": 15
     },
     "aggregate": {
       "regex_literals": 688,
       "new_regexp_calls": 3,
       "string_arrays_over_5": 7,
-      "uses_taint_ast": 49,
+      "uses_taint_ast": 55,
       "uses_capability_graph": 36,
       "uses_module_graph": 0,
       "uses_entropy": 5,
@@ -50,6 +50,11 @@
         "new_regexp_calls": 0
       },
       {
+        "file": "packages/analyzer/src/rules/implementations/tainted-execution-detector.ts",
+        "regex_literals": 42,
+        "new_regexp_calls": 0
+      },
+      {
         "file": "packages/analyzer/src/rules/implementations/data-privacy-cross-ecosystem-detector.ts",
         "regex_literals": 38,
         "new_regexp_calls": 0
@@ -60,18 +65,13 @@
         "new_regexp_calls": 0
       },
       {
-        "file": "packages/analyzer/src/rules/implementations/k-remaining-v2.ts",
+        "file": "packages/analyzer/src/rules/implementations/k-compliance-v2.ts",
         "regex_literals": 36,
         "new_regexp_calls": 0
       },
       {
-        "file": "packages/analyzer/src/rules/implementations/code-security-deep-detector.ts",
-        "regex_literals": 35,
-        "new_regexp_calls": 0
-      },
-      {
-        "file": "packages/analyzer/src/rules/implementations/supply-chain-detector.ts",
-        "regex_literals": 35,
+        "file": "packages/analyzer/src/rules/implementations/k-remaining-v2.ts",
+        "regex_literals": 36,
         "new_regexp_calls": 0
       }
     ]
@@ -554,13 +554,24 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": false,
+      "registered_v1": true,
       "registered_v2": false,
-      "detector_file": null,
-      "technique_observed": null,
-      "notes": [
-        "enabled in YAML but no TypedRule registration found"
-      ]
+      "detector_file": "packages/analyzer/src/rules/implementations/tainted-execution-detector.ts",
+      "technique_observed": {
+        "regex_literals": 42,
+        "new_regexp_calls": 0,
+        "string_arrays_over_5": 0,
+        "ts_compiler_api_import": false,
+        "tree_sitter_import": false,
+        "uses_taint_ast": true,
+        "uses_capability_graph": false,
+        "uses_module_graph": false,
+        "uses_entropy": false,
+        "uses_similarity": false,
+        "uses_schema_inference": false,
+        "uses_evidence_chain_builder": true
+      },
+      "notes": []
     },
     {
       "rule_id": "C5",
@@ -759,13 +770,24 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": false,
+      "registered_v1": true,
       "registered_v2": false,
-      "detector_file": null,
-      "technique_observed": null,
-      "notes": [
-        "enabled in YAML but no TypedRule registration found"
-      ]
+      "detector_file": "packages/analyzer/src/rules/implementations/tainted-execution-detector.ts",
+      "technique_observed": {
+        "regex_literals": 42,
+        "new_regexp_calls": 0,
+        "string_arrays_over_5": 0,
+        "ts_compiler_api_import": false,
+        "tree_sitter_import": false,
+        "uses_taint_ast": true,
+        "uses_capability_graph": false,
+        "uses_module_graph": false,
+        "uses_entropy": false,
+        "uses_similarity": false,
+        "uses_schema_inference": false,
+        "uses_evidence_chain_builder": true
+      },
+      "notes": []
     },
     {
       "rule_id": "C13",
@@ -775,13 +797,24 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": false,
+      "registered_v1": true,
       "registered_v2": false,
-      "detector_file": null,
-      "technique_observed": null,
-      "notes": [
-        "enabled in YAML but no TypedRule registration found"
-      ]
+      "detector_file": "packages/analyzer/src/rules/implementations/tainted-execution-detector.ts",
+      "technique_observed": {
+        "regex_literals": 42,
+        "new_regexp_calls": 0,
+        "string_arrays_over_5": 0,
+        "ts_compiler_api_import": false,
+        "tree_sitter_import": false,
+        "uses_taint_ast": true,
+        "uses_capability_graph": false,
+        "uses_module_graph": false,
+        "uses_entropy": false,
+        "uses_similarity": false,
+        "uses_schema_inference": false,
+        "uses_evidence_chain_builder": true
+      },
+      "notes": []
     },
     {
       "rule_id": "C14",
@@ -845,13 +878,24 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": false,
+      "registered_v1": true,
       "registered_v2": false,
-      "detector_file": null,
-      "technique_observed": null,
-      "notes": [
-        "enabled in YAML but no TypedRule registration found"
-      ]
+      "detector_file": "packages/analyzer/src/rules/implementations/tainted-execution-detector.ts",
+      "technique_observed": {
+        "regex_literals": 42,
+        "new_regexp_calls": 0,
+        "string_arrays_over_5": 0,
+        "ts_compiler_api_import": false,
+        "tree_sitter_import": false,
+        "uses_taint_ast": true,
+        "uses_capability_graph": false,
+        "uses_module_graph": false,
+        "uses_entropy": false,
+        "uses_similarity": false,
+        "uses_schema_inference": false,
+        "uses_evidence_chain_builder": true
+      },
+      "notes": []
     },
     {
       "rule_id": "D1",
@@ -2065,13 +2109,24 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": false,
+      "registered_v1": true,
       "registered_v2": false,
-      "detector_file": null,
-      "technique_observed": null,
-      "notes": [
-        "enabled in YAML but no TypedRule registration found"
-      ]
+      "detector_file": "packages/analyzer/src/rules/implementations/tainted-execution-detector.ts",
+      "technique_observed": {
+        "regex_literals": 42,
+        "new_regexp_calls": 0,
+        "string_arrays_over_5": 0,
+        "ts_compiler_api_import": false,
+        "tree_sitter_import": false,
+        "uses_taint_ast": true,
+        "uses_capability_graph": false,
+        "uses_module_graph": false,
+        "uses_entropy": false,
+        "uses_similarity": false,
+        "uses_schema_inference": false,
+        "uses_evidence_chain_builder": true
+      },
+      "notes": []
     },
     {
       "rule_id": "J3",
@@ -2388,13 +2443,24 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": false,
+      "registered_v1": true,
       "registered_v2": false,
-      "detector_file": null,
-      "technique_observed": null,
-      "notes": [
-        "enabled in YAML but no TypedRule registration found"
-      ]
+      "detector_file": "packages/analyzer/src/rules/implementations/tainted-execution-detector.ts",
+      "technique_observed": {
+        "regex_literals": 42,
+        "new_regexp_calls": 0,
+        "string_arrays_over_5": 0,
+        "ts_compiler_api_import": false,
+        "tree_sitter_import": false,
+        "uses_taint_ast": true,
+        "uses_capability_graph": false,
+        "uses_module_graph": false,
+        "uses_entropy": false,
+        "uses_similarity": false,
+        "uses_schema_inference": false,
+        "uses_evidence_chain_builder": true
+      },
+      "notes": []
     },
     {
       "rule_id": "K10",
@@ -2631,12 +2697,23 @@
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
       "registered_v1": false,
-      "registered_v2": false,
-      "detector_file": null,
-      "technique_observed": null,
-      "notes": [
-        "enabled in YAML but no TypedRule registration found"
-      ]
+      "registered_v2": true,
+      "detector_file": "packages/analyzer/src/rules/implementations/k-compliance-v2.ts",
+      "technique_observed": {
+        "regex_literals": 36,
+        "new_regexp_calls": 0,
+        "string_arrays_over_5": 0,
+        "ts_compiler_api_import": true,
+        "tree_sitter_import": false,
+        "uses_taint_ast": false,
+        "uses_capability_graph": false,
+        "uses_module_graph": false,
+        "uses_entropy": false,
+        "uses_similarity": false,
+        "uses_schema_inference": false,
+        "uses_evidence_chain_builder": true
+      },
+      "notes": []
     },
     {
       "rule_id": "L1",

@@ -23,7 +23,7 @@ _Generated: 2026-04-21T12:08:07.814Z_
 | Regex literals | 688 |
 | new RegExp(...) calls | 3 |
 | String-literal arrays > 5 | 7 |
-| Rules using taint-ast | 49 |
+| Rules using taint-ast | 55 |
 | Rules using capability-graph | 36 |
 | Rules using module-graph | 0 |
 | Rules using entropy | 5 |
@@ -41,6 +41,7 @@ _Generated: 2026-04-21T12:08:07.814Z_
 | `packages/analyzer/src/rules/implementations/m-runtime-v2.ts` | 43 | 0 |
 | `packages/analyzer/src/rules/implementations/data-privacy-cross-ecosystem-detector.ts` | 38 | 0 |
 | `packages/analyzer/src/rules/implementations/advanced-supply-chain-detector.ts` | 36 | 0 |
+| `packages/analyzer/src/rules/implementations/k-compliance-v2.ts` | 36 | 0 |
 | `packages/analyzer/src/rules/implementations/k-remaining-v2.ts` | 36 | 0 |
 | `packages/analyzer/src/rules/implementations/code-security-deep-detector.ts` | 35 | 0 |
 | `packages/analyzer/src/rules/implementations/supply-chain-detector.ts` | 35 | 0 |
@@ -156,7 +157,7 @@ T = first-letter tags: a=ast-taint, c=capability-graph, m=module-graph, e=entrop
 | K17 | Missing Timeout or Circuit Breaker | compliance-governance | medium | Y |  |  | 0 | — | — |
 | K18 | Cross-Trust-Boundary Data Flow in Tool Response | compliance-governance | high | Y |  | Y | 36 | v | `k-remaining-v2.ts` |
 | K19 | Missing Runtime Sandbox Enforcement | compliance-governance | high | Y |  | Y | 47 | v | `docker-k8s-crypto-v2.ts` |
-| K20 | Insufficient Audit Context in Logging | compliance-governance | medium | Y |  |  | 0 | — | — |
+| K20 | Insufficient Audit Context in Logging | compliance-governance | medium | Y |  | Y | 36 | v | `k-compliance-v2.ts` |
 | L1 | GitHub Actions Tag Poisoning | supply-chain-advanced | critical | Y | Y |  | 36 | av | `advanced-supply-chain-detector.ts` |
 | L2 | Malicious Build Plugin Injection | supply-chain-advanced | critical | Y | Y |  | 36 | av | `advanced-supply-chain-detector.ts` |
 | L3 | Dockerfile Base Image Supply Chain Risk | supply-chain-advanced | high | Y |  | Y | 47 | v | `docker-k8s-crypto-v2.ts` |
@@ -238,22 +239,15 @@ T = first-letter tags: a=ast-taint, c=capability-graph, m=module-graph, e=entrop
 - **A7**: enabled in YAML but no TypedRule registration found
 - **A9**: enabled in YAML but no TypedRule registration found
 - **C1**: enabled in YAML but no TypedRule registration found
-- **C4**: enabled in YAML but no TypedRule registration found
-- **C12**: enabled in YAML but no TypedRule registration found
-- **C13**: enabled in YAML but no TypedRule registration found
-- **C16**: enabled in YAML but no TypedRule registration found
 - **D3**: enabled in YAML but no TypedRule registration found
-- **J2**: enabled in YAML but no TypedRule registration found
 - **K1**: enabled in YAML but no TypedRule registration found
 - **K4**: enabled in YAML but no TypedRule registration found
 - **K6**: enabled in YAML but no TypedRule registration found
 - **K7**: enabled in YAML but no TypedRule registration found
-- **K9**: enabled in YAML but no TypedRule registration found
 - **K12**: enabled in YAML but no TypedRule registration found
 - **K14**: enabled in YAML but no TypedRule registration found
 - **K16**: enabled in YAML but no TypedRule registration found
 - **K17**: enabled in YAML but no TypedRule registration found
-- **K20**: enabled in YAML but no TypedRule registration found
 - **M3**: disabled in YAML but still registered
 - **O1**: disabled in YAML but still registered
 - **O2**: disabled in YAML but still registered

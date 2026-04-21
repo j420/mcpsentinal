@@ -258,8 +258,18 @@
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
-    "packages/analyzer/src/rules/implementations/k-remaining-v2.ts": {
-      "regex_literals": 36,
+    "packages/analyzer/src/rules/implementations/j2-git-argument-injection/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/jsonrpc-protocol-v2.ts": {
+      "regex_literals": 64,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k-compliance-v2.ts": {
+      "regex_literals": 15,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
@@ -274,6 +284,21 @@
       "string_arrays_over_5": 0
     },
     "packages/analyzer/src/rules/implementations/k1-absent-structured-logging/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k11-missing-server-integrity-verification/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k11-missing-server-integrity-verification/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k11-missing-server-integrity-verification/verification.ts": {
       "regex_literals": 0,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
