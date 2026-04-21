@@ -252,8 +252,17 @@ describe("K14 — Agent Credential Propagation", () => {
 });
 
 describe("K16 — Unbounded Recursion", () => {
-  it("flags while(true) without break", () => {
-    const f = run("K16", `while (true) { process(); }`);
+  it("flags direct self-recursion without a depth guard", () => {
+    // v2 K16 charter narrows this rule to recursion only; see
+    // packages/analyzer/src/rules/implementations/k16-unbounded-recursion/CHARTER.md.
+    const src = `
+      function walkTree(node) {
+        process(node.value);
+        if (!node.children) return;
+        for (const c of node.children) walkTree(c);
+      }
+    `;
+    const f = run("K16", src);
     expect(f.some(x => x.rule_id === "K16")).toBe(true);
     const finding = findingFor(f, "K16");
     const chain = expectEvidenceChain(finding);
