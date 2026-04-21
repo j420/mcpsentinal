@@ -181,32 +181,6 @@ const EVIDENCE_CONFIGS: Record<string, EvidenceConfig> = {
 
 // ─── Rule definitions ──────────────────────────────────────────────────────
 
-const C13_TEMPLATE_INJECTION: RuleDef = {
-  id: "C13",
-  name: "Server-Side Template Injection (Taint-Aware)",
-  severity: "critical",
-  astSinkCategories: ["template_injection"],
-  taintSinkCategories: ["template_render"],
-  owasp: "MCP03-command-injection",
-  mitre: "AML.T0054",
-  remediation:
-    "Never pass user-controlled strings as the template itself. Use template files with safe variable interpolation. " +
-    "For Jinja2: use sandbox mode. For Nunjucks: disable autoescaping only when explicitly needed. " +
-    "Validate user input before passing to any template engine.",
-  fallbackPatterns: [
-    { regex: /(?:Jinja2|Environment)\s*\([^)]*\)\.from_string\s*\(\s*(?!['"`])\w+/g, desc: "Jinja2 from_string with variable", confidence: 0.85 },
-    { regex: /nunjucks\.renderString\s*\(\s*(?!['"`])\w+/g, desc: "nunjucks.renderString with variable", confidence: 0.85 },
-    { regex: /ejs\.render\s*\(\s*(?!['"`])\w+/g, desc: "ejs.render with variable template", confidence: 0.80 },
-    { regex: /pug\.render\s*\(\s*(?!['"`])\w+/g, desc: "pug.render with variable template", confidence: 0.80 },
-    { regex: /Handlebars\.compile\s*\(\s*(?!['"`])\w+/g, desc: "Handlebars.compile with variable", confidence: 0.75 },
-    { regex: /Template\s*\(\s*(?!['"`])\w+\s*\)\.render/g, desc: "Mako Template with variable", confidence: 0.80 },
-  ],
-  safePatterns: [
-    /render\s*\(\s*['"][^'"]+\.(?:html|ejs|pug|hbs|njk)['"]/,  // Template file path (safe)
-    /res\.render\s*\(\s*['"]/,                                    // Express res.render with file (safe)
-  ],
-};
-
 const C16_DYNAMIC_CODE_EVAL: RuleDef = {
   id: "C16",
   name: "Dynamic Code Evaluation (Taint-Aware)",
@@ -676,7 +650,7 @@ class TaintBasedRule implements TypedRule {
 
 // C4 migrated to packages/analyzer/src/rules/implementations/c4-sql-injection/
 // C12 migrated to packages/analyzer/src/rules/implementations/c12-unsafe-deserialization/
-registerTypedRule(new TaintBasedRule(C13_TEMPLATE_INJECTION));
+// C13 migrated to packages/analyzer/src/rules/implementations/c13-ssti/
 registerTypedRule(new TaintBasedRule(C16_DYNAMIC_CODE_EVAL));
 registerTypedRule(new TaintBasedRule(K9_DANGEROUS_POSTINSTALL));
 registerTypedRule(new TaintBasedRule(J2_GIT_ARGUMENT_INJECTION));
