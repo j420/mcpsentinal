@@ -201,5 +201,9 @@ import "./implementations/k12-executable-content-response/index.js";
 import "./implementations/k14-agent-credential-propagation/index.js";
 import "./implementations/k16-unbounded-recursion/index.js";
 import "./implementations/k20-insufficient-audit-context/index.js";
-import "./implementations/m-runtime-v2.js";
+// m-runtime-v2.ts deleted in Phase 1 Chunk 1.6/D; M2/M7/M8 each
+// moved to per-rule Rule Standard v2 directories.
+import "./implementations/m2-prompt-leak-via-response/index.js";
+import "./implementations/m7-multi-turn-state-injection/index.js";
+import "./implementations/m8-encoding-attack-on-input/index.js";
 import "./implementations/compliance-remaining-detector.js";
