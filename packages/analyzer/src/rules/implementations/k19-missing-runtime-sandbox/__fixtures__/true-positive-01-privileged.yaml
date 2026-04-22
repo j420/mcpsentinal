@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mcp-server
+spec:
+  containers:
+    - name: mcp
+      image: mcp/server:latest
+      securityContext:
+        # Auditor: full host-equivalent access, CIS 5.2.1 failure.
+        privileged: true

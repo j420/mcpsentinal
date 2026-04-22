@@ -227,15 +227,12 @@ describe("K7 — Long-Lived Tokens", () => {
   });
 });
 
-describe("K8 — Cross-Boundary Credentials", () => {
-  it("flags shared_token forwarding", () => {
-    const f = run("K8", `forward_token(shared_token, upstream_server);`);
-    expect(f.some(x => x.rule_id === "K8")).toBe(true);
-    const finding = findingFor(f, "K8");
-    const chain = expectEvidenceChain(finding);
-    expectConfidenceRange(chain, 0.30, 0.99);
-  });
-});
+// K8 — Cross-Boundary Credential Sharing migrated to v2 in Phase 1 Chunk 1.10
+// (packages/analyzer/src/rules/implementations/k8-cross-boundary-credential-sharing/).
+// The v2 rule requires structural credential-source recognition + cross-boundary
+// sink taint; a bare `forward_token(shared_token, ...)` snippet lacks the source
+// classification required by the chain. Comprehensive coverage lives in the
+// per-rule test suite.
 
 describe("K12 — Executable Content in Response", () => {
   it("flags eval in response", () => {
@@ -397,15 +394,11 @@ describe("L3 — Dockerfile Base Image Risk", () => {
   it("does NOT flag pinned SHA", () => { expect(run("L3", `FROM node@sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890`).filter(x => x.rule_id === "L3").length).toBe(0); });
 });
 
-describe("L5 — Manifest Confusion", () => {
-  it("flags prepublish modifying package.json", () => {
-    const f = runCtx("L5", ctx({ source_code: JSON.stringify({ scripts: { prepublish: "node swap-package.json" } }) }));
-    expect(f.some(x => x.rule_id === "L5")).toBe(true);
-    const finding = findingFor(f, "L5");
-    const chain = expectEvidenceChain(finding);
-    expectConfidenceRange(chain, 0.30, 0.99);
-  });
-});
+// L5 — Manifest Confusion migrated to v2 in Phase 1 Chunk 1.11
+// (packages/analyzer/src/rules/implementations/l5-manifest-confusion/).
+// The v2 rule parses real package.json files with bin-system-shadow,
+// bin-hidden-target, and exports-divergence primitives — not source_code
+// JSON blobs. Comprehensive coverage lives in the per-rule test suite.
 
 describe("L6 — Config Symlink Attack", () => {
   // Updated by Phase 1 Wave 2 chunk 1.9 — L6 v2 detects Node `fs.symlink*`

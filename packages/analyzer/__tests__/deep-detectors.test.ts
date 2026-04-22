@@ -32,7 +32,12 @@ import "../src/rules/implementations/q4-ide-mcp-config-injection/index.js";
 import "../src/rules/implementations/l9-ci-secret-exfiltration/index.js";
 import "../src/rules/implementations/k2-audit-trail-destruction/index.js";
 import "../src/rules/implementations/g7-dns-exfiltration-channel/index.js";
-import "../src/rules/implementations/supply-chain-detector.js";
+// supply-chain-detector.ts deleted in Phase 1 Chunk 1.11 — its four rules
+// (L5, L12, L14 stub, K10) each moved to their own directory.
+import "../src/rules/implementations/l5-manifest-confusion/index.js";
+import "../src/rules/implementations/l12-build-artifact-tampering/index.js";
+import "../src/rules/implementations/l14-hidden-entry-point-mismatch/index.js";
+import "../src/rules/implementations/k10-package-registry-substitution/index.js";
 // code-security-deep-detector.ts removed in Phase 1 Chunk 1.18 — its four
 // rules (C2, C5, C10, C14) each moved to their own directory.
 import "../src/rules/implementations/c2-path-traversal/index.js";
@@ -41,13 +46,17 @@ import "../src/rules/implementations/c10-prototype-pollution/index.js";
 import "../src/rules/implementations/c14-jwt-algorithm-confusion/index.js";
 import "../src/rules/implementations/ai-manipulation-detector.js";
 import "../src/rules/implementations/infrastructure-detector.js";
-import "../src/rules/implementations/advanced-supply-chain-detector.js";
-// Phase 1 Chunk 1.9 migrated L1/L2/L6/L13 out of advanced-supply-chain-detector
-// into per-rule directories.
+// advanced-supply-chain-detector.ts deleted in Phase 1 Chunks 1.9 + 1.10 —
+// L1/L2/L6/L13 (chunk 1.9) and L7/K3/K5/K8 (chunk 1.10) each moved to their
+// own directory.
 import "../src/rules/implementations/l1-github-actions-tag-poisoning/index.js";
 import "../src/rules/implementations/l2-malicious-build-plugin/index.js";
 import "../src/rules/implementations/l6-config-symlink-attack/index.js";
 import "../src/rules/implementations/l13-build-credential-file-theft/index.js";
+import "../src/rules/implementations/l7-transitive-mcp-delegation/index.js";
+import "../src/rules/implementations/k3-audit-log-tampering/index.js";
+import "../src/rules/implementations/k5-auto-approve-bypass/index.js";
+import "../src/rules/implementations/k8-cross-boundary-credential-sharing/index.js";
 import "../src/rules/implementations/protocol-ai-runtime-detector.js";
 import "../src/rules/implementations/data-privacy-cross-ecosystem-detector.js";
 
@@ -448,83 +457,16 @@ describe("Detector 4: Secret Exfiltration", () => {
 
 // ─── Detector 5: Supply Chain Integrity ────────────────────────────────────
 
-describe("Detector 5: Supply Chain Integrity", () => {
-  describe("L14 — Hidden Entry Point (via L5 detector)", () => {
-    it("flags bin shadowing system command", () => {
-      // L14 findings are produced by L5's ManifestConfusionRule
-      const findings = analyzeRule("L5", makeContext({
-        source_code: JSON.stringify({
-          name: "malicious-package",
-          bin: { "curl": "./scripts/curl-wrapper.sh" },
-        }),
-      }));
-      const l14 = findings.filter(f => f.rule_id === "L14");
-      expect(l14.length).toBeGreaterThan(0);
-      expect(l14[0].evidence).toContain("shadows system command");
-    });
-
-    it("does NOT flag legitimate bin names", () => {
-      const findings = analyzeRule("L5", makeContext({
-        source_code: JSON.stringify({
-          name: "mcp-sentinel",
-          bin: { "mcp-sentinel": "./dist/cli.js" },
-        }),
-      }));
-      // Filter for L14 findings about system command shadowing specifically
-      const shadowFindings = findings.filter(f => f.rule_id === "L14" && f.evidence.includes("shadows system command"));
-      expect(shadowFindings.length).toBe(0);
-    });
-  });
-
-  describe("L5 — Manifest Confusion", () => {
-    it("flags prepublish modifying package.json", () => {
-      const findings = analyzeRule("L5", makeContext({
-        source_code: JSON.stringify({
-          scripts: {
-            prepublish: "node scripts/swap-package.json",
-          },
-        }),
-      }));
-      const l5 = findings.filter(f => f.rule_id === "L5");
-      expect(l5.length).toBeGreaterThan(0);
-    });
-
-    it("does NOT flag prepublish with tsc", () => {
-      const findings = analyzeRule("L5", makeContext({
-        source_code: JSON.stringify({
-          scripts: {
-            prepublishOnly: "tsc && tsc -p tsconfig.build.json",
-          },
-        }),
-      }));
-      const l5 = findings.filter(f => f.rule_id === "L5");
-      expect(l5.length).toBe(0);
-    });
-  });
-
-  describe("K10 — Registry Substitution", () => {
-    it("flags non-standard npm registry", () => {
-      const findings = analyzeRule("K10", makeContext({
-        source_code: `registry=https://evil-registry.com/npm/`,
-      }));
-      expect(findings.length).toBeGreaterThan(0);
-    });
-
-    it("does NOT flag official npm registry", () => {
-      const findings = analyzeRule("K10", makeContext({
-        source_code: `registry=https://registry.npmjs.org/`,
-      }));
-      expect(findings.length).toBe(0);
-    });
-
-    it("does NOT flag local verdaccio", () => {
-      const findings = analyzeRule("K10", makeContext({
-        source_code: `registry=http://localhost:4873/`,
-      }));
-      expect(findings.length).toBe(0);
-    });
-  });
-});
+// Detector 5: Supply Chain Integrity — MIGRATED in Phase 1 Chunk 1.11
+// (wave-3). L5 / L12 / L14 stub / K10 each moved to own v2 directories
+// with structural manifest parsing and full evidence chains. Legacy
+// tests that passed a JSON-stringified package.json via `source_code`
+// no longer match the v2 input contract; comprehensive per-rule
+// coverage lives in:
+//   packages/analyzer/src/rules/implementations/l5-manifest-confusion/__tests__/index.test.ts
+//   packages/analyzer/src/rules/implementations/l12-build-artifact-tampering/__tests__/index.test.ts
+//   packages/analyzer/src/rules/implementations/l14-hidden-entry-point-mismatch/__tests__/index.test.ts
+//   packages/analyzer/src/rules/implementations/k10-package-registry-substitution/__tests__/index.test.ts
 
 // ─── Detector 6: Code Security Deep ───────────────────────────────────────
 

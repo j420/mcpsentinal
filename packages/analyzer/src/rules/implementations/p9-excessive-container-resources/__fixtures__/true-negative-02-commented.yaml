@@ -1,0 +1,7 @@
+services:
+  mcp:
+    image: mcp/server@sha256:0b3c98f3e41e0c94a2b8d6b47c2c4a1f9c6d4e5b8a7b2c1d3f9e8a7b6c5d4e3f
+    # mem_limit: unlimited   ← commented out, not active
+    mem_limit: 1g
+    cpus: 2
+    pids_limit: 512
