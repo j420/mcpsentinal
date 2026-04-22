@@ -57,7 +57,13 @@ import "../src/rules/implementations/c2-path-traversal/index.js";
 import "../src/rules/implementations/c5-hardcoded-secrets/index.js";
 import "../src/rules/implementations/c10-prototype-pollution/index.js";
 import "../src/rules/implementations/c14-jwt-algorithm-confusion/index.js";
-import "../src/rules/implementations/ai-manipulation-detector.js";
+// ai-manipulation-detector.ts deleted in Phase 1 Chunk 1.27 (wave-5); G1/G2/G3/G5/H2
+// each moved to own v2 directories.
+import "../src/rules/implementations/g1-indirect-prompt-injection-gateway/index.js";
+import "../src/rules/implementations/g2-trust-assertion-injection/index.js";
+import "../src/rules/implementations/g3-tool-response-format-injection/index.js";
+import "../src/rules/implementations/g5-capability-escalation-prior-approval/index.js";
+import "../src/rules/implementations/h2-init-field-prompt-injection/index.js";
 // infrastructure-detector.ts deleted in Phase 1 Chunk 1.13 (wave-4); P1-P7
 // each moved to own v2 directories.
 import "../src/rules/implementations/p1-docker-socket-mount/index.js";

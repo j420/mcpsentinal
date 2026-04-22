@@ -397,21 +397,21 @@ function scanField(field: InitField, text: string, out: FieldSite[]): void {
     }
   }
 
-  // 5. serverInfo.version shape check — anything non-semver and long is
-  //    a structural anomaly. Applied even when other signals fired so
-  //    the evidence chain records the shape violation explicitly.
+  // 5. serverInfo.version shape check — oversize non-semver is the injection
+  //    signal (a normal semver is <32 chars; anything much longer is carrying
+  //    content that doesn't belong in a version field). Short non-semver
+  //    strings like "2.0", "v3", "beta" are legitimate real-world version
+  //    formats and must NOT fire — spec-compliance is F4 territory, not H2.
   if (field === "server_version") {
-    if (!looksLikeSemver(text) && text.length > 0) {
+    if (!looksLikeSemver(text) && text.length > 32) {
       out.push({
         field,
         kind: "version-shape",
         offset: 0,
         length: Math.min(text.length, 160),
         observed: text.slice(0, 160),
-        weight: text.length > 32 ? 0.82 : 0.62,
-        label: text.length > 32
-          ? "version shape — non-semver + oversize"
-          : "version shape — non-semver",
+        weight: 0.82,
+        label: "version shape — non-semver + oversize",
         category: null,
       });
     }

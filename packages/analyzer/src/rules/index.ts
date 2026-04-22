@@ -99,7 +99,20 @@ import "./implementations/l7-transitive-mcp-delegation/index.js";
 import "./implementations/k3-audit-log-tampering/index.js";
 import "./implementations/k5-auto-approve-bypass/index.js";
 import "./implementations/k8-cross-boundary-credential-sharing/index.js";
-import "./implementations/ai-manipulation-detector.js";
+// ai-manipulation-detector.ts deleted in Phase 1 Chunk 1.27 (wave-5); its five
+// rules have each been migrated to their own directory:
+//   G1 → g1-indirect-prompt-injection-gateway/ (capability-graph inference)
+//   G2 → g2-trust-assertion-injection/ (linguistic, shared phrase catalogue)
+//   G3 → g3-tool-response-format-injection/ (linguistic + JSON-RPC shape matching)
+//   G5 → g5-capability-escalation-prior-approval/ (session-state linguistic)
+//   H2 → h2-init-field-prompt-injection/ (initialize-field scanner)
+// G4 migrated from its own legacy file g4-context-saturation.ts (chunk 1.27/G4).
+// G6/G7 already migrated in wave-2/4; H1/H3 already migrated in wave-4.
+import "./implementations/g1-indirect-prompt-injection-gateway/index.js";
+import "./implementations/g2-trust-assertion-injection/index.js";
+import "./implementations/g3-tool-response-format-injection/index.js";
+import "./implementations/g5-capability-escalation-prior-approval/index.js";
+import "./implementations/h2-init-field-prompt-injection/index.js";
 // infrastructure-detector.ts deleted in Phase 1 Chunk 1.13; its seven rules
 // (P1, P2, P3, P4, P5, P6, P7) have each been migrated to their own directory.
 // P8, P9, P10 live in their own directories from wave-3 (chunk 1.12).
