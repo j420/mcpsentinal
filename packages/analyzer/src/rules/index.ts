@@ -217,6 +217,15 @@ import "./implementations/l15-update-notification-spoofing/index.js";
 // directories with full Rule Standard v2 charters.
 import "./implementations/o4-timing-data-inference/index.js";
 import "./implementations/q10-agent-memory-poisoning/index.js";
+// Phase 1 Wave 6 / E3: O6, O8, O10, Q15 migrated to per-rule Rule Standard
+// v2 directories. Legacy registrations (previously emitted with WRONG
+// names — Clipboard / Screenshot / Keylogging / Agentic-Workflow-Persistence)
+// in compliance-remaining-detector.ts are overwritten by the v2 registrations
+// below; the orchestrator deletes the legacy stubs in cleanup.
+import "./implementations/o6-server-fingerprinting-error-responses/index.js";
+import "./implementations/o8-timing-based-covert-channel/index.js";
+import "./implementations/o10-privacy-violating-telemetry/index.js";
+import "./implementations/q15-a2a-mcp-boundary-confusion/index.js";
 // docker-k8s-crypto-v2.ts deleted in Phase 1 Chunk 1.12; its five rules
 // (L3, K19, P8, P9, P10) have each been migrated to their own directory.
 import "./implementations/l3-dockerfile-base-image-risk/index.js";
