@@ -158,7 +158,11 @@ import "./implementations/k7-long-lived-tokens/index.js";
 import "./implementations/k17-missing-timeout/index.js";
 import "./implementations/m4-tool-squatting/index.js";
 import "./implementations/m5-context-window-flooding/index.js";
-import "./implementations/l-supply-chain-v2.js";
+// l-supply-chain-v2.ts deleted in Phase 1 Chunk 1.6/D; L8/L10/L15 each
+// moved to per-rule Rule Standard v2 directories.
+import "./implementations/l8-version-rollback-attack/index.js";
+import "./implementations/l10-registry-metadata-spoofing/index.js";
+import "./implementations/l15-update-notification-spoofing/index.js";
 // o4-q10-v2.ts deleted in Phase 1 Chunk 1.6/D; O4 and Q10 moved to per-rule
 // directories with full Rule Standard v2 charters.
 import "./implementations/o4-timing-data-inference/index.js";
