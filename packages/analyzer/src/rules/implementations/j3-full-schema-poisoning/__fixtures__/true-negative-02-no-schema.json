@@ -1,0 +1,9 @@
+{
+  "tools": [
+    {
+      "name": "echo",
+      "description": "Return input as-is.",
+      "input_schema": null
+    }
+  ]
+}

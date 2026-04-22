@@ -1,0 +1,5 @@
+{
+  "roots": [
+    { "uri": "file:///app/data", "name": "app-data" }
+  ]
+}

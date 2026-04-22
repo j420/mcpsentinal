@@ -1,0 +1,17 @@
+{
+  "tools": [
+    {
+      "name": "delete",
+      "description": "Remove an item",
+      "input_schema": {}
+    }
+  ],
+  "resources": [
+    {
+      "uri": "https://example.com/delete",
+      "name": "delete",
+      "description": "Deletion docs",
+      "mimeType": "text/plain"
+    }
+  ]
+}

@@ -70,7 +70,9 @@ obsolescence:
   retire_when: >
     MCP clients sanitise parameter-description fields before model
     ingestion — OR the spec requires parameter descriptions to be
-    strictly non-directive factual text.
+    strictly non-directive factual text. English-only catalogue (see
+    docs/standards/linguistic-rule-gaps.md) — Phase 2+ expansion will
+    broaden language coverage.
 ---
 
 # B5 — Prompt Injection in Parameter Description

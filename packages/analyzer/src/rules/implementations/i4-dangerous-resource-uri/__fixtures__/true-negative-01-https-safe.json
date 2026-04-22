@@ -1,0 +1,10 @@
+{
+  "resources": [
+    {
+      "uri": "https://api.example.com/v1/items/42",
+      "name": "item-42",
+      "description": "Standard API resource",
+      "mimeType": "application/json"
+    }
+  ]
+}

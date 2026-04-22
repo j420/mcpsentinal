@@ -1,0 +1,10 @@
+{
+  "resources": [
+    {
+      "uri": "https://example.com/search",
+      "name": "search-endpoint",
+      "description": "Search for items by keyword.",
+      "mimeType": "application/json"
+    }
+  ]
+}

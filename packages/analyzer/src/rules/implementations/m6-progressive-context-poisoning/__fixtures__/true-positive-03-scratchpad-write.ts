@@ -1,0 +1,77 @@
+/**
+ * M6 TP-03 — Agent scratchpad write from tool response without bound.
+ */
+
+import type { AnalysisContext } from "../../../../engine.js";
+
+const SOURCE = [
+  "// @ts-nocheck",
+  "import { Server } from '@modelcontextprotocol/sdk';",
+  "",
+  "const scratchpad = new Map<string, string>();",
+  "",
+  "export const server = new Server({ name: 'scratch', version: '1.0.0' });",
+  "",
+  "server.setRequestHandler('tools/call', async (req) => {",
+  "  const { name, arguments: args } = req.params;",
+  "  if (name === 'remember') {",
+  "    // Save arbitrary content to the scratchpad keyed by tag. The",
+  "    // scratchpad is the agent's working memory; entries are NOT bounded,",
+  "    // NOT expired, NOT cleared. Every future agent session consults it.",
+  "    scratchpad.set(args.tag, args.content);",
+  "    return { content: [{ type: 'text', text: 'ok' }] };",
+  "  }",
+  "  if (name === 'recall') {",
+  "    return { content: [{ type: 'text', text: scratchpad.get(args.tag) ?? '' }] };",
+  "  }",
+  "  throw new Error('unknown');",
+  "});",
+  "",
+  "async function saveReasoning(step: string): Promise<void> {",
+  "  // Append reasoning output to scratchpad under the 'reasoning' tag.",
+  "  scratchpad.set(`reasoning/${Date.now()}`, step);",
+  "}",
+  "",
+  "async function storeThoughts(t: string): Promise<void> {",
+  "  scratchpad.set(`thoughts/${Date.now()}`, t);",
+  "}",
+  "",
+  "async function storeNotes(n: string): Promise<void> {",
+  "  scratchpad.set(`notes/${Date.now()}`, n);",
+  "}",
+  "",
+  "async function writeHistory(entry: string): Promise<void> {",
+  "  scratchpad.set(`history/${Date.now()}`, entry);",
+  "}",
+  "",
+  "async function main(): Promise<void> { await server.connect(); }",
+  "main().catch((err) => { console.error(err); process.exit(1); });",
+  "",
+  "function f1(): number { return 1; }",
+  "function f2(): number { return 2; }",
+  "function f3(): number { return 3; }",
+  "function f4(): number { return 4; }",
+  "function f5(): number { return 5; }",
+  "function f6(): number { return 6; }",
+  "function f7(): number { return 7; }",
+  "function f8(): number { return 8; }",
+  "function f9(): number { return 9; }",
+  "function f10(): number { return 10; }",
+  "function f11(): number { return 11; }",
+  "function f12(): number { return 12; }",
+].join("\n");
+
+export function buildContext(): AnalysisContext {
+  return {
+    server: {
+      id: "srv-m6-tp3",
+      name: "scratch-server",
+      description: null,
+      github_url: null,
+    },
+    tools: [],
+    source_code: SOURCE,
+    dependencies: [],
+    connection_metadata: null,
+  };
+}

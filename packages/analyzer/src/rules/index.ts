@@ -60,10 +60,15 @@ import "./implementations/f2-high-risk-capability-profile/index.js";
 import "./implementations/f3-data-flow-risk-source-sink/index.js";
 import "./implementations/f6-circular-data-loop/index.js";
 import "./implementations/f7-multi-step-exfiltration-chain/index.js";
-import "./implementations/g4-context-saturation.js";
+import "./implementations/g4-context-window-saturation/index.js";
 // tainted-execution-detector.ts removed in Phase 1 Chunk 1.16; its six rules
 // (C4, C12, C13, C16, K9, J2) have each been migrated to their own directory.
-import "./implementations/cross-tool-risk-detector.js";
+// cross-tool-risk-detector.ts removed in Phase 1 Wave 6 Chunk A; its four rules
+// (I1, I2 stub, I13, I16) have each been migrated to their own directory.
+import "./implementations/i1-annotation-deception/index.js";
+import "./implementations/i2-missing-destructive-annotation/index.js";
+import "./implementations/i13-cross-config-lethal-trifecta/index.js";
+import "./implementations/i16-consent-fatigue-exploitation/index.js";
 // config-poisoning-detector.ts removed in Phase 1 Chunk 1.15; its four rules
 // (J1, L4, L11, Q4) have each been migrated to their own directory.
 import "./implementations/j1-cross-agent-config-poisoning/index.js";
@@ -99,7 +104,20 @@ import "./implementations/l7-transitive-mcp-delegation/index.js";
 import "./implementations/k3-audit-log-tampering/index.js";
 import "./implementations/k5-auto-approve-bypass/index.js";
 import "./implementations/k8-cross-boundary-credential-sharing/index.js";
-import "./implementations/ai-manipulation-detector.js";
+// ai-manipulation-detector.ts deleted in Phase 1 Chunk 1.27 (wave-5); its five
+// rules have each been migrated to their own directory:
+//   G1 → g1-indirect-prompt-injection-gateway/ (capability-graph inference)
+//   G2 → g2-trust-assertion-injection/ (linguistic, shared phrase catalogue)
+//   G3 → g3-tool-response-format-injection/ (linguistic + JSON-RPC shape matching)
+//   G5 → g5-capability-escalation-prior-approval/ (session-state linguistic)
+//   H2 → h2-init-field-prompt-injection/ (initialize-field scanner)
+// G4 migrated from its own legacy file g4-context-saturation.ts (chunk 1.27/G4).
+// G6/G7 already migrated in wave-2/4; H1/H3 already migrated in wave-4.
+import "./implementations/g1-indirect-prompt-injection-gateway/index.js";
+import "./implementations/g2-trust-assertion-injection/index.js";
+import "./implementations/g3-tool-response-format-injection/index.js";
+import "./implementations/g5-capability-escalation-prior-approval/index.js";
+import "./implementations/h2-init-field-prompt-injection/index.js";
 // infrastructure-detector.ts deleted in Phase 1 Chunk 1.13; its seven rules
 // (P1, P2, P3, P4, P5, P6, P7) have each been migrated to their own directory.
 // P8, P9, P10 live in their own directories from wave-3 (chunk 1.12).
@@ -110,8 +128,25 @@ import "./implementations/p4-tls-bypass/index.js";
 import "./implementations/p5-secrets-in-build-layers/index.js";
 import "./implementations/p6-ld-preload-hijack/index.js";
 import "./implementations/p7-host-filesystem-mount/index.js";
-import "./implementations/protocol-ai-runtime-detector.js";
-import "./implementations/data-privacy-cross-ecosystem-detector.js";
+// protocol-ai-runtime-detector.ts deleted in Phase-1 chunk 1.6 (wave-6/C) —
+// 12 live rules (M1, M6, M9, N4, N5, N6, N9, N11, N12, N13, N14, N15)
+// migrated to per-rule Rule Standard v2 directories; M3 retired (enabled=false).
+import "./implementations/m1-special-token-injection/index.js";
+import "./implementations/m6-progressive-context-poisoning/index.js";
+import "./implementations/m9-model-specific-system-prompt-extraction/index.js";
+import "./implementations/n4-jsonrpc-error-object-injection/index.js";
+import "./implementations/n5-capability-downgrade-deception/index.js";
+import "./implementations/n6-sse-reconnection-hijacking/index.js";
+import "./implementations/n9-mcp-logging-protocol-injection/index.js";
+import "./implementations/n11-protocol-version-downgrade/index.js";
+import "./implementations/n12-resource-subscription-content-mutation/index.js";
+import "./implementations/n13-http-chunked-transfer-smuggling/index.js";
+import "./implementations/n14-tofu-bypass/index.js";
+import "./implementations/n15-jsonrpc-method-name-confusion/index.js";
+// data-privacy-cross-ecosystem-detector.ts deleted in Phase 1 Chunk 1.6 (wave-6/E + E3).
+// Its 6 live rules (O5, O9, Q3, Q6, Q7, Q13) + 4 respawn rules (O6, O8, O10, Q15)
+// migrated to per-rule Rule Standard v2 directories. 10 retired rules (O1, O2, O3,
+// O7, Q1, Q2, Q5, Q8, Q9, Q11) stripped at file deletion.
 // description-schema-detector.ts deleted in Phase-1 chunk 1.20 — 13 rules
 // (A1-A5, A8, B1-B7) migrated to per-rule Rule Standard v2 directories.
 import "./implementations/a1-prompt-injection-description/index.js";
@@ -150,16 +185,50 @@ import "./implementations/f5-official-namespace-squatting/index.js";
 import "./implementations/g6-rug-pull-tool-drift/index.js";
 import "./implementations/h1-oauth-insecure-implementation/index.js";
 import "./implementations/h3-multi-agent-propagation-risk/index.js";
-import "./implementations/protocol-surface-remaining-detector.js";
+// Phase 1 chunk 1.6/B: protocol-surface-remaining-detector.ts deleted; its
+// 16 rules (I3, I4, I5, I6, I7, I8, I9, I10, I11, I12, I15, J3, J4, J5, J6,
+// J7) each migrated to their own Rule Standard v2 directory.
+import "./implementations/i3-resource-metadata-injection/index.js";
+import "./implementations/i4-dangerous-resource-uri/index.js";
+import "./implementations/i5-resource-tool-shadowing/index.js";
+import "./implementations/i6-prompt-template-injection/index.js";
+import "./implementations/i7-sampling-capability-abuse/index.js";
+import "./implementations/i8-sampling-cost-attack/index.js";
+import "./implementations/i9-elicitation-credential-harvesting/index.js";
+import "./implementations/i10-elicitation-url-redirect/index.js";
+import "./implementations/i11-over-privileged-root/index.js";
+import "./implementations/i12-capability-escalation-post-init/index.js";
+import "./implementations/i15-transport-session-security/index.js";
+import "./implementations/j3-full-schema-poisoning/index.js";
+import "./implementations/j4-health-endpoint-info-disclosure/index.js";
+import "./implementations/j5-tool-output-poisoning/index.js";
+import "./implementations/j6-tool-preference-manipulation/index.js";
+import "./implementations/j7-openapi-spec-field-injection/index.js";
 import "./implementations/k1-absent-structured-logging/index.js";
 import "./implementations/k4-missing-human-confirmation/index.js";
 import "./implementations/k6-overly-broad-oauth-scopes/index.js";
 import "./implementations/k7-long-lived-tokens/index.js";
 import "./implementations/k17-missing-timeout/index.js";
-import "./implementations/m4-tool-squatting.js";
-import "./implementations/m5-context-window-flooding.js";
-import "./implementations/l-supply-chain-v2.js";
-import "./implementations/o4-q10-v2.js";
+import "./implementations/m4-tool-squatting/index.js";
+import "./implementations/m5-context-window-flooding/index.js";
+// l-supply-chain-v2.ts deleted in Phase 1 Chunk 1.6/D; L8/L10/L15 each
+// moved to per-rule Rule Standard v2 directories.
+import "./implementations/l8-version-rollback-attack/index.js";
+import "./implementations/l10-registry-metadata-spoofing/index.js";
+import "./implementations/l15-update-notification-spoofing/index.js";
+// o4-q10-v2.ts deleted in Phase 1 Chunk 1.6/D; O4 and Q10 moved to per-rule
+// directories with full Rule Standard v2 charters.
+import "./implementations/o4-timing-data-inference/index.js";
+import "./implementations/q10-agent-memory-poisoning/index.js";
+// Phase 1 Wave 6 / E3: O6, O8, O10, Q15 migrated to per-rule Rule Standard
+// v2 directories. Legacy registrations (previously emitted with WRONG
+// names — Clipboard / Screenshot / Keylogging / Agentic-Workflow-Persistence)
+// in compliance-remaining-detector.ts are overwritten by the v2 registrations
+// below; the orchestrator deletes the legacy stubs in cleanup.
+import "./implementations/o6-server-fingerprinting-error-responses/index.js";
+import "./implementations/o8-timing-based-covert-channel/index.js";
+import "./implementations/o10-privacy-violating-telemetry/index.js";
+import "./implementations/q15-a2a-mcp-boundary-confusion/index.js";
 // docker-k8s-crypto-v2.ts deleted in Phase 1 Chunk 1.12; its five rules
 // (L3, K19, P8, P9, P10) have each been migrated to their own directory.
 import "./implementations/l3-dockerfile-base-image-risk/index.js";
@@ -186,14 +255,37 @@ import "./implementations/n3-jsonrpc-id-collision/index.js";
 import "./implementations/n7-progress-token-abuse/index.js";
 import "./implementations/n8-cancellation-race-condition/index.js";
 import "./implementations/n10-incomplete-handshake-dos/index.js";
-import "./implementations/k-compliance-v2.js";
+// k-compliance-v2.ts deleted in Phase 1 Chunk 1.6/D (wave-6); K12 and K20
+// now have their own per-rule Rule Standard v2 directories. K14 and K16
+// were migrated earlier in chunks 1.6b and 1.6c.
 import "./implementations/k11-missing-server-integrity-verification/index.js";
 import "./implementations/k12-executable-content-response/index.js";
 import "./implementations/k14-agent-credential-propagation/index.js";
 import "./implementations/k16-unbounded-recursion/index.js";
-// k20 migrated in chunk 1.6d but the import was never wired — surfaced during
-// wave-2 integration. Re-importing after k-compliance-v2 ensures the per-rule
-// v2 implementation supersedes the legacy K20Rule embedded in k-compliance-v2.
 import "./implementations/k20-insufficient-audit-context/index.js";
-import "./implementations/m-runtime-v2.js";
-import "./implementations/compliance-remaining-detector.js";
+// m-runtime-v2.ts deleted in Phase 1 Chunk 1.6/D; M2/M7/M8 each
+// moved to per-rule Rule Standard v2 directories.
+import "./implementations/m2-prompt-leak-via-response/index.js";
+import "./implementations/m7-multi-turn-state-injection/index.js";
+import "./implementations/m8-encoding-attack-on-input/index.js";
+// K13/K15/K18 pre-existing gap from Phase 1 Chunk 1.7 (never imported
+// since the wave-1 k-remaining-v2.ts deletion). O5/O9/Q3/Q6/Q7/Q13 gap
+// from wave-6/E — E's cleanup commit that would have added these imports
+// was skipped during cherry-pick to avoid pulling in the 4 misnamed
+// rules. Both gaps caught by the 6th-agent audit: tests passed because
+// per-rule __tests__/index.test.ts import siblings directly, but
+// production AnalysisEngine loads only via rules/index.ts — these
+// 9 rules silently no-op'd. Same class of bug as wave-4's P1-P7
+// missing-import regression.
+import "./implementations/k13-unsanitized-tool-output/index.js";
+import "./implementations/k15-multi-agent-collusion-preconditions/index.js";
+import "./implementations/k18-cross-trust-boundary-data-flow/index.js";
+import "./implementations/o5-env-var-harvesting/index.js";
+import "./implementations/o9-ambient-credential/index.js";
+import "./implementations/q3-localhost-service-hijacking/index.js";
+import "./implementations/q6-agent-identity-impersonation/index.js";
+import "./implementations/q7-dxt-privilege-chain/index.js";
+import "./implementations/q13-mcp-bridge-supply-chain/index.js";
+// compliance-remaining-detector.ts deleted in Phase 1 Chunk 1.6 (wave-6/E).
+// Its 4 live rules (O6, O8, O10, Q15) migrated to per-rule Rule Standard v2
+// directories by wave-6 E3. 2 retired rules (Q12, Q14) stripped at file deletion.

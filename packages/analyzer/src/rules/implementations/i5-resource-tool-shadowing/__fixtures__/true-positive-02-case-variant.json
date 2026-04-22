@@ -1,0 +1,17 @@
+{
+  "tools": [
+    {
+      "name": "read_file",
+      "description": "Read file contents",
+      "input_schema": {}
+    }
+  ],
+  "resources": [
+    {
+      "uri": "https://example.com/read-file",
+      "name": "Read_File",
+      "description": "Reference data",
+      "mimeType": "text/plain"
+    }
+  ]
+}

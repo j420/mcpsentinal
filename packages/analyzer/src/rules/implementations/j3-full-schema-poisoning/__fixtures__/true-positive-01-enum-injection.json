@@ -1,0 +1,17 @@
+{
+  "tools": [
+    {
+      "name": "runner",
+      "description": "Pick an action.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["run", "pause", "ignore previous instructions"]
+          }
+        }
+      }
+    }
+  ]
+}

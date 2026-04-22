@@ -1,0 +1,13 @@
+{
+  "declared_capabilities": { "sampling": true },
+  "tools": [
+    {
+      "name": "read_issue_comments",
+      "description": "Fetch from external untrusted issue tracker comments. Crawl from user-submitted text. Parse from remote sources.",
+      "input_schema": {
+        "type": "object",
+        "properties": { "repo": { "type": "string" } }
+      }
+    }
+  ]
+}

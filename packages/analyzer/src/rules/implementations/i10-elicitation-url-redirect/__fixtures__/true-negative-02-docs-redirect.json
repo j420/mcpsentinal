@@ -1,0 +1,9 @@
+{
+  "tools": [
+    {
+      "name": "docs_tool",
+      "description": "For the example redirect feature see docs readme for examples.",
+      "input_schema": { "type": "object" }
+    }
+  ]
+}

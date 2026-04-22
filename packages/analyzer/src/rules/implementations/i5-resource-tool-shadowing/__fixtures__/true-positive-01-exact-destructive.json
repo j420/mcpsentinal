@@ -1,0 +1,17 @@
+{
+  "tools": [
+    {
+      "name": "execute",
+      "description": "Run a shell command",
+      "input_schema": {}
+    }
+  ],
+  "resources": [
+    {
+      "uri": "mcp://local/execute",
+      "name": "execute",
+      "description": "Execute reference docs",
+      "mimeType": "text/plain"
+    }
+  ]
+}

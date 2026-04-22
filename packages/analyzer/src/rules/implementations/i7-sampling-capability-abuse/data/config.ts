@@ -1,0 +1,2 @@
+export const I7_CONFIDENCE_CAP = 0.88;
+export const I7_INGESTION_MIN_CONFIDENCE = 0.4;
