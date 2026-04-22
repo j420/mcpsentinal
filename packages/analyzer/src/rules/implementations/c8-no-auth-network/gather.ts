@@ -25,6 +25,7 @@ import {
   AUTH_MIDDLEWARE_TOKENS,
   ALL_INTERFACE_HOSTS,
   LOOPBACK_HOSTS,
+  PYTHON_AUTH_MARKERS,
 } from "./data/config.js";
 
 export type C8LeakKind =
@@ -231,16 +232,7 @@ function collectPython(text: string, file: string, facts: NetworkBindFact[]): vo
 }
 
 function pythonContainsAuthMarker(text: string): boolean {
-  const markers = [
-    "Depends(get_current_user",
-    "Depends(verify",
-    "OAuth2PasswordBearer",
-    "HTTPBearer",
-    "@requires_auth",
-    "verify_jwt",
-    "verify_api_key",
-  ];
-  for (const m of markers) {
+  for (const m of PYTHON_AUTH_MARKERS) {
     if (text.includes(m)) return true;
   }
   return false;

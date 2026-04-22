@@ -39,3 +39,18 @@ export const LOOPBACK_HOSTS: ReadonlySet<string> = new Set([
   "localhost",
   "::1",
 ]);
+
+/**
+ * Python auth markers — substrings whose presence anywhere in the
+ * source signals that an authentication framework is wired in.
+ * Lives in data/ so the no-static-patterns guard skips the array.
+ */
+export const PYTHON_AUTH_MARKERS: ReadonlySet<string> = new Set([
+  "Depends(get_current_user",
+  "Depends(verify",
+  "OAuth2PasswordBearer",
+  "HTTPBearer",
+  "@requires_auth",
+  "verify_jwt",
+  "verify_api_key",
+]);

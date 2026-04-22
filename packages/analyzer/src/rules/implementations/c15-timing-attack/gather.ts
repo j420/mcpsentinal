@@ -31,6 +31,7 @@ import {
   REQUEST_IDENTIFIER_FRAGMENTS,
   SHORT_CIRCUIT_METHODS,
   TIMING_SAFE_MARKERS,
+  SECRET_NAME_TAIL_SUFFIXES,
 } from "./data/config.js";
 
 export type C15LeakKind =
@@ -206,8 +207,8 @@ function isSecretIdentifier(name: string): boolean {
   const lower = name.toLowerCase();
   if (SECRET_IDENTIFIER_NAMES.has(lower)) return true;
   // Cheap fallback: any identifier ending in "Token" / "Secret" / "Key" /
-  // "Hmac" / "Digest" / "Hash" / "Password".
-  for (const tail of ["token", "secret", "key", "hmac", "digest", "hash", "password", "signature"]) {
+  // "Hmac" / "Digest" / "Hash" / "Password" / "Signature".
+  for (const tail of SECRET_NAME_TAIL_SUFFIXES) {
     if (lower.endsWith(tail)) return true;
   }
   return false;

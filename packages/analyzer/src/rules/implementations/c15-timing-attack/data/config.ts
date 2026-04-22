@@ -66,3 +66,19 @@ export const TIMING_SAFE_MARKERS: ReadonlySet<string> = new Set([
   "secure_compare",
   "scmp.equal",
 ]);
+
+/**
+ * Lowercase suffixes that, when present at the tail of an identifier,
+ * mark it as a secret-shaped name. Used as a fallback when the
+ * explicit SECRET_IDENTIFIER_NAMES set does not match.
+ */
+export const SECRET_NAME_TAIL_SUFFIXES: ReadonlySet<string> = new Set([
+  "token",
+  "secret",
+  "key",
+  "hmac",
+  "digest",
+  "hash",
+  "password",
+  "signature",
+]);
