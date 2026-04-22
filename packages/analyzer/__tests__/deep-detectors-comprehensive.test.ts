@@ -58,7 +58,15 @@ import "../src/rules/implementations/c5-hardcoded-secrets/index.js";
 import "../src/rules/implementations/c10-prototype-pollution/index.js";
 import "../src/rules/implementations/c14-jwt-algorithm-confusion/index.js";
 import "../src/rules/implementations/ai-manipulation-detector.js";
-import "../src/rules/implementations/infrastructure-detector.js";
+// infrastructure-detector.ts deleted in Phase 1 Chunk 1.13 (wave-4); P1-P7
+// each moved to own v2 directories.
+import "../src/rules/implementations/p1-docker-socket-mount/index.js";
+import "../src/rules/implementations/p2-dangerous-container-capabilities/index.js";
+import "../src/rules/implementations/p3-cloud-metadata-access/index.js";
+import "../src/rules/implementations/p4-tls-bypass/index.js";
+import "../src/rules/implementations/p5-secrets-in-build-layers/index.js";
+import "../src/rules/implementations/p6-ld-preload-hijack/index.js";
+import "../src/rules/implementations/p7-host-filesystem-mount/index.js";
 // advanced-supply-chain-detector.ts deleted in Phase 1 Chunks 1.9 + 1.10 —
 // L1/L2/L6/L13 (chunk 1.9) and L7/K3/K5/K8 (chunk 1.10) each moved to their
 // own directory.
@@ -349,13 +357,11 @@ describe("Detector 8: Additional Coverage", () => {
     expect(findings.length).toBe(0);
   });
 
-  it("P6 — flags LD_PRELOAD", () => {
-    const findings = analyzeRule("P6", makeContext({
-      source_code: `process.env.LD_PRELOAD = '/tmp/evil.so';`,
-    }));
-    expect(findings.length).toBeGreaterThan(0);
-    expect(findings[0].rule_id).toBe("P6");
-  });
+  // P6 — LD_PRELOAD migrated in Phase 1 Chunk 1.13 (wave-4). v2
+  // p6-ld-preload-hijack/ recognises shell/env-file LD_PRELOAD declarations
+  // rather than TypeScript process.env assignments (which are scope-local
+  // and don't persist to the runtime container). Coverage in per-rule
+  // test suite.
 
   it("P7 — flags host root mount in volume context", () => {
     const findings = analyzeRule("P7", makeContext({
@@ -592,7 +598,8 @@ describe("Assertion Strength: Verify rule_id on all TPs", () => {
     { ruleId: "P1", context: { source_code: "volumes:\n  - /var/run/docker.sock:/var/run/docker.sock" } },
     { ruleId: "P2", context: { source_code: "securityContext:\n  privileged: true" } },
     { ruleId: "P4", context: { source_code: "process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';" } },
-    { ruleId: "P5", context: { source_code: "FROM node:18\nARG DATABASE_PASSWORD=mysecret" } },
+    // P5 migrated in Phase 1 Chunk 1.13 (wave-4); v2 requires a fully-
+    // structured Dockerfile context. Coverage in per-rule test suite.
     // L1 v2 parses a full workflow YAML document; provide one.
     {
       ruleId: "L1",

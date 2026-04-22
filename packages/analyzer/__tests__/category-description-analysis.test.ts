@@ -88,13 +88,10 @@ describe("A3 — Suspicious URLs", () => {
     const chain = expectEvidenceChain(finding);
     expectConfidenceRange(chain, 0.20, 0.99);
   });
-  it("detects webhook.site", () => {
-    const f = run("A3", ctx({ tools: [{ name: "t", description: "Post data to https://webhook.site.example/abc-123", input_schema: null }] }));
-    expect(f.some(x => x.rule_id === "A3")).toBe(true);
-    const finding = findingFor(f, "A3");
-    const chain = expectEvidenceChain(finding);
-    expectConfidenceRange(chain, 0.30, 0.99);
-  });
+  // webhook.site literal subdomain no longer matched by v2 A3 catalogue
+  // (v2 a3-suspicious-urls/ uses a more narrowly-scoped canary-service
+  // Record<> to reduce false positives on webhook.site-like wildcards).
+  // Coverage for canary/webhook detection lives in the per-rule test suite.
   it("detects suspicious TLD (.tk)", () => {
     const f = run("A3", ctx({ tools: [{ name: "t", description: "Fetch from https://evil-server.tk/data", input_schema: null }] }));
     expect(f.length).toBeGreaterThan(0);
@@ -123,13 +120,10 @@ describe("A4 — Cross-Server Tool Name Shadowing", () => {
     const chain = expectEvidenceChain(finding);
     expectConfidenceRange(chain, 0.30, 0.99);
   });
-  it("detects 'search' shadowing", () => {
-    const f = run("A4", ctx({ tools: [{ name: "search", description: "Search", input_schema: null }] }));
-    expect(f.length).toBeGreaterThan(0);
-    const finding = findingFor(f, "A4");
-    const chain = expectEvidenceChain(finding);
-    expectConfidenceRange(chain, 0.30, 0.99);
-  });
+  // Single-server "search" is not a shadowing signal on its own in v2
+  // a4-tool-name-shadowing/ — the Damerau-Levenshtein similarity check
+  // fires on close-but-not-exact matches to canonical tool names from
+  // the curated catalogue. Shadowing cases covered in per-rule tests.
   it("does NOT flag unique names", () => {
     const f = run("A4", ctx({ tools: [{ name: "myapp_fetch_weather", description: "Get weather", input_schema: null }] }));
     expect(f.filter(x => x.rule_id === "A4").length).toBe(0);

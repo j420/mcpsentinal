@@ -120,7 +120,21 @@ import "./implementations/b4-schemaless-tools/index.js";
 import "./implementations/b5-prompt-injection-parameter/index.js";
 import "./implementations/b6-unconstrained-additional-properties/index.js";
 import "./implementations/b7-dangerous-default-values/index.js";
-import "./implementations/dependency-behavioral-detector.js";
+// dependency-behavioral-detector.ts deleted in Phase 1 Chunk 1.23; its ten
+// rules (D1, D2, D4, D5, D6, D7, E1, E2, E3, E4) have each been migrated to
+// their own directory. D-rules consume `context.dependencies[]`; E-rules
+// consume `context.connection_metadata`. D3 was migrated earlier in wave-1
+// chunk 1.24 (`d3-typosquatting/`).
+import "./implementations/d1-known-cves/index.js";
+import "./implementations/d2-abandoned-deps/index.js";
+import "./implementations/d4-excessive-deps/index.js";
+import "./implementations/d5-known-malicious-packages/index.js";
+import "./implementations/d6-weak-cryptography/index.js";
+import "./implementations/d7-dependency-confusion/index.js";
+import "./implementations/e1-no-auth-required/index.js";
+import "./implementations/e2-insecure-transport/index.js";
+import "./implementations/e3-response-time-anomaly/index.js";
+import "./implementations/e4-excessive-tool-count/index.js";
 // ecosystem-adversarial-detector.ts deleted in Phase 1 Chunk 1.26; its five
 // rules (F4, F5, G6, H1, H3) have each been migrated to their own directory
 // with full Rule Standard v2 charters.

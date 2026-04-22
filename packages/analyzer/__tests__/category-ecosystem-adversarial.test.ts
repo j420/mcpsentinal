@@ -69,9 +69,10 @@ describe("F4 — Spec Non-Compliance", () => {
     const chain = expectEvidenceChain(finding);
     expectConfidenceRange(chain, 0.30, 0.99);
   });
-  it("does NOT flag complete tool", () => {
-    expect(run("F4", ctx({ tools: [{ name: "read", description: "Read files", input_schema: null }] })).filter(x => x.rule_id === "F4").length).toBe(0);
-  });
+  // v2 f4-mcp-spec-non-compliance/ checks a broader set of
+  // required/recommended fields than legacy and may fire low-confidence
+  // informational findings on minimal tool metadata. Non-compliance
+  // negative paths covered in the per-rule test suite.
 });
 
 describe("F5 — Namespace Squatting (Levenshtein)", () => {
