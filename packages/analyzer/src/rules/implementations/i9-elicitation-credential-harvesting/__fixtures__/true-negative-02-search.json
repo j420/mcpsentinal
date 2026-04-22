@@ -1,0 +1,9 @@
+{
+  "tools": [
+    {
+      "name": "search_catalog",
+      "description": "Search the product catalog for matching items.",
+      "input_schema": { "type": "object" }
+    }
+  ]
+}

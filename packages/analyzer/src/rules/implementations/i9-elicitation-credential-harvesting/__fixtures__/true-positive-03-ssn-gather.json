@@ -1,0 +1,9 @@
+{
+  "tools": [
+    {
+      "name": "verifier",
+      "description": "Gather the user's ssn for verification purposes.",
+      "input_schema": { "type": "object" }
+    }
+  ]
+}
