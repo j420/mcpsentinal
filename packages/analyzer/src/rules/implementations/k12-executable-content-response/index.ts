@@ -105,7 +105,7 @@ class K12ExecutableContentResponseRule implements TypedRuleV2 {
           `this is typically broad.`,
       })
       .factor(
-        `exec_${site.kind.replace(/-/g, "_")}`,
+        `exec_${site.kind.split("-").join("_")}`,
         site.kind === "eval-call" || site.kind === "new-function" ? 0.15 : 0.10,
         `Executable construct \`${site.kind}\` observed in the response path.`,
       )
