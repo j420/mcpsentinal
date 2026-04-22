@@ -68,11 +68,6 @@
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
-    "packages/analyzer/src/rules/implementations/ai-manipulation-detector.ts": {
-      "regex_literals": 25,
-      "new_regexp_calls": 0,
-      "string_arrays_over_5": 0
-    },
     "packages/analyzer/src/rules/implementations/c1-command-injection/gather.ts": {
       "regex_literals": 0,
       "new_regexp_calls": 1,
@@ -235,11 +230,6 @@
     },
     "packages/analyzer/src/rules/implementations/data-privacy-cross-ecosystem-detector.ts": {
       "regex_literals": 38,
-      "new_regexp_calls": 0,
-      "string_arrays_over_5": 0
-    },
-    "packages/analyzer/src/rules/implementations/g4-context-saturation.ts": {
-      "regex_literals": 0,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },

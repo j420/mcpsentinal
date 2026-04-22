@@ -1,6 +1,6 @@
 # Rule Census
 
-_Generated: 2026-04-22T07:00:31.963Z_
+_Generated: 2026-04-22T09:46:21.122Z_
 
 ## Summary
 
@@ -8,27 +8,27 @@ _Generated: 2026-04-22T07:00:31.963Z_
 |---|---|
 | YAML rules (total) | 177 |
 | YAML rules (enabled) | 164 |
-| Registered rules (unique ids) | 72 |
-| Registered v1 | 62 |
+| Registered rules (unique ids) | 66 |
+| Registered v1 | 56 |
 | Registered v2 | 10 |
-| Enabled but unregistered | 105 |
-| Detector files | 13 |
-| Files with any regex | 12 |
-| Files with any technique import | 5 |
+| Enabled but unregistered | 111 |
+| Detector files | 11 |
+| Files with any regex | 11 |
+| Files with any technique import | 3 |
 
 ## Aggregate Technique Observations
 
 | Signal | Count |
 |---|---|
-| Regex literals | 287 |
+| Regex literals | 262 |
 | new RegExp(...) calls | 2 |
 | String-literal arrays > 5 | 1 |
 | Rules using taint-ast | 16 |
-| Rules using capability-graph | 26 |
+| Rules using capability-graph | 21 |
 | Rules using module-graph | 0 |
-| Rules using entropy | 1 |
+| Rules using entropy | 0 |
 | Rules using similarity | 0 |
-| Rules using EvidenceChainBuilder | 72 |
+| Rules using EvidenceChainBuilder | 66 |
 
 ## Top Regex Offenders (detector files)
 
@@ -39,11 +39,11 @@ _Generated: 2026-04-22T07:00:31.963Z_
 | `packages/analyzer/src/rules/implementations/protocol-ai-runtime-detector.ts` | 33 | 0 |
 | `packages/analyzer/src/rules/implementations/protocol-surface-remaining-detector.ts` | 33 | 0 |
 | `packages/analyzer/src/rules/implementations/k-compliance-v2.ts` | 27 | 0 |
-| `packages/analyzer/src/rules/implementations/ai-manipulation-detector.ts` | 25 | 0 |
 | `packages/analyzer/src/rules/implementations/cross-tool-risk-detector.ts` | 23 | 0 |
 | `packages/analyzer/src/rules/implementations/o4-q10-v2.ts` | 23 | 0 |
 | `packages/analyzer/src/rules/implementations/l-supply-chain-v2.ts` | 15 | 2 |
 | `packages/analyzer/src/rules/implementations/m5-context-window-flooding.ts` | 11 | 0 |
+| `packages/analyzer/src/rules/implementations/m4-tool-squatting.ts` | 9 | 0 |
 
 ## Per-Rule Detail
 
@@ -104,15 +104,15 @@ T = first-letter tags: a=ast-taint, c=capability-graph, m=module-graph, e=entrop
 | F5 | Official Namespace Squatting | ecosystem-context | critical | Y |  |  | 0 | — | — |
 | F6 | Circular Data Loop — Persistent Prompt Injection Storage Risk | ecosystem-context | high | Y |  |  | 0 | — | — |
 | F7 | Multi-Step Exfiltration Chain | ecosystem-context | critical | Y |  |  | 0 | — | — |
-| G1 | Indirect Prompt Injection Gateway | adversarial-ai | critical | Y | Y |  | 25 | cv | `ai-manipulation-detector.ts` |
-| G2 | Trust Assertion Injection | adversarial-ai | critical | Y | Y |  | 25 | cv | `ai-manipulation-detector.ts` |
-| G3 | Tool Response Format Injection | adversarial-ai | critical | Y | Y |  | 25 | cv | `ai-manipulation-detector.ts` |
-| G4 | Context Window Saturation Attack | adversarial-ai | high | Y | Y |  | 0 | ev | `g4-context-saturation.ts` |
-| G5 | Capability Escalation via Prior Approval Reference | adversarial-ai | critical | Y | Y |  | 25 | cv | `ai-manipulation-detector.ts` |
+| G1 | Indirect Prompt Injection Gateway | adversarial-ai | critical | Y |  |  | 0 | — | — |
+| G2 | Trust Assertion Injection | adversarial-ai | critical | Y |  |  | 0 | — | — |
+| G3 | Tool Response Format Injection | adversarial-ai | critical | Y |  |  | 0 | — | — |
+| G4 | Context Window Saturation Attack | adversarial-ai | high | Y |  |  | 0 | — | — |
+| G5 | Capability Escalation via Prior Approval Reference | adversarial-ai | critical | Y |  |  | 0 | — | — |
 | G6 | Tool Behavior Drift (Rug Pull Detection) | adversarial-ai | critical | Y |  |  | 0 | — | — |
 | G7 | DNS-Based Data Exfiltration Channel | adversarial-ai | critical | Y |  |  | 0 | — | — |
 | H1 | MCP OAuth 2.0 Insecure Implementation | auth-analysis | critical | Y |  |  | 0 | — | — |
-| H2 | Prompt Injection in MCP Initialize Response Fields | adversarial-ai | critical | Y | Y |  | 25 | cv | `ai-manipulation-detector.ts` |
+| H2 | Prompt Injection in MCP Initialize Response Fields | adversarial-ai | critical | Y |  |  | 0 | — | — |
 | H3 | Multi-Agent Propagation Risk | adversarial-ai | high | Y |  |  | 0 | — | — |
 | I1 | Tool Annotation Deception | protocol-surface | critical | Y | Y |  | 23 | civ | `cross-tool-risk-detector.ts` |
 | I2 | Missing Destructive Tool Annotation | protocol-surface | high | Y | Y |  | 23 | civ | `cross-tool-risk-detector.ts` |
@@ -284,9 +284,15 @@ T = first-letter tags: a=ast-taint, c=capability-graph, m=module-graph, e=entrop
 - **F5**: enabled in YAML but no TypedRule registration found
 - **F6**: enabled in YAML but no TypedRule registration found
 - **F7**: enabled in YAML but no TypedRule registration found
+- **G1**: enabled in YAML but no TypedRule registration found
+- **G2**: enabled in YAML but no TypedRule registration found
+- **G3**: enabled in YAML but no TypedRule registration found
+- **G4**: enabled in YAML but no TypedRule registration found
+- **G5**: enabled in YAML but no TypedRule registration found
 - **G6**: enabled in YAML but no TypedRule registration found
 - **G7**: enabled in YAML but no TypedRule registration found
 - **H1**: enabled in YAML but no TypedRule registration found
+- **H2**: enabled in YAML but no TypedRule registration found
 - **H3**: enabled in YAML but no TypedRule registration found
 - **J1**: enabled in YAML but no TypedRule registration found
 - **J2**: enabled in YAML but no TypedRule registration found

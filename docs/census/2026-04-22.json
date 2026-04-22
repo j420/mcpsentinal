@@ -1,27 +1,27 @@
 {
   "summary": {
-    "generated_at": "2026-04-22T07:00:31.963Z",
+    "generated_at": "2026-04-22T09:46:21.122Z",
     "total_yaml_rules": 177,
     "enabled_yaml_rules": 164,
-    "registered_rules": 72,
-    "registered_v1": 62,
+    "registered_rules": 66,
+    "registered_v1": 56,
     "registered_v2": 10,
-    "unregistered_enabled": 105,
+    "unregistered_enabled": 111,
     "detectors": {
-      "total_files": 13,
-      "files_with_any_regex": 12,
-      "files_with_any_technique": 5
+      "total_files": 11,
+      "files_with_any_regex": 11,
+      "files_with_any_technique": 3
     },
     "aggregate": {
-      "regex_literals": 287,
+      "regex_literals": 262,
       "new_regexp_calls": 2,
       "string_arrays_over_5": 1,
       "uses_taint_ast": 16,
-      "uses_capability_graph": 26,
+      "uses_capability_graph": 21,
       "uses_module_graph": 0,
-      "uses_entropy": 1,
+      "uses_entropy": 0,
       "uses_similarity": 0,
-      "uses_evidence_chain_builder": 72
+      "uses_evidence_chain_builder": 66
     },
     "top_regex_offenders": [
       {
@@ -50,11 +50,6 @@
         "new_regexp_calls": 0
       },
       {
-        "file": "packages/analyzer/src/rules/implementations/ai-manipulation-detector.ts",
-        "regex_literals": 25,
-        "new_regexp_calls": 0
-      },
-      {
         "file": "packages/analyzer/src/rules/implementations/cross-tool-risk-detector.ts",
         "regex_literals": 23,
         "new_regexp_calls": 0
@@ -72,6 +67,11 @@
       {
         "file": "packages/analyzer/src/rules/implementations/m5-context-window-flooding.ts",
         "regex_literals": 11,
+        "new_regexp_calls": 0
+      },
+      {
+        "file": "packages/analyzer/src/rules/implementations/m4-tool-squatting.ts",
+        "regex_literals": 9,
         "new_regexp_calls": 0
       }
     ]
@@ -885,24 +885,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/ai-manipulation-detector.ts",
-      "technique_observed": {
-        "regex_literals": 25,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": true,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "G2",
@@ -912,24 +901,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/ai-manipulation-detector.ts",
-      "technique_observed": {
-        "regex_literals": 25,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": true,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "G3",
@@ -939,24 +917,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/ai-manipulation-detector.ts",
-      "technique_observed": {
-        "regex_literals": 25,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": true,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "G4",
@@ -966,24 +933,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/g4-context-saturation.ts",
-      "technique_observed": {
-        "regex_literals": 0,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": true,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "G5",
@@ -993,24 +949,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/ai-manipulation-detector.ts",
-      "technique_observed": {
-        "regex_literals": 25,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": true,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "G6",
@@ -1068,24 +1013,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/ai-manipulation-detector.ts",
-      "technique_observed": {
-        "regex_literals": 25,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": true,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "H3",
