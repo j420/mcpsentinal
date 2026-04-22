@@ -318,10 +318,11 @@ rules:
     target_precision: 0.90
     target_recall: 0.00
     rationale: "MCP protocol surface (annotations, resources, prompts, roots, capabilities). Baseline recall is 0% — target pinned to measured floor; recall-improvement work tracked as follow-up."
-  I14:
-    target_precision: 0.85
-    target_recall: 0.60
-    rationale: "MCP protocol surface (annotations, resources, prompts, roots, capabilities)."
+  # I14 (Rolling Capability Drift) intentionally omitted — YAML is
+  # `enabled: false` (chunk 2.1-bugfix) pending a TypedRuleV2 implementation.
+  # The dashboard skips disabled rules regardless of whether a target is
+  # declared here; omitting keeps this file honest about what is measured.
+  # Re-add a target entry when the rule is implemented and re-enabled.
   I15:
     target_precision: 0.85
     target_recall: 0.00

@@ -121,12 +121,13 @@ const DEMO_FIXTURES: RuleFixtureSet[] = [
 describe("accuracy/target-loader", () => {
   beforeEach(() => resetTargetsCache());
 
-  it("(a) parses rules/accuracy-targets.yaml with 164 active rule entries", () => {
-    // Use the real manifest committed at the repo root.
+  it("(a) parses rules/accuracy-targets.yaml with 163 active rule entries", () => {
+    // Use the real manifest committed at the repo root. 163 = 164 active -
+    // 1 (I14, disabled in chunk 2.1-bugfix pending a TypedRuleV2 impl).
     const targets = loadAccuracyTargets();
     expect(targets.version).toBe(1);
     expect(targets.default.target_precision).toBeGreaterThan(0);
-    expect(Object.keys(targets.rules).length).toBe(164);
+    expect(Object.keys(targets.rules).length).toBe(163);
 
     // A1 must exist and have non-empty rationale.
     const a1 = getTargetFor("A1", targets);

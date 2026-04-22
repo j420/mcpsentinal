@@ -12,8 +12,9 @@
  * when any rule's measured precision/recall falls below its target or
  * regresses vs the prior snapshot committed to git.
  */
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { AccuracyRunner } from "../runner.js";
 import { ALL_FIXTURES } from "../fixtures/index.js";
 import type { RuleFixtureSet, RuleAccuracy, AccuracyReport } from "../types.js";
@@ -22,6 +23,9 @@ import {
   getTargetFor,
   type AccuracyTargets,
 } from "./target-loader.js";
+
+const __dirname_dashboard = dirname(fileURLToPath(import.meta.url));
+const DEFAULT_RULES_DIR = resolve(__dirname_dashboard, "../../../../rules");
 
 // ── Types (shape persisted to docs/accuracy/latest.json) ────────────────────
 
@@ -89,6 +93,39 @@ const RETIRED_RULE_IDS = [
 ] as const;
 
 /**
+ * Read every `rules/*.yaml` file (rule YAMLs only, not sidecars like
+ * `framework-registry.yaml` or `accuracy-targets.yaml`) and return the set
+ * of rule IDs whose top-level `enabled:` field is exactly `false`.
+ *
+ * A rule can be disabled without being retired — I14 is the canonical case
+ * (flipped to `enabled: false` in chunk 2.1-bugfix until the TypedRuleV2
+ * implementation lands). The dashboard must skip these rules: they have
+ * fixtures but no engine handler, so any TP/TN they produce is vacuous
+ * (see the reviewer's note on the initial baseline reporting I14 at
+ * 100%/100%).
+ */
+function loadDisabledRuleIds(rulesDir: string = DEFAULT_RULES_DIR): Set<string> {
+  const disabled = new Set<string>();
+  if (!existsSync(rulesDir)) return disabled;
+  const files = readdirSync(rulesDir).filter(
+    (f) =>
+      f.endsWith(".yaml") &&
+      !f.startsWith("framework-") &&
+      f !== "accuracy-targets.yaml",
+  );
+  for (const f of files) {
+    const raw = readFileSync(resolve(rulesDir, f), "utf-8");
+    // Field-presence check — cheaper than a full YAML parse, and exactly
+    // mirrors the semantics loadRules() uses in the analyzer.
+    const idMatch = raw.match(/^id:\s*(\S+)/m);
+    const enabledMatch = raw.match(/^enabled:\s*(true|false)\s*$/m);
+    if (!idMatch || !enabledMatch) continue;
+    if (enabledMatch[1] === "false") disabled.add(idMatch[1]);
+  }
+  return disabled;
+}
+
+/**
  * Compute TP/FP/TN/FN counts for a rule from its fixture set and the
  * AccuracyRunner's RuleAccuracy output. We re-derive the raw confusion-matrix
  * cells because the RuleAccuracy type only surfaces aggregate precision/recall.
@@ -130,6 +167,12 @@ export interface BuildDashboardInput {
   priorSnapshot?: DashboardSnapshot | null;
   regressionThreshold?: number; // default 0.05
   ruleMetadata?: Map<string, { name?: string; category?: string; severity?: string }>;
+  /**
+   * Override the set of disabled rule IDs. Defaults to reading
+   * `rules/*.yaml` for `enabled: false`. Pass an empty set to include every
+   * rule unconditionally (used by unit tests).
+   */
+  disabledRuleIds?: Set<string>;
 }
 
 export interface BuildDashboardResult {
@@ -148,6 +191,7 @@ export function buildDashboard(input: BuildDashboardInput = {}): BuildDashboardR
   const prior = input.priorSnapshot ?? null;
   const regressionThreshold = input.regressionThreshold ?? 0.05;
   const meta = input.ruleMetadata ?? new Map();
+  const disabledRuleIds = input.disabledRuleIds ?? loadDisabledRuleIds();
 
   const report = runner.runAll(fixtures);
 
@@ -165,6 +209,10 @@ export function buildDashboard(input: BuildDashboardInput = {}): BuildDashboardR
   for (const acc of report.by_rule) {
     // Skip retired rules entirely from the dashboard.
     if ((RETIRED_RULE_IDS as readonly string[]).includes(acc.rule_id)) continue;
+    // Skip rules whose YAML is `enabled: false` — their fixtures produce
+    // vacuous precision/recall (no registered handler fires), and including
+    // them inflates rule_count and the passing-rate headline numbers.
+    if (disabledRuleIds.has(acc.rule_id)) continue;
 
     const t = getTargetFor(acc.rule_id, targets);
     const set = fixtureSetById.get(acc.rule_id);

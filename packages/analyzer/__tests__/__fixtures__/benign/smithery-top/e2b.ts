@@ -8,8 +8,11 @@ export const e2bFixture: BenignFixture = makeSmitheryFixture({
   id: "smithery-top/e2b",
   name: "e2b",
   why:
-    "E2B MCP. Stresses C1 command-injection negative (sandbox boundary " +
-    "is the point — documented), and K19 sandbox-enforcement negative.",
+    "E2B MCP — sandboxed code execution frontend. Smithery-top fixtures " +
+    "ship with source_code: null, so this exercises A/B/F description + " +
+    "schema + annotation rules, not C1/K19 (which require source_code to " +
+    "fire). The sandbox-isolation posture is documented for regulator " +
+    "traceability rather than tested at the rule-fires level.",
   description:
     "E2B MCP server — spin up a disposable Linux sandbox and run a " +
     "snippet inside it. All execution is jailed to the sandbox.",
