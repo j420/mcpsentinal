@@ -394,8 +394,9 @@ describe("Q4 — IDE Config Injection", () => {
     const chain = expectEvidenceChain(finding);
     expectConfidenceRange(chain, 0.20, 0.99);
   });
-  it("flags case-sensitivity bypass", () => {
-    const f = run("Q4", `const p = ".cursor/MCP.Json";`);
+  it("flags case-sensitivity bypass (CVE-2025-59944)", () => {
+    // v2 Q4 requires a real write op — bare string literal is insufficient.
+    const f = run("Q4", `import fs from "node:fs";\nexport function x(body) { fs.writeFileSync('/Users/bob/.cursor/MCP.JSON', JSON.stringify(body)); }`);
     expect(f.some(x => x.rule_id === "Q4")).toBe(true);
     const finding = findingFor(f, "Q4");
     const chain = expectEvidenceChain(finding);

@@ -1,6 +1,6 @@
 # Rule Census
 
-_Generated: 2026-04-21T12:08:07.814Z_
+_Generated: 2026-04-21T18:31:44.391Z_
 
 ## Summary
 
@@ -8,43 +8,42 @@ _Generated: 2026-04-21T12:08:07.814Z_
 |---|---|
 | YAML rules (total) | 177 |
 | YAML rules (enabled) | 164 |
-| Registered rules (unique ids) | 157 |
-| Registered v1 | 132 |
-| Registered v2 | 25 |
-| Enabled but unregistered | 20 |
-| Detector files | 27 |
-| Files with any regex | 24 |
-| Files with any technique import | 14 |
+| Registered rules (unique ids) | 132 |
+| Registered v1 | 117 |
+| Registered v2 | 15 |
+| Enabled but unregistered | 45 |
+| Detector files | 22 |
+| Files with any regex | 19 |
+| Files with any technique import | 11 |
 
 ## Aggregate Technique Observations
 
 | Signal | Count |
 |---|---|
-| Regex literals | 688 |
-| new RegExp(...) calls | 3 |
-| String-literal arrays > 5 | 7 |
-| Rules using taint-ast | 55 |
+| Regex literals | 490 |
+| new RegExp(...) calls | 2 |
+| String-literal arrays > 5 | 6 |
+| Rules using taint-ast | 34 |
 | Rules using capability-graph | 36 |
 | Rules using module-graph | 0 |
-| Rules using entropy | 5 |
+| Rules using entropy | 1 |
 | Rules using similarity | 15 |
-| Rules using EvidenceChainBuilder | 157 |
+| Rules using EvidenceChainBuilder | 132 |
 
 ## Top Regex Offenders (detector files)
 
 | File | Regex literals | new RegExp calls |
 |---|---:|---:|
-| `packages/analyzer/src/rules/implementations/jsonrpc-protocol-v2.ts` | 64 | 0 |
 | `packages/analyzer/src/rules/implementations/docker-k8s-crypto-v2.ts` | 47 | 0 |
-| `packages/analyzer/src/rules/implementations/config-poisoning-detector.ts` | 44 | 1 |
 | `packages/analyzer/src/rules/implementations/infrastructure-detector.ts` | 44 | 0 |
 | `packages/analyzer/src/rules/implementations/m-runtime-v2.ts` | 43 | 0 |
 | `packages/analyzer/src/rules/implementations/data-privacy-cross-ecosystem-detector.ts` | 38 | 0 |
-| `packages/analyzer/src/rules/implementations/advanced-supply-chain-detector.ts` | 36 | 0 |
-| `packages/analyzer/src/rules/implementations/k-compliance-v2.ts` | 36 | 0 |
-| `packages/analyzer/src/rules/implementations/k-remaining-v2.ts` | 36 | 0 |
-| `packages/analyzer/src/rules/implementations/code-security-deep-detector.ts` | 35 | 0 |
 | `packages/analyzer/src/rules/implementations/supply-chain-detector.ts` | 35 | 0 |
+| `packages/analyzer/src/rules/implementations/protocol-ai-runtime-detector.ts` | 33 | 0 |
+| `packages/analyzer/src/rules/implementations/protocol-surface-remaining-detector.ts` | 33 | 0 |
+| `packages/analyzer/src/rules/implementations/description-schema-detector.ts` | 29 | 0 |
+| `packages/analyzer/src/rules/implementations/k-compliance-v2.ts` | 27 | 0 |
+| `packages/analyzer/src/rules/implementations/ai-manipulation-detector.ts` | 25 | 0 |
 
 ## Per-Rule Detail
 
@@ -72,19 +71,19 @@ T = first-letter tags: a=ast-taint, c=capability-graph, m=module-graph, e=entrop
 | B6 | Schema Allows Unconstrained Additional Properties | schema-analysis | medium | Y | Y |  | 29 | v | `description-schema-detector.ts` |
 | B7 | Dangerous Default Parameter Values | schema-analysis | high | Y | Y |  | 29 | v | `description-schema-detector.ts` |
 | C1 | Command Injection | code-analysis | critical | Y |  |  | 0 | — | — |
-| C2 | Path Traversal | code-analysis | critical | Y | Y |  | 35 | aev | `code-security-deep-detector.ts` |
+| C2 | Path Traversal | code-analysis | critical | Y |  |  | 0 | — | — |
 | C3 | Server-Side Request Forgery (SSRF) | code-analysis | high | Y | Y |  | 19 | av | `code-remaining-detector.ts` |
 | C4 | SQL Injection | code-analysis | critical | Y |  |  | 0 | — | — |
-| C5 | Hardcoded Secrets in Source Code | code-analysis | critical | Y | Y |  | 35 | aev | `code-security-deep-detector.ts` |
+| C5 | Hardcoded Secrets in Source Code | code-analysis | critical | Y |  |  | 0 | — | — |
 | C6 | Error Message Information Leakage | code-analysis | medium | Y | Y |  | 19 | av | `code-remaining-detector.ts` |
 | C7 | Wildcard CORS Configuration | code-analysis | high | Y | Y |  | 19 | av | `code-remaining-detector.ts` |
 | C8 | No Authentication on Network-Exposed Server | code-analysis | high | Y | Y |  | 19 | av | `code-remaining-detector.ts` |
 | C9 | Excessive Filesystem Scope | code-analysis | high | Y | Y |  | 19 | av | `code-remaining-detector.ts` |
-| C10 | Prototype Pollution | code-analysis | critical | Y | Y |  | 35 | aev | `code-security-deep-detector.ts` |
+| C10 | Prototype Pollution | code-analysis | critical | Y |  |  | 0 | — | — |
 | C11 | ReDoS — Catastrophic Regex Backtracking | code-analysis | high | Y | Y |  | 19 | av | `code-remaining-detector.ts` |
 | C12 | Unsafe Deserialization | code-analysis | critical | Y |  |  | 0 | — | — |
 | C13 | Server-Side Template Injection (SSTI) | code-analysis | critical | Y |  |  | 0 | — | — |
-| C14 | JWT Algorithm Confusion / None Algorithm Attack | code-analysis | critical | Y | Y |  | 35 | aev | `code-security-deep-detector.ts` |
+| C14 | JWT Algorithm Confusion / None Algorithm Attack | code-analysis | critical | Y |  |  | 0 | — | — |
 | C15 | Timing Attack on Secret or Token Comparison | code-analysis | high | Y | Y |  | 19 | av | `code-remaining-detector.ts` |
 | C16 | Dynamic Code Evaluation with User Input | code-analysis | critical | Y |  |  | 0 | — | — |
 | D1 | Known CVEs in Dependencies | dependency-analysis | high | Y | Y |  | 0 | sv | `dependency-behavioral-detector.ts` |
@@ -111,7 +110,7 @@ T = first-letter tags: a=ast-taint, c=capability-graph, m=module-graph, e=entrop
 | G4 | Context Window Saturation Attack | adversarial-ai | high | Y | Y |  | 0 | ev | `g4-context-saturation.ts` |
 | G5 | Capability Escalation via Prior Approval Reference | adversarial-ai | critical | Y | Y |  | 25 | cv | `ai-manipulation-detector.ts` |
 | G6 | Tool Behavior Drift (Rug Pull Detection) | adversarial-ai | critical | Y | Y |  | 10 | csv | `ecosystem-adversarial-detector.ts` |
-| G7 | DNS-Based Data Exfiltration Channel | adversarial-ai | critical | Y | Y |  | 14 | av | `secret-exfil-detector.ts` |
+| G7 | DNS-Based Data Exfiltration Channel | adversarial-ai | critical | Y |  |  | 0 | — | — |
 | H1 | MCP OAuth 2.0 Insecure Implementation | auth-analysis | critical | Y | Y |  | 10 | csv | `ecosystem-adversarial-detector.ts` |
 | H2 | Prompt Injection in MCP Initialize Response Fields | adversarial-ai | critical | Y | Y |  | 25 | cv | `ai-manipulation-detector.ts` |
 | H3 | Multi-Agent Propagation Risk | adversarial-ai | high | Y | Y |  | 10 | csv | `ecosystem-adversarial-detector.ts` |
@@ -131,7 +130,7 @@ T = first-letter tags: a=ast-taint, c=capability-graph, m=module-graph, e=entrop
 | I14 | Rolling Capability Drift | protocol-surface | high | Y | Y |  | 33 | cv | `protocol-surface-remaining-detector.ts` |
 | I15 | Transport Session Security | protocol-surface | high | Y | Y |  | 33 | cv | `protocol-surface-remaining-detector.ts` |
 | I16 | Consent Fatigue Exploitation | protocol-surface | high | Y | Y |  | 23 | civ | `cross-tool-risk-detector.ts` |
-| J1 | Cross-Agent Configuration Poisoning | threat-intelligence | critical | Y | Y |  | 45 | av | `config-poisoning-detector.ts` |
+| J1 | Cross-Agent Configuration Poisoning | threat-intelligence | critical | Y |  |  | 0 | — | — |
 | J2 | Git Argument Injection | threat-intelligence | critical | Y |  |  | 0 | — | — |
 | J3 | Full Schema Poisoning | threat-intelligence | critical | Y | Y |  | 33 | cv | `protocol-surface-remaining-detector.ts` |
 | J4 | Health Endpoint Information Disclosure | threat-intelligence | high | Y | Y |  | 33 | cv | `protocol-surface-remaining-detector.ts` |
@@ -139,38 +138,38 @@ T = first-letter tags: a=ast-taint, c=capability-graph, m=module-graph, e=entrop
 | J6 | Tool Preference Manipulation | threat-intelligence | high | Y | Y |  | 33 | cv | `protocol-surface-remaining-detector.ts` |
 | J7 | OpenAPI Specification Field Injection | threat-intelligence | critical | Y | Y |  | 33 | cv | `protocol-surface-remaining-detector.ts` |
 | K1 | Absent Structured Logging | compliance-governance | high | Y |  |  | 0 | — | — |
-| K2 | Audit Trail Destruction | compliance-governance | critical | Y | Y |  | 14 | av | `secret-exfil-detector.ts` |
-| K3 | Audit Log Tampering | compliance-governance | critical | Y | Y |  | 36 | av | `advanced-supply-chain-detector.ts` |
+| K2 | Audit Trail Destruction | compliance-governance | critical | Y |  |  | 0 | — | — |
+| K3 | Audit Log Tampering | compliance-governance | critical | Y | Y |  | 19 | av | `advanced-supply-chain-detector.ts` |
 | K4 | Missing Human Confirmation for Destructive Operations | compliance-governance | high | Y |  |  | 0 | — | — |
-| K5 | Auto-Approve / Bypass Confirmation Pattern | compliance-governance | critical | Y | Y |  | 36 | av | `advanced-supply-chain-detector.ts` |
+| K5 | Auto-Approve / Bypass Confirmation Pattern | compliance-governance | critical | Y | Y |  | 19 | av | `advanced-supply-chain-detector.ts` |
 | K6 | Overly Broad OAuth Scopes | compliance-governance | high | Y |  |  | 0 | — | — |
 | K7 | Long-Lived Tokens Without Rotation | compliance-governance | high | Y |  |  | 0 | — | — |
-| K8 | Cross-Boundary Credential Sharing | compliance-governance | critical | Y | Y |  | 36 | av | `advanced-supply-chain-detector.ts` |
+| K8 | Cross-Boundary Credential Sharing | compliance-governance | critical | Y | Y |  | 19 | av | `advanced-supply-chain-detector.ts` |
 | K9 | Dangerous Post-Install Hooks | compliance-governance | critical | Y |  |  | 0 | — | — |
 | K10 | Package Registry Substitution | compliance-governance | high | Y | Y |  | 35 | v | `supply-chain-detector.ts` |
-| K11 | Missing Server Integrity Verification | compliance-governance | high | Y |  | Y | 36 | v | `k-remaining-v2.ts` |
+| K11 | Missing Server Integrity Verification | compliance-governance | high | Y |  |  | 0 | — | — |
 | K12 | Executable Content in Tool Response | compliance-governance | critical | Y |  |  | 0 | — | — |
-| K13 | Unsanitized Tool Output | compliance-governance | high | Y |  | Y | 36 | v | `k-remaining-v2.ts` |
+| K13 | Unsanitized Tool Output | compliance-governance | high | Y |  |  | 0 | — | — |
 | K14 | Agent Credential Propagation via Shared State | compliance-governance | critical | Y |  |  | 0 | — | — |
-| K15 | Multi-Agent Collusion Preconditions | compliance-governance | high | Y |  | Y | 36 | v | `k-remaining-v2.ts` |
+| K15 | Multi-Agent Collusion Preconditions | compliance-governance | high | Y |  |  | 0 | — | — |
 | K16 | Unbounded Recursion / Missing Depth Limits | compliance-governance | high | Y |  |  | 0 | — | — |
 | K17 | Missing Timeout or Circuit Breaker | compliance-governance | medium | Y |  |  | 0 | — | — |
-| K18 | Cross-Trust-Boundary Data Flow in Tool Response | compliance-governance | high | Y |  | Y | 36 | v | `k-remaining-v2.ts` |
+| K18 | Cross-Trust-Boundary Data Flow in Tool Response | compliance-governance | high | Y |  |  | 0 | — | — |
 | K19 | Missing Runtime Sandbox Enforcement | compliance-governance | high | Y |  | Y | 47 | v | `docker-k8s-crypto-v2.ts` |
-| K20 | Insufficient Audit Context in Logging | compliance-governance | medium | Y |  | Y | 36 | v | `k-compliance-v2.ts` |
-| L1 | GitHub Actions Tag Poisoning | supply-chain-advanced | critical | Y | Y |  | 36 | av | `advanced-supply-chain-detector.ts` |
-| L2 | Malicious Build Plugin Injection | supply-chain-advanced | critical | Y | Y |  | 36 | av | `advanced-supply-chain-detector.ts` |
+| K20 | Insufficient Audit Context in Logging | compliance-governance | medium | Y |  |  | 0 | — | — |
+| L1 | GitHub Actions Tag Poisoning | supply-chain-advanced | critical | Y |  |  | 0 | — | — |
+| L2 | Malicious Build Plugin Injection | supply-chain-advanced | critical | Y |  |  | 0 | — | — |
 | L3 | Dockerfile Base Image Supply Chain Risk | supply-chain-advanced | high | Y |  | Y | 47 | v | `docker-k8s-crypto-v2.ts` |
-| L4 | MCP Config File Code Injection | supply-chain-advanced | critical | Y | Y |  | 45 | av | `config-poisoning-detector.ts` |
+| L4 | MCP Config File Code Injection | supply-chain-advanced | critical | Y |  |  | 0 | — | — |
 | L5 | Package Manifest Confusion Indicators | supply-chain-advanced | high | Y | Y |  | 35 | v | `supply-chain-detector.ts` |
-| L6 | Config Directory Symlink Attack | supply-chain-advanced | critical | Y | Y |  | 36 | av | `advanced-supply-chain-detector.ts` |
-| L7 | Transitive MCP Server Delegation | supply-chain-advanced | critical | Y | Y |  | 36 | av | `advanced-supply-chain-detector.ts` |
+| L6 | Config Directory Symlink Attack | supply-chain-advanced | critical | Y |  |  | 0 | — | — |
+| L7 | Transitive MCP Server Delegation | supply-chain-advanced | critical | Y | Y |  | 19 | av | `advanced-supply-chain-detector.ts` |
 | L8 | Version Rollback / Downgrade Attack | supply-chain-advanced | high | Y |  | Y | 17 | v | `l-supply-chain-v2.ts` |
-| L9 | CI/CD Secret Exfiltration Patterns | supply-chain-advanced | critical | Y | Y |  | 14 | av | `secret-exfil-detector.ts` |
+| L9 | CI/CD Secret Exfiltration Patterns | supply-chain-advanced | critical | Y |  |  | 0 | — | — |
 | L10 | Registry Metadata Spoofing | supply-chain-advanced | high | Y |  | Y | 17 | v | `l-supply-chain-v2.ts` |
-| L11 | Environment Variable Injection via MCP Config | supply-chain-advanced | critical | Y | Y |  | 45 | av | `config-poisoning-detector.ts` |
+| L11 | Environment Variable Injection via MCP Config | supply-chain-advanced | critical | Y |  |  | 0 | — | — |
 | L12 | Build Artifact Tampering | supply-chain-advanced | critical | Y | Y |  | 35 | v | `supply-chain-detector.ts` |
-| L13 | Build Credential File Theft | supply-chain-advanced | critical | Y | Y |  | 36 | av | `advanced-supply-chain-detector.ts` |
+| L13 | Build Credential File Theft | supply-chain-advanced | critical | Y |  |  | 0 | — | — |
 | L14 | Hidden Entry Point Mismatch | supply-chain-advanced | high | Y | Y |  | 35 | v | `supply-chain-detector.ts` |
 | L15 | Update Notification Spoofing | supply-chain-advanced | high | Y |  | Y | 17 | v | `l-supply-chain-v2.ts` |
 | M1 | Special Token Injection in Tool Metadata | ai-runtime-exploitation | critical | Y | Y |  | 33 | v | `protocol-ai-runtime-detector.ts` |
@@ -182,16 +181,16 @@ T = first-letter tags: a=ast-taint, c=capability-graph, m=module-graph, e=entrop
 | M7 | Tool Response Structure Bomb | ai-runtime-exploitation | high | Y |  | Y | 43 | v | `m-runtime-v2.ts` |
 | M8 | Inference Cost Amplification | ai-runtime-exploitation | high | Y |  | Y | 43 | v | `m-runtime-v2.ts` |
 | M9 | Model-Specific System Prompt Extraction | ai-runtime-exploitation | critical | Y | Y |  | 33 | v | `protocol-ai-runtime-detector.ts` |
-| N1 | JSON-RPC Batch Request Abuse | protocol-edge-cases | high | Y |  | Y | 64 | v | `jsonrpc-protocol-v2.ts` |
-| N2 | JSON-RPC Notification Flooding | protocol-edge-cases | high | Y |  | Y | 64 | v | `jsonrpc-protocol-v2.ts` |
-| N3 | JSON-RPC Request ID Collision | protocol-edge-cases | high | Y |  | Y | 64 | v | `jsonrpc-protocol-v2.ts` |
+| N1 | JSON-RPC Batch Request Abuse | protocol-edge-cases | high | Y |  |  | 0 | — | — |
+| N2 | JSON-RPC Notification Flooding | protocol-edge-cases | high | Y |  |  | 0 | — | — |
+| N3 | JSON-RPC Request ID Collision | protocol-edge-cases | high | Y |  |  | 0 | — | — |
 | N4 | JSON-RPC Error Object Injection | protocol-edge-cases | critical | Y | Y |  | 33 | v | `protocol-ai-runtime-detector.ts` |
 | N5 | Capability Downgrade Deception | protocol-edge-cases | critical | Y | Y |  | 33 | v | `protocol-ai-runtime-detector.ts` |
 | N6 | SSE Reconnection Hijacking | protocol-edge-cases | critical | Y | Y |  | 33 | v | `protocol-ai-runtime-detector.ts` |
-| N7 | Progress Token Prediction and Injection | protocol-edge-cases | high | Y |  | Y | 64 | v | `jsonrpc-protocol-v2.ts` |
-| N8 | Cancellation Race Condition | protocol-edge-cases | high | Y |  | Y | 64 | v | `jsonrpc-protocol-v2.ts` |
+| N7 | Progress Token Prediction and Injection | protocol-edge-cases | high | Y |  |  | 0 | — | — |
+| N8 | Cancellation Race Condition | protocol-edge-cases | high | Y |  |  | 0 | — | — |
 | N9 | MCP Logging Protocol Injection | protocol-edge-cases | critical | Y | Y |  | 33 | v | `protocol-ai-runtime-detector.ts` |
-| N10 | Incomplete Handshake Denial of Service | protocol-edge-cases | high | Y |  | Y | 64 | v | `jsonrpc-protocol-v2.ts` |
+| N10 | Incomplete Handshake Denial of Service | protocol-edge-cases | high | Y |  |  | 0 | — | — |
 | N11 | Protocol Version Downgrade Attack | protocol-edge-cases | critical | Y | Y |  | 33 | v | `protocol-ai-runtime-detector.ts` |
 | N12 | Resource Subscription Content Mutation | protocol-edge-cases | critical | Y | Y |  | 33 | v | `protocol-ai-runtime-detector.ts` |
 | N13 | HTTP Chunked Transfer Smuggling | protocol-edge-cases | critical | Y | Y |  | 33 | v | `protocol-ai-runtime-detector.ts` |
@@ -220,7 +219,7 @@ T = first-letter tags: a=ast-taint, c=capability-graph, m=module-graph, e=entrop
 | Q1 | Dual-Protocol Schema Constraint Loss | cross-ecosystem-emergent | critical | N | Y |  | 38 | av | `data-privacy-cross-ecosystem-detector.ts` |
 | Q2 | LangChain Serialization Bridge Injection | cross-ecosystem-emergent | critical | N | Y |  | 38 | av | `data-privacy-cross-ecosystem-detector.ts` |
 | Q3 | Localhost MCP Service Hijacking | cross-ecosystem-emergent | critical | Y | Y |  | 38 | av | `data-privacy-cross-ecosystem-detector.ts` |
-| Q4 | IDE MCP Configuration Injection | cross-ecosystem-emergent | critical | Y | Y |  | 45 | av | `config-poisoning-detector.ts` |
+| Q4 | IDE MCP Configuration Injection | cross-ecosystem-emergent | critical | Y |  |  | 0 | — | — |
 | Q5 | MCP Gateway Trust Delegation Confusion | cross-ecosystem-emergent | critical | N | Y |  | 38 | av | `data-privacy-cross-ecosystem-detector.ts` |
 | Q6 | Agent Identity Impersonation via MCP | cross-ecosystem-emergent | critical | Y | Y |  | 38 | av | `data-privacy-cross-ecosystem-detector.ts` |
 | Q7 | Desktop Extension Privilege Chain | cross-ecosystem-emergent | critical | Y | Y |  | 38 | av | `data-privacy-cross-ecosystem-detector.ts` |
@@ -239,22 +238,54 @@ T = first-letter tags: a=ast-taint, c=capability-graph, m=module-graph, e=entrop
 - **A7**: enabled in YAML but no TypedRule registration found
 - **A9**: enabled in YAML but no TypedRule registration found
 - **C1**: enabled in YAML but no TypedRule registration found
+- **C2**: enabled in YAML but no TypedRule registration found
+- **C4**: enabled in YAML but no TypedRule registration found
+- **C5**: enabled in YAML but no TypedRule registration found
+- **C10**: enabled in YAML but no TypedRule registration found
+- **C12**: enabled in YAML but no TypedRule registration found
+- **C13**: enabled in YAML but no TypedRule registration found
+- **C14**: enabled in YAML but no TypedRule registration found
+- **C16**: enabled in YAML but no TypedRule registration found
 - **D3**: enabled in YAML but no TypedRule registration found
+- **G7**: enabled in YAML but no TypedRule registration found
+- **J1**: enabled in YAML but no TypedRule registration found
+- **J2**: enabled in YAML but no TypedRule registration found
 - **K1**: enabled in YAML but no TypedRule registration found
+- **K2**: enabled in YAML but no TypedRule registration found
 - **K4**: enabled in YAML but no TypedRule registration found
 - **K6**: enabled in YAML but no TypedRule registration found
 - **K7**: enabled in YAML but no TypedRule registration found
+- **K9**: enabled in YAML but no TypedRule registration found
+- **K11**: enabled in YAML but no TypedRule registration found
 - **K12**: enabled in YAML but no TypedRule registration found
+- **K13**: enabled in YAML but no TypedRule registration found
 - **K14**: enabled in YAML but no TypedRule registration found
+- **K15**: enabled in YAML but no TypedRule registration found
 - **K16**: enabled in YAML but no TypedRule registration found
 - **K17**: enabled in YAML but no TypedRule registration found
+- **K18**: enabled in YAML but no TypedRule registration found
+- **K20**: enabled in YAML but no TypedRule registration found
+- **L1**: enabled in YAML but no TypedRule registration found
+- **L2**: enabled in YAML but no TypedRule registration found
+- **L4**: enabled in YAML but no TypedRule registration found
+- **L6**: enabled in YAML but no TypedRule registration found
+- **L9**: enabled in YAML but no TypedRule registration found
+- **L11**: enabled in YAML but no TypedRule registration found
+- **L13**: enabled in YAML but no TypedRule registration found
 - **M3**: disabled in YAML but still registered
+- **N1**: enabled in YAML but no TypedRule registration found
+- **N2**: enabled in YAML but no TypedRule registration found
+- **N3**: enabled in YAML but no TypedRule registration found
+- **N7**: enabled in YAML but no TypedRule registration found
+- **N8**: enabled in YAML but no TypedRule registration found
+- **N10**: enabled in YAML but no TypedRule registration found
 - **O1**: disabled in YAML but still registered
 - **O2**: disabled in YAML but still registered
 - **O3**: disabled in YAML but still registered
 - **O7**: disabled in YAML but still registered
 - **Q1**: disabled in YAML but still registered
 - **Q2**: disabled in YAML but still registered
+- **Q4**: enabled in YAML but no TypedRule registration found
 - **Q5**: disabled in YAML but still registered
 - **Q8**: disabled in YAML but still registered
 - **Q9**: disabled in YAML but still registered

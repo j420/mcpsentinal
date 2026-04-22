@@ -57,10 +57,32 @@ import "./implementations/g4-context-saturation.js";
 // tainted-execution-detector.ts removed in Phase 1 Chunk 1.16; its six rules
 // (C4, C12, C13, C16, K9, J2) have each been migrated to their own directory.
 import "./implementations/cross-tool-risk-detector.js";
-import "./implementations/config-poisoning-detector.js";
-import "./implementations/secret-exfil-detector.js";
+// config-poisoning-detector.ts removed in Phase 1 Chunk 1.15; its four rules
+// (J1, L4, L11, Q4) have each been migrated to their own directory.
+import "./implementations/j1-cross-agent-config-poisoning/index.js";
+import "./implementations/l4-mcp-config-code-injection/index.js";
+import "./implementations/l11-env-var-injection-via-config/index.js";
+import "./implementations/q4-ide-mcp-config-injection/index.js";
+// secret-exfil-detector.ts removed in Phase 1 Chunk 1.14; its three rules
+// (L9, K2, G7) have each been migrated to their own directory.
+import "./implementations/l9-ci-secret-exfiltration/index.js";
+import "./implementations/k2-audit-trail-destruction/index.js";
+import "./implementations/g7-dns-exfiltration-channel/index.js";
 import "./implementations/supply-chain-detector.js";
-import "./implementations/code-security-deep-detector.js";
+// code-security-deep-detector.ts removed in Phase 1 Chunk 1.18; its four rules
+// (C2, C5, C10, C14) have each been migrated to their own directory.
+import "./implementations/c2-path-traversal/index.js";
+import "./implementations/c5-hardcoded-secrets/index.js";
+import "./implementations/c10-prototype-pollution/index.js";
+import "./implementations/c14-jwt-algorithm-confusion/index.js";
+// Chunk 1.9: L1/L2/L6/L13 migrated out of advanced-supply-chain-detector.ts
+// into per-rule Rule Standard v2 directories (L7/K3/K5/K8 remain in the legacy
+// file as tombstones). These imports are appended after the C-rules to keep
+// the taint-kit-based rules registered after their shared infrastructure.
+import "./implementations/l1-github-actions-tag-poisoning/index.js";
+import "./implementations/l2-malicious-build-plugin/index.js";
+import "./implementations/l6-config-symlink-attack/index.js";
+import "./implementations/l13-build-credential-file-theft/index.js";
 import "./implementations/ai-manipulation-detector.js";
 import "./implementations/infrastructure-detector.js";
 import "./implementations/advanced-supply-chain-detector.js";
@@ -81,11 +103,22 @@ import "./implementations/m5-context-window-flooding.js";
 import "./implementations/l-supply-chain-v2.js";
 import "./implementations/o4-q10-v2.js";
 import "./implementations/docker-k8s-crypto-v2.js";
-import "./implementations/jsonrpc-protocol-v2.js";
+// Phase 1 chunk 1.8: N1-N3, N7, N8, N10 migrated out of jsonrpc-protocol-v2.ts
+// into per-rule Rule Standard v2 directories. The legacy file is deleted.
+import "./implementations/n1-jsonrpc-batch-request-abuse/index.js";
+import "./implementations/n2-jsonrpc-notification-flooding/index.js";
+import "./implementations/n3-jsonrpc-id-collision/index.js";
+import "./implementations/n7-progress-token-abuse/index.js";
+import "./implementations/n8-cancellation-race-condition/index.js";
+import "./implementations/n10-incomplete-handshake-dos/index.js";
 import "./implementations/k-compliance-v2.js";
 import "./implementations/k11-missing-server-integrity-verification/index.js";
 import "./implementations/k12-executable-content-response/index.js";
 import "./implementations/k14-agent-credential-propagation/index.js";
 import "./implementations/k16-unbounded-recursion/index.js";
+// k20 migrated in chunk 1.6d but the import was never wired — surfaced during
+// wave-2 integration. Re-importing after k-compliance-v2 ensures the per-rule
+// v2 implementation supersedes the legacy K20Rule embedded in k-compliance-v2.
+import "./implementations/k20-insufficient-audit-context/index.js";
 import "./implementations/m-runtime-v2.js";
 import "./implementations/compliance-remaining-detector.js";

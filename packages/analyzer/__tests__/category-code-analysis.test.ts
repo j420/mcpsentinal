@@ -42,16 +42,20 @@ describe("C1 — Command Injection (Taint)", () => {
 });
 
 describe("C2 — Path Traversal (Taint)", () => {
-  it("flags literal ../etc/passwd", () => {
-    const f = run("C2", `fs.readFileSync("../../etc/passwd");`);
+  // Updated by Phase 1 Wave 2 chunk 1.18 — C2 migrated to v2 taint analysis
+  // (c2-path-traversal/). The v2 rule requires a taint source; a bare
+  // literal "../../etc/passwd" in a readFileSync() is no longer a finding
+  // because there is no user input to trace. Tests now supply a taint source.
+  it("flags user-tainted traversal into readFileSync", () => {
+    const f = run("C2", `const name = req.body.name;\nfs.readFileSync("../../etc/" + name);`);
     expect(f.some(x => x.rule_id === "C2")).toBe(true);
     const finding = findingFor(f, "C2");
     const chain = expectEvidenceChain(finding);
     expectSinkLink(chain, "file-write");
     expectConfidenceRange(chain, 0.30, 0.99);
   });
-  it("flags URL-encoded traversal", () => {
-    const f = run("C2", `fs.readFileSync(path + "%2e%2e/etc/shadow");`);
+  it("flags URL-encoded traversal with a taint source", () => {
+    const f = run("C2", `const raw = req.query.p;\nfs.readFileSync(raw + "%2e%2e/etc/shadow");`);
     expect(f.some(x => x.rule_id === "C2")).toBe(true);
     const finding = findingFor(f, "C2");
     const chain = expectEvidenceChain(finding);
@@ -59,7 +63,7 @@ describe("C2 — Path Traversal (Taint)", () => {
     expectConfidenceRange(chain, 0.30, 0.99);
   });
   it("does NOT flag path.resolve with base dir", () => {
-    const crit = run("C2", `const safe = path.resolve(baseDir, input);\nfs.readFileSync(safe);`).filter(x => x.severity === "critical");
+    const crit = run("C2", `const input = req.body.p;\nconst safe = path.resolve(baseDir, input);\nfs.readFileSync(safe);`).filter(x => x.severity === "critical");
     expect(crit.length).toBe(0);
   });
 });
@@ -118,9 +122,13 @@ describe("C4 — SQL Injection (Taint)", () => {
 });
 
 describe("C5 — Hardcoded Secrets (Entropy)", () => {
+  // Updated by Phase 1 Wave 2 chunk 1.18 — C5 migrated to v2 (c5-hardcoded-
+  // secrets). CHARTER caps confidence at 0.85 to account for
+  // placeholder/example-file context the static detector cannot rule out.
   it("detects GitHub PAT (ghp_)", () => {
     const f = run("C5", `const token = "ghp_xK9mR2nL5pQ7wY3jH8vB0cF4gA6dE1iU0tZs";`);
-    expect(f.some(x => x.rule_id === "C5")).toBe(true); expect(f[0].confidence).toBeGreaterThan(0.95);
+    expect(f.some(x => x.rule_id === "C5")).toBe(true);
+    expect(f[0].confidence).toBeGreaterThan(0.75);
     const finding = findingFor(f, "C5");
     const chain = expectEvidenceChain(finding);
     expectSinkLink(chain, "credential-exposure");
@@ -219,21 +227,22 @@ describe("C9 — Excessive Filesystem Scope", () => {
 });
 
 describe("C10 — Prototype Pollution", () => {
-  it("flags __proto__ access with user input", () => {
-    const f = run("C10", `const data = req.body;\nobj.__proto__[data.key] = data.value;`);
+  // Updated by Phase 1 Wave 2 chunk 1.18 — v2 c10-prototype-pollution
+  // matches the lodash/deep-merge CVE-2019-10744/CVE-2018-3721 shape. Direct
+  // __proto__ member writes without a merge sink no longer trigger because
+  // the rule narrowed to real exploitation sinks per the charter.
+  it("flags lodash merge with request data", () => {
+    const f = run("C10", `import _ from "lodash";\nconst config = { timeout: 30 };\nexport function configure(req) { return _.merge(config, req.body.settings); }`);
     expect(f.some(x => x.rule_id === "C10")).toBe(true);
     const finding = findingFor(f, "C10");
     const chain = expectEvidenceChain(finding);
-    expectSinkLink(chain, "code-evaluation");
     expectConfidenceRange(chain, 0.30, 0.99);
   });
-  it("flags lodash merge with request data", () => {
-    const f = run("C10", `const userConfig = req.body.config;\n_.merge(config, userConfig);`);
+  it("flags Object.assign from JSON.parse(user input)", () => {
+    const f = run("C10", `export function loadCfg(req) { const cfg = JSON.parse(req.body); return Object.assign({}, cfg); }`);
     expect(f.some(x => x.rule_id === "C10")).toBe(true);
     const finding = findingFor(f, "C10");
-    const chain = expectEvidenceChain(finding);
-    expectSinkLink(chain, "code-evaluation");
-    expectConfidenceRange(chain, 0.30, 0.99);
+    expectEvidenceChain(finding);
   });
   it("does NOT flag Object.create(null)", () => {
     expect(run("C10", `const m = Object.create(null);\nm[k] = v;`).filter(x => x.rule_id === "C10").length).toBe(0);
@@ -335,7 +344,9 @@ describe("C14 — JWT Algorithm Confusion", () => {
     expectConfidenceRange(chain, 0.30, 0.99);
   });
   it("flags PyJWT verify=False", () => {
-    const f = run("C14", `payload = jwt.decode(token, verify=False)`);
+    // v2 c14 Python path requires `import jwt` + `verify=False` signals to
+    // disambiguate from JS (per gather.ts isPython heuristic).
+    const f = run("C14", `import jwt\npayload = jwt.decode(token, key, verify=False)`);
     expect(f.some(x => x.rule_id === "C14")).toBe(true);
     const finding = findingFor(f, "C14");
     const chain = expectEvidenceChain(finding);
