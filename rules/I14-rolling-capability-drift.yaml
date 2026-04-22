@@ -14,4 +14,5 @@ test_cases:
   true_negative:
     - { description: "Server maintains the same 10 tools across all 4 scans with no changes", expected: false }
     - { description: "Server adds 2 benign read-only tools over 4 scans staying well below cumulative threshold", expected: false }
-enabled: true
+# Disabled: no TypedRuleV2 implementation yet (tracked as Phase 2 follow-up).
+enabled: false
