@@ -102,7 +102,14 @@ import "./implementations/k8-cross-boundary-credential-sharing/index.js";
 import "./implementations/ai-manipulation-detector.js";
 // infrastructure-detector.ts deleted in Phase 1 Chunk 1.13; its seven rules
 // (P1, P2, P3, P4, P5, P6, P7) have each been migrated to their own directory.
-// Orchestrator will add per-rule imports in the wave cleanup commit.
+// P8, P9, P10 live in their own directories from wave-3 (chunk 1.12).
+import "./implementations/p1-docker-socket-mount/index.js";
+import "./implementations/p2-dangerous-container-capabilities/index.js";
+import "./implementations/p3-cloud-metadata-access/index.js";
+import "./implementations/p4-tls-bypass/index.js";
+import "./implementations/p5-secrets-in-build-layers/index.js";
+import "./implementations/p6-ld-preload-hijack/index.js";
+import "./implementations/p7-host-filesystem-mount/index.js";
 import "./implementations/protocol-ai-runtime-detector.js";
 import "./implementations/data-privacy-cross-ecosystem-detector.js";
 // description-schema-detector.ts deleted in Phase-1 chunk 1.20 — 13 rules
