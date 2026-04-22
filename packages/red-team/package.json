@@ -13,6 +13,7 @@
     "audit": "tsx src/cli.ts",
     "audit:json": "tsx src/cli.ts --json",
     "audit:html": "tsx src/cli.ts --html",
+    "accuracy-dashboard": "tsx src/accuracy/cli.ts",
     "mutation:audit": "tsx src/mutation/cli.ts",
     "mutation:charter": "tsx src/mutation/charter-writer.ts"
   },
@@ -21,6 +22,7 @@
     "@mcp-sentinel/database": "workspace:*",
     "pino": "^9.0.0",
     "typescript": "^5.5.0",
+    "yaml": "^2.4.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
