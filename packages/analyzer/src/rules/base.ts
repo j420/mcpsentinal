@@ -1,20 +1,23 @@
 /**
- * TypedRule Framework — v2
+ * TypedRuleV2 Framework
  *
- * Two tiers:
- * - TypedRule (v1): Legacy interface. Produces TypedFinding with optional metadata.
- *   Backward-compatible — existing rules continue working unchanged.
+ * All detection rules are TypedRuleV2 implementations. Every rule declares its
+ * data requirements, its analysis technique, and produces findings with a
+ * mandatory structured EvidenceChain (source → propagation → sink) that a
+ * regulator can audit.
  *
- * - TypedRuleV2: New interface. MANDATORY evidence chains, declared requirements,
- *   analysis technique annotation. Every finding must prove its case with a
- *   structured source→propagation→sink chain that a regulator can audit.
- *
- * Migration path: Rules upgrade from TypedRule → TypedRuleV2 incrementally.
- * The engine wraps v1 rules in a V1Adapter so both interfaces dispatch identically.
- * Once all 177 rules are migrated, TypedRule and the adapter are removed.
+ * Rules self-register via `registerTypedRuleV2(new MyRule())` at module load.
+ * The engine dispatches through `getTypedRuleV2(ruleId)` and converts the
+ * returned RuleResult[] to TypedFinding[] (the pipeline wire type) via
+ * `ruleResultToTypedFinding` for persistence.
  *
  * YAML files remain for metadata only (id, severity, owasp, mitre, remediation,
  * test_cases, framework mappings). ALL detection logic is TypeScript.
+ *
+ * History: a v1 interface (TypedRule) and a V1RuleAdapter existed during the
+ * migration period. Phase 1 chunk 1.28 deleted both along with the legacy YAML
+ * detection-type dispatchers (regex / schema-check / behavioral / composite)
+ * now that all 164 active rules are native TypedRuleV2 implementations.
  */
 
 import type { AnalysisContext } from "../engine.js";
@@ -107,17 +110,17 @@ export interface RuleResult {
   chain: EvidenceChain;
 }
 
-// ─── v2 Rule Interface ──────────────────────────────────────────────────────
+// ─── TypedRuleV2 Interface ──────────────────────────────────────────────────
 
 /**
- * TypedRuleV2 — the target interface for all detection rules.
+ * The only rule interface. Every rule implements this.
  *
- * Key differences from TypedRule (v1):
+ * Contract:
  * 1. `chain: EvidenceChain` is MANDATORY on every finding
  * 2. `requires` declares data needs — engine skips when data unavailable
- * 3. `technique` declares analysis method — no more hiding regex behind "TypedRule"
+ * 3. `technique` declares analysis method — no regex behind a TypedRule class
  * 4. Confidence is derived from chain, not a hardcoded number
- * 5. `evidence: string` is rendered from the chain (backward compat)
+ * 5. `evidence: string` is rendered from the chain (via ruleResultToTypedFinding)
  */
 export interface TypedRuleV2 {
   /** Rule identifier matching YAML definition (e.g., "C1", "K1") */
@@ -153,9 +156,14 @@ export interface TypedRuleV2 {
   analyze(context: AnalysisContext): RuleResult[];
 }
 
-// ─── v1 Legacy Interface (backward-compatible) ─────────────────────────────
+// ─── Pipeline Wire Type ─────────────────────────────────────────────────────
 
-/** A single finding produced by a v1 typed rule */
+/**
+ * The flat finding shape used by the scoring + persistence layers. Produced
+ * from a RuleResult via `ruleResultToTypedFinding`. Not a separate rule
+ * interface — just the marshalling shape that flows through the engine into
+ * the database.
+ */
 export interface TypedFinding {
   rule_id: string;
   severity: Severity;
@@ -165,107 +173,17 @@ export interface TypedFinding {
   mitre_technique: string | null;
   /** Confidence score 0.0–1.0 for Bayesian aggregation */
   confidence: number;
-  /** Structured metadata for downstream analysis */
+  /** Structured metadata for downstream analysis (includes evidence_chain) */
   metadata?: Record<string, unknown>;
 }
 
-/** Base interface for v1 typed detection rules (legacy — migrate to TypedRuleV2) */
-export interface TypedRule {
-  /** Rule identifier matching YAML definition (e.g., "C1", "A6") */
-  readonly id: string;
-
-  /** Human-readable rule name */
-  readonly name: string;
-
-  /** Execute the rule against an analysis context, returning zero or more findings */
-  analyze(context: AnalysisContext): TypedFinding[];
-}
-
-// ─── v1 → v2 Adapter ────────────────────────────────────────────────────────
+// ─── Utility: Convert RuleResult to TypedFinding ────────────────────────────
 
 /**
- * Wraps a TypedRule (v1) as a TypedRuleV2 for unified engine dispatch.
- * Extracts evidence_chain from metadata if present, otherwise creates a
- * minimal chain from the flat evidence string.
- *
- * This adapter exists ONLY for migration. Once a rule is rewritten as
- * TypedRuleV2, remove its v1 implementation and this adapter is bypassed.
- */
-export class V1RuleAdapter implements TypedRuleV2 {
-  readonly id: string;
-  readonly name: string;
-  readonly requires: RuleRequirements = { tools: true }; // conservative default
-  readonly technique: AnalysisTechnique = "structural";  // conservative default
-
-  constructor(private readonly v1Rule: TypedRule) {
-    this.id = v1Rule.id;
-    this.name = v1Rule.name;
-  }
-
-  analyze(context: AnalysisContext): RuleResult[] {
-    const v1Findings = this.v1Rule.analyze(context);
-    return v1Findings.map((f) => {
-      // If the v1 rule already produced an evidence chain, use it
-      const existingChain = f.metadata?.evidence_chain as EvidenceChain | undefined;
-      if (existingChain && existingChain.links && existingChain.confidence_factors) {
-        return {
-          rule_id: f.rule_id,
-          severity: f.severity,
-          owasp_category: f.owasp_category,
-          mitre_technique: f.mitre_technique,
-          remediation: f.remediation,
-          chain: existingChain,
-        };
-      }
-
-      // Otherwise create a minimal chain from flat evidence string.
-      // This is intentionally low-confidence to flag rules needing migration.
-      const minimalChain: EvidenceChain = {
-        links: [
-          {
-            type: "source" as const,
-            source_type: "file-content" as const,
-            location: "unknown",
-            observed: f.evidence.slice(0, 200),
-            rationale: "V1 adapter — rule needs migration to TypedRuleV2 for structured evidence",
-          },
-          {
-            type: "sink" as const,
-            sink_type: "code-evaluation" as const,
-            location: "unknown",
-            observed: f.evidence.slice(0, 200),
-          },
-        ],
-        confidence_factors: [
-          {
-            factor: "v1_adapter",
-            adjustment: -0.15,
-            rationale: "Finding produced by v1 rule without structured evidence chain",
-          },
-        ],
-        confidence: Math.min(f.confidence, 0.55), // Cap v1 findings lower
-      };
-
-      return {
-        rule_id: f.rule_id,
-        severity: f.severity,
-        owasp_category: f.owasp_category,
-        mitre_technique: f.mitre_technique,
-        remediation: f.remediation,
-        chain: minimalChain,
-      };
-    });
-  }
-}
-
-// ─── Utility: Convert RuleResult to TypedFinding (backward compat) ──────────
-
-/**
- * Convert a v2 RuleResult back to a v1 TypedFinding for backward compatibility
- * with the existing pipeline, scorer, and persistence layer.
- *
- * The evidence field is rendered from the chain narrative. Confidence is
- * extracted from the chain. The chain itself is preserved in metadata.
+ * Flatten a RuleResult (with structured chain) into a TypedFinding (the wire
+ * type consumed by the scorer, the API, and the database). The chain narrative
+ * is rendered into `evidence`, chain confidence is lifted to the top level,
+ * and the chain itself is preserved verbatim in `metadata.evidence_chain`.
  */
 export function ruleResultToTypedFinding(result: RuleResult): TypedFinding {
   return {
@@ -283,92 +201,70 @@ export function ruleResultToTypedFinding(result: RuleResult): TypedFinding {
 // ─── Registry ───────────────────────────────────────────────────────────────
 
 /**
- * Dual registry: holds both v1 TypedRule and v2 TypedRuleV2 implementations.
- * The engine always dispatches through the v2 interface — v1 rules are
- * automatically wrapped in V1RuleAdapter at registration time.
+ * Single registry of TypedRuleV2 implementations keyed by rule_id.
+ * Populated via side-effect imports from `rules/index.ts` — each rule
+ * implementation calls `registerTypedRuleV2(new MyRule())` at module load.
  */
-const typedRuleRegistry = new Map<string, TypedRule>();
 const v2RuleRegistry = new Map<string, TypedRuleV2>();
 
-/** Register a v1 typed rule implementation (legacy — use registerTypedRuleV2 for new rules) */
-export function registerTypedRule(rule: TypedRule): void {
-  typedRuleRegistry.set(rule.id, rule);
-  // Also register in v2 registry via adapter, but don't overwrite a native v2
-  if (!v2RuleRegistry.has(rule.id)) {
-    v2RuleRegistry.set(rule.id, new V1RuleAdapter(rule));
-  }
-}
-
-/** Register a v2 typed rule implementation (preferred for all new rules) */
+/** Register a TypedRuleV2 implementation. Overwrites any prior registration for the same id. */
 export function registerTypedRuleV2(rule: TypedRuleV2): void {
   v2RuleRegistry.set(rule.id, rule);
-  // Also register a v1-compatible wrapper so the engine (which dispatches via
-  // getTypedRule) can find this rule during the migration period.
-  if (!typedRuleRegistry.has(rule.id)) {
-    const v1Wrapper: TypedRule = {
-      id: rule.id,
-      name: rule.name,
-      analyze(context) {
-        return rule.analyze(context).map(ruleResultToTypedFinding);
-      },
-    };
-    typedRuleRegistry.set(rule.id, v1Wrapper);
-  }
 }
 
-/** Look up a typed rule by ID (v1 interface — legacy callers) */
-export function getTypedRule(id: string): TypedRule | undefined {
-  return typedRuleRegistry.get(id);
-}
-
-/** Look up a v2 typed rule by ID (preferred — includes v1 rules via adapter) */
+/** Look up a TypedRuleV2 implementation by rule id. */
 export function getTypedRuleV2(id: string): TypedRuleV2 | undefined {
   return v2RuleRegistry.get(id);
 }
 
-/** Get all registered v2 typed rules (includes adapted v1 rules) */
+/** All registered TypedRuleV2 implementations. */
 export function getAllTypedRulesV2(): TypedRuleV2[] {
   return Array.from(v2RuleRegistry.values());
 }
 
-/** Get all registered typed rules (v1 interface — legacy callers) */
-export function getAllTypedRules(): TypedRule[] {
-  return Array.from(typedRuleRegistry.values());
+// ─── Test/Helper Convenience ────────────────────────────────────────────────
+//
+// The analyzer test suite (~19 files) and mcp-sentinel-scanner's smoke test
+// look up rules by id and call `.analyze(context)` expecting the flat
+// TypedFinding[] shape used throughout the pipeline. These three helpers wrap
+// the v2 registry with an auto-conversion so call sites don't all need to
+// pipe through `ruleResultToTypedFinding` manually. They are thin delegators
+// — no interface, no adapter class, no second registry.
+
+/** Rule handle whose `.analyze()` returns the flat TypedFinding[] wire shape. */
+export interface TypedRuleHandle {
+  readonly id: string;
+  readonly name: string;
+  analyze(context: AnalysisContext): TypedFinding[];
 }
 
-/** Check if a rule ID has a typed implementation (v1 or v2) */
-export function hasTypedRule(id: string): boolean {
-  return typedRuleRegistry.has(id) || v2RuleRegistry.has(id);
-}
-
-/** Check if a rule ID has a native v2 implementation (not just adapted v1) */
-export function hasNativeV2Rule(id: string): boolean {
-  const v2Rule = v2RuleRegistry.get(id);
-  return v2Rule !== undefined && !(v2Rule instanceof V1RuleAdapter);
-}
-
-/**
- * Migration progress: how many rules have been upgraded from v1 → native v2.
- * Used by CI checks and the accuracy dashboard.
- */
-export function migrationStats(): {
-  total_registered: number;
-  native_v2: number;
-  adapted_v1: number;
-  migration_ratio: number;
-} {
-  const total = v2RuleRegistry.size;
-  let nativeV2 = 0;
-  for (const rule of v2RuleRegistry.values()) {
-    if (!(rule instanceof V1RuleAdapter)) nativeV2++;
-  }
+function toHandle(rule: TypedRuleV2): TypedRuleHandle {
   return {
-    total_registered: total,
-    native_v2: nativeV2,
-    adapted_v1: total - nativeV2,
-    migration_ratio: total > 0 ? nativeV2 / total : 0,
+    id: rule.id,
+    name: rule.name,
+    analyze(context) {
+      return rule.analyze(context).map(ruleResultToTypedFinding);
+    },
   };
 }
+
+/** Look up a rule by id and return a handle whose `.analyze()` yields TypedFinding[]. */
+export function getTypedRule(id: string): TypedRuleHandle | undefined {
+  const rule = v2RuleRegistry.get(id);
+  return rule ? toHandle(rule) : undefined;
+}
+
+/** All registered rules as TypedRuleHandles (flat-finding shape). */
+export function getAllTypedRules(): TypedRuleHandle[] {
+  return Array.from(v2RuleRegistry.values(), toHandle);
+}
+
+/** Whether a rule with the given id is registered. */
+export function hasTypedRule(id: string): boolean {
+  return v2RuleRegistry.has(id);
+}
+
+// ─── Requirement Checking ──────────────────────────────────────────────────
 
 /**
  * Check if a rule's requirements are met by the given analysis context.

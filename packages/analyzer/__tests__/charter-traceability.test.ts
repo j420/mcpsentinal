@@ -1,9 +1,9 @@
 /**
  * Charter Traceability Guard (Analyzer Mirror)
  *
- * Phase 0, Chunk 0.4. Analyzer counterpart to the compliance-agents
- * `charter-traceability.test.ts`. Enforces the dual-persona authoring
- * protocol described in `docs/standards/rule-standard-v2.md`:
+ * Analyzer counterpart to the compliance-agents `charter-traceability.test.ts`.
+ * Enforces the dual-persona authoring protocol described in
+ * `docs/standards/rule-standard-v2.md`:
  *
  *   Every v2 rule lives in its own directory under
  *   `packages/analyzer/src/rules/implementations/<rule>/` and contains both
@@ -21,9 +21,10 @@
  *     - edge_case_strategies has ≥1 entry
  *     - evidence_contract.minimum_chain.{source,sink}: true
  *
- * Zero charters today is expected — Phase 1 creates them one per rule.
- * The guard is warn-only in Phase 0 (console.warn instead of throw);
- * set ANALYZER_CHARTER_GUARD_STRICT=true to enforce early.
+ * The guard is STRICT (always-fail) as of Phase 1 Chunk 1.28 (2026-04-22). All
+ * 164 active rules are now TypedRuleV2 with charter-backed metadata; the prior
+ * warn-only migration mode (ANALYZER_CHARTER_GUARD_STRICT env var) is retired.
+ * Removing this enforcement requires an ADR.
  */
 
 import { describe, it, expect } from "vitest";
@@ -38,7 +39,6 @@ const REPO_ROOT = resolve(PACKAGE_ROOT, "..", "..");
 const IMPL_ROOT = join(PACKAGE_ROOT, "src", "rules", "implementations");
 const RULES_YAML_DIR = join(REPO_ROOT, "rules");
 const CVE_MANIFEST = join(REPO_ROOT, "docs", "cve-manifest.json");
-const STRICT = process.env.ANALYZER_CHARTER_GUARD_STRICT === "true";
 
 interface ThreatRef {
   kind?: string;
@@ -311,7 +311,7 @@ function validateCharter(
 
 // ─── Tests ────────────────────────────────────────────────────────────────
 
-describe("charter-traceability guard (analyzer, warn-only in Phase 0)", () => {
+describe("charter-traceability guard (analyzer, strict)", () => {
   it("cve-manifest exists and parses", () => {
     expect(existsSync(CVE_MANIFEST)).toBe(true);
     const cveIds = loadCveIds();
@@ -339,10 +339,6 @@ describe("charter-traceability guard (analyzer, warn-only in Phase 0)", () => {
     const lines = allViolations.map((v) => `  ${v.charter} [${v.code}] ${v.detail}`);
     const msg = `charter-traceability: ${allViolations.length} violation(s) across ${charters.length} charter(s):\n${lines.join("\n")}`;
 
-    if (STRICT) {
-      throw new Error(msg);
-    } else {
-      console.warn(`[warn-only — ANALYZER_CHARTER_GUARD_STRICT=true to enforce]\n${msg}`);
-    }
+    throw new Error(msg);
   });
 });
