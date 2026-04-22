@@ -92,7 +92,7 @@ pnpm deploy:web                  # Deploy registry website
 ```
 ## Architecture Principles
 1. **Pipeline, not monolith.** Data flows: Discovery → Connection → Analysis → Scoring → Cross-Server (Risk Matrix → Attack Graph) → Publication. Each stage is a separate package with a clear contract.
-2. **Rules are metadata + TypeScript.** YAML files define rule metadata only (id, severity, OWASP/MITRE mappings, test cases). All 164 active detection rules (13 retired) are implemented as TypedRules in TypeScript inside `packages/analyzer/src/rules/implementations/`. Zero YAML regex patterns remain. Detection uses AST taint analysis, capability graph algorithms, entropy-based secret detection, Levenshtein similarity, and structural parsing.
+2. **Rules are metadata + TypeScript.** YAML files define rule metadata only (id, severity, OWASP/MITRE mappings, test cases). All 164 active detection rules are `TypedRuleV2` implementations under `packages/analyzer/src/rules/implementations/<rule-id>/` — each a directory conforming to the Rule Standard v2 contract (CHARTER.md + gather.ts + verification.ts + index.ts + data/ + __fixtures__/ + __tests__/). Zero YAML regex patterns remain. Detection uses AST taint analysis, capability graph algorithms, entropy-based secret detection, Levenshtein similarity, and structural parsing. Every finding carries a mandatory `EvidenceChain` (source → propagation\* → sink → mitigation → impact).
 3. **No LLM in v1.** All detection is deterministic (AST taint, capability graph, entropy, schema inference, linguistic scoring). LLM classification is v1.1 — only added where a deterministic rule demonstrably fails.
 4. **Collect everything, judge later.** Crawlers store raw metadata. Analysis is a separate pass. Never discard data because you don't have a rule for it yet.
 5. **History by default.** Every scan result is immutable. Scores change over time. The history table tracks every change. Trends are a first-class feature.
@@ -108,7 +108,7 @@ pnpm deploy:web                  # Deploy registry website
 ## Working with Detection Rules
 Read @agent_docs/detection-rules.md before touching rules/ or packages/analyzer/.
 
-**All 164 active rules are TypedRule implementations (13 rules retired due to high false-positive rates).** Zero YAML regex remains. YAML files contain metadata only (`detect.type: typed`). All detection logic is in TypeScript.
+**All 164 active rules are `TypedRuleV2` implementations with mandatory evidence chains.** 164 active rules (13 retired due to high FP rates; see `agent_docs/detection-rules.md` for the retired list). Zero YAML regex patterns remain. YAML files contain metadata only (`detect.type: typed`). As of Phase 1 chunk 1.28 the v1 `TypedRule` interface, `V1RuleAdapter`, and the four legacy YAML dispatchers (`runRegexRule`, `runSchemaCheckRule`, `runBehavioralRule`, `runCompositeRule`) have been deleted from `packages/analyzer/src/engine.ts`. The static-pattern and charter-traceability CI guards are always-fail (previously warn-only during migration).
 
 ### Rule YAML structure (metadata only):
 ```yaml
@@ -129,43 +129,31 @@ test_cases:
     - { description: "execFile with array args", expected: false }
 ```
 
-### TypedRule implementation (detection logic):
-Detection logic lives in `packages/analyzer/src/rules/implementations/` across 23 detector files:
+### TypedRuleV2 layout (detection logic):
+Every active rule is its own directory under `packages/analyzer/src/rules/implementations/<rule-id>/`, built from the Rule Standard v2 contract:
 
-| Detector | Rules | Analysis Technique |
-|----------|-------|--------------------|
-| `c1-command-injection.ts` | C1 | AST taint (source→sink with sanitizer detection) |
-| `tainted-execution-detector.ts` | C4, C12, C13, C16, K9, J2 | AST taint + lightweight taint |
-| `code-security-deep-detector.ts` | C2, C5, C10, C14 | AST taint + Shannon entropy + context-aware |
-| `code-remaining-detector.ts` | C3, C6-C9, C11, C15 | AST taint + structural |
-| `description-schema-detector.ts` | A1-A5, A8, B1-B7 | Multi-signal linguistic scoring + structural |
-| `a6-unicode-homoglyph.ts` | A6, A7 | Unicode codepoint analysis |
-| `a9-encoded-instructions.ts` | A9 | Base64/hex/URL encoding detection |
-| `d3-typosquatting.ts` | D3 | Damerau-Levenshtein similarity |
-| `dependency-behavioral-detector.ts` | D1-D7, E1-E4 | Dependency analysis + behavioral checks |
-| `f1-lethal-trifecta.ts` | F1, F2, F3, F6, F7 | Capability graph + schema inference |
-| `ecosystem-adversarial-detector.ts` | F4, F5, G6, H1, H3 | Levenshtein + OAuth pattern + historical diff |
-| `ai-manipulation-detector.ts` | G1, G2, G3, G5, H2 | Capability graph + linguistic patterns |
-| `g4-context-saturation.ts` | G4 | Context window analysis |
-| `cross-tool-risk-detector.ts` | I1, I2, I13, I16 | Capability graph + schema inference |
-| `config-poisoning-detector.ts` | J1, L4, L11, Q4 | AST taint + structural config parsing |
-| `secret-exfil-detector.ts` | L9, K2, G7 | AST taint + entropy |
-| `supply-chain-detector.ts` | L5, L12, L14, K10 | JSON structural parsing |
-| `infrastructure-detector.ts` | P1-P7 | Dockerfile/k8s structural parsing |
-| `advanced-supply-chain-detector.ts` | L1, L2, L6, L7, L13, K3, K5, K8 | Import resolution + AST taint |
-| `protocol-ai-runtime-detector.ts` | M1, M6, M9, N4-N15 (M3 retired) | Protocol structural analysis |
-| `data-privacy-cross-ecosystem-detector.ts` | O4-O6, O8-O9, Q3-Q4, Q6-Q7, Q10, Q13 (O1-O3, O7, Q1, Q2, Q5, Q8, Q9, Q11, Q12 retired) | AST taint + structural |
-| `protocol-surface-remaining-detector.ts` | I2-I15, J3-J7 | Protocol structural analysis |
-| `compliance-remaining-detector.ts` | K1-K20, L3-L15, M2, M4-M8, N1-N10, O4-O6, O8-O10, P8-P10, Q10, Q13, Q15 (Q14 retired) | Factory-built structural rules |
+```
+packages/analyzer/src/rules/implementations/<rule-id>/
+├── CHARTER.md                ← ≤120 lines, ≥3 lethal edge cases, interface_version: "2.0", evidence_contract
+├── gather.ts                 ← deterministic fact collection (no regex literals, no string arrays > 5)
+├── verification.ts           ← named VerificationStep factories (each step's target is a Location)
+├── index.ts                  ← class implements TypedRuleV2, builds EvidenceChain, registerTypedRuleV2 at module load
+├── data/*.ts                 ← typed vocabulary / target-lookup tables (no regex)
+├── __fixtures__/             ← ≥3 true-positive + ≥2 true-negative TypeScript files
+└── __tests__/index.test.ts   ← exercises each CHARTER lethal edge case + chain shape
+```
+
+Several rules share economical cross-rule infrastructure from `src/rules/_shared/` primitives (e.g. `ai-manipulation-phrases.ts`, `protocol-shape-catalogue.ts`, `mcp-method-catalogue.ts`, `data-exfil-sinks.ts`, `taint-rule-kit/`, `dependency-location.ts`) and factory-built kits, but each rule still owns its own directory, CHARTER, tests, and fixtures. Five specialized engines (`CodeAnalyzer`, `DescriptionAnalyzer`, `SchemaAnalyzer`, `DependencyAnalyzer`, `ProtocolAnalyzer`) under `src/engines/` remain for categories where cross-rule shared state is economical.
 
 ### Adding a new rule:
-1. Create YAML in `rules/` with metadata (id, severity, owasp, remediation, test_cases)
-2. Set `detect.type: typed`
-3. Implement `TypedRule` in `packages/analyzer/src/rules/implementations/`
-4. Call `registerTypedRule(new YourRule())` at module level
-5. Add import to `packages/analyzer/src/rules/index.ts`
-6. Add tests to `packages/analyzer/__tests__/`
-7. **Never add YAML regex patterns** — all detection must be TypeScript
+Follow the full **Rule Standard v2** briefing template in `agent_docs/sub-agent-orchestration.md` (reference implementation: `packages/analyzer/src/rules/implementations/k1-absent-structured-logging/`). Summary:
+
+1. Create YAML in `rules/` with metadata (id, severity, owasp, mitre, remediation, test_cases, `detect.type: typed`)
+2. Create directory `packages/analyzer/src/rules/implementations/<rule-id>/` with `CHARTER.md`, `gather.ts`, `verification.ts`, `index.ts`, `data/*.ts`, `__fixtures__/`, `__tests__/index.test.ts`
+3. `index.ts` declares `class <Rule> implements TypedRuleV2`, builds an `EvidenceChain` (source + propagation\* + sink + mitigation + impact) via `EvidenceChainBuilder`, applies the confidence cap declared in CHARTER, and calls `registerTypedRuleV2(new <Rule>())` at module load
+4. The orchestrator adds `import "./implementations/<rule-dir>/index.js";` to `packages/analyzer/src/rules/index.ts` during the cleanup commit — agents do NOT touch `rules/index.ts`
+5. Run the allowed test commands from the briefing template (typecheck + the rule's own test file + the two strict guards); do NOT run the full analyzer suite
+6. **Never add YAML regex patterns. Never add regex literals or long string-array constants to `src/rules/`** — the `no-static-patterns` and `charter-traceability` guards are always-fail
 ## Working with the Scoring Algorithm
 Read @agent_docs/scoring-algorithm.md before touching packages/scorer/.
 Score = 100 minus weighted penalty deductions. Never returns below 0 or above 100.
@@ -255,13 +243,16 @@ Pipeline populates `initialize_metadata` from the enumeration result. H2 rule no
 Fixed: `agent_docs/detection-rules.md` updated — `instructions` field correctly attributed to
 `2024-11-05` spec. All `2025-11-05` references corrected to `2025-03-26`.
 
-### [RESOLVED] All Rules Migrated from YAML Regex to TypedRules
-All 177 detection rules were originally migrated to TypeScript TypedRule implementations using AST taint analysis,
+### [RESOLVED] All Rules Migrated from YAML Regex to TypedRuleV2
+All 177 detection rules were originally migrated to TypeScript implementations using AST taint analysis,
 capability graph algorithms, Shannon entropy, structural parsing, and linguistic scoring.
 Zero YAML regex patterns remain. YAML files contain metadata only (`detect.type: typed`).
-Engine auto-registers all TypedRules via side-effect import in `engine.ts`.
-1201 tests passing (1002 analyzer + 49 red-team + 150 attack-graph). npm package `mcp-sentinel-scanner@0.2.0` published.
-_Note: 13 rules subsequently retired (see below), bringing active count to 164._
+Engine auto-registers all rules via side-effect import in `engine.ts`.
+Phase 1 chunk 1.28 completed the v1→v2 cutover: the legacy `TypedRule` interface, `V1RuleAdapter`, and the four
+YAML-detection-type dispatchers (`runRegexRule`, `runSchemaCheckRule`, `runBehavioralRule`, `runCompositeRule`)
+were deleted from `packages/analyzer/src/engine.ts`. All 164 active rules are `TypedRuleV2` implementations
+with mandatory `EvidenceChain`. The `no-static-patterns` and `charter-traceability` guards are always-fail.
+_Note: 13 rules were retired during the migration (see below), bringing active count to 164._
 
 ### [RESOLVED] CI Workflow Invalid — paths + paths-ignore conflict
 Fixed: Removed `paths-ignore` blocks from `.github/workflows/ci.yml`. GitHub Actions does not
@@ -271,19 +262,19 @@ allow both `paths` and `paths-ignore` on the same event trigger.
 Fixed: Added `generateBuildId()` to `next.config.ts` (unique build ID per deploy) and
 `RAILWAY_GIT_COMMIT_SHA` build ARG to Dockerfile (busts Docker layer cache).
 
-### [RESOLVED] Companion Rules Missing TypedRule Registration (F2, F3, F6, I2, L14)
+### [RESOLVED] Companion Rules Missing TypedRuleV2 Registration (F2, F3, F6, I2, L14)
 Five rules were emitted as "companion findings" by parent rules (F1→F2/F3/F6, I1→I2, L5→L14)
-but were never registered as standalone TypedRules. The engine logged
+but were never registered as standalone rules. The engine logged
 "Typed rule has no TypeScript implementation — skipping" for each on every scan.
-Fixed: Registered stub TypedRules that return `[]` (parent rules already produce their findings).
-All rules now have registered TypedRule implementations. Zero engine warnings remain.
+Fixed: Registered stub `TypedRuleV2`s that return `[]` (parent rules already produce their findings).
+All rules now have registered `TypedRuleV2` implementations. Zero engine warnings remain.
 Pipeline audit confirmed: no rules missed during scans, all data flows intact.
 _Note: 13 rules subsequently retired, bringing active count to 164/177._
 ### [RESOLVED] 13 Rules Retired Due to High False-Positive Rates
 Retired 13 rules that were pure string-matching with no path to real analysis, had high FP rates,
 or duplicated coverage from deeper rules. Active rule count: 164 (was 177).
 Retired: O1, O2, O3, O7 (data-privacy), Q1, Q2, Q5, Q8, Q9, Q11, Q12, Q14 (cross-ecosystem), M3 (ai-runtime).
-YAML files remain in `rules/` with `enabled: false`. TypedRule registrations removed from engine.
+YAML files remain in `rules/` with `enabled: false`. Rule registrations removed from engine.
 
 ## Current Milestone
 Read @agent_docs/product-milestones.md for the current sprint focus.

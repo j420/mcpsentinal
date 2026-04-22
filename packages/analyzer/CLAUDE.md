@@ -29,63 +29,45 @@ interface AnalysisContext {
 }
 ```
 
-## Detection Architecture: 2-Phase Analysis
+## Detection Architecture: Single-Path Dispatch
 
-All 164 active rules are TypedRule implementations (13 retired). Zero YAML regex patterns remain.
+All 164 active rules are `TypedRuleV2` implementations with mandatory `EvidenceChain` (13 retired). Zero YAML regex patterns remain. There is no YAML fallback: the legacy `runRegexRule`, `runSchemaCheckRule`, `runBehavioralRule`, and `runCompositeRule` dispatchers — along with the v1 `TypedRule` interface and `V1RuleAdapter` — were deleted in Phase 1 chunk 1.28.
 
-### Phase 1: Specialized Engines + TypedRules (all detection logic)
-Five specialized engines in `src/engines/` run first, then self-registering TypedRules in `src/rules/implementations/` cover the rest:
+Detection now runs through two complementary dispatch paths:
+
+**(a) Five specialized engines in `src/engines/`** — for categories where cross-rule shared infrastructure is economical:
 - **CodeAnalyzer** — C1–C16 (AST taint, secrets, entropy)
 - **DescriptionAnalyzer** — A1–A9 (linguistic injection scoring, Unicode, encoding)
 - **SchemaAnalyzer** — B1–B7 (structural inference)
 - **DependencyAnalyzer** — D1–D7 (similarity, CVE lookup)
 - **ProtocolAnalyzer** — I1–I16, J1, J5 (transport, OAuth, annotations)
-- **23 TypedRule detector files** — E1–E4, F1–F7, G1–G7, H1–H3, J2–J7, K1–K20, L1–L15, M1–M9, N1–N15, O4–O10, P1–P10, Q3–Q15
 
-### Phase 2: YAML Fallback (deprecated — do NOT add new rules here)
+**(b) `TypedRuleV2` classes in `src/rules/implementations/<rule-id>/`** — one directory per rule, conforming to the Rule Standard v2 contract (CHARTER.md + gather.ts + verification.ts + index.ts + data/ + __fixtures__/ + __tests__/index.test.ts). Rules self-register via `registerTypedRuleV2` at module load.
 
-| `detect.type` | Handler method | Status |
-|---|---|---|
-| `regex` | `runRegexRule()` | **DEPRECATED — all rules migrated to TypedRules** |
-| `schema-check` | `runSchemaCheckRule()` | Legacy fallback only |
-| `behavioral` | `runBehavioralRule()` | Legacy fallback only |
-| `composite` | `runCompositeRule()` | Legacy fallback only |
+YAML declares metadata only (`detect.type: typed`). Rules previously dispatched via the YAML fallback have all been migrated — the four dispatchers have been removed and the `detect.type` values `regex` / `schema-check` / `behavioral` / `composite` are no longer honored anywhere.
 
-**Adding a new rule**: Create a TypeScript implementation in `src/rules/implementations/`, register it in `src/rules/index.ts`. See `rules/CLAUDE.md` for the complete guide.
+**Adding a new rule**: Follow the Rule Standard v2 briefing template in `agent_docs/sub-agent-orchestration.md`. Reference implementation: `src/rules/implementations/k1-absent-structured-logging/`. See also `rules/CLAUDE.md`.
 
-## Context → Text Mapping (`getTextsForContext`)
+## Analyzer Context
 
-Legacy regex rules and some engine internals use `getTextsForContext` to map a context to searchable text:
+The context → text mapping helper (`getTextsForContext`) was removed alongside `runRegexRule` in chunk 1.28. `TypedRuleV2` rules read directly from the structured `AnalysisContext` — for example, `context.tools[i].description`, `context.tools[i].input_schema`, `context.source_code`, `context.initialize_metadata?.server_instructions`, etc. The former `context` YAML field is no longer interpreted.
 
-| context value | What it searches |
-|---|---|
-| `tool_description` | Each tool's `.description` field |
-| `parameter_description` | Each parameter's `.description` within `input_schema` |
-| `parameter_schema` | Full stringified `input_schema` of each tool |
-| `source_code` | The full concatenated source code string |
-| `metadata` | Server name + description + all tool names joined |
-| `server_initialize_fields` | `server.name` + `initialize_metadata.server_version` + `initialize_metadata.server_instructions` |
-
-**`server_initialize_fields`** is the H2 context. Populated from `MCPConnector.enumerate()` via `client.getServerVersion()` + `client.getInstructions()`.
+The H2 rule surface lives in `AnalysisContext.initialize_metadata` (`server_version` + `server_instructions`), populated from `MCPConnector.enumerate()` via `client.getServerVersion()` + `client.getInstructions()`.
 
 ## Every Finding Must Have
 ```typescript
 {
-  rule_id: string        // e.g., "C1"
-  severity: Severity     // critical | high | medium | low | informational
-  evidence: string       // WHAT triggered it — specific text/pattern matched
-  remediation: string    // HOW to fix it — from the rule YAML
-  owasp_category?: string
-  mitre_technique?: string
+  rule_id: string,                  // e.g., "C1"
+  severity: Severity,               // critical | high | medium | low | informational
+  evidence: string,                 // narrative rendered from the EvidenceChain
+  remediation: string,              // HOW to fix it — from the rule YAML
+  owasp_category?: string,
+  mitre_technique?: string,
+  confidence: number,               // 0.0–1.0, capped at 0.85 for LLM-derived findings (ADR-009)
+  metadata: { evidence_chain: EvidenceChain }  // source → propagation* → sink → mitigation → impact
 }
 ```
-Findings without `evidence` are useless. The hook will not catch this — enforce it manually.
-
-## Adding a New Composite Rule
-1. Add a case to `runCompositeRule()` switch statement
-2. The check name must match `detect.check` in the rule YAML
-3. Add to the Engine Implementation Status table in `agent_docs/detection-rules.md`
-4. Write test in `engine.test.ts`
+`EvidenceChain` is mandatory. A finding without an evidence chain is a bug — the `charter-traceability` CI guard will fail the build. The `evidence` string must be rendered from the chain, not authored ad-hoc.
 
 ## Running Tests
 ```bash
