@@ -1,0 +1,75 @@
+/**
+ * M6 TN-02 — A long source file with no accumulation-shaped call at all.
+ */
+
+import type { AnalysisContext } from "../../../../engine.js";
+
+const SOURCE = [
+  "// @ts-nocheck",
+  "import { Server } from '@modelcontextprotocol/sdk';",
+  "",
+  "export const server = new Server({ name: 'calc', version: '1.0.0' });",
+  "",
+  "function add(a: number, b: number): number { return a + b; }",
+  "function sub(a: number, b: number): number { return a - b; }",
+  "function mul(a: number, b: number): number { return a * b; }",
+  "function div(a: number, b: number): number { return a / b; }",
+  "",
+  "server.setRequestHandler('tools/call', async (req) => {",
+  "  const { name, arguments: args } = req.params;",
+  "  if (name === 'add') return { content: [{ type: 'text', text: String(add(args.a, args.b)) }] };",
+  "  if (name === 'sub') return { content: [{ type: 'text', text: String(sub(args.a, args.b)) }] };",
+  "  if (name === 'mul') return { content: [{ type: 'text', text: String(mul(args.a, args.b)) }] };",
+  "  if (name === 'div') return { content: [{ type: 'text', text: String(div(args.a, args.b)) }] };",
+  "  throw new Error('unknown');",
+  "});",
+  "",
+  "async function main(): Promise<void> { await server.connect(); }",
+  "main().catch((err) => { console.error(err); process.exit(1); });",
+  "",
+  "function filler1(): number { return 1; }",
+  "function filler2(): number { return 2; }",
+  "function filler3(): number { return 3; }",
+  "function filler4(): number { return 4; }",
+  "function filler5(): number { return 5; }",
+  "function filler6(): number { return 6; }",
+  "function filler7(): number { return 7; }",
+  "function filler8(): number { return 8; }",
+  "function filler9(): number { return 9; }",
+  "function filler10(): number { return 10; }",
+  "function filler11(): number { return 11; }",
+  "function filler12(): number { return 12; }",
+  "function filler13(): number { return 13; }",
+  "function filler14(): number { return 14; }",
+  "function filler15(): number { return 15; }",
+  "function filler16(): number { return 16; }",
+  "function filler17(): number { return 17; }",
+  "function filler18(): number { return 18; }",
+  "function filler19(): number { return 19; }",
+  "function filler20(): number { return 20; }",
+  "function filler21(): number { return 21; }",
+  "function filler22(): number { return 22; }",
+  "function filler23(): number { return 23; }",
+  "function filler24(): number { return 24; }",
+  "function filler25(): number { return 25; }",
+  "function filler26(): number { return 26; }",
+  "function filler27(): number { return 27; }",
+  "function filler28(): number { return 28; }",
+  "function filler29(): number { return 29; }",
+  "function filler30(): number { return 30; }",
+].join("\n");
+
+export function buildContext(): AnalysisContext {
+  return {
+    server: {
+      id: "srv-m6-tn2",
+      name: "calc",
+      description: null,
+      github_url: null,
+    },
+    tools: [],
+    source_code: SOURCE,
+    dependencies: [],
+    connection_metadata: null,
+  };
+}

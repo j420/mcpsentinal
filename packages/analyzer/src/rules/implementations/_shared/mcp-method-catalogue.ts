@@ -80,7 +80,7 @@ export interface McpMethodSpec {
 // trust_level "mutual").
 
 export const MCP_METHODS: Readonly<Record<string, McpMethodSpec>> = {
-  // ─── Lifecycle (2024-11-05 baseline) ─────────────────────────────────────
+  // Lifecycle (2024-11-05 baseline)
   initialize: {
     method: "initialize",
     category: "initialize",
@@ -106,7 +106,7 @@ export const MCP_METHODS: Readonly<Record<string, McpMethodSpec>> = {
     spec_version_introduced: "2024-11-05",
   },
 
-  // ─── Tools (2024-11-05) ──────────────────────────────────────────────────
+  // Tools (2024-11-05)
   "tools/list": {
     method: "tools/list",
     category: "tool",
@@ -132,7 +132,7 @@ export const MCP_METHODS: Readonly<Record<string, McpMethodSpec>> = {
     spec_version_introduced: "2024-11-05",
   },
 
-  // ─── Resources (2024-11-05) ──────────────────────────────────────────────
+  // Resources (2024-11-05)
   "resources/list": {
     method: "resources/list",
     category: "resource",
@@ -182,7 +182,7 @@ export const MCP_METHODS: Readonly<Record<string, McpMethodSpec>> = {
     spec_version_introduced: "2024-11-05",
   },
 
-  // ─── Prompts (2024-11-05) ────────────────────────────────────────────────
+  // Prompts (2024-11-05)
   "prompts/list": {
     method: "prompts/list",
     category: "prompt",
@@ -200,7 +200,7 @@ export const MCP_METHODS: Readonly<Record<string, McpMethodSpec>> = {
     spec_version_introduced: "2024-11-05",
   },
 
-  // ─── Sampling (2024-11-05) ───────────────────────────────────────────────
+  // Sampling (2024-11-05)
   "sampling/createMessage": {
     method: "sampling/createMessage",
     category: "sampling",
@@ -210,7 +210,7 @@ export const MCP_METHODS: Readonly<Record<string, McpMethodSpec>> = {
     spec_version_introduced: "2024-11-05",
   },
 
-  // ─── Logging (2024-11-05 notifications; 2025-03-26 level request) ────────
+  // Logging (2024-11-05 notifications; 2025-03-26 level request)
   "logging/setLevel": {
     method: "logging/setLevel",
     category: "logging",
@@ -228,7 +228,7 @@ export const MCP_METHODS: Readonly<Record<string, McpMethodSpec>> = {
     spec_version_introduced: "2024-11-05",
   },
 
-  // ─── Roots (2025-03-26) ──────────────────────────────────────────────────
+  // Roots (2025-03-26)
   "roots/list": {
     method: "roots/list",
     category: "roots",
@@ -246,7 +246,7 @@ export const MCP_METHODS: Readonly<Record<string, McpMethodSpec>> = {
     spec_version_introduced: "2025-03-26",
   },
 
-  // ─── Completion (2025-03-26) ─────────────────────────────────────────────
+  // Completion (2025-03-26)
   "completion/complete": {
     method: "completion/complete",
     category: "completion",
@@ -256,7 +256,7 @@ export const MCP_METHODS: Readonly<Record<string, McpMethodSpec>> = {
     spec_version_introduced: "2025-03-26",
   },
 
-  // ─── Elicitation (2025-06-18) ────────────────────────────────────────────
+  // Elicitation (2025-06-18)
   "elicitation/create": {
     method: "elicitation/create",
     category: "elicitation",
@@ -266,7 +266,7 @@ export const MCP_METHODS: Readonly<Record<string, McpMethodSpec>> = {
     spec_version_introduced: "2025-06-18",
   },
 
-  // ─── Progress (2024-11-05) ───────────────────────────────────────────────
+  // Progress (2024-11-05)
   "notifications/progress": {
     method: "notifications/progress",
     category: "notification",
@@ -276,7 +276,7 @@ export const MCP_METHODS: Readonly<Record<string, McpMethodSpec>> = {
     spec_version_introduced: "2024-11-05",
   },
 
-  // ─── Cancellation (2024-11-05) ───────────────────────────────────────────
+  // Cancellation (2024-11-05)
   "notifications/cancelled": {
     method: "notifications/cancelled",
     category: "notification",
@@ -303,7 +303,9 @@ export function allSpecMethods(): ReadonlyArray<string> {
 }
 
 /** Methods that the server ADVERTISES under a capabilities key. */
-export const CAPABILITY_KEY_TO_METHODS: Readonly<Record<string, ReadonlyArray<string>>> = {
+export const CAPABILITY_KEY_TO_METHODS: Readonly<
+  Record<string, ReadonlyArray<string>>
+> = {
   tools: ["tools/list", "tools/call", "notifications/tools/list_changed"],
   resources: [
     "resources/list",
