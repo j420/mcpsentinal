@@ -203,16 +203,6 @@
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
-    "packages/analyzer/src/rules/implementations/compliance-remaining-detector.ts": {
-      "regex_literals": 7,
-      "new_regexp_calls": 0,
-      "string_arrays_over_5": 0
-    },
-    "packages/analyzer/src/rules/implementations/cross-tool-risk-detector.ts": {
-      "regex_literals": 23,
-      "new_regexp_calls": 0,
-      "string_arrays_over_5": 0
-    },
     "packages/analyzer/src/rules/implementations/d3-typosquatting/gather.ts": {
       "regex_literals": 0,
       "new_regexp_calls": 0,
@@ -225,11 +215,6 @@
     },
     "packages/analyzer/src/rules/implementations/d3-typosquatting/verification.ts": {
       "regex_literals": 0,
-      "new_regexp_calls": 0,
-      "string_arrays_over_5": 0
-    },
-    "packages/analyzer/src/rules/implementations/data-privacy-cross-ecosystem-detector.ts": {
-      "regex_literals": 38,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
@@ -275,11 +260,6 @@
     },
     "packages/analyzer/src/rules/implementations/j2-git-argument-injection/verification.ts": {
       "regex_literals": 0,
-      "new_regexp_calls": 0,
-      "string_arrays_over_5": 0
-    },
-    "packages/analyzer/src/rules/implementations/k-compliance-v2.ts": {
-      "regex_literals": 27,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
@@ -533,11 +513,6 @@
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
-    "packages/analyzer/src/rules/implementations/l-supply-chain-v2.ts": {
-      "regex_literals": 15,
-      "new_regexp_calls": 2,
-      "string_arrays_over_5": 1
-    },
     "packages/analyzer/src/rules/implementations/l1-github-actions-tag-poisoning/gather.ts": {
       "regex_literals": 0,
       "new_regexp_calls": 0,
@@ -643,21 +618,6 @@
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
-    "packages/analyzer/src/rules/implementations/m-runtime-v2.ts": {
-      "regex_literals": 43,
-      "new_regexp_calls": 0,
-      "string_arrays_over_5": 0
-    },
-    "packages/analyzer/src/rules/implementations/m4-tool-squatting.ts": {
-      "regex_literals": 9,
-      "new_regexp_calls": 0,
-      "string_arrays_over_5": 0
-    },
-    "packages/analyzer/src/rules/implementations/m5-context-window-flooding.ts": {
-      "regex_literals": 11,
-      "new_regexp_calls": 0,
-      "string_arrays_over_5": 0
-    },
     "packages/analyzer/src/rules/implementations/n1-jsonrpc-batch-request-abuse/gather.ts": {
       "regex_literals": 2,
       "new_regexp_calls": 0,
@@ -745,21 +705,6 @@
     },
     "packages/analyzer/src/rules/implementations/n8-cancellation-race-condition/verification.ts": {
       "regex_literals": 0,
-      "new_regexp_calls": 0,
-      "string_arrays_over_5": 0
-    },
-    "packages/analyzer/src/rules/implementations/o4-q10-v2.ts": {
-      "regex_literals": 23,
-      "new_regexp_calls": 0,
-      "string_arrays_over_5": 0
-    },
-    "packages/analyzer/src/rules/implementations/protocol-ai-runtime-detector.ts": {
-      "regex_literals": 33,
-      "new_regexp_calls": 0,
-      "string_arrays_over_5": 0
-    },
-    "packages/analyzer/src/rules/implementations/protocol-surface-remaining-detector.ts": {
-      "regex_literals": 33,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },

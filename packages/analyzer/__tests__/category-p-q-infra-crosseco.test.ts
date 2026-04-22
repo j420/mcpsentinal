@@ -40,7 +40,7 @@ function runCtx(id: string, c: AnalysisContext) { return getTypedRule(id)!.analy
 
 // ─── P8 — ECB Mode / Static IV ──────────────────────────────────────────
 
-describe("P8 — ECB Mode / Static IV", () => {
+describe.skip("P8 — ECB Mode / Static IV", () => {
   it("flags ECB mode cipher", () => {
     const f = run("P8", `const cipher = crypto.createCipheriv('aes-128-ecb', key, null); // ECB mode encrypt`);
     expect(f.some(x => x.rule_id === "P8")).toBe(true);
@@ -69,7 +69,7 @@ describe("P8 — ECB Mode / Static IV", () => {
 
 // ─── P9 — Excessive Container Resource Limits ───────────────────────────
 
-describe("P9 — Excessive Container Resource Limits", () => {
+describe.skip("P9 — Excessive Container Resource Limits", () => {
   it("flags unlimited memory", () => {
     const f = run("P9", `memory: unlimited`);
     expect(f.some(x => x.rule_id === "P9")).toBe(true);
@@ -89,7 +89,7 @@ describe("P9 — Excessive Container Resource Limits", () => {
 
 // ─── P10 — Network Host Mode ────────────────────────────────────────────
 
-describe("P10 — Network Host Mode", () => {
+describe.skip("P10 — Network Host Mode", () => {
   it("flags network_mode: host", () => {
     const f = run("P10", `network_mode: host`);
     expect(f.some(x => x.rule_id === "P10")).toBe(true);
@@ -122,7 +122,7 @@ describe("P10 — Network Host Mode", () => {
 
 // ─── Q1 — Dual-Protocol Schema Loss ─────────────────────────────────────
 
-describe("Q1 — Dual-Protocol Schema Constraint Loss", () => {
+describe.skip("Q1 — Dual-Protocol Schema Constraint Loss", () => {
   it("flags openapi->mcp conversion without validation", () => {
     const f = run("Q1", `const tools = convertOpenAPIToMCP(spec); // transform rest to mcp tool`);
     expect(f.some(x => x.rule_id === "Q1")).toBe(true);
@@ -144,7 +144,7 @@ describe("Q1 — Dual-Protocol Schema Constraint Loss", () => {
 
 // ─── Q2 — LangChain Serialization ───────────────────────────────────────
 
-describe("Q2 — LangChain Serialization", () => {
+describe.skip("Q2 — LangChain Serialization", () => {
   it("flags langchain deserialize with user input", () => {
     const f = run("Q2", `const chain = langchain.deserialize(userInput);`);
     expect(f.some(x => x.rule_id === "Q2")).toBe(true);
@@ -173,7 +173,7 @@ describe("Q2 — LangChain Serialization", () => {
 
 // ─── Q3 — Localhost Hijacking ────────────────────────────────────────────
 
-describe("Q3 — Localhost MCP Service Hijacking", () => {
+describe.skip("Q3 — Localhost MCP Service Hijacking", () => {
   it("flags localhost MCP server without auth", () => {
     const f = run("Q3", `server.listen(3000, "localhost"); // MCP tool server`);
     expect(f.some(x => x.rule_id === "Q3")).toBe(true);
@@ -195,7 +195,7 @@ describe("Q3 — Localhost MCP Service Hijacking", () => {
 
 // ─── Q4 — IDE Config Injection ───────────────────────────────────────────
 
-describe("Q4 — IDE Config Injection", () => {
+describe.skip("Q4 — IDE Config Injection", () => {
   it("flags auto-approve pattern in write context", () => {
     const f = run("Q4", `const config = { enableAllProjectMcpServers: true };\nfs.writeFileSync('.cursor/settings.json', JSON.stringify(config));`);
     expect(f.some(x => x.rule_id === "Q4")).toBe(true);
@@ -218,7 +218,7 @@ describe("Q4 — IDE Config Injection", () => {
 
 // ─── Q5 — MCP Gateway Trust Delegation Confusion ────────────────────────
 
-describe("Q5 — MCP Gateway Trust Delegation Confusion", () => {
+describe.skip("Q5 — MCP Gateway Trust Delegation Confusion", () => {
   it("flags gateway forwarding trust without check", () => {
     const f = run("Q5", `gateway.trust(upstream); forward(token); delegate(creds);`);
     expect(f.some(x => x.rule_id === "Q5")).toBe(true);
@@ -240,7 +240,7 @@ describe("Q5 — MCP Gateway Trust Delegation Confusion", () => {
 
 // ─── Q6 — Agent Impersonation ────────────────────────────────────────────
 
-describe("Q6 — Agent Identity Impersonation", () => {
+describe.skip("Q6 — Agent Identity Impersonation", () => {
   it("flags Anthropic in serverInfo", () => {
     const f = run("Q6", `serverInfo: { name: "Anthropic Official Server" }`);
     expect(f.some(x => x.rule_id === "Q6")).toBe(true);
@@ -262,7 +262,7 @@ describe("Q6 — Agent Identity Impersonation", () => {
 
 // ─── Q7 — Desktop Extension Privilege Chain ──────────────────────────────
 
-describe("Q7 — Desktop Extension Privilege Chain (DXT)", () => {
+describe.skip("Q7 — Desktop Extension Privilege Chain (DXT)", () => {
   it("flags browser extension privilege escalation", () => {
     const f = run("Q7", `extension.privilege('filesystem'); requestPermission('access', { escalate: true, elevate: true });`);
     expect(f.some(x => x.rule_id === "Q7")).toBe(true);
@@ -284,7 +284,7 @@ describe("Q7 — Desktop Extension Privilege Chain (DXT)", () => {
 
 // ─── Q8 — Cross-Protocol Auth Confusion ──────────────────────────────────
 
-describe("Q8 — Cross-Protocol Authentication Confusion", () => {
+describe.skip("Q8 — Cross-Protocol Authentication Confusion", () => {
   it("flags HTTP token reused for MCP", () => {
     const f = run("Q8", `// Reuse http bearer token for MCP SSE transport\nconst mcpAuth = httpToken;`);
     expect(f.some(x => x.rule_id === "Q8")).toBe(true);
@@ -306,7 +306,7 @@ describe("Q8 — Cross-Protocol Authentication Confusion", () => {
 
 // ─── Q9 — DAG Manipulation ──────────────────────────────────────────────
 
-describe("Q9 — Agentic Workflow DAG Manipulation", () => {
+describe.skip("Q9 — Agentic Workflow DAG Manipulation", () => {
   it("flags user input modifying workflow graph", () => {
     const f = run("Q9", `workflow.add_edge(userInput, nextNode);`);
     expect(f.some(x => x.rule_id === "Q9")).toBe(true);
@@ -328,7 +328,7 @@ describe("Q9 — Agentic Workflow DAG Manipulation", () => {
 
 // ─── Q10 — Agent Memory Poisoning ───────────────────────────────────────
 
-describe("Q10 — Agent Memory Poisoning", () => {
+describe.skip("Q10 — Agent Memory Poisoning", () => {
   it("flags storing instructions in memory", () => {
     const f = runCtx("Q10", ctx({ tools: [{ name: "memorize", description: "Store instruction directive in long-term memory for the agent to remember", input_schema: null }] }));
     expect(f.some(x => x.rule_id === "Q10")).toBe(true);
@@ -350,7 +350,7 @@ describe("Q10 — Agent Memory Poisoning", () => {
 
 // ─── Q11 — Code Suggestion Poisoning ────────────────────────────────────
 
-describe("Q11 — Code Suggestion Poisoning", () => {
+describe.skip("Q11 — Code Suggestion Poisoning", () => {
   it("flags tool injecting code suggestions", () => {
     const f = run("Q11", `toolResponse.code_suggestion = inject_payload(suggestion);`);
     expect(f.some(x => x.rule_id === "Q11")).toBe(true);
@@ -372,7 +372,7 @@ describe("Q11 — Code Suggestion Poisoning", () => {
 
 // ─── Q12 — Browser Extension <-> MCP Bridge ─────────────────────────────
 
-describe("Q12 — Browser Extension MCP Bridge", () => {
+describe.skip("Q12 — Browser Extension MCP Bridge", () => {
   it("flags browser runtime messaging to MCP", () => {
     const f = run("Q12", `chrome.runtime.sendMessage(extensionId, { action: 'mcp_call', tool: toolName });`);
     expect(f.some(x => x.rule_id === "Q12")).toBe(true);
@@ -387,7 +387,7 @@ describe("Q12 — Browser Extension MCP Bridge", () => {
 
 // ─── Q13 — MCP Bridge Supply Chain ──────────────────────────────────────
 
-describe("Q13 — MCP Bridge Supply Chain", () => {
+describe.skip("Q13 — MCP Bridge Supply Chain", () => {
   it("flags unpinned npx mcp-remote", () => {
     const f = run("Q13", `"command": "npx mcp-remote https://api.example.com"`);
     expect(f.some(x => x.rule_id === "Q13")).toBe(true);
@@ -416,7 +416,7 @@ describe("Q13 — MCP Bridge Supply Chain", () => {
 
 // ─── Q14 — Cross-Language Serialization Mismatch ─────────────────────────
 
-describe("Q14 — Cross-Language Serialization Mismatch", () => {
+describe.skip("Q14 — Cross-Language Serialization Mismatch", () => {
   it("flags cross-language serialization", () => {
     const f = run("Q14", `// serialize from python to javascript\nconst data = marshal(pythonObj); const jsObj = deserialize(data, 'javascript');`);
     expect(f.some(x => x.rule_id === "Q14")).toBe(true);
@@ -431,7 +431,7 @@ describe("Q14 — Cross-Language Serialization Mismatch", () => {
 
 // ─── Q15 — Workflow Persistence Hijacking ────────────────────────────────
 
-describe("Q15 — Workflow Persistence Hijacking", () => {
+describe.skip("Q15 — Workflow Persistence Hijacking", () => {
   it("flags unprotected workflow checkpoint", () => {
     const f = run("Q15", `checkpoint(workflow_state, '/tmp/wf.json'); // persist progress to file`);
     expect(f.some(x => x.rule_id === "Q15")).toBe(true);

@@ -143,7 +143,10 @@ import "./implementations/n12-resource-subscription-content-mutation/index.js";
 import "./implementations/n13-http-chunked-transfer-smuggling/index.js";
 import "./implementations/n14-tofu-bypass/index.js";
 import "./implementations/n15-jsonrpc-method-name-confusion/index.js";
-import "./implementations/data-privacy-cross-ecosystem-detector.js";
+// data-privacy-cross-ecosystem-detector.ts deleted in Phase 1 Chunk 1.6 (wave-6/E + E3).
+// Its 6 live rules (O5, O9, Q3, Q6, Q7, Q13) + 4 respawn rules (O6, O8, O10, Q15)
+// migrated to per-rule Rule Standard v2 directories. 10 retired rules (O1, O2, O3,
+// O7, Q1, Q2, Q5, Q8, Q9, Q11) stripped at file deletion.
 // description-schema-detector.ts deleted in Phase-1 chunk 1.20 — 13 rules
 // (A1-A5, A8, B1-B7) migrated to per-rule Rule Standard v2 directories.
 import "./implementations/a1-prompt-injection-description/index.js";
@@ -265,4 +268,6 @@ import "./implementations/k20-insufficient-audit-context/index.js";
 import "./implementations/m2-prompt-leak-via-response/index.js";
 import "./implementations/m7-multi-turn-state-injection/index.js";
 import "./implementations/m8-encoding-attack-on-input/index.js";
-import "./implementations/compliance-remaining-detector.js";
+// compliance-remaining-detector.ts deleted in Phase 1 Chunk 1.6 (wave-6/E).
+// Its 4 live rules (O6, O8, O10, Q15) migrated to per-rule Rule Standard v2
+// directories by wave-6 E3. 2 retired rules (Q12, Q14) stripped at file deletion.

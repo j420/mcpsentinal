@@ -1,80 +1,29 @@
 {
   "summary": {
-    "generated_at": "2026-04-22T09:46:21.122Z",
+    "generated_at": "2026-04-22T13:11:09.183Z",
     "total_yaml_rules": 177,
     "enabled_yaml_rules": 164,
-    "registered_rules": 66,
-    "registered_v1": 56,
-    "registered_v2": 10,
-    "unregistered_enabled": 111,
+    "registered_rules": 0,
+    "registered_v1": 0,
+    "registered_v2": 0,
+    "unregistered_enabled": 164,
     "detectors": {
-      "total_files": 11,
-      "files_with_any_regex": 11,
-      "files_with_any_technique": 3
+      "total_files": 0,
+      "files_with_any_regex": 0,
+      "files_with_any_technique": 0
     },
     "aggregate": {
-      "regex_literals": 262,
-      "new_regexp_calls": 2,
-      "string_arrays_over_5": 1,
-      "uses_taint_ast": 16,
-      "uses_capability_graph": 21,
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0,
+      "uses_taint_ast": 0,
+      "uses_capability_graph": 0,
       "uses_module_graph": 0,
       "uses_entropy": 0,
       "uses_similarity": 0,
-      "uses_evidence_chain_builder": 66
+      "uses_evidence_chain_builder": 0
     },
-    "top_regex_offenders": [
-      {
-        "file": "packages/analyzer/src/rules/implementations/m-runtime-v2.ts",
-        "regex_literals": 43,
-        "new_regexp_calls": 0
-      },
-      {
-        "file": "packages/analyzer/src/rules/implementations/data-privacy-cross-ecosystem-detector.ts",
-        "regex_literals": 38,
-        "new_regexp_calls": 0
-      },
-      {
-        "file": "packages/analyzer/src/rules/implementations/protocol-ai-runtime-detector.ts",
-        "regex_literals": 33,
-        "new_regexp_calls": 0
-      },
-      {
-        "file": "packages/analyzer/src/rules/implementations/protocol-surface-remaining-detector.ts",
-        "regex_literals": 33,
-        "new_regexp_calls": 0
-      },
-      {
-        "file": "packages/analyzer/src/rules/implementations/k-compliance-v2.ts",
-        "regex_literals": 27,
-        "new_regexp_calls": 0
-      },
-      {
-        "file": "packages/analyzer/src/rules/implementations/cross-tool-risk-detector.ts",
-        "regex_literals": 23,
-        "new_regexp_calls": 0
-      },
-      {
-        "file": "packages/analyzer/src/rules/implementations/o4-q10-v2.ts",
-        "regex_literals": 23,
-        "new_regexp_calls": 0
-      },
-      {
-        "file": "packages/analyzer/src/rules/implementations/l-supply-chain-v2.ts",
-        "regex_literals": 15,
-        "new_regexp_calls": 2
-      },
-      {
-        "file": "packages/analyzer/src/rules/implementations/m5-context-window-flooding.ts",
-        "regex_literals": 11,
-        "new_regexp_calls": 0
-      },
-      {
-        "file": "packages/analyzer/src/rules/implementations/m4-tool-squatting.ts",
-        "regex_literals": 9,
-        "new_regexp_calls": 0
-      }
-    ]
+    "top_regex_offenders": []
   },
   "rows": [
     {
@@ -1045,24 +994,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/cross-tool-risk-detector.ts",
-      "technique_observed": {
-        "regex_literals": 23,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": true,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": true,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "I2",
@@ -1072,24 +1010,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/cross-tool-risk-detector.ts",
-      "technique_observed": {
-        "regex_literals": 23,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": true,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": true,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "I3",
@@ -1099,24 +1026,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-surface-remaining-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": true,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "I4",
@@ -1126,24 +1042,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-surface-remaining-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": true,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "I5",
@@ -1153,24 +1058,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-surface-remaining-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": true,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "I6",
@@ -1180,24 +1074,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-surface-remaining-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": true,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "I7",
@@ -1207,24 +1090,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-surface-remaining-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": true,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "I8",
@@ -1234,24 +1106,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-surface-remaining-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": true,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "I9",
@@ -1261,24 +1122,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-surface-remaining-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": true,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "I10",
@@ -1288,24 +1138,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-surface-remaining-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": true,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "I11",
@@ -1315,24 +1154,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-surface-remaining-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": true,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "I12",
@@ -1342,24 +1170,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-surface-remaining-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": true,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "I13",
@@ -1369,24 +1186,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/cross-tool-risk-detector.ts",
-      "technique_observed": {
-        "regex_literals": 23,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": true,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": true,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "I14",
@@ -1396,24 +1202,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-surface-remaining-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": true,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "I15",
@@ -1423,24 +1218,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-surface-remaining-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": true,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "I16",
@@ -1450,24 +1234,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/cross-tool-risk-detector.ts",
-      "technique_observed": {
-        "regex_literals": 23,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": true,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": true,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "J1",
@@ -1509,24 +1282,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-surface-remaining-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": true,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "J4",
@@ -1536,24 +1298,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-surface-remaining-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": true,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "J5",
@@ -1563,24 +1314,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-surface-remaining-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": true,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "J6",
@@ -1590,24 +1330,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-surface-remaining-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": true,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "J7",
@@ -1617,24 +1346,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-surface-remaining-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": true,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "K1",
@@ -2077,23 +1795,12 @@
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
       "registered_v1": false,
-      "registered_v2": true,
-      "detector_file": "packages/analyzer/src/rules/implementations/l-supply-chain-v2.ts",
-      "technique_observed": {
-        "regex_literals": 15,
-        "new_regexp_calls": 2,
-        "string_arrays_over_5": 1,
-        "ts_compiler_api_import": true,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "registered_v2": false,
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "L9",
@@ -2120,23 +1827,12 @@
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
       "registered_v1": false,
-      "registered_v2": true,
-      "detector_file": "packages/analyzer/src/rules/implementations/l-supply-chain-v2.ts",
-      "technique_observed": {
-        "regex_literals": 15,
-        "new_regexp_calls": 2,
-        "string_arrays_over_5": 1,
-        "ts_compiler_api_import": true,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "registered_v2": false,
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "L11",
@@ -2211,23 +1907,12 @@
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
       "registered_v1": false,
-      "registered_v2": true,
-      "detector_file": "packages/analyzer/src/rules/implementations/l-supply-chain-v2.ts",
-      "technique_observed": {
-        "regex_literals": 15,
-        "new_regexp_calls": 2,
-        "string_arrays_over_5": 1,
-        "ts_compiler_api_import": true,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "registered_v2": false,
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "M1",
@@ -2237,24 +1922,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-ai-runtime-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "M2",
@@ -2265,23 +1939,12 @@
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
       "registered_v1": false,
-      "registered_v2": true,
-      "detector_file": "packages/analyzer/src/rules/implementations/m-runtime-v2.ts",
-      "technique_observed": {
-        "regex_literals": 43,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": true,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "registered_v2": false,
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "M3",
@@ -2291,26 +1954,11 @@
       "enabled": false,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-ai-runtime-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": [
-        "disabled in YAML but still registered"
-      ]
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": []
     },
     {
       "rule_id": "M4",
@@ -2321,23 +1969,12 @@
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
       "registered_v1": false,
-      "registered_v2": true,
-      "detector_file": "packages/analyzer/src/rules/implementations/m4-tool-squatting.ts",
-      "technique_observed": {
-        "regex_literals": 9,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "registered_v2": false,
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "M5",
@@ -2348,23 +1985,12 @@
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
       "registered_v1": false,
-      "registered_v2": true,
-      "detector_file": "packages/analyzer/src/rules/implementations/m5-context-window-flooding.ts",
-      "technique_observed": {
-        "regex_literals": 11,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "registered_v2": false,
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "M6",
@@ -2374,24 +2000,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-ai-runtime-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "M7",
@@ -2402,23 +2017,12 @@
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
       "registered_v1": false,
-      "registered_v2": true,
-      "detector_file": "packages/analyzer/src/rules/implementations/m-runtime-v2.ts",
-      "technique_observed": {
-        "regex_literals": 43,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": true,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "registered_v2": false,
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "M8",
@@ -2429,23 +2033,12 @@
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
       "registered_v1": false,
-      "registered_v2": true,
-      "detector_file": "packages/analyzer/src/rules/implementations/m-runtime-v2.ts",
-      "technique_observed": {
-        "regex_literals": 43,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": true,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "registered_v2": false,
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "M9",
@@ -2455,24 +2048,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-ai-runtime-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "N1",
@@ -2530,24 +2112,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-ai-runtime-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "N5",
@@ -2557,24 +2128,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-ai-runtime-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "N6",
@@ -2584,24 +2144,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-ai-runtime-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "N7",
@@ -2643,24 +2192,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-ai-runtime-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "N10",
@@ -2686,24 +2224,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-ai-runtime-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "N12",
@@ -2713,24 +2240,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-ai-runtime-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "N13",
@@ -2740,24 +2256,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-ai-runtime-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "N14",
@@ -2767,24 +2272,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-ai-runtime-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "N15",
@@ -2794,24 +2288,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/protocol-ai-runtime-detector.ts",
-      "technique_observed": {
-        "regex_literals": 33,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "O1",
@@ -2821,26 +2304,11 @@
       "enabled": false,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/data-privacy-cross-ecosystem-detector.ts",
-      "technique_observed": {
-        "regex_literals": 38,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": true,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": [
-        "disabled in YAML but still registered"
-      ]
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": []
     },
     {
       "rule_id": "O2",
@@ -2850,26 +2318,11 @@
       "enabled": false,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/data-privacy-cross-ecosystem-detector.ts",
-      "technique_observed": {
-        "regex_literals": 38,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": true,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": [
-        "disabled in YAML but still registered"
-      ]
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": []
     },
     {
       "rule_id": "O3",
@@ -2879,26 +2332,11 @@
       "enabled": false,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/data-privacy-cross-ecosystem-detector.ts",
-      "technique_observed": {
-        "regex_literals": 38,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": true,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": [
-        "disabled in YAML but still registered"
-      ]
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": []
     },
     {
       "rule_id": "O4",
@@ -2909,23 +2347,12 @@
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
       "registered_v1": false,
-      "registered_v2": true,
-      "detector_file": "packages/analyzer/src/rules/implementations/o4-q10-v2.ts",
-      "technique_observed": {
-        "regex_literals": 23,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": true,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "registered_v2": false,
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "O5",
@@ -2935,24 +2362,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/data-privacy-cross-ecosystem-detector.ts",
-      "technique_observed": {
-        "regex_literals": 38,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": true,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "O6",
@@ -2962,24 +2378,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/compliance-remaining-detector.ts",
-      "technique_observed": {
-        "regex_literals": 7,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "O7",
@@ -2989,26 +2394,11 @@
       "enabled": false,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/data-privacy-cross-ecosystem-detector.ts",
-      "technique_observed": {
-        "regex_literals": 38,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": true,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": [
-        "disabled in YAML but still registered"
-      ]
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": []
     },
     {
       "rule_id": "O8",
@@ -3018,24 +2408,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/compliance-remaining-detector.ts",
-      "technique_observed": {
-        "regex_literals": 7,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "O9",
@@ -3045,24 +2424,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/data-privacy-cross-ecosystem-detector.ts",
-      "technique_observed": {
-        "regex_literals": 38,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": true,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "O10",
@@ -3072,24 +2440,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/compliance-remaining-detector.ts",
-      "technique_observed": {
-        "regex_literals": 7,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "P1",
@@ -3259,26 +2616,11 @@
       "enabled": false,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/data-privacy-cross-ecosystem-detector.ts",
-      "technique_observed": {
-        "regex_literals": 38,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": true,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": [
-        "disabled in YAML but still registered"
-      ]
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": []
     },
     {
       "rule_id": "Q2",
@@ -3288,26 +2630,11 @@
       "enabled": false,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/data-privacy-cross-ecosystem-detector.ts",
-      "technique_observed": {
-        "regex_literals": 38,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": true,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": [
-        "disabled in YAML but still registered"
-      ]
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": []
     },
     {
       "rule_id": "Q3",
@@ -3317,24 +2644,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/data-privacy-cross-ecosystem-detector.ts",
-      "technique_observed": {
-        "regex_literals": 38,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": true,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "Q4",
@@ -3360,26 +2676,11 @@
       "enabled": false,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/data-privacy-cross-ecosystem-detector.ts",
-      "technique_observed": {
-        "regex_literals": 38,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": true,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": [
-        "disabled in YAML but still registered"
-      ]
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": []
     },
     {
       "rule_id": "Q6",
@@ -3389,24 +2690,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/data-privacy-cross-ecosystem-detector.ts",
-      "technique_observed": {
-        "regex_literals": 38,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": true,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "Q7",
@@ -3416,24 +2706,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/data-privacy-cross-ecosystem-detector.ts",
-      "technique_observed": {
-        "regex_literals": 38,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": true,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "Q8",
@@ -3443,26 +2722,11 @@
       "enabled": false,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/data-privacy-cross-ecosystem-detector.ts",
-      "technique_observed": {
-        "regex_literals": 38,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": true,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": [
-        "disabled in YAML but still registered"
-      ]
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": []
     },
     {
       "rule_id": "Q9",
@@ -3472,26 +2736,11 @@
       "enabled": false,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/data-privacy-cross-ecosystem-detector.ts",
-      "technique_observed": {
-        "regex_literals": 38,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": true,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": [
-        "disabled in YAML but still registered"
-      ]
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": []
     },
     {
       "rule_id": "Q10",
@@ -3502,23 +2751,12 @@
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
       "registered_v1": false,
-      "registered_v2": true,
-      "detector_file": "packages/analyzer/src/rules/implementations/o4-q10-v2.ts",
-      "technique_observed": {
-        "regex_literals": 23,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": true,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "registered_v2": false,
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "Q11",
@@ -3528,26 +2766,11 @@
       "enabled": false,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/data-privacy-cross-ecosystem-detector.ts",
-      "technique_observed": {
-        "regex_literals": 38,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": true,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": [
-        "disabled in YAML but still registered"
-      ]
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": []
     },
     {
       "rule_id": "Q12",
@@ -3557,26 +2780,11 @@
       "enabled": false,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/compliance-remaining-detector.ts",
-      "technique_observed": {
-        "regex_literals": 7,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": [
-        "disabled in YAML but still registered"
-      ]
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": []
     },
     {
       "rule_id": "Q13",
@@ -3586,24 +2794,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/data-privacy-cross-ecosystem-detector.ts",
-      "technique_observed": {
-        "regex_literals": 38,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": true,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     },
     {
       "rule_id": "Q14",
@@ -3613,26 +2810,11 @@
       "enabled": false,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/compliance-remaining-detector.ts",
-      "technique_observed": {
-        "regex_literals": 7,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": [
-        "disabled in YAML but still registered"
-      ]
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": []
     },
     {
       "rule_id": "Q15",
@@ -3642,24 +2824,13 @@
       "enabled": true,
       "yaml_detect_type": "typed",
       "yaml_engine_v2": false,
-      "registered_v1": true,
+      "registered_v1": false,
       "registered_v2": false,
-      "detector_file": "packages/analyzer/src/rules/implementations/compliance-remaining-detector.ts",
-      "technique_observed": {
-        "regex_literals": 7,
-        "new_regexp_calls": 0,
-        "string_arrays_over_5": 0,
-        "ts_compiler_api_import": false,
-        "tree_sitter_import": false,
-        "uses_taint_ast": false,
-        "uses_capability_graph": false,
-        "uses_module_graph": false,
-        "uses_entropy": false,
-        "uses_similarity": false,
-        "uses_schema_inference": false,
-        "uses_evidence_chain_builder": true
-      },
-      "notes": []
+      "detector_file": null,
+      "technique_observed": null,
+      "notes": [
+        "enabled in YAML but no TypedRule registration found"
+      ]
     }
   ]
 }
