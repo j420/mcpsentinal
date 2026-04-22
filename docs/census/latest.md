@@ -1,6 +1,6 @@
 # Rule Census
 
-_Generated: 2026-04-22T05:38:01.068Z_
+_Generated: 2026-04-22T07:00:31.963Z_
 
 ## Summary
 
@@ -8,42 +8,42 @@ _Generated: 2026-04-22T05:38:01.068Z_
 |---|---|
 | YAML rules (total) | 177 |
 | YAML rules (enabled) | 164 |
-| Registered rules (unique ids) | 107 |
-| Registered v1 | 97 |
+| Registered rules (unique ids) | 72 |
+| Registered v1 | 62 |
 | Registered v2 | 10 |
-| Enabled but unregistered | 70 |
-| Detector files | 17 |
-| Files with any regex | 15 |
-| Files with any technique import | 8 |
+| Enabled but unregistered | 105 |
+| Detector files | 13 |
+| Files with any regex | 12 |
+| Files with any technique import | 5 |
 
 ## Aggregate Technique Observations
 
 | Signal | Count |
 |---|---|
-| Regex literals | 370 |
+| Regex literals | 287 |
 | new RegExp(...) calls | 2 |
-| String-literal arrays > 5 | 5 |
-| Rules using taint-ast | 23 |
-| Rules using capability-graph | 31 |
+| String-literal arrays > 5 | 1 |
+| Rules using taint-ast | 16 |
+| Rules using capability-graph | 26 |
 | Rules using module-graph | 0 |
 | Rules using entropy | 1 |
-| Rules using similarity | 15 |
-| Rules using EvidenceChainBuilder | 107 |
+| Rules using similarity | 0 |
+| Rules using EvidenceChainBuilder | 72 |
 
 ## Top Regex Offenders (detector files)
 
 | File | Regex literals | new RegExp calls |
 |---|---:|---:|
-| `packages/analyzer/src/rules/implementations/infrastructure-detector.ts` | 44 | 0 |
 | `packages/analyzer/src/rules/implementations/m-runtime-v2.ts` | 43 | 0 |
 | `packages/analyzer/src/rules/implementations/data-privacy-cross-ecosystem-detector.ts` | 38 | 0 |
 | `packages/analyzer/src/rules/implementations/protocol-ai-runtime-detector.ts` | 33 | 0 |
 | `packages/analyzer/src/rules/implementations/protocol-surface-remaining-detector.ts` | 33 | 0 |
-| `packages/analyzer/src/rules/implementations/description-schema-detector.ts` | 29 | 0 |
 | `packages/analyzer/src/rules/implementations/k-compliance-v2.ts` | 27 | 0 |
 | `packages/analyzer/src/rules/implementations/ai-manipulation-detector.ts` | 25 | 0 |
 | `packages/analyzer/src/rules/implementations/cross-tool-risk-detector.ts` | 23 | 0 |
 | `packages/analyzer/src/rules/implementations/o4-q10-v2.ts` | 23 | 0 |
+| `packages/analyzer/src/rules/implementations/l-supply-chain-v2.ts` | 15 | 2 |
+| `packages/analyzer/src/rules/implementations/m5-context-window-flooding.ts` | 11 | 0 |
 
 ## Per-Rule Detail
 
@@ -54,22 +54,22 @@ T = first-letter tags: a=ast-taint, c=capability-graph, m=module-graph, e=entrop
 
 | ID | Name | Cat | Sev | E | 1 | 2 | R | T | Detector |
 |---|---|---|---|:-:|:-:|:-:|---:|---|---|
-| A1 | Prompt Injection in Tool Description | description-analysis | critical | Y | Y |  | 29 | v | `description-schema-detector.ts` |
-| A2 | Excessive Scope Claims in Description | description-analysis | high | Y | Y |  | 29 | v | `description-schema-detector.ts` |
-| A3 | Suspicious URLs in Tool Description | description-analysis | medium | Y | Y |  | 29 | v | `description-schema-detector.ts` |
-| A4 | Cross-Server Tool Name Shadowing | description-analysis | high | Y | Y |  | 29 | v | `description-schema-detector.ts` |
-| A5 | Description Length Anomaly | description-analysis | low | Y | Y |  | 29 | v | `description-schema-detector.ts` |
+| A1 | Prompt Injection in Tool Description | description-analysis | critical | Y |  |  | 0 | — | — |
+| A2 | Excessive Scope Claims in Description | description-analysis | high | Y |  |  | 0 | — | — |
+| A3 | Suspicious URLs in Tool Description | description-analysis | medium | Y |  |  | 0 | — | — |
+| A4 | Cross-Server Tool Name Shadowing | description-analysis | high | Y |  |  | 0 | — | — |
+| A5 | Description Length Anomaly | description-analysis | low | Y |  |  | 0 | — | — |
 | A6 | Unicode Homoglyph Attack in Tool Name or Description | description-analysis | critical | Y |  |  | 0 | — | — |
 | A7 | Zero-Width and Invisible Character Injection | description-analysis | critical | Y |  |  | 0 | — | — |
-| A8 | Description-Capability Mismatch (Read-Only Claim with Write Parameters) | description-analysis | high | Y | Y |  | 29 | v | `description-schema-detector.ts` |
+| A8 | Description-Capability Mismatch (Read-Only Claim with Write Parameters) | description-analysis | high | Y |  |  | 0 | — | — |
 | A9 | Encoded or Obfuscated Instructions in Tool Description | description-analysis | critical | Y |  |  | 0 | — | — |
-| B1 | Missing Input Validation | schema-analysis | medium | Y | Y |  | 29 | v | `description-schema-detector.ts` |
-| B2 | Dangerous Parameter Types | schema-analysis | high | Y | Y |  | 29 | v | `description-schema-detector.ts` |
-| B3 | Excessive Parameter Count | schema-analysis | low | Y | Y |  | 29 | v | `description-schema-detector.ts` |
-| B4 | Schema-less Tool | schema-analysis | medium | Y | Y |  | 29 | v | `description-schema-detector.ts` |
-| B5 | Prompt Injection in Parameter Description | schema-analysis | critical | Y | Y |  | 29 | v | `description-schema-detector.ts` |
-| B6 | Schema Allows Unconstrained Additional Properties | schema-analysis | medium | Y | Y |  | 29 | v | `description-schema-detector.ts` |
-| B7 | Dangerous Default Parameter Values | schema-analysis | high | Y | Y |  | 29 | v | `description-schema-detector.ts` |
+| B1 | Missing Input Validation | schema-analysis | medium | Y |  |  | 0 | — | — |
+| B2 | Dangerous Parameter Types | schema-analysis | high | Y |  |  | 0 | — | — |
+| B3 | Excessive Parameter Count | schema-analysis | low | Y |  |  | 0 | — | — |
+| B4 | Schema-less Tool | schema-analysis | medium | Y |  |  | 0 | — | — |
+| B5 | Prompt Injection in Parameter Description | schema-analysis | critical | Y |  |  | 0 | — | — |
+| B6 | Schema Allows Unconstrained Additional Properties | schema-analysis | medium | Y |  |  | 0 | — | — |
+| B7 | Dangerous Default Parameter Values | schema-analysis | high | Y |  |  | 0 | — | — |
 | C1 | Command Injection | code-analysis | critical | Y |  |  | 0 | — | — |
 | C2 | Path Traversal | code-analysis | critical | Y |  |  | 0 | — | — |
 | C3 | Server-Side Request Forgery (SSRF) | code-analysis | high | Y |  |  | 0 | — | — |
@@ -86,22 +86,22 @@ T = first-letter tags: a=ast-taint, c=capability-graph, m=module-graph, e=entrop
 | C14 | JWT Algorithm Confusion / None Algorithm Attack | code-analysis | critical | Y |  |  | 0 | — | — |
 | C15 | Timing Attack on Secret or Token Comparison | code-analysis | high | Y |  |  | 0 | — | — |
 | C16 | Dynamic Code Evaluation with User Input | code-analysis | critical | Y |  |  | 0 | — | — |
-| D1 | Known CVEs in Dependencies | dependency-analysis | high | Y | Y |  | 0 | sv | `dependency-behavioral-detector.ts` |
-| D2 | Abandoned Dependencies | dependency-analysis | medium | Y | Y |  | 0 | sv | `dependency-behavioral-detector.ts` |
+| D1 | Known CVEs in Dependencies | dependency-analysis | high | Y |  |  | 0 | — | — |
+| D2 | Abandoned Dependencies | dependency-analysis | medium | Y |  |  | 0 | — | — |
 | D3 | Typosquatting Risk in Dependencies | dependency-analysis | high | Y |  |  | 0 | — | — |
-| D4 | Excessive Dependency Count | dependency-analysis | low | Y | Y |  | 0 | sv | `dependency-behavioral-detector.ts` |
-| D5 | Known Malicious or Flagged Package | dependency-analysis | critical | Y | Y |  | 0 | sv | `dependency-behavioral-detector.ts` |
-| D6 | Weak or Deprecated Cryptography Dependencies | dependency-analysis | high | Y | Y |  | 0 | sv | `dependency-behavioral-detector.ts` |
-| D7 | Dependency Confusion Attack Risk | dependency-analysis | high | Y | Y |  | 0 | sv | `dependency-behavioral-detector.ts` |
-| E1 | No Authentication Required | behavioral-analysis | medium | Y | Y |  | 0 | sv | `dependency-behavioral-detector.ts` |
-| E2 | Insecure Transport | behavioral-analysis | high | Y | Y |  | 0 | sv | `dependency-behavioral-detector.ts` |
-| E3 | Response Time Anomaly | behavioral-analysis | low | Y | Y |  | 0 | sv | `dependency-behavioral-detector.ts` |
-| E4 | Excessive Tool Count | behavioral-analysis | medium | Y | Y |  | 0 | sv | `dependency-behavioral-detector.ts` |
+| D4 | Excessive Dependency Count | dependency-analysis | low | Y |  |  | 0 | — | — |
+| D5 | Known Malicious or Flagged Package | dependency-analysis | critical | Y |  |  | 0 | — | — |
+| D6 | Weak or Deprecated Cryptography Dependencies | dependency-analysis | high | Y |  |  | 0 | — | — |
+| D7 | Dependency Confusion Attack Risk | dependency-analysis | high | Y |  |  | 0 | — | — |
+| E1 | No Authentication Required | behavioral-analysis | medium | Y |  |  | 0 | — | — |
+| E2 | Insecure Transport | behavioral-analysis | high | Y |  |  | 0 | — | — |
+| E3 | Response Time Anomaly | behavioral-analysis | low | Y |  |  | 0 | — | — |
+| E4 | Excessive Tool Count | behavioral-analysis | medium | Y |  |  | 0 | — | — |
 | F1 | Lethal Trifecta - Private Data + Untrusted Content + External Communication | ecosystem-context | critical | Y |  |  | 0 | — | — |
 | F2 | High-Risk Capability Profile | ecosystem-context | medium | Y |  |  | 0 | — | — |
 | F3 | Data Flow Risk - Source to Sink | ecosystem-context | high | Y |  |  | 0 | — | — |
-| F4 | MCP Spec Non-Compliance | ecosystem-context | low | Y | Y |  | 10 | csv | `ecosystem-adversarial-detector.ts` |
-| F5 | Official Namespace Squatting | ecosystem-context | critical | Y | Y |  | 10 | csv | `ecosystem-adversarial-detector.ts` |
+| F4 | MCP Spec Non-Compliance | ecosystem-context | low | Y |  |  | 0 | — | — |
+| F5 | Official Namespace Squatting | ecosystem-context | critical | Y |  |  | 0 | — | — |
 | F6 | Circular Data Loop — Persistent Prompt Injection Storage Risk | ecosystem-context | high | Y |  |  | 0 | — | — |
 | F7 | Multi-Step Exfiltration Chain | ecosystem-context | critical | Y |  |  | 0 | — | — |
 | G1 | Indirect Prompt Injection Gateway | adversarial-ai | critical | Y | Y |  | 25 | cv | `ai-manipulation-detector.ts` |
@@ -109,11 +109,11 @@ T = first-letter tags: a=ast-taint, c=capability-graph, m=module-graph, e=entrop
 | G3 | Tool Response Format Injection | adversarial-ai | critical | Y | Y |  | 25 | cv | `ai-manipulation-detector.ts` |
 | G4 | Context Window Saturation Attack | adversarial-ai | high | Y | Y |  | 0 | ev | `g4-context-saturation.ts` |
 | G5 | Capability Escalation via Prior Approval Reference | adversarial-ai | critical | Y | Y |  | 25 | cv | `ai-manipulation-detector.ts` |
-| G6 | Tool Behavior Drift (Rug Pull Detection) | adversarial-ai | critical | Y | Y |  | 10 | csv | `ecosystem-adversarial-detector.ts` |
+| G6 | Tool Behavior Drift (Rug Pull Detection) | adversarial-ai | critical | Y |  |  | 0 | — | — |
 | G7 | DNS-Based Data Exfiltration Channel | adversarial-ai | critical | Y |  |  | 0 | — | — |
-| H1 | MCP OAuth 2.0 Insecure Implementation | auth-analysis | critical | Y | Y |  | 10 | csv | `ecosystem-adversarial-detector.ts` |
+| H1 | MCP OAuth 2.0 Insecure Implementation | auth-analysis | critical | Y |  |  | 0 | — | — |
 | H2 | Prompt Injection in MCP Initialize Response Fields | adversarial-ai | critical | Y | Y |  | 25 | cv | `ai-manipulation-detector.ts` |
-| H3 | Multi-Agent Propagation Risk | adversarial-ai | high | Y | Y |  | 10 | csv | `ecosystem-adversarial-detector.ts` |
+| H3 | Multi-Agent Propagation Risk | adversarial-ai | high | Y |  |  | 0 | — | — |
 | I1 | Tool Annotation Deception | protocol-surface | critical | Y | Y |  | 23 | civ | `cross-tool-risk-detector.ts` |
 | I2 | Missing Destructive Tool Annotation | protocol-surface | high | Y | Y |  | 23 | civ | `cross-tool-risk-detector.ts` |
 | I3 | Prompt Injection in Resource Metadata | protocol-surface | critical | Y | Y |  | 33 | cv | `protocol-surface-remaining-detector.ts` |
@@ -206,13 +206,13 @@ T = first-letter tags: a=ast-taint, c=capability-graph, m=module-graph, e=entrop
 | O8 | Timing-Based Covert Channel | data-privacy-attacks | high | Y | Y |  | 7 | v | `compliance-remaining-detector.ts` |
 | O9 | Ambient Credential Exploitation | data-privacy-attacks | critical | Y | Y |  | 38 | av | `data-privacy-cross-ecosystem-detector.ts` |
 | O10 | Privacy-Violating Telemetry | data-privacy-attacks | high | Y | Y |  | 7 | v | `compliance-remaining-detector.ts` |
-| P1 | Docker Socket Mount in Container | infrastructure-runtime | critical | Y | Y |  | 44 | av | `infrastructure-detector.ts` |
-| P2 | Dangerous Container Capabilities | infrastructure-runtime | critical | Y | Y |  | 44 | av | `infrastructure-detector.ts` |
-| P3 | Cloud Metadata Service Access | infrastructure-runtime | critical | Y | Y |  | 44 | av | `infrastructure-detector.ts` |
-| P4 | TLS Certificate Validation Bypass | infrastructure-runtime | critical | Y | Y |  | 44 | av | `infrastructure-detector.ts` |
-| P5 | Secrets Exposed in Container Build Layers | infrastructure-runtime | critical | Y | Y |  | 44 | av | `infrastructure-detector.ts` |
-| P6 | LD_PRELOAD and Shared Library Hijacking | infrastructure-runtime | critical | Y | Y |  | 44 | av | `infrastructure-detector.ts` |
-| P7 | Sensitive Host Filesystem Mount | infrastructure-runtime | critical | Y | Y |  | 44 | av | `infrastructure-detector.ts` |
+| P1 | Docker Socket Mount in Container | infrastructure-runtime | critical | Y |  |  | 0 | — | — |
+| P2 | Dangerous Container Capabilities | infrastructure-runtime | critical | Y |  |  | 0 | — | — |
+| P3 | Cloud Metadata Service Access | infrastructure-runtime | critical | Y |  |  | 0 | — | — |
+| P4 | TLS Certificate Validation Bypass | infrastructure-runtime | critical | Y |  |  | 0 | — | — |
+| P5 | Secrets Exposed in Container Build Layers | infrastructure-runtime | critical | Y |  |  | 0 | — | — |
+| P6 | LD_PRELOAD and Shared Library Hijacking | infrastructure-runtime | critical | Y |  |  | 0 | — | — |
+| P7 | Sensitive Host Filesystem Mount | infrastructure-runtime | critical | Y |  |  | 0 | — | — |
 | P8 | Insecure Cryptographic Mode or Static IV/Nonce | infrastructure-runtime | high | Y |  |  | 0 | — | — |
 | P9 | Missing Container Resource Limits | infrastructure-runtime | high | Y |  |  | 0 | — | — |
 | P10 | Host Network Mode and Missing Egress Controls | infrastructure-runtime | high | Y |  |  | 0 | — | — |
@@ -234,9 +234,22 @@ T = first-letter tags: a=ast-taint, c=capability-graph, m=module-graph, e=entrop
 
 ## Notes
 
+- **A1**: enabled in YAML but no TypedRule registration found
+- **A2**: enabled in YAML but no TypedRule registration found
+- **A3**: enabled in YAML but no TypedRule registration found
+- **A4**: enabled in YAML but no TypedRule registration found
+- **A5**: enabled in YAML but no TypedRule registration found
 - **A6**: enabled in YAML but no TypedRule registration found
 - **A7**: enabled in YAML but no TypedRule registration found
+- **A8**: enabled in YAML but no TypedRule registration found
 - **A9**: enabled in YAML but no TypedRule registration found
+- **B1**: enabled in YAML but no TypedRule registration found
+- **B2**: enabled in YAML but no TypedRule registration found
+- **B3**: enabled in YAML but no TypedRule registration found
+- **B4**: enabled in YAML but no TypedRule registration found
+- **B5**: enabled in YAML but no TypedRule registration found
+- **B6**: enabled in YAML but no TypedRule registration found
+- **B7**: enabled in YAML but no TypedRule registration found
 - **C1**: enabled in YAML but no TypedRule registration found
 - **C2**: enabled in YAML but no TypedRule registration found
 - **C3**: enabled in YAML but no TypedRule registration found
@@ -253,13 +266,28 @@ T = first-letter tags: a=ast-taint, c=capability-graph, m=module-graph, e=entrop
 - **C14**: enabled in YAML but no TypedRule registration found
 - **C15**: enabled in YAML but no TypedRule registration found
 - **C16**: enabled in YAML but no TypedRule registration found
+- **D1**: enabled in YAML but no TypedRule registration found
+- **D2**: enabled in YAML but no TypedRule registration found
 - **D3**: enabled in YAML but no TypedRule registration found
+- **D4**: enabled in YAML but no TypedRule registration found
+- **D5**: enabled in YAML but no TypedRule registration found
+- **D6**: enabled in YAML but no TypedRule registration found
+- **D7**: enabled in YAML but no TypedRule registration found
+- **E1**: enabled in YAML but no TypedRule registration found
+- **E2**: enabled in YAML but no TypedRule registration found
+- **E3**: enabled in YAML but no TypedRule registration found
+- **E4**: enabled in YAML but no TypedRule registration found
 - **F1**: enabled in YAML but no TypedRule registration found
 - **F2**: enabled in YAML but no TypedRule registration found
 - **F3**: enabled in YAML but no TypedRule registration found
+- **F4**: enabled in YAML but no TypedRule registration found
+- **F5**: enabled in YAML but no TypedRule registration found
 - **F6**: enabled in YAML but no TypedRule registration found
 - **F7**: enabled in YAML but no TypedRule registration found
+- **G6**: enabled in YAML but no TypedRule registration found
 - **G7**: enabled in YAML but no TypedRule registration found
+- **H1**: enabled in YAML but no TypedRule registration found
+- **H3**: enabled in YAML but no TypedRule registration found
 - **J1**: enabled in YAML but no TypedRule registration found
 - **J2**: enabled in YAML but no TypedRule registration found
 - **K1**: enabled in YAML but no TypedRule registration found
@@ -305,6 +333,13 @@ T = first-letter tags: a=ast-taint, c=capability-graph, m=module-graph, e=entrop
 - **O2**: disabled in YAML but still registered
 - **O3**: disabled in YAML but still registered
 - **O7**: disabled in YAML but still registered
+- **P1**: enabled in YAML but no TypedRule registration found
+- **P2**: enabled in YAML but no TypedRule registration found
+- **P3**: enabled in YAML but no TypedRule registration found
+- **P4**: enabled in YAML but no TypedRule registration found
+- **P5**: enabled in YAML but no TypedRule registration found
+- **P6**: enabled in YAML but no TypedRule registration found
+- **P7**: enabled in YAML but no TypedRule registration found
 - **P8**: enabled in YAML but no TypedRule registration found
 - **P9**: enabled in YAML but no TypedRule registration found
 - **P10**: enabled in YAML but no TypedRule registration found
