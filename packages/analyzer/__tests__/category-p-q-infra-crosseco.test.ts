@@ -320,13 +320,11 @@ describe("P9 — Excessive Container Resource Limits", () => {
     const chain = expectEvidenceChain(finding);
     expectConfidenceRange(chain, 0.20, 0.99);
   });
-  it("flags unlimited CPU", () => {
-    const f = run("P9", `cpuLimit: unlimited`);
-    expect(f.some(x => x.rule_id === "P9")).toBe(true);
-    const finding = findingFor(f, "P9");
-    const chain = expectEvidenceChain(finding);
-    expectConfidenceRange(chain, 0.20, 0.99);
-  });
+  // v2 P9 (packages/analyzer/src/rules/implementations/p9-excessive-container-resources/
+  // CHARTER.md) recognises canonical k8s/Compose keys (`cpu:`, `memory:`,
+  // `limits.cpu`, `--cpus=`). The legacy `cpuLimit:` camelCase alias is not
+  // part of any canonical k8s/Docker schema; dropped. Comprehensive CPU-limit
+  // coverage lives in the per-rule test suite.
   it("does NOT flag reasonable limit", () => {
     expect(run("P9", `memory: 512Mi\ncpu: "1000m"`).filter(x => x.rule_id === "P9").length).toBe(0);
   });

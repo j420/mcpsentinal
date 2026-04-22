@@ -77,10 +77,14 @@ describe("L3 — Dockerfile Base Image Risk", () => {
     expect(findings.filter(f => f.rule_id === "L3").length).toBe(0);
   });
 
-  it("does NOT flag test files", () => {
-    const findings = run("L3", `// __tests__/docker.test.ts\nFROM node:latest`);
-    expect(findings.filter(f => f.rule_id === "L3").length).toBe(0);
-  });
+  // v2 L3 (packages/analyzer/src/rules/implementations/l3-dockerfile-base-image-risk/
+  // CHARTER.md) deliberately abandons comment-based test-file detection — a
+  // filename comment is trivially attacker-forgeable camouflage. The new
+  // rule fires on malicious content regardless of preceding comments.
+  // Structural test-file detection (tree-sitter test-runner imports +
+  // top-level describe/it/test call shape) is covered in the per-rule
+  // test suite at
+  // packages/analyzer/src/rules/implementations/l3-dockerfile-base-image-risk/__tests__/index.test.ts
 
   it("produces evidence chain", () => {
     const findings = run("L3", `FROM ubuntu:latest\nRUN apt-get update`);
@@ -119,10 +123,10 @@ describe("K19 — Missing Runtime Sandbox", () => {
     expect(findings.filter(f => f.rule_id === "K19").length).toBe(0);
   });
 
-  it("does NOT flag test files", () => {
-    const findings = run("K19", `// __tests__/sandbox.test.ts\nconst x = "--privileged";`);
-    expect(findings.filter(f => f.rule_id === "K19").length).toBe(0);
-  });
+  // v2 K19 (packages/analyzer/src/rules/implementations/k19-missing-runtime-sandbox/
+  // CHARTER.md) abandons comment-based test-file detection — filename
+  // comments are attacker-forgeable. Structural test-file detection lives
+  // in the per-rule test suite.
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -182,10 +186,9 @@ describe("P8 — ECB Mode / Static IV", () => {
     expect(findings.filter(f => f.rule_id === "P8").length).toBe(0);
   });
 
-  it("does NOT flag test files", () => {
-    const findings = run("P8", `// __tests__/crypto.test.ts\nconst cipher = 'aes-128-ecb';`);
-    expect(findings.filter(f => f.rule_id === "P8").length).toBe(0);
-  });
+  // v2 P8 (packages/analyzer/src/rules/implementations/p8-ecb-mode-static-iv/
+  // CHARTER.md) uses structural AST test-file detection, not filename
+  // comments. Covered in the per-rule test suite.
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -213,10 +216,9 @@ describe("P10 — Network Host Mode", () => {
     expect(findings.filter(f => f.rule_id === "P10").length).toBe(0);
   });
 
-  it("does NOT flag test files", () => {
-    const findings = run("P10", `// __tests__/net.test.ts\nconst x = "network_mode: host";`);
-    expect(findings.filter(f => f.rule_id === "P10").length).toBe(0);
-  });
+  // v2 P10 (packages/analyzer/src/rules/implementations/p10-network-host-mode/
+  // CHARTER.md) uses structural AST test-file detection, not filename
+  // comments. Covered in the per-rule test suite.
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

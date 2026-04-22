@@ -75,7 +75,13 @@ import "./implementations/q4-ide-mcp-config-injection/index.js";
 import "./implementations/l9-ci-secret-exfiltration/index.js";
 import "./implementations/k2-audit-trail-destruction/index.js";
 import "./implementations/g7-dns-exfiltration-channel/index.js";
-import "./implementations/supply-chain-detector.js";
+// supply-chain-detector.ts deleted in Phase 1 Chunk 1.11; its four rules
+// (L5, L12, L14 stub, K10) have each been migrated to their own directory.
+// L5 emits L14 findings during its manifest scan (companion-rule pattern).
+import "./implementations/l5-manifest-confusion/index.js";
+import "./implementations/l12-build-artifact-tampering/index.js";
+import "./implementations/l14-hidden-entry-point-mismatch/index.js";
+import "./implementations/k10-package-registry-substitution/index.js";
 // code-security-deep-detector.ts removed in Phase 1 Chunk 1.18; its four rules
 // (C2, C5, C10, C14) have each been migrated to their own directory.
 import "./implementations/c2-path-traversal/index.js";
@@ -83,16 +89,18 @@ import "./implementations/c5-hardcoded-secrets/index.js";
 import "./implementations/c10-prototype-pollution/index.js";
 import "./implementations/c14-jwt-algorithm-confusion/index.js";
 // Chunk 1.9: L1/L2/L6/L13 migrated out of advanced-supply-chain-detector.ts
-// into per-rule Rule Standard v2 directories (L7/K3/K5/K8 remain in the legacy
-// file as tombstones). These imports are appended after the C-rules to keep
-// the taint-kit-based rules registered after their shared infrastructure.
+// into per-rule Rule Standard v2 directories. Chunk 1.10 (wave-3) completed
+// the migration by moving L7, K3, K5, K8 and deleting the legacy detector.
 import "./implementations/l1-github-actions-tag-poisoning/index.js";
 import "./implementations/l2-malicious-build-plugin/index.js";
 import "./implementations/l6-config-symlink-attack/index.js";
 import "./implementations/l13-build-credential-file-theft/index.js";
+import "./implementations/l7-transitive-mcp-delegation/index.js";
+import "./implementations/k3-audit-log-tampering/index.js";
+import "./implementations/k5-auto-approve-bypass/index.js";
+import "./implementations/k8-cross-boundary-credential-sharing/index.js";
 import "./implementations/ai-manipulation-detector.js";
 import "./implementations/infrastructure-detector.js";
-import "./implementations/advanced-supply-chain-detector.js";
 import "./implementations/protocol-ai-runtime-detector.js";
 import "./implementations/data-privacy-cross-ecosystem-detector.js";
 import "./implementations/description-schema-detector.js";
@@ -108,7 +116,24 @@ import "./implementations/m4-tool-squatting.js";
 import "./implementations/m5-context-window-flooding.js";
 import "./implementations/l-supply-chain-v2.js";
 import "./implementations/o4-q10-v2.js";
-import "./implementations/docker-k8s-crypto-v2.js";
+// docker-k8s-crypto-v2.ts deleted in Phase 1 Chunk 1.12; its five rules
+// (L3, K19, P8, P9, P10) have each been migrated to their own directory.
+import "./implementations/l3-dockerfile-base-image-risk/index.js";
+import "./implementations/k19-missing-runtime-sandbox/index.js";
+import "./implementations/p8-ecb-mode-static-iv/index.js";
+import "./implementations/p9-excessive-container-resources/index.js";
+import "./implementations/p10-network-host-mode/index.js";
+// code-remaining-detector.ts deleted in Phase 1 Chunk 1.19; its seven rules
+// (C3, C6, C7, C8, C9, C11, C15) have each been migrated to their own directory.
+// C3 SSRF reuses _shared/taint-rule-kit/; C11 ReDoS uses a hand-coded
+// character-walker (a regex-based detector would itself be ReDoS-vulnerable).
+import "./implementations/c3-ssrf/index.js";
+import "./implementations/c6-error-leakage/index.js";
+import "./implementations/c7-wildcard-cors/index.js";
+import "./implementations/c8-no-auth-network/index.js";
+import "./implementations/c9-excessive-fs-scope/index.js";
+import "./implementations/c11-redos/index.js";
+import "./implementations/c15-timing-attack/index.js";
 // Phase 1 chunk 1.8: N1-N3, N7, N8, N10 migrated out of jsonrpc-protocol-v2.ts
 // into per-rule Rule Standard v2 directories. The legacy file is deleted.
 import "./implementations/n1-jsonrpc-batch-request-abuse/index.js";
