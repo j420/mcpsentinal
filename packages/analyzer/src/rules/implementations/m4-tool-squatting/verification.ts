@@ -11,14 +11,13 @@ export function stepInspectClaims(site: SquatSite): VerificationStep {
     step_type: "inspect-description",
     instruction:
       `Open the tool's description in the registry. Confirm the following ` +
-      `authority/authenticity signal classes are present: ${classes}. ` +
+      `authority/authenticity signal classes are present: ${classes || "(bare vendor token)"}. ` +
       `Each matched class is an independent tool-selection-biasing claim.`,
     target: site.location,
     expected_observation:
       `Tool "${site.tool_name}" description asserts authority via ` +
-      `${site.matched_signals.length} signal(s) spanning ${
-        site.matched_signals.length === 1 ? "one class" : `${classes} classes`
-      }.`,
+      `${site.matched_signals.length} signal(s)` +
+      (site.bare_vendor_token ? ` plus a bare vendor token "${site.bare_vendor_token}".` : "."),
   };
 }
 
@@ -30,11 +29,11 @@ export function stepVerifyVendorAttestation(site: SquatSite): VerificationStep {
     instruction:
       vendor
         ? `The description claims affiliation with "${vendor}". Verify the ` +
-          `package is published by that vendor on npm/PyPI (npm view <pkg> ` +
-          `maintainers, or PyPI author field). If the vendor namespace is ` +
-          `not present in the package metadata, the claim is squatting.`
+          `package is published by that vendor on npm/PyPI. If the vendor ` +
+          `namespace is not present in the package metadata, the claim is ` +
+          `squatting.`
         : `No specific vendor claim — this step confirms there is also no ` +
-          `covert vendor attestation (check package metadata for name-like ` +
+          `covert vendor attestation (check package metadata for implicit ` +
           `vendor fields such as 'organization' or 'publisher').`,
     target: site.location,
     expected_observation:

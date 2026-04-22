@@ -206,10 +206,17 @@ import "./implementations/k4-missing-human-confirmation/index.js";
 import "./implementations/k6-overly-broad-oauth-scopes/index.js";
 import "./implementations/k7-long-lived-tokens/index.js";
 import "./implementations/k17-missing-timeout/index.js";
-import "./implementations/m4-tool-squatting.js";
-import "./implementations/m5-context-window-flooding.js";
-import "./implementations/l-supply-chain-v2.js";
-import "./implementations/o4-q10-v2.js";
+import "./implementations/m4-tool-squatting/index.js";
+import "./implementations/m5-context-window-flooding/index.js";
+// l-supply-chain-v2.ts deleted in Phase 1 Chunk 1.6/D; L8/L10/L15 each
+// moved to per-rule Rule Standard v2 directories.
+import "./implementations/l8-version-rollback-attack/index.js";
+import "./implementations/l10-registry-metadata-spoofing/index.js";
+import "./implementations/l15-update-notification-spoofing/index.js";
+// o4-q10-v2.ts deleted in Phase 1 Chunk 1.6/D; O4 and Q10 moved to per-rule
+// directories with full Rule Standard v2 charters.
+import "./implementations/o4-timing-data-inference/index.js";
+import "./implementations/q10-agent-memory-poisoning/index.js";
 // docker-k8s-crypto-v2.ts deleted in Phase 1 Chunk 1.12; its five rules
 // (L3, K19, P8, P9, P10) have each been migrated to their own directory.
 import "./implementations/l3-dockerfile-base-image-risk/index.js";
@@ -244,5 +251,9 @@ import "./implementations/k12-executable-content-response/index.js";
 import "./implementations/k14-agent-credential-propagation/index.js";
 import "./implementations/k16-unbounded-recursion/index.js";
 import "./implementations/k20-insufficient-audit-context/index.js";
-import "./implementations/m-runtime-v2.js";
+// m-runtime-v2.ts deleted in Phase 1 Chunk 1.6/D; M2/M7/M8 each
+// moved to per-rule Rule Standard v2 directories.
+import "./implementations/m2-prompt-leak-via-response/index.js";
+import "./implementations/m7-multi-turn-state-injection/index.js";
+import "./implementations/m8-encoding-attack-on-input/index.js";
 import "./implementations/compliance-remaining-detector.js";

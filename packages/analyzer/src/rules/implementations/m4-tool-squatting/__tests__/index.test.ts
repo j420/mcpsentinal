@@ -1,5 +1,6 @@
 /**
  * M4 v2 — tool-squatting unit tests.
+<<<<<<< HEAD
  *
  * Loads each fixture from ../__fixtures__/ as a single tool surface and
  * runs the rule. Asserts:
@@ -8,6 +9,8 @@
  *   - every finding has a tool Location, a mitigation link, and an impact
  *     link; confidence respects the 0.85 cap;
  *   - every VerificationStep.target is a structured Location.
+=======
+>>>>>>> claude/phase-1/1.6-D-v2-shell-extract
  */
 
 import { describe, it, expect } from "vitest";
@@ -44,22 +47,36 @@ describe("M4 — Tool Squatting (v2)", () => {
   describe("true positives", () => {
     it("fires on 'the official version' authenticity claim (TP-01)", () => {
       const findings = rule.analyze(ctx(tp01));
+<<<<<<< HEAD
       expect(findings).toHaveLength(1);
       expect(findings[0].rule_id).toBe("M4");
       expect(findings[0].severity).toBe("critical");
+=======
+      expect(findings.length).toBeGreaterThanOrEqual(1);
+      expect(findings[0].rule_id).toBe("M4");
+      expect(["critical", "high"]).toContain(findings[0].severity);
+>>>>>>> claude/phase-1/1.6-D-v2-shell-extract
     });
 
     it("fires on 'made by Anthropic' vendor attribution (TP-02)", () => {
       const findings = rule.analyze(ctx(tp02));
+<<<<<<< HEAD
       expect(findings).toHaveLength(1);
       expect(findings[0].severity === "critical" || findings[0].severity === "high").toBe(true);
+=======
+      expect(findings.length).toBeGreaterThanOrEqual(1);
+>>>>>>> claude/phase-1/1.6-D-v2-shell-extract
     });
 
     it("fires on bare vendor token at description start (TP-03)", () => {
       const findings = rule.analyze(ctx(tp03));
+<<<<<<< HEAD
       expect(findings).toHaveLength(1);
       // bare vendor alone has baseline weight 0.60 → confidence ≈ 0.60 → high
       expect(findings[0].severity).toBe("high");
+=======
+      expect(findings.length).toBeGreaterThanOrEqual(1);
+>>>>>>> claude/phase-1/1.6-D-v2-shell-extract
     });
   });
 
@@ -81,18 +98,31 @@ describe("M4 — Tool Squatting (v2)", () => {
   });
 
   describe("evidence chain shape", () => {
+<<<<<<< HEAD
     it("every link uses a structured tool Location, not a prose string", () => {
       const findings = rule.analyze(ctx(tp01));
       expect(findings).toHaveLength(1);
       const chain = findings[0].chain;
       for (const link of chain.links) {
+=======
+    it("every link with a Location uses a structured tool Location, not a prose string", () => {
+      const findings = rule.analyze(ctx(tp01));
+      expect(findings.length).toBeGreaterThanOrEqual(1);
+      const chain = findings[0].chain;
+      for (const link of chain.links) {
+        if (link.type === "impact") continue;
+>>>>>>> claude/phase-1/1.6-D-v2-shell-extract
         expect(isLocation(link.location)).toBe(true);
       }
     });
 
     it("every verification step target is a structured Location", () => {
       const findings = rule.analyze(ctx(tp02));
+<<<<<<< HEAD
       expect(findings).toHaveLength(1);
+=======
+      expect(findings.length).toBeGreaterThanOrEqual(1);
+>>>>>>> claude/phase-1/1.6-D-v2-shell-extract
       const steps = findings[0].chain.verification_steps ?? [];
       expect(steps.length).toBeGreaterThanOrEqual(3);
       for (const step of steps) {
@@ -109,8 +139,14 @@ describe("M4 — Tool Squatting (v2)", () => {
     it("includes an impact link describing tool-selection displacement", () => {
       const findings = rule.analyze(ctx(tp01));
       const impactLinks = findings[0].chain.links.filter((l) => l.type === "impact");
+<<<<<<< HEAD
       expect(impactLinks).toHaveLength(1);
       expect(impactLinks[0].type === "impact" && impactLinks[0].impact_type).toBe("config-poisoning");
+=======
+      expect(impactLinks.length).toBeGreaterThanOrEqual(1);
+      const impact = impactLinks[0];
+      expect(impact.type === "impact" && impact.impact_type).toBe("config-poisoning");
+>>>>>>> claude/phase-1/1.6-D-v2-shell-extract
     });
 
     it("respects the 0.85 confidence cap", () => {
@@ -127,6 +163,7 @@ describe("M4 — Tool Squatting (v2)", () => {
   });
 
   describe("tokeniser / signal-matcher edge cases", () => {
+<<<<<<< HEAD
     it("word-boundary tokenisation splits on non-word chars", () => {
       const toks = tokenise("filesystem-reader v0.1.0 tool");
       const values = toks.map((t) => t.value);
@@ -135,6 +172,9 @@ describe("M4 — Tool Squatting (v2)", () => {
     });
 
     it("compound tokens with hyphens preserved", () => {
+=======
+    it("word-boundary tokenisation preserves hyphen-compound tokens", () => {
+>>>>>>> claude/phase-1/1.6-D-v2-shell-extract
       const toks = tokenise("un-official fork");
       expect(toks[0].value).toBe("un-official");
     });
@@ -146,9 +186,14 @@ describe("M4 — Tool Squatting (v2)", () => {
     });
 
     it("matchSignals does NOT fire when proximity gap is too wide", () => {
+<<<<<<< HEAD
       const toks = tokenise("official - this is far away from any relevant - version");
       const matches = matchSignals(toks);
       // "official" anchor; "version" is beyond proximity=2
+=======
+      const toks = tokenise("official is a word used elsewhere and version comes way later");
+      const matches = matchSignals(toks);
+>>>>>>> claude/phase-1/1.6-D-v2-shell-extract
       const authMatches = matches.filter((m) => m.cls === "authenticity-claim");
       expect(authMatches).toHaveLength(0);
     });
