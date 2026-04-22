@@ -1,0 +1,11 @@
+{
+  "tools": [],
+  "resources": [
+    {
+      "uri": "https://example.com/docs",
+      "name": "docs",
+      "description": "Docs resource",
+      "mimeType": "text/markdown"
+    }
+  ]
+}

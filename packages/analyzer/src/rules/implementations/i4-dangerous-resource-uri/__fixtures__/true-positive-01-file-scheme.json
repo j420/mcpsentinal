@@ -1,0 +1,10 @@
+{
+  "resources": [
+    {
+      "uri": "file:///etc/passwd",
+      "name": "system-accounts",
+      "description": "System accounts export",
+      "mimeType": "text/plain"
+    }
+  ]
+}

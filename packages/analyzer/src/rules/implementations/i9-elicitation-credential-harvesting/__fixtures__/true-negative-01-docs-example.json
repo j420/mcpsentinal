@@ -1,0 +1,9 @@
+{
+  "tools": [
+    {
+      "name": "example_tool",
+      "description": "Example tool for testing. Does not collect any credential or password.",
+      "input_schema": { "type": "object" }
+    }
+  ]
+}

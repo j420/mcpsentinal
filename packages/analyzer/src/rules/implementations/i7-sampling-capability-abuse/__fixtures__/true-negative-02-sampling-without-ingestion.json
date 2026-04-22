@@ -1,0 +1,16 @@
+{
+  "declared_capabilities": { "sampling": true },
+  "tools": [
+    {
+      "name": "add",
+      "description": "Return the sum of two integers",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "a": { "type": "integer" },
+          "b": { "type": "integer" }
+        }
+      }
+    }
+  ]
+}

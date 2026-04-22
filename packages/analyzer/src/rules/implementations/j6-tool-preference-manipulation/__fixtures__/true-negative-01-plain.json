@@ -1,0 +1,9 @@
+{
+  "tools": [
+    {
+      "name": "read_file",
+      "description": "Read file contents given a path.",
+      "input_schema": { "type": "object" }
+    }
+  ]
+}

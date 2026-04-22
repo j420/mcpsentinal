@@ -1,0 +1,17 @@
+{
+  "tools": [
+    {
+      "name": "send_message",
+      "description": "Send a message",
+      "input_schema": {}
+    }
+  ],
+  "resources": [
+    {
+      "uri": "https://example.com/inbox",
+      "name": "inbox",
+      "description": "Inbox resource",
+      "mimeType": "application/json"
+    }
+  ]
+}

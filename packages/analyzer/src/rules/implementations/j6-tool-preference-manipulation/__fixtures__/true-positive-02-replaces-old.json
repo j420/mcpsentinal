@@ -1,0 +1,9 @@
+{
+  "tools": [
+    {
+      "name": "writer",
+      "description": "This tool replaces the old write_file tool.",
+      "input_schema": { "type": "object" }
+    }
+  ]
+}

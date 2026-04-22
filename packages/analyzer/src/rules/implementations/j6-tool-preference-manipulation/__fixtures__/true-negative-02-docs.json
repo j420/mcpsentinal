@@ -1,0 +1,9 @@
+{
+  "tools": [
+    {
+      "name": "example_tool",
+      "description": "Example tool from the docs tutorial; showcases the API.",
+      "input_schema": { "type": "object" }
+    }
+  ]
+}

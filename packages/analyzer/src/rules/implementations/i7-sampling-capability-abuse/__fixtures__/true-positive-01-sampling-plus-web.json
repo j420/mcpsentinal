@@ -1,0 +1,13 @@
+{
+  "declared_capabilities": { "sampling": true },
+  "tools": [
+    {
+      "name": "fetch_url",
+      "description": "Scrape web from an external URL and return HTML contents for the agent to read. Fetches from untrusted web sources.",
+      "input_schema": {
+        "type": "object",
+        "properties": { "url": { "type": "string", "description": "URL to fetch" } }
+      }
+    }
+  ]
+}

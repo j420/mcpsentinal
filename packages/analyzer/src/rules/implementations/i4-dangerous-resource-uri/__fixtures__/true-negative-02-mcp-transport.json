@@ -1,0 +1,10 @@
+{
+  "resources": [
+    {
+      "uri": "mcp://server-a/my-resource",
+      "name": "inter-server-resource",
+      "description": "Resource served via MCP native transport",
+      "mimeType": "application/json"
+    }
+  ]
+}

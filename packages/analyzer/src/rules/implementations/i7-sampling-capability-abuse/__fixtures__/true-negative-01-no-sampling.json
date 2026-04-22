@@ -1,0 +1,10 @@
+{
+  "declared_capabilities": { "tools": true },
+  "tools": [
+    {
+      "name": "fetch_url",
+      "description": "Fetch a URL and return HTML",
+      "input_schema": { "type": "object" }
+    }
+  ]
+}
