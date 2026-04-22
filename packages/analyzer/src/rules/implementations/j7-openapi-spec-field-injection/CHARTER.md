@@ -74,6 +74,12 @@ obsolescence:
     MCP server generators (Orval, openapi-mcp-generator, etc.)
     sanitise / AST-build every spec field before emitting code,
     AND ship regression tests for CVE-2026-22785 / 23947.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # J7 — OpenAPI Specification Field Injection

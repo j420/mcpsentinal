@@ -71,6 +71,15 @@ obsolescence:
     bridge packages, OR the ecosystem manifests (npm, PyPI) allow
     immutable-by-default package versions. Neither is current as
     of 2026-04.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - add-noop-conditional
+  - reorder-object-properties
+mutations_acknowledged_blind:
+  - rename-danger-symbol
 ---
 
 # Q13 — MCP Bridge Package Supply Chain Attack

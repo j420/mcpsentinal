@@ -115,6 +115,9 @@ obsolescence:
     package-signature verification by default. Until both hold,
     unconstrained registry URLs remain the simplest way to MITM every
     install in a fleet.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # K10 — Package Registry Substitution

@@ -98,6 +98,9 @@ obsolescence:
     stop shipping docker-compose examples that bind the socket — at
     which point the finding transitions from "critical active gap" to
     "legacy posture check".
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # P1 — Docker Socket Mount in Container

@@ -140,6 +140,13 @@ obsolescence:
     application-level checks) — OR OAuth 2.1 supersedes OAuth 2.0 with a
     mandatory scope-mapping step that renders client-supplied scopes
     advisory only. Neither has happened as of 2026-04.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # K6 — Overly Broad OAuth Scopes

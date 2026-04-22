@@ -111,6 +111,13 @@ obsolescence:
     deceptive annotation can no longer bypass consent), OR tool
     annotations are removed from the spec in favour of a verified
     capability-declaration system.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # I1 — Annotation Deception

@@ -84,6 +84,9 @@ obsolescence:
     MCP clients refuse to interpolate prompt metadata into the model
     context without a mandatory per-template user-confirmation step,
     AND MCP spec-level sanitisation of prompt templates ships.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # I6 — Prompt Template Injection

@@ -112,6 +112,9 @@ obsolescence:
     hooks never execute by default, and Python removes setup.py install
     cmdclass as a legitimate extension point (PEP 517 build backends
     replacing it). Until both changes land, K9 remains critical.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # K9 — Dangerous Post-Install Hooks (Structural + Taint)

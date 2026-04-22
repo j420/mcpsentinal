@@ -98,6 +98,13 @@ obsolescence:
     tool response by default, OR the MCP spec declares a typed
     error channel that separates diagnostic detail from response
     payload. Neither exists as of 2026-04.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # O6 — Server Fingerprinting via Error Responses

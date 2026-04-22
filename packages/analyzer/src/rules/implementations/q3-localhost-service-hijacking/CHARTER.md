@@ -77,6 +77,12 @@ obsolescence:
     included), OR every ecosystem client runtime refuses to speak
     to a localhost MCP endpoint that has not presented a signed
     session token. Neither exists as of 2026-04.
+
+mutations_survived:
+  - unicode-homoglyph-identifier
+mutations_acknowledged_blind:
+  - split-string-literal
+  - base64-wrap-payload
 ---
 
 # Q3 — Localhost MCP Service Hijacking

@@ -93,6 +93,9 @@ obsolescence:
     tokens), AND the MCP specification mandates root-containment
     checking as a MUST-level client requirement. Until both ship, I4
     remains critical.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # I4 — Dangerous Resource URI

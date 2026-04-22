@@ -48,6 +48,9 @@ evidence_contract:
     - source
 obsolescence:
   retire_when: "MCP spec mandates a server-enforced max batch size with a protocol-level rejection code, AND >90% of tracked MCP SDKs set a bounded default."
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # N1 — JSON-RPC Batch Request Abuse

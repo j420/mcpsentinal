@@ -64,6 +64,13 @@ obsolescence:
   retire_when: >
     The MCP spec imposes a hard length cap on tool descriptions (e.g.
     512 chars for primary description + a structured details field).
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # A5 — Description Length Anomaly

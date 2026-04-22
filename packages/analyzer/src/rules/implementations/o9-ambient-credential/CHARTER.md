@@ -86,6 +86,12 @@ obsolescence:
     so that ambient credential files are invisible to the server
     process, OR the MCP spec declares credential-file access as a
     user-approved capability. Neither exists as of 2026-04.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # O9 — Ambient Credential Exploitation

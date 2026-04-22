@@ -87,6 +87,13 @@ obsolescence:
     MCP SDKs ship with out-of-band key-distribution mechanisms that
     eliminate TOFU at bootstrap. Until then, server-side avoidance of
     the bypass patterns is the defence.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # N14 — Trust-On-First-Use Bypass (TOFU)

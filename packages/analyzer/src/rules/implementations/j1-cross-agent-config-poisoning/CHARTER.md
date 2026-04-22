@@ -96,6 +96,12 @@ obsolescence:
     Code) all refuse to auto-load new MCP servers without an
     interactive, non-bypassable user dialog — see CVE-2025-59536 for
     the current non-compliance.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # J1 — Cross-Agent Configuration Poisoning

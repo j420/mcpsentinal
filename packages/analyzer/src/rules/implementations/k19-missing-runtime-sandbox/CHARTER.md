@@ -117,6 +117,9 @@ obsolescence:
     the DEFAULT on Kubernetes and Docker enforces `userns-remap` without
     opt-in — at which point sandbox misconfiguration is rejected at admit
     time and source-level detection becomes belt-and-braces.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # K19 — Missing Runtime Sandbox Enforcement

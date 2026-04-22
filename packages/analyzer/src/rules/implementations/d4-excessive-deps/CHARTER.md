@@ -98,6 +98,13 @@ obsolescence:
     and makes context-aware decisions (framework-aware thresholds,
     monorepo-awareness). D4 then degrades to a "policy tripwire" that
     is trivially replaced by policy-as-code.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # D4 — Excessive Dependency Count

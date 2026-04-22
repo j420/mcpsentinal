@@ -87,6 +87,15 @@ obsolescence:
     direct rendering of HTML, no automatic evaluation of embedded code
     constructs) — at which point the detection moves to the client
     enforcement layer.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - intermediate-variable
+  - add-noop-conditional
+mutations_acknowledged_blind:
+  - rename-danger-symbol
+  - base64-wrap-payload
 ---
 
 # K12 — Executable Content in Tool Response

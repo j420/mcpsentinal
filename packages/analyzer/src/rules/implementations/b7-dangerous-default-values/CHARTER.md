@@ -65,6 +65,13 @@ obsolescence:
   retire_when: >
     MCP spec mandates that all destructive flags default to false and all
     path / glob parameters default to narrow values.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # B7 — Dangerous Default Parameter Values

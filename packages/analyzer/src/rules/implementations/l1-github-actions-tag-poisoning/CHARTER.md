@@ -88,6 +88,9 @@ obsolescence:
     ecosystem migrates to OCI-signed GitHub Actions with mandatory
     sigstore-style attestation, making tag force-push forgeable-only by
     the signing key holder.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # L1 — GitHub Actions Tag Poisoning

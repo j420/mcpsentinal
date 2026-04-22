@@ -86,6 +86,13 @@ obsolescence:
     strings (trim, lowercase, strip Unicode confusables) before
     comparison. Until then, server-side registration discipline is
     the defence.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # N15 — JSON-RPC Method Name Confusion

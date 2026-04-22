@@ -44,6 +44,9 @@ evidence_contract:
     - source
 obsolescence:
   retire_when: "MCP transport SDKs ship with bounded notification queues by default (drop-oldest at ≤100) and the spec mandates server-enforced per-subscription rate limits."
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # N2 — JSON-RPC Notification Flooding

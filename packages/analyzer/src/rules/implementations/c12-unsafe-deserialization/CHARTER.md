@@ -122,6 +122,12 @@ obsolescence:
     is removed from the core distribution. Python 3.14 deprecating
     pickle.loads with a runtime warning would be a significant step;
     removal would retire this rule.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # C12 — Unsafe Deserialization (Taint-Aware)

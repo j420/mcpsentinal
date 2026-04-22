@@ -71,6 +71,9 @@ obsolescence:
     MCP clients enforce a client-side rate limit + per-invocation
     token cap on sampling requests, making server-side cost controls
     an over-engineering concern rather than a prerequisite.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # I8 — Sampling Cost Attack

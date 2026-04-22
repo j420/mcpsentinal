@@ -84,6 +84,9 @@ obsolescence:
     MCP clients sandbox resource metadata from the reasoning context
     until the user explicitly reads the resource body, AND the MCP
     spec mandates resource-metadata sanitisation at the client layer.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # I3 — Resource Metadata Injection

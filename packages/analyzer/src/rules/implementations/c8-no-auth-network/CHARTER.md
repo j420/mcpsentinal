@@ -95,6 +95,12 @@ obsolescence:
     a configured authenticator AND the express / fastify / koa
     defaults bind to 127.0.0.1 instead of 0.0.0.0. Until both halves
     exist, C8 retains high severity.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # C8 — No Authentication on Network-Exposed Server

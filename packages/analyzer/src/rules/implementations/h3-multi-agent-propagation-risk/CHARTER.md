@@ -123,6 +123,13 @@ obsolescence:
     trust-boundary declaration is not optional and every tool either
     complies or is rejected by the client — H3's static gap signal
     becomes redundant.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # H3 — Multi-Agent Propagation Risk

@@ -77,6 +77,13 @@ obsolescence:
     MCP specification adds a structured `capability_tags` field that
     makes free-text description claims about capability irrelevant to
     AI trust decisions.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # A8 — Description-Capability Mismatch

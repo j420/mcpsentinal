@@ -92,6 +92,9 @@ obsolescence:
     F2 no longer matches any pattern F1 detects, OR because the F1
     graph traversal is split so that F2 can efficiently run on its
     own without duplicating the capability-graph build.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # F2 — High-Risk Capability Profile (Companion of F1)

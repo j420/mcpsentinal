@@ -108,6 +108,10 @@ obsolescence:
     serialiser, AND the MCP SDK enforces an opaque error envelope on
     every tool response that strips internal fields by default. Until
     both halves exist, C6 retains medium severity.
+
+mutations_survived:
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # C6 — Error Leakage

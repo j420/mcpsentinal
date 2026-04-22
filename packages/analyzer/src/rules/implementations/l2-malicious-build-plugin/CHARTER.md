@@ -97,6 +97,13 @@ obsolescence:
     build-plugin-sandbox as the default install mode, OR the ecosystem
     adopts sigstore-signed bundler plugins with mandatory capability
     declarations that the bundler runtime enforces.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # L2 — Malicious Build Plugin Injection

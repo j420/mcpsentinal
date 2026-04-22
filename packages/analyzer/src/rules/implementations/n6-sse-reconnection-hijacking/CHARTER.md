@@ -84,6 +84,13 @@ obsolescence:
     client-authenticated token that is re-verified on every resume,
     AND mainstream SDKs implement this by default. Until then, server-
     side defence is primary.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # N6 — SSE Reconnection Hijacking

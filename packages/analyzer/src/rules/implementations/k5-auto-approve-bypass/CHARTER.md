@@ -114,6 +114,12 @@ obsolescence:
     before executing the tool, regardless of server-side configuration.
     At that point server-side auto-approve becomes a no-op and this
     rule's detection surface disappears.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # K5 — Auto-Approve / Bypass Confirmation Pattern

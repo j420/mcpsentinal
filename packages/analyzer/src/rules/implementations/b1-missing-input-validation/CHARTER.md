@@ -72,6 +72,13 @@ obsolescence:
     lack at least one structural constraint per parameter, OR the
     MCP spec requires parameter constraints for every string/number
     input.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # B1 — Missing Input Validation

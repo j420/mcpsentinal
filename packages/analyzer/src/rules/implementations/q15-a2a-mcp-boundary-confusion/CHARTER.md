@@ -107,6 +107,13 @@ obsolescence:
     reference bridge that enforces content policy on every
     part / skill / push payload crossing the boundary. Neither
     exists as of 2026-04.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # Q15 — A2A/MCP Protocol Boundary Confusion

@@ -45,6 +45,9 @@ evidence_contract:
     - source
 obsolescence:
   retire_when: "All major MCP SDKs default to crypto.randomUUID() for request ids AND the spec mandates unpredictable ids in a future revision."
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # N3 — JSON-RPC Request ID Collision

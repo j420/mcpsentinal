@@ -65,6 +65,10 @@ obsolescence:
     MCP Streamable HTTP transport spec mandates crypto.randomUUID
     session generation and secure+httpOnly cookies at the protocol
     layer, not the application layer.
+
+mutations_survived:
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # I15 — Transport Session Security

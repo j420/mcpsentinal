@@ -91,6 +91,13 @@ obsolescence:
     servers declare granular permission scopes per tool so oversight
     scales with tool count rather than degrades. Under those conditions
     count-based tripwires no longer correlate with oversight failure.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # E4 — Excessive Tool Count

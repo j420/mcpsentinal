@@ -36,6 +36,12 @@ evidence_contract:
     - source
 
 confidence_cap: 0.80
+
+mutations_survived:
+  - split-string-literal
+  - base64-wrap-payload
+mutations_acknowledged_blind:
+  - unicode-homoglyph-identifier
 ---
 
 # M8 — Encoding Attack on Tool Input

@@ -107,6 +107,12 @@ obsolescence:
     specification requires that tools/list responses identify the audit
     sink. At that point static rewriting of a log file is structurally
     impossible — the rule has nothing to detect.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # K3 — Audit Log Tampering

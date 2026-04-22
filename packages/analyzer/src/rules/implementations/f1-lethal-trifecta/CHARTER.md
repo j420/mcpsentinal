@@ -119,6 +119,13 @@ obsolescence:
     ingest-untrusted + send-network inside a single server unrepresentable
     — at which point F1's structural argument dissolves and the rule is
     superseded by the protocol guarantee.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # F1 — Lethal Trifecta

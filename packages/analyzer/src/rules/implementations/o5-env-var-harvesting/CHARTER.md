@@ -81,6 +81,9 @@ obsolescence:
     the MCP spec declares environment-variable access as a
     user-approved capability that the client enforces. Neither
     exists as of 2026-04.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # O5 — Environment Variable Harvesting

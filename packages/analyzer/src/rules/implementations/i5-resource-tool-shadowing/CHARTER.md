@@ -79,6 +79,9 @@ obsolescence:
     MCP specification mandates disjoint name spaces for tools and
     resources, OR major AI clients require an explicit disambiguation
     prompt when a user request could resolve to either surface.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # I5 — Resource-Tool Shadowing

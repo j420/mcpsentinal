@@ -109,6 +109,13 @@ obsolescence:
     MCP specification imposes a server-declared maximum tool-
     description length. Until both conditions hold, padding-based
     attention displacement remains a live attack vector.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # G4 — Context Window Saturation

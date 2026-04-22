@@ -108,6 +108,13 @@ obsolescence:
     dependency with an unpatched advisory. Under those conditions the
     D1 detector becomes redundant because an affected version can no
     longer reach a consumer's build environment.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # D1 — Known CVEs in Dependencies
