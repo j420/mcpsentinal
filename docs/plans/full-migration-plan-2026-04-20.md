@@ -41,17 +41,17 @@ _Per-chunk template: charter → v2 refactor → regex→structural → Location
 - [x] **1.5 — `k17-missing-timeout.ts` (K17)** — commit `02efd33`. Full v2 split; two-layer HTTP-client classification; AbortSignal scope walk; circuit-breaker dep mitigation.
 - [x] **1.6 — `k-compliance-v2.ts` (K12, K14, K16, K20)** — fully complete. **1.6a K12** (`965d67c`) → `k12-executable-content-response/`. **1.6b K14** (`eb3b97a`, PR #188) → `k14-agent-credential-propagation/` with credential-vocab taxonomy + shared-state sink analysis. **1.6c K16** (`431f0f1`, PR #185) → `k16-unbounded-recursion/` with Tarjan SCC call-graph + depth-guard + cycle-breaker + 3-kind recursion edge taxonomy (direct / mutual / tool-call / emit), charter-capped 0.88 confidence. **1.6d K20** (`e046197`, PR #186) → `k20-insufficient-audit-context/` with ISO 27001 A.8.15 five-group audit-skeleton classifier (correlation / identity / tool / timestamp / outcome), confidence cap 0.85. Only K12 remains in the legacy `k-compliance-v2.ts` scaffold file. Note: original plan description misidentified the contents of `k-compliance-v2.ts` — actual rules are K12/K14/K16/K20 (not K8/K10–K13/K18, which live in supply-chain detectors).
 - [x] **1.7 — `k-remaining-v2.ts` (K11, K13, K15, K18)** — commit `8dbed07` (PR #189) + fix `a4bfa06`. Migrated all four rules out of `k-remaining-v2.ts` into their own v2 dirs and deleted the legacy file: **K11** `k11-missing-server-integrity-verification/` (integrity-verification + signed-manifest coverage), **K13** `k13-unsanitized-tool-output/` (output-sanitiser taint chain), **K15** `k15-multi-agent-collusion-preconditions/` (cross-agent shared-state precondition graph), **K18** `k18-cross-trust-boundary-data-flow/` (trust-boundary taint with redactor/crypto-artifact vocabulary). Post-merge fix `a4bfa06` resolved a K18 infinite-loop in the fixed-point propagator (added kind-comparison idempotency + MAX_TAINT_ITERATIONS=32 cap) and a `jwt.sign()` false-positive (crypto-artifact producers added to redactor receiver vocabulary). Note: original plan description listed "K2, K3, K5, K14–K16, K19, K20" — actual contents of `k-remaining-v2.ts` were K11/K13/K15/K18.
-- [ ] **1.8 — `jsonrpc-protocol-v2.ts` (N4–N15)** — 32 regex → ≤8 via JSON-RPC schema validation
-- [ ] **1.9 — `l-supply-chain-v2.ts` (L1, L2, L6, L13)**
-- [ ] **1.10 — `advanced-supply-chain-detector.ts` (L1–L2, L6–L7, L13, K3, K5, K8)** — v1→v2; 20 regex to drop
+- [x] **1.8 — `jsonrpc-protocol-v2.ts` (N1, N2, N3, N7, N8, N10)** — wave-2 commits `4f7594d` (N1) + `9f6284b` (N2) + `4350e5e` (N3) + `547d2c2` (N7) + `946ec94` (N8) + `b3edef9` (N10) + `f9fb4d7` (delete legacy file + wire imports) + merge `81d5e0d` + v2 remediation `a098bab` (Location conversion + CVE-2025-6515/CWE-367/CWE-400 manifest entries + isLocation test assertions) + schema-align `bfc6d04` (minimum_chain dict + canonical location_kind). Rules rebadged to match YAML intent (N3 id-collision, N7 progress-token, N8 cancellation-race, N10 handshake DoS). N4–N6/N9/N11–N15 remain in `protocol-ai-runtime-detector.ts` for a later chunk. Built against stale-base initially → remediated parallel to wave-1 A6/A7/A9 pattern. Pre-existing K20 registration gap fixed in `e86a0aa` during cleanup.
+- [x] **1.9 — `advanced-supply-chain-detector.ts` (L1, L2, L6, L13)** — wave-2 commits `b095ba7` (L1) + `d804794` (L2) + `c34db82` (L6) + `64c3312` (L13) + `bfa0d3f` (tombstone L1/L2/L6/L13 classes, L7/K3/K5/K8 remain) + merge `5b9252f`. Four per-rule directories with zero regex literals, full v2 contract. CVE manifest extended: CVE-2026-27606 (Rollup path traversal, L2), CVE-2025-55155 (Shai-Hulud npm worm, L13); L1 cites already-present CVE-2025-30066. `advanced-supply-chain-detector.ts` net −601 lines.
+- [ ] **1.10 — `advanced-supply-chain-detector.ts` (L7, K3, K5, K8)** — remaining rules after 1.9 migration (L1/L2/L6/L13 removed).
 - [ ] **1.11 — `supply-chain-detector.ts` (L5, L12, K10)** — v1→v2
 - [ ] **1.12 — `docker-k8s-crypto-v2.ts` (P1–P6)**
 - [ ] **1.13 — `infrastructure-detector.ts` (P1–P7)** — split/merge decision vs 1.12
-- [ ] **1.14 — `secret-exfil-detector.ts` (L9, K2, G7)** — entropy-heavy
-- [ ] **1.15 — `config-poisoning-detector.ts` (J1, L4, L11, Q4)** — 19 regex; CVE-backed
+- [x] **1.14 — `secret-exfil-detector.ts` (L9, K2, G7)** — wave-2 commits `cc097c3` (L9) + `6460aee` (K2) + `2355f5d` (G7) + `b0ca925` (delete legacy file) + merge `e834b98`. Rolled own AST walker instead of `_shared/taint-rule-kit/` because the kit's positional `dangerous_args` model can't follow CVE-2025-30066's `fetch(url, {body: token})` object-property flow. CVE manifest extended: CVE-2024-52798 (path-to-regexp ReDoS, K2 pretext), CVE-2025-30066 also cited by L9. 45 tests pass. L9 uses a fixed-point taint-propagation loop through wrapper chains (`Buffer.from(x).toString("base64")`) and spreads.
+- [x] **1.15 — `config-poisoning-detector.ts` (J1, L4, L11, Q4)** — wave-2 commits `ed17d40` (J1) + `d7c8fbe` (L4) + `4a30744` (L11) + `afbe21a` (Q4) + `53e278c` (delete legacy file) + merge `c2159eb`. −44 regex literals + −1 `new RegExp`. J1 uses `_shared/taint-rule-kit/` with post-filter against typed `AGENT_CONFIG_TARGETS` registry (14 hosts attributed). L4/L11/Q4 are purely structural walkers. CVE manifest extended by 5: CVE-2025-54135 (Cursor CurXecute), CVE-2025-54136 (MCPoison), CVE-2025-59536 (Claude Code consent bypass), CVE-2025-59944 (case-sensitivity bypass), CVE-2026-21852 (API-key exfil via env override). 62 tests pass.
 - [x] **1.16 — `tainted-execution-detector.ts` (C4, C12, C13, C16, K9, J2)** — commits `ab813c7` (shared taint-rule-kit) + `e72e507` (C4) + `5245d38` (C12) + `ab7a6de` (C13) + `80ca4d4` (C16) + `6a965ea` (K9) + `c6d2779` (J2 + test updates) + `479f0ce` (delete tainted-execution-detector.ts) + `be5719f` (baseline/census). Every rule is in its own directory with CHARTER + sibling index + data/*.ts + __fixtures__ + __tests__. Zero regex in any of the six directories. Baseline -134 regex literals (853 → 720).
 - [x] **1.17 — `c1-command-injection.ts` (C1)** — commit `b8362ca`. (Note: commit message labelled this "chunk 1.2" — the plan's chunk 1.2 is K4; C1 is 1.17.)
-- [ ] **1.18 — `code-security-deep-detector.ts` (C2, C5, C10, C14)**
+- [x] **1.18 — `code-security-deep-detector.ts` (C2, C5, C10, C14)** — wave-2 commits `80e222a` (C2) + `ff3a0eb` (C5) + `c59fa26` (C10) + `88924f6` (C14) + `fce2507` (delete legacy file) + merge `a63c7c6`. −35 regex literals. C2 uses `_shared/taint-rule-kit/` (file-write sinks); C10 + C14 use rule-local AST walkers (prototype-pollution = property-write sinks; JWT = call-site options-shape). Introduced reusable `SecretFormatSpec` in `c5-hardcoded-secrets/data/secret-formats.ts` — typed `Record<string, { prefix, length, charset, checksum }>` designed for reuse by future F-/L-category opaque-token detectors. 14 concrete credential formats seeded. CVE manifest extended: CVE-2019-10744 (lodash defaultsDeep), CVE-2018-3721 (lodash merge), CVE-2022-21449 (ECDSA Psychic Signatures). 57 tests pass.
 - [ ] **1.19 — `code-remaining-detector.ts` (C3, C6–C9, C11, C15)**
 - [ ] **1.20 — `description-schema-detector.ts` (A1–A5, A8, B1–B7)** — charter must justify residual regex as "linguistic" technique
 - [x] **1.21 — `a6-unicode-homoglyph.ts` (A6, A7)** — commits `65d1f2e` + `a48b346` (sub-agent A, worktree-isolated) + `1b7bad6` (Location remediation). Full v2 split per rule: A6 + A7 live in separate directories. Initially shipped with prose-string locations; audit flagged the gap, remediated to structured `Location` kinds across all 35 link+target sites.
@@ -108,19 +108,37 @@ _Per-chunk template: charter → v2 refactor → regex→structural → Location
 
 ---
 
-## Completion summary (updated 2026-04-21, post wave-1)
+## Completion summary (updated 2026-04-22, post wave-2)
 
 | Phase | Done | Partial | Total | % |
 |---|---:|---:|---:|---:|
 | 0 | 5 | — | 5 | 100% |
-| 1 | 12 | 0 | 28 | 43% |
+| 1 | 17 | 0 | 28 | 61% |
 | 2 | 0 | — | 4 | 0% |
 | 3 | 0 | — | 3 | 0% |
 | 4 | 0 | — | 2 | 0% |
 | 5 | 0 | — | 4 | 0% |
-| **Total** | **17** | **0** | **46** | **37%** |
+| **Total** | **22** | **0** | **46** | **48%** |
 
-### Completed in wave 1 (branch `claude/phase-1/k-remaining-split`, 2026-04-21)
+### Completed in wave 2 (branch `claude/understand-codebase-WgIy1`, 2026-04-22)
+
+Five migration chunks delivered in parallel sub-agents plus an orchestrator integration + 1.8 remediation pass. Net delivered: **21 new v2 rule directories**, **5 legacy detector files deleted**, **+16 CVE manifest entries**, **+276 analyzer tests** (1791 → 2067 passing, 3 skipped). Strict-mode guards (`ANALYZER_STATIC_GUARD_STRICT=true` + `ANALYZER_CHARTER_GUARD_STRICT=true`) pass across all 45 v2 charters. Typecheck clean.
+
+| Chunk | Deliverable | Commit(s) |
+|---|---|---|
+| 1.8  | N1, N2, N3, N7, N8, N10 — six v2 splits + delete `jsonrpc-protocol-v2.ts` | `4f7594d`, `9f6284b`, `4350e5e`, `547d2c2`, `946ec94`, `b3edef9`, `f9fb4d7`, merge `81d5e0d`, remediation `a098bab`, schema-align `bfc6d04` |
+| 1.9  | L1, L2, L6, L13 — four v2 splits + tombstone in `advanced-supply-chain-detector.ts` | `b095ba7`, `d804794`, `c34db82`, `64c3312`, `bfa0d3f`, merge `5b9252f` |
+| 1.14 | L9, K2, G7 — three v2 splits + delete `secret-exfil-detector.ts` | `cc097c3`, `6460aee`, `2355f5d`, `b0ca925`, merge `e834b98` |
+| 1.15 | J1, L4, L11, Q4 — four v2 splits + delete `config-poisoning-detector.ts` | `ed17d40`, `d7c8fbe`, `4a30744`, `afbe21a`, `53e278c`, merge `c2159eb` |
+| 1.18 | C2, C5, C10, C14 — four v2 splits + delete `code-security-deep-detector.ts` | `80e222a`, `ff3a0eb`, `c59fa26`, `88924f6`, `fce2507`, merge `a63c7c6` |
+| orchestrator | reconcile `rules/index.ts` imports + fix K20 registration gap + N-CHARTER schema align + legacy test-block cleanup + census + regex-baseline | `e86a0aa`, `bfc6d04`, `57cc8d7`, `a3852ba` |
+
+### Wave-2 lessons (orchestration protocol addendum)
+
+1. **Stale-worktree-base lottery** — 2 of 5 fresh Agent-tool worktrees + both 1.9 respawns landed on a pre-Phase-0 base (`8c8673f`), one commit behind main. The Agent tool branches new worktrees from `origin/main`, not from the current local branch HEAD. Fast-forwarding local `main` doesn't help. Briefings must include explicit "if HEAD is stale, `git fetch origin <branch> && git rebase FETCH_HEAD`" rather than "STOP" — 1.8 self-rebased and succeeded; three 1.9 respawns correctly aborted per "stop" briefings before the 4th landed cleanly on `a7f1af4`.
+2. **v2-LITE output from stale-base work** — 1.8 sub-agent built CHARTERs + verification targets against the stale base (no `location.ts`, no `cve-manifest.json`, no `rule-standard-v2.md`), shipped prose `target: "source_code:line N:column M"` strings and skipped manifest entries, then self-rebased for the final commit. Parallel to wave-1 A6/A7/A9 audit pattern. Remediation commit `a098bab` converted targets to structured Location + added CVE/CWE manifest entries + added `isLocation` test assertions.
+3. **Forbidden-file exception (rules/index.ts)** — when a sub-agent deletes a legacy detector file, it MUST update `rules/index.ts` to remove the import, otherwise the build breaks. Three of five wave-2 agents (1.8, 1.14, 1.15) followed the chunk-1.16 precedent and touched the file anyway. The orchestrator cleanup commit is still responsible for the union of imports + any new per-rule imports agents skipped (1.18 and 1.9 both left rules/index.ts untouched; orchestrator added their imports in `e86a0aa`).
+4. **Orchestrator sub-agent timeout** — the orchestrator task ran for ~8 hours inside the Agent tool before the framework stopped writing to its transcript, with 15 files still uncommitted. Completion notification never arrived. Cleanup was finished in the parent session (commits `e86a0aa`/`bfc6d04`/`57cc8d7`/`a3852ba`). For wave 3+: scope orchestrator agents tighter (single task per spawn) or run integration in-session.
 
 Five PRs merged in parallel + one hardening fix + one tombstone cleanup. Net delivered: 13 new v2 rule directories (full CHARTER + gather + verification + index + data + fixtures + tests each), two legacy files deleted (`tainted-execution-detector.ts`, `k-remaining-v2.ts`), regex literals 853 → 653 (−200, −23%). All 1791 analyzer tests green; strict-mode guards pass.
 
