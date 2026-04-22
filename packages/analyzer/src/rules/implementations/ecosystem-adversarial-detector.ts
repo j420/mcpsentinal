@@ -27,78 +27,7 @@ function lineNum(s: string, i: number) { return s.substring(0, i).split("\n").le
 
 // F5 migrated to f5-official-namespace-squatting/ in Phase 1 Chunk 1.26.
 
-// ─── G6: Rug Pull / Tool Behavior Drift ──────────────────────────────────
-
-registerTypedRule({
-  id: "G6", name: "Rug Pull / Tool Behavior Drift",
-  analyze(ctx) {
-    // G6 requires historical data — previous scan results
-    // When no history is available, flag based on tool count / capability heuristics
-    const findings: TypedFinding[] = [];
-
-    // Check if scan_history is available via context metadata
-    const history = (ctx as unknown as Record<string, unknown>).scan_history as
-      | Array<{ tool_count: number; tool_names: string[]; scan_date: string }> | undefined;
-
-    if (!history || history.length < 2) return findings;
-
-    const current = history[history.length - 1];
-    const previous = history[history.length - 2];
-
-    const toolCountDelta = current.tool_count - previous.tool_count;
-    const newTools = current.tool_names.filter(t => !previous.tool_names.includes(t));
-
-    if (toolCountDelta > 5 || newTools.length > 3) {
-      // Check if new tools are dangerous
-      const dangerousNewTools = newTools.filter(t =>
-        /(?:exec|run|shell|command|delete|remove|send|upload|write|admin)/i.test(t)
-      );
-
-      if (dangerousNewTools.length > 0) {
-        const g6Chain = new EvidenceChainBuilder()
-          .source({
-            source_type: "external-content",
-            location: `server:${ctx.server.name}:tools`,
-            observed: `${newTools.length} new tools added: [${newTools.slice(0, 5).join(", ")}${newTools.length > 5 ? "..." : ""}]`,
-            rationale: "Sudden tool additions after stable scan history indicate possible rug pull / behavior drift",
-          })
-          .propagation({
-            propagation_type: "cross-tool-flow",
-            location: `server:${ctx.server.name}:scan_history`,
-            observed: `Tool count: ${previous.tool_count} → ${current.tool_count} (delta: +${toolCountDelta})`,
-          })
-          .sink({
-            sink_type: "command-execution",
-            location: `server:${ctx.server.name}:new_tools`,
-            observed: `Dangerous new tools: [${dangerousNewTools.join(", ")}]`,
-          })
-          .factor("temporal_drift", 0.18, `${dangerousNewTools.length} dangerous tools added in single scan window`)
-          .verification({
-            step_type: "inspect-description",
-            instruction: `Compare current tool list against previous scan for server "${ctx.server.name}"`,
-            target: `server:${ctx.server.name}`,
-            expected_observation: `New dangerous tools [${dangerousNewTools.join(", ")}] appeared since last scan`,
-          })
-        const g6Signals = computeToolSignals(ctx, "MCP02-tool-poisoning", dangerousNewTools[0] || "");
-        for (const sig of g6Signals) {
-          g6Chain.factor(sig.factor, sig.adjustment, sig.rationale);
-        }
-        const g6Built = g6Chain.build();
-        findings.push({
-          rule_id: "G6", severity: "critical",
-          evidence:
-            `Tool behavior drift: ${newTools.length} new tools since last scan, including dangerous: [${dangerousNewTools.join(", ")}]. ` +
-            `Total tools: ${previous.tool_count} → ${current.tool_count}. Possible rug pull.`,
-          remediation: "Investigate sudden tool additions. Review new dangerous tools. Consider reverting to previous version.",
-          owasp_category: "MCP02-tool-poisoning", mitre_technique: "AML.T0054",
-          confidence: g6Built.confidence, metadata: { new_tools: newTools, dangerous_new: dangerousNewTools, delta: toolCountDelta, evidence_chain: g6Built },
-        });
-      }
-    }
-
-    return findings;
-  },
-});
+// G6 migrated to g6-rug-pull-tool-drift/ in Phase 1 Chunk 1.26.
 
 // ─── H1: MCP OAuth 2.0 Insecure Implementation ───────────────────────────
 
