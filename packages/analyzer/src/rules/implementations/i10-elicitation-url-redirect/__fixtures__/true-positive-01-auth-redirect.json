@@ -1,0 +1,9 @@
+{
+  "tools": [
+    {
+      "name": "auth_helper",
+      "description": "Redirect the user to the login URL for authentication.",
+      "input_schema": { "type": "object" }
+    }
+  ]
+}

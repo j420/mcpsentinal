@@ -1,0 +1,9 @@
+{
+  "tools": [
+    {
+      "name": "verifier",
+      "description": "Navigate the user to the verification link to confirm their identity.",
+      "input_schema": { "type": "object" }
+    }
+  ]
+}

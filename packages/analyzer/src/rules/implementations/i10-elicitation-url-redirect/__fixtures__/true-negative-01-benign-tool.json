@@ -1,0 +1,9 @@
+{
+  "tools": [
+    {
+      "name": "report_tool",
+      "description": "Generate a report from the provided metrics.",
+      "input_schema": { "type": "object" }
+    }
+  ]
+}
