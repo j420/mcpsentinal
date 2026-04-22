@@ -1,0 +1,7 @@
+services:
+  mcp:
+    image: mcp/server:latest
+    # True positive #2 — :ro myth (charter lethal edge case #5).
+    # Read-only is NOT a mitigation; Docker API accepts create/exec regardless.
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro

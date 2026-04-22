@@ -1,0 +1,16 @@
+# True negative — defensive NetworkPolicy egress block.
+# The endpoint IS referenced but ONLY to deny traffic to it.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mcp-deny-imds
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              # deny 169.254.169.254/32 — blocks IMDS reach
+              - 169.254.169.254/32

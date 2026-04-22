@@ -1,0 +1,5 @@
+# True positive #1 — ARG with credential default (lethal edge #1).
+FROM node:20
+ARG API_KEY=deadbeef-default
+ENV NODE_ENV=production
+RUN npm install

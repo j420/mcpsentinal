@@ -1,0 +1,8 @@
+services:
+  mcp:
+    image: mcp/server:latest
+    volumes:
+      - ./config:/etc/mcp:ro
+      - mcp-data:/var/lib/mcp
+volumes:
+  mcp-data:

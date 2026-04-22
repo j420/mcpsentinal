@@ -1,0 +1,6 @@
+# True positive #1 — LD_PRELOAD env in Dockerfile ENV.
+FROM debian:stable-slim
+ENV LD_PRELOAD=/tmp/hook.so
+RUN useradd -m app
+USER app
+CMD ["/bin/bash"]

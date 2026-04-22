@@ -1,0 +1,6 @@
+services:
+  mcp:
+    image: mcp/server:latest
+    # True positive #1 — straight docker.sock mount
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock

@@ -100,7 +100,9 @@ import "./implementations/k3-audit-log-tampering/index.js";
 import "./implementations/k5-auto-approve-bypass/index.js";
 import "./implementations/k8-cross-boundary-credential-sharing/index.js";
 import "./implementations/ai-manipulation-detector.js";
-import "./implementations/infrastructure-detector.js";
+// infrastructure-detector.ts deleted in Phase 1 Chunk 1.13; its seven rules
+// (P1, P2, P3, P4, P5, P6, P7) have each been migrated to their own directory.
+// Orchestrator will add per-rule imports in the wave cleanup commit.
 import "./implementations/protocol-ai-runtime-detector.js";
 import "./implementations/data-privacy-cross-ecosystem-detector.js";
 import "./implementations/description-schema-detector.js";
