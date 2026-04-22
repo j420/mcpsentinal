@@ -110,6 +110,7 @@ import "./implementations/f4-mcp-spec-non-compliance/index.js";
 import "./implementations/f5-official-namespace-squatting/index.js";
 import "./implementations/g6-rug-pull-tool-drift/index.js";
 import "./implementations/h1-oauth-insecure-implementation/index.js";
+import "./implementations/h3-multi-agent-propagation-risk/index.js";
 import "./implementations/protocol-surface-remaining-detector.js";
 import "./implementations/k1-absent-structured-logging/index.js";
 import "./implementations/k4-missing-human-confirmation/index.js";
