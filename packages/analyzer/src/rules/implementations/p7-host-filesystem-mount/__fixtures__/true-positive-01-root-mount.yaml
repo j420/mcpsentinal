@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mcp-root-mount
+spec:
+  containers:
+    - name: mcp
+      image: mcp/server:latest
+      volumeMounts:
+        - name: host
+          mountPath: /host
+  volumes:
+    - name: host
+      # True positive #1 — full host root mount.
+      hostPath:
+        path: /

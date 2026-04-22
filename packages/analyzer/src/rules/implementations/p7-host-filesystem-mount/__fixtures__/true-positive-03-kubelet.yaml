@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mcp-kubelet-creds
+spec:
+  containers:
+    - name: mcp
+      image: mcp/server:latest
+      volumeMounts:
+        - name: kubelet
+          mountPath: /kubelet
+  volumes:
+    - name: kubelet
+      # True positive #3 — kubelet credentials (lethal edge #5).
+      hostPath:
+        path: /var/lib/kubelet

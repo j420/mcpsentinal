@@ -1,0 +1,6 @@
+services:
+  mcp:
+    image: mcp/server:latest
+    # True positive #2 — /etc mount with :ro (lethal edge #4: read-only NOT a mitigation).
+    volumes:
+      - /etc:/host-etc:ro
