@@ -154,7 +154,11 @@ obsolescence:
     constraints on `serverInfo.name` (identifier shape), `version`
     (semver), and `instructions` (max length + content policy) that
     make arbitrary text injection structurally impossible. Neither
-    is current as of 2026-04.
+    is current as of 2026-04. Authority-directive catalogue is
+    English-only (see docs/standards/linguistic-rule-gaps.md) — the
+    Unicode / LLM-special-token / base64 signals in H2 are
+    language-agnostic and unaffected; only the directive-phrase
+    catalogue needs Phase 2+ expansion.
 ---
 
 # H2 — Prompt Injection in MCP Initialize Response Fields

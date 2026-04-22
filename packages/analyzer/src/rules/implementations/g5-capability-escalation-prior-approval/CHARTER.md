@@ -132,6 +132,8 @@ obsolescence:
     `required_permissions[]` field per tool that the client authoritatively
     compares against a session's actually-granted scope list, making any
     in-description permission claim structurally ineffective.
+    English-only catalogue (see docs/standards/linguistic-rule-gaps.md) —
+    Phase 2+ expansion will broaden language coverage.
 ---
 
 # G5 — Capability Escalation via Prior Approval

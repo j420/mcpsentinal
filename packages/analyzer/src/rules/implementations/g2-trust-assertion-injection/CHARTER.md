@@ -116,7 +116,9 @@ obsolescence:
     descriptions before model ingestion, OR the MCP spec requires
     trust attestations to come from a signed, external provenance
     record (not free-form prose). Neither is current as of
-    2026-04-22.
+    2026-04-22. English-only catalogue (see
+    docs/standards/linguistic-rule-gaps.md) — Phase 2+ expansion will
+    broaden language coverage.
 ---
 
 # G2 — Trust Assertion Injection
