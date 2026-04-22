@@ -2,7 +2,7 @@
 
 ## What This Directory Contains
 
-177 detection rule definitions across 17 categories (A–Q). The YAML files define rule **metadata** (id, name, severity, OWASP/MITRE mappings, test cases). The actual detection logic lives in **TypeScript** inside `packages/analyzer/`. YAML is the rule registry; TypeScript is the detection engine.
+177 YAML rule definitions across 17 categories (A–Q) — **164 active, 13 retired** (`enabled: false`). The YAML files define rule **metadata** only (id, name, severity, OWASP/MITRE mappings, remediation, test cases). Every active rule declares `detect.type: typed`. All detection logic lives in **TypeScript** `TypedRuleV2` classes under `packages/analyzer/src/rules/implementations/<rule-id>/`. YAML is the rule registry; TypeScript is the detection engine. The v1 `TypedRule` interface and the four legacy YAML dispatchers (`runRegexRule`, `runSchemaCheckRule`, `runBehavioralRule`, `runCompositeRule`) were removed in Phase 1 chunk 1.28.
 
 ## Before You Start
 
@@ -20,8 +20,7 @@ severity: critical                        # critical | high | medium | low | inf
 owasp: MCP03-command-injection            # OWASP MCP Top 10 ID (MCP01–MCP10) or null
 mitre: AML.T0054                          # MITRE ATLAS technique ID or null
 detect:
-  type: typed                             # Detection logic lives in TypeScript (see below)
-  engine: code-analyzer                   # Which specialized engine handles this rule
+  type: typed                             # REQUIRED. Detection logic lives in TypeScript — this is the only valid value.
 remediation: "Replace exec() with..."     # Actionable fix — REQUIRED, never leave empty
 test_cases:
   true_positive:                          # Minimum 2 required
@@ -33,7 +32,7 @@ test_cases:
 enabled: true                             # Set false to disable without deleting
 ```
 
-**Note:** Legacy rules may still have `detect.type: regex` with `patterns` arrays. These are technical debt. All new rules MUST use TypeScript implementations. Existing regex rules should be migrated to TypeScript when touched.
+**Note:** Every active rule YAML MUST declare `detect.type: typed`. The legacy `detect.type: regex` / `schema-check` / `behavioral` / `composite` values are no longer interpreted — their dispatchers were removed from the engine in chunk 1.28.
 
 ## Valid Categories
 
@@ -79,19 +78,21 @@ The 13 risk domains are derived from cross-referencing 6 compliance frameworks (
 
 Migration priority 1 = migrate first (EU AI Act deadline-driven), 10 = migrate last.
 
-## Valid Context Types (for `detect.context`)
+## AnalysisContext Surfaces (read directly from TypedRuleV2)
 
-| Context | What Gets Scanned | Used By |
+The `detect.context` YAML field is no longer interpreted (it was used by the removed `runRegexRule` dispatcher). `TypedRuleV2` implementations read directly from the structured `AnalysisContext`. For reference, the conceptual surfaces historical rules drew from map to these context fields:
+
+| Conceptual Surface | Where It Lives on `AnalysisContext` | Used By |
 |---|---|---|
-| `tool_description` | Each tool's `name + " " + description` | A1–A9, G2, G3, G5, J6 |
-| `parameter_description` | Parameter-level `description` fields inside `input_schema` | B5 |
-| `parameter_schema` | Stringified `input_schema` + `output_schema` | B2, J3 |
-| `source_code` | Concatenated source code string | C1–C16, H1, J1–J5, J7, K1–K20, L–Q |
-| `metadata` | Server `name + description` + all tool names | A3, A4 |
-| `server_initialize_fields` | `serverInfo.name + version + instructions` from initialize handshake | H2 |
-| `resource_metadata` | Resource URIs + names + descriptions | I3 |
-| `prompt_metadata` | Prompt names + descriptions + argument names | I6 |
-| `tool_annotations` | Serialized annotation objects (readOnlyHint, destructiveHint, etc.) | I1, I2 |
+| Tool description | `context.tools[i].name` + `context.tools[i].description` | A1–A9, G2, G3, G5, J6 |
+| Parameter descriptions | `context.tools[i].input_schema.properties[*].description` | B5 |
+| Parameter schema | `context.tools[i].input_schema` + `output_schema` | B2, J3 |
+| Source code | `context.source_code` | C1–C16, H1, J1–J5, J7, K1–K20, L–Q |
+| Server metadata | `context.server.name` + `context.server.description` + tool names | A3, A4 |
+| Initialize fields | `context.initialize_metadata.server_version` + `.server_instructions` | H2 |
+| Resource metadata | `context.resources[i]` | I3 |
+| Prompt metadata | `context.prompts[i]` | I6 |
+| Tool annotations | `context.tools[i].annotations` | I1, I2 |
 
 ## Valid Severity Values and Scoring Impact
 
@@ -105,17 +106,17 @@ Migration priority 1 = migrate first (EU AI Act deadline-driven), 10 = migrate l
 
 ## Detect Types
 
-| `detect.type` | Where Logic Lives | When to Use |
+| `detect.type` | Where Logic Lives | Status |
 |---|---|---|
-| `typed` | `packages/analyzer/src/rules/implementations/` | **ALL new rules.** TypeScript class implementing `TypedRule` interface. |
-| `composite` | `runCompositeRule()` in `engine.ts` | Multi-signal detection requiring cross-tool, cross-field, or historical analysis. 28+ check types already exist. |
-| `schema-check` | `runSchemaCheckRule()` in `engine.ts` | Structural validation of tool schemas (parameter counts, constraints, dangerous defaults). |
-| `behavioral` | `runBehavioralRule()` in `engine.ts` | Connection-time and temporal analysis (auth, transport, response timing, capability drift). |
-| `regex` | **BANNED for new rules.** Legacy only. | Existing regex rules are technical debt to be migrated. |
+| `typed` | `packages/analyzer/src/rules/implementations/<rule-id>/` | **The only supported value.** TypeScript class implementing `TypedRuleV2`, registered via `registerTypedRuleV2`. |
+| `regex` / `composite` / `schema-check` / `behavioral` | — | **Removed in chunk 1.28.** The four YAML dispatchers were deleted from `engine.ts`. Any YAML still declaring these values is broken and must be migrated. |
 
-## ABSOLUTE RULE: No YAML Regex — TypeScript Only
+## ABSOLUTE RULE: No YAML Regex, No Regex Literals in `src/rules/`
 
-**Do NOT write detection logic as YAML regex patterns. Period.**
+**Do NOT write detection logic as YAML regex patterns. Do NOT put regex literals or long string-array constants inside `src/rules/`.** Two CI guards enforce this, and as of chunk 1.28 they are **always-fail** (previously warn-only during the migration waves):
+
+- `__tests__/no-static-patterns.test.ts` — rejects regex literals and string arrays with more than ~5 entries inside `src/rules/`
+- `__tests__/charter-traceability.test.ts` — rejects rules whose `index.ts` disagrees with `CHARTER.md` on rule id, threat refs, or declared edge-case strategies
 
 YAML regex is fundamentally inadequate for security detection:
 - It matches strings, not code structure — fires on comments, string literals, documentation, safe wrappers
@@ -124,11 +125,11 @@ YAML regex is fundamentally inadequate for security detection:
 - It produces unacceptable false positive rates that destroy user trust
 - It is unmaintainable — complex regex in YAML is unreadable, untestable, and fragile
 
-**Every new rule MUST have a TypeScript implementation.** The YAML file defines metadata only (id, name, severity, OWASP/MITRE, test cases). The detection algorithm lives in TypeScript where it has access to real analysis techniques.
+**Every rule MUST have a `TypedRuleV2` implementation.** The YAML file defines metadata only (id, name, severity, OWASP/MITRE, remediation, test cases, `detect.type: typed`). The detection algorithm lives in TypeScript where it has access to real analysis techniques.
 
 ### How to implement detection for a new rule
 
-Write a TypeScript class in `packages/analyzer/src/rules/implementations/{id}-{name}.ts` implementing the `TypedRule` interface. You have access to the full analysis toolkit:
+Follow the full Rule Standard v2 briefing template in `agent_docs/sub-agent-orchestration.md`. At a glance: each rule is its own directory `packages/analyzer/src/rules/implementations/{id}-{kebab-name}/` containing `CHARTER.md` + `gather.ts` + `verification.ts` + `index.ts` (the `TypedRuleV2` class + `registerTypedRuleV2` call) + `data/*.ts` + `__fixtures__/` + `__tests__/index.test.ts`. Reference implementation: `k1-absent-structured-logging/`. You have access to the full analysis toolkit:
 
 **Code Analysis Techniques:**
 - **AST parsing** (tree-sitter) — Walk syntax trees, inspect node types, understand code structure. See `c1-command-injection.ts`.
@@ -158,31 +159,30 @@ Write a TypeScript class in `packages/analyzer/src/rules/implementations/{id}-{n
 | Detect capability drift over time | Cryptographic fingerprinting: SHA-256 tool pins with field-level diff, threshold-based alerting |
 | Detect dangerous capability combinations | Capability graph: model read/write/execute/network as directed edges, detect lethal patterns via graph traversal |
 
-### Migrating existing regex rules
+### Legacy regex rules (historical note)
 
-When touching an existing rule that uses `detect.type: regex`, migrate it:
-1. Create a TypeScript implementation in `packages/analyzer/src/rules/implementations/`
-2. Register it in `packages/analyzer/src/rules/index.ts`
-3. Update the YAML `detect.type` to `typed`
-4. Remove the `patterns` and `context` fields from the YAML
-5. Verify with red-team fixtures that precision improves or stays the same
+All active rules were migrated to `TypedRuleV2` before chunk 1.28, which then deleted the YAML dispatchers. If you encounter a rule YAML still declaring `detect.type: regex` (or `composite` / `schema-check` / `behavioral`), it is broken and must be migrated to a `TypedRuleV2` directory following the Rule Standard v2 briefing template. The engine no longer dispatches those types.
 
 ## Naming Convention
 
-Files are named `{ID}-{kebab-case-name}.yaml`:
+YAML files are named `{ID}-{kebab-case-name}.yaml`:
 - `A1-prompt-injection.yaml`
 - `C10-prototype-pollution.yaml`
 - `K20-insufficient-audit-context.yaml`
 
+TypedRuleV2 rule directories match: `packages/analyzer/src/rules/implementations/{id-lowercased}-{kebab-case-name}/` (e.g. `k1-absent-structured-logging/`).
+
 ## Adding a New Rule — Checklist
 
+The authoritative, step-by-step briefing is `agent_docs/sub-agent-orchestration.md` (the per-agent briefing template). Summary of YAML-side obligations:
+
 1. Pick the next ID in the appropriate category (e.g., if last is K20, next is K21)
-2. Create `rules/{ID}-{kebab-case-name}.yaml` with ALL required fields
-3. Write minimum 2 true positive + 2 true negative test cases
-4. If `detect.type` is `composite` or `behavioral`, verify the handler exists in `packages/analyzer/src/engine.ts` — these require engine support
-5. If using a new `context` value, it must be added to `getTextsForContext()` in the engine
-6. Run `tools/scripts/validate-rules.sh` to validate structure
-7. Run `pnpm test --filter=analyzer` to verify rule loads and fires correctly
+2. Create `rules/{ID}-{kebab-case-name}.yaml` with ALL required fields and `detect.type: typed`
+3. Write minimum 2 true-positive + 2 true-negative metadata test cases (narratives only; the real fixtures live in the rule's `__fixtures__/` directory)
+4. Create the matching TypedRuleV2 directory under `packages/analyzer/src/rules/implementations/` per the Rule Standard v2 contract — see `agent_docs/sub-agent-orchestration.md`
+5. Run `tools/scripts/validate-rules.sh` to validate YAML structure
+6. Run the rule's own test file only — NOT the full analyzer suite (see the allowed test commands in `agent_docs/sub-agent-orchestration.md`)
+7. Run the strict guards locally: `ANALYZER_STATIC_GUARD_STRICT=true pnpm --filter=@mcp-sentinel/analyzer vitest run __tests__/no-static-patterns.test.ts __tests__/charter-traceability.test.ts`
 8. Add red-team fixtures in `packages/red-team/src/fixtures/` for the new rule's category
 9. Run `pnpm red-team --rule {ID}` to verify precision/recall
 10. Update `agent_docs/detection-rules.md` with the new rule entry
@@ -191,8 +191,9 @@ Use the `/add-detection-rule` skill for a guided walkthrough.
 
 ## What NOT to Do
 
-- **Do NOT write YAML regex patterns for new rules.** This is the single most important rule in this file. All detection logic must be implemented in TypeScript. No exceptions.
-- Do NOT create rules with `detect.type: composite` or `detect.type: behavioral` unless the composite/behavioral check already exists in the engine. These require corresponding TypeScript handlers.
+- **Do NOT write YAML regex patterns. Do NOT add regex literals or long string-array constants to `src/rules/`.** The `no-static-patterns` and `charter-traceability` guards are always-fail — violations break CI.
+- Do NOT declare `detect.type: composite` / `schema-check` / `behavioral` / `regex` in YAML — those dispatchers were removed in chunk 1.28. Only `detect.type: typed` is interpreted.
+- Do NOT touch `packages/analyzer/src/rules/index.ts` from a rule PR — the orchestrator adds imports during the wave cleanup commit.
 - Do NOT omit `remediation` — findings without remediation are useless to users.
 - Do NOT omit `test_cases` — the post-edit hook and CI will reject rules without them.
 - Do NOT use severity `critical` unless the finding represents a directly exploitable vulnerability. Overuse of critical dilutes scoring.

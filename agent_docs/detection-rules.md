@@ -1,7 +1,7 @@
 # MCP Sentinel — Detection Rules Specification
 ## P8 Detection Rule Engineer Output — v4.0 (with P1 Threat Intelligence + 2026 Attack Surface)
 
-> **Note:** All 164 active rules have TypedRule implementations in TypeScript. The Engine Implementation Status tables below show legacy `runRegexRule` / `runCompositeRule` / `runBehavioralRule` handlers — these are the YAML fallback path. **TypedRule dispatch takes precedence.** When a rule has both a TypedRule registration and a YAML `detect` config, the engine uses the TypedRule (which produces structured evidence chains with confidence scoring). Zero YAML regex patterns remain in active rules. The 13 retired rules have `enabled: false` in their YAML files and their TypedRule registrations have been removed from the engine.
+> **Note:** All 164 active rules are `TypedRuleV2` implementations with mandatory `EvidenceChain`. The Engine Implementation Status tables below are **historical** — they document which detection approach each rule uses, but the legacy YAML dispatchers (`runRegexRule`, `runSchemaCheckRule`, `runBehavioralRule`, `runCompositeRule`) were deleted from `packages/analyzer/src/engine.ts` in Phase 1 chunk 1.28 (2026-04-22) along with the v1 `TypedRule` interface and `V1RuleAdapter`. Every row in those tables is now served by a `TypedRuleV2` registered via `registerTypedRuleV2`. Every active rule's YAML declares `detect.type: typed`. Zero YAML regex patterns and zero regex literals remain in rule authoring; the `no-static-patterns` and `charter-traceability` CI guards are always-fail. The 13 retired rules have `enabled: false` in their YAML files and no registration in the engine.
 
 ### Risk Domain Categories (Framework-Driven)
 
