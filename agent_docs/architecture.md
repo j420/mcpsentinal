@@ -19,10 +19,10 @@
 - Decision: Shared Zod schemas define the data contract between pipeline stages.
 - Rationale: Runtime validation + TypeScript types from single source. Catches data quality issues at stage boundaries.
 
-**ADR-005: YAML metadata + TypeScript TypedRules**
-- Decision: YAML files in rules/ define metadata only (id, severity, owasp, mitre, remediation, test_cases). All detection logic lives in TypeScript TypedRule implementations in `packages/analyzer/src/rules/implementations/`.
-- Rationale: TypeScript enables AST taint analysis, capability graph algorithms, entropy scoring, and structural parsing — techniques impossible in YAML regex. All rules migrated to TypedRules. 164 active (13 retired due to high FP rates).
-- History: Originally YAML regex (v0.1). Migrated to TypedRules (v0.2). Zero YAML regex patterns remain.
+**ADR-005: YAML metadata + `TypedRuleV2` implementations (Rule Standard v2)**
+- Decision: YAML files in `rules/` define rule metadata only (id, name, severity, owasp, mitre, remediation, test_cases, `detect.type: typed`). All detection logic lives in `TypedRuleV2` implementations under `packages/analyzer/src/rules/implementations/<rule-id>/`. Each rule is a directory conforming to the Rule Standard v2 contract: `CHARTER.md` (≤120 lines, ≥3 lethal edge cases, `interface_version: "2.0"`, `evidence_contract` declared) + `gather.ts` (deterministic fact collection) + `verification.ts` (named `VerificationStep` factories) + `index.ts` (the `TypedRuleV2` class, registered via `registerTypedRuleV2` at module load) + `data/*.ts` (typed vocabulary / target-lookup tables) + `__fixtures__/` (≥3 true-positive + ≥2 true-negative TypeScript files) + `__tests__/index.test.ts`.
+- Rationale: deterministic AST taint analysis, capability graph algorithms, Shannon entropy, structural parsing, and linguistic pattern scoring — all techniques impossible in YAML regex. Every finding carries a mandatory `EvidenceChain` (source → propagation\* → sink → mitigation → impact) rendered into a human-readable `evidence` string. Confidence is declared per rule in its CHARTER and capped from the implementation. Two always-fail CI guards (`__tests__/no-static-patterns.test.ts` and `__tests__/charter-traceability.test.ts`) prevent regex literals, long string-array constants, and CHARTER/implementation drift inside `src/rules/`.
+- Post-cutover state (Phase 1 Chunk 1.28, 2026-04-22): the v1 `TypedRule` interface, the `V1RuleAdapter`, and the four legacy YAML detection-type dispatchers (`runRegexRule`, `runSchemaCheckRule`, `runBehavioralRule`, `runCompositeRule`) have been removed from `packages/analyzer/src/engine.ts`. Every active rule's YAML declares `detect.type: typed` and has a matching `TypedRuleV2` registered via `registerTypedRuleV2`. Zero regex literals remain in rule authoring, and the static-pattern + charter-traceability guards are now always-fail in CI (previously warn-only during the migration waves).
 
 **ADR-006: No LLM in v1 — all analysis is deterministic**
 - Decision: No LLM API calls in v1. All detection is AST taint analysis, capability graph algorithms, Shannon entropy, structural parsing, and linguistic pattern scoring.
@@ -47,7 +47,7 @@
 - Reproducibility: every prompt + response + model + temperature + token counts is persisted to `compliance_agent_runs` (append-only per ADR-008). Auditors can replay any compliance scan by re-running the cached prompts.
 - Confidence cap: LLM-derived findings are capped at confidence 0.85 (vs 0.99 for deterministic rules) and tagged `analysis_technique: 'llm-reasoning'`.
 - Default mode: compliance scans default to `MockLLMClient` (recorded responses keyed by cache_key). The live Anthropic SDK client is only invoked with `--live` and a valid `ANTHROPIC_API_KEY`.
-- Enforcement: only files under `packages/compliance-agents/src/llm/` may import the Anthropic SDK. Two CI guards (`__tests__/no-static-patterns.test.ts` and `__tests__/charter-traceability.test.ts`) enforce the dual-persona authoring protocol — no regex literals or long string-array constants in `src/rules/`, and every rule's CHARTER.md must agree with its TypeScript implementation on rule id, threat refs, and edge-case strategies.
+- Enforcement: only files under `packages/compliance-agents/src/llm/` may import the Anthropic SDK. Two CI guards (`__tests__/no-static-patterns.test.ts` and `__tests__/charter-traceability.test.ts`) enforce the dual-persona authoring protocol — no regex literals or long string-array constants in `src/rules/`, and every rule's CHARTER.md must agree with its TypeScript implementation on rule id, threat refs, and edge-case strategies. As of Phase 1 chunk 1.28 both guards are always-fail (previously warn-only during the migration waves).
 
 ---
 
@@ -143,14 +143,12 @@
 
 **Stage 3: Analysis (packages/analyzer)**
 - Input: Server record with tools, parameters, source code (if available)
-- Process: Two-phase analysis:
-  1. **Specialized engines** (DescriptionAnalyzer, CodeAnalyzer, SchemaAnalyzer, DependencyAnalyzer, ProtocolAnalyzer) run first for rules they own
-  2. **TypedRule dispatch** for rules not covered by engines — 164 active TypedRules using AST taint, capability graph, entropy, structural parsing (13 retired)
-- Companion rule pattern: Some parent rules emit findings for multiple rule IDs (e.g. F1→F2/F3/F6, I1→I2, L5→L14). Companion rules are registered as stubs returning `[]` to prevent engine warnings — the parent rule produces their findings during its own analysis.
-- Output: `Finding[]` → findings table (with confidence scores 0.0-1.0)
+- Process: single-path dispatch. Five specialized engines (`DescriptionAnalyzer`, `CodeAnalyzer`, `SchemaAnalyzer`, `DependencyAnalyzer`, `ProtocolAnalyzer`) under `src/engines/` cover rule categories where cross-rule shared infrastructure is economical; the remaining 164 active rules are `TypedRuleV2` classes under `src/rules/implementations/<rule-id>/` that the engine dispatches directly. There is no YAML fallback — the legacy `runRegexRule` / `runSchemaCheckRule` / `runBehavioralRule` / `runCompositeRule` dispatchers were removed in chunk 1.28.
+- Companion rule pattern: Some parent rules emit findings for multiple rule IDs (e.g. F1→F2/F3/F6, I1→I2, L5→L14). Companion rules are registered as stubs returning `[]` so engine dispatch stays warning-free — the parent rule produces their findings during its own analysis.
+- Output: `Finding[]` → findings table. Every finding carries an `EvidenceChain` (source → propagation\* → sink → mitigation → impact) persisted on `metadata.evidence_chain` and rendered as the `evidence` string. Confidence is in `[0.0, 1.0]` and capped at 0.85 for LLM-derived findings per ADR-009.
 - Error handling: Per-rule error isolation (one rule failing doesn't stop others)
-- Data quality: Every finding must have rule_id, evidence, remediation, confidence
-- Analysis infrastructure: `taint-ast.ts` (803 lines), `taint.ts` (676 lines), `capability-graph.ts` (761 lines), `module-graph.ts` (826 lines), `entropy.ts` (449 lines), `similarity.ts` (477 lines)
+- Data quality: Every finding must have `rule_id`, `evidence`, `remediation`, `confidence`, and an `evidence_chain`
+- Analysis infrastructure: `taint-ast.ts`, `taint.ts`, `capability-graph.ts`, `module-graph.ts`, `entropy.ts`, `similarity.ts`, plus the Rule Standard v2 primitives (`EvidenceChainBuilder`, `VerificationStep`, `Location`, `_shared/` factories)
 
 **Stage 4: Scoring (packages/scorer)**
 - Input: Findings for a server
