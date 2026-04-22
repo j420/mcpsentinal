@@ -89,7 +89,6 @@ import "./implementations/advanced-supply-chain-detector.js";
 import "./implementations/protocol-ai-runtime-detector.js";
 import "./implementations/data-privacy-cross-ecosystem-detector.js";
 import "./implementations/description-schema-detector.js";
-import "./implementations/code-remaining-detector.js";
 import "./implementations/dependency-behavioral-detector.js";
 import "./implementations/ecosystem-adversarial-detector.js";
 import "./implementations/protocol-surface-remaining-detector.js";
