@@ -97,6 +97,9 @@ obsolescence:
     Docker removes legacy ARG / ENV support AND every registry enforces
     docker-history-scanning at push time. Neither is on the near-term
     roadmap; until both land, this rule remains front-line.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # P5 — Secrets in Container Build Layers

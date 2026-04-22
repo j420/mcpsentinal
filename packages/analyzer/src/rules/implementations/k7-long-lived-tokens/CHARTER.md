@@ -131,6 +131,13 @@ obsolescence:
     27001 A.8.24 is superseded by a control that accepts indefinite-
     lifetime tokens paired with real-time revocation (a direction neither
     the spec nor the compliance regime is currently taking).
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # K7 — Long-Lived Tokens Without Rotation

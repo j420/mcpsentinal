@@ -73,6 +73,13 @@ obsolescence:
     strictly non-directive factual text. English-only catalogue (see
     docs/standards/linguistic-rule-gaps.md) — Phase 2+ expansion will
     broaden language coverage.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # B5 — Prompt Injection in Parameter Description

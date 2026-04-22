@@ -110,6 +110,12 @@ obsolescence:
     Until the ecosystem adopts TemplateStringsArray-only raw-query surfaces
     (Prisma's $queryRaw is the prototype; pg and mysql2 have not yet
     followed), C4 remains at critical severity.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # C4 — SQL Injection (Taint-Aware)

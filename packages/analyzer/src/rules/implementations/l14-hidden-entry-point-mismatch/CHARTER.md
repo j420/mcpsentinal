@@ -78,6 +78,9 @@ obsolescence:
     orthogonal detection surface, at which point the companion
     relationship is broken and this charter is rewritten to describe
     the new surface.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # L14 — Hidden Entry Point Mismatch (companion to L5)

@@ -36,6 +36,12 @@ evidence_contract:
     - source
 
 confidence_cap: 0.85
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # M7 — Multi-Turn State Injection

@@ -109,6 +109,13 @@ obsolescence:
     delegation relationship in the approval dialog. At that point raw-
     token forwarding is structurally impossible and the rule's
     detection surface evaporates.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # K8 — Cross-Boundary Credential Sharing

@@ -109,6 +109,13 @@ obsolescence:
     the resolution scope cryptographically. Under those conditions the
     Birsan technique cannot substitute a public package for a scoped
     private one.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # D7 — Dependency Confusion Attack Risk

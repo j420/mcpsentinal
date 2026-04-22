@@ -112,6 +112,13 @@ obsolescence:
     tools/list approval UI. At that point a transitive client inside a
     server is either declared (and approved by the user) or rejected at
     the protocol layer — static detection is no longer needed.
+
+mutations_survived:
+  - reorder-object-properties
+mutations_acknowledged_blind:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
 ---
 
 # L7 — Transitive MCP Delegation

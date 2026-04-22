@@ -71,6 +71,9 @@ obsolescence:
     context passed to the model, AND CyberArk's Full Schema
     Poisoning demonstrations are no longer reproducible in any
     mainstream client.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # J3 — Full Schema Poisoning

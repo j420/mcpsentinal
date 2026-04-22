@@ -108,6 +108,13 @@ obsolescence:
     the package registries automatically block publishes that
     re-export the deprecated primitives. Under those conditions the
     static-dep-level D6 detector becomes redundant.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # D6 — Weak Cryptography Dependencies

@@ -82,6 +82,13 @@ obsolescence:
     MCP clients universally strip / escape LLM-significant bytes from
     `notifications/message.data` before forwarding to agent context or
     audit store. Until then, server-side avoidance is primary.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # N9 — MCP Logging Protocol Injection

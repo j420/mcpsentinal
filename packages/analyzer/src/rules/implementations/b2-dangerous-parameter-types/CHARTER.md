@@ -64,6 +64,13 @@ obsolescence:
   retire_when: >
     MCP best-practice guidance deprecates parameter naming in favour
     of semantic type annotations (e.g. "execution-target", "file-path").
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # B2 — Dangerous Parameter Types

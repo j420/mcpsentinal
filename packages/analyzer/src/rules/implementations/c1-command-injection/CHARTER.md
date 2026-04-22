@@ -133,6 +133,9 @@ obsolescence:
     MCP SDK release mandates argv-form `execFile()` wrappers verified at
     the protocol layer so no user-controlled string can reach a shell.
     Until one of those holds, C1 stays active at critical severity.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # C1 — Command Injection (Taint-Aware)

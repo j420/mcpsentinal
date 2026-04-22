@@ -118,6 +118,9 @@ obsolescence:
     writing to a multi-agent surface must set — at which point
     the static detection shifts to "is the attestation present?"
     which is a different rule.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # K15 — Multi-Agent Collusion Preconditions

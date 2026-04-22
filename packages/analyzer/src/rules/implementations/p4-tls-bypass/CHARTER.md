@@ -92,6 +92,12 @@ obsolescence:
     removes the verify=False ergonomic. Both are long-standing "do not
     use" flags with wide ecosystem pressure to deprecate, but not yet
     removed. Until then this rule is a front-line TLS posture control.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # P4 — TLS Certificate Validation Bypass

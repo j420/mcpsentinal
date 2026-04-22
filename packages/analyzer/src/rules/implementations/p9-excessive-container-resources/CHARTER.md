@@ -105,6 +105,9 @@ obsolescence:
     any pod without `resources.limits.{cpu,memory,pids}` AND Docker's
     default runtime enforces per-container pid/cpu/memory caps without
     opt-in — at which point the findings become historical posture.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # P9 — Missing Container Resource Limits

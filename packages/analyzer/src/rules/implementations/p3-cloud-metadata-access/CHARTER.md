@@ -103,6 +103,12 @@ obsolescence:
     with NetworkPolicy-blocked metadata egress for pod networks. At
     that point the finding becomes historical posture for legacy
     workloads still running without the new defaults.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # P3 — Cloud Metadata Service Access

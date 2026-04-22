@@ -63,6 +63,13 @@ obsolescence:
     MCP clients automatically warn users when a tool schema exceeds
     15 parameters, OR the spec mandates parameter grouping via
     nested objects.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # B3 — Excessive Parameter Count

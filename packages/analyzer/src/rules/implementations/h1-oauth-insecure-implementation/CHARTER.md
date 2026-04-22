@@ -138,6 +138,13 @@ obsolescence:
     exact-string check not bypassable. Under those conditions no
     MCP server can ship a vulnerable OAuth implementation, so H1's
     static signals become redundant.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # H1 — MCP OAuth 2.0 Insecure Implementation

@@ -82,6 +82,9 @@ obsolescence:
     AND the sampling spec mandates that ingestion-tool output be
     structurally tagged so the sampling callback cannot re-inject
     it into the model context.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # I7 — Sampling Capability Abuse

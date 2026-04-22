@@ -85,6 +85,13 @@ obsolescence:
     MCP spec mandates that subscribe + updated pair carry matched
     integrity signatures and clients verify on every update. Until
     then, server-side avoidance is primary.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # N12 — Resource Subscription Content Mutation

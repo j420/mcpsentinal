@@ -97,6 +97,13 @@ obsolescence:
     AND mainstream clients verify via a subtractive check that no
     returned content exactly matches the prompt. Until then the server-
     side pattern is the only defence.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # M9 — Model-Specific System Prompt Extraction

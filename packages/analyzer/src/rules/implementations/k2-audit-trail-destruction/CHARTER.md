@@ -128,6 +128,12 @@ obsolescence:
     file-level deletion by the server itself is no longer within the
     compliance surface. At that point K2's file-level scan becomes
     irrelevant.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # K2 — Audit Trail Destruction

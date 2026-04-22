@@ -107,6 +107,13 @@ obsolescence:
     itself (so missing application-level logging no longer produces a
     compliance gap) — OR ISO 27001:2022 A.8.15 is superseded by a control
     that does not require structured application-level event logs.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # K1 — Absent Structured Logging

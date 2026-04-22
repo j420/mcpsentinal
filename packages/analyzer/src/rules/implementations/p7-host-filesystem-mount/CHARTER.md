@@ -94,6 +94,9 @@ obsolescence:
     Restricted by default AND Docker refuses --volume arguments against
     sensitive host paths. Neither is the default today; until both land
     this rule is the earliest stop-gap.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # P7 — Sensitive Host Filesystem Mount

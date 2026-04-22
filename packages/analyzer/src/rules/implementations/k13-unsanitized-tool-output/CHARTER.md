@@ -102,6 +102,12 @@ obsolescence:
     a protocol-level sanitizer before rendering — at which point the
     server-side sanitization gap K13 names becomes a client control,
     and this rule's sink moves to a different layer.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # K13 — Unsanitized Tool Output

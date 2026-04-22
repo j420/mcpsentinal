@@ -62,6 +62,13 @@ obsolescence:
     MCP server frameworks strip health/debug/metrics endpoints from
     production builds by default AND require explicit opt-in with
     authentication.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # J4 — Health Endpoint Information Disclosure

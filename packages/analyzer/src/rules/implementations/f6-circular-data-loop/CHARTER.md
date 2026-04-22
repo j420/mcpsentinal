@@ -102,6 +102,9 @@ obsolescence:
     treat tool-generated content as untrusted by default). At that
     point the write→read injection primitive loses its asymmetric
     trust, and F6's structural argument dissolves.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # F6 — Circular Data Loop (Companion of F1)

@@ -83,6 +83,13 @@ obsolescence:
     MCP SDKs ship with a default minProtocolVersion that developers must
     explicitly opt out of; SDKs refuse to negotiate versions older than
     the minimum even if the developer's code requests it.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # N11 — Protocol Version Downgrade Attack

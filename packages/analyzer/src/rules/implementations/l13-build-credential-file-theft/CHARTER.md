@@ -89,6 +89,13 @@ obsolescence:
     publish by default (no long-lived .npmrc / .pypirc tokens on
     developer machines), AND the underlying file formats are no longer
     used to store bearer credentials.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # L13 — Build Credential File Theft

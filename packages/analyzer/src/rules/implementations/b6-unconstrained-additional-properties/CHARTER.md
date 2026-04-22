@@ -59,6 +59,13 @@ evidence_contract:
 obsolescence:
   retire_when: >
     MCP spec defaults additionalProperties to false for tool input schemas.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # B6 — Schema Allows Unconstrained Additional Properties

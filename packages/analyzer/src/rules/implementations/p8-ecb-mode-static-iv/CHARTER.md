@@ -114,6 +114,12 @@ obsolescence:
     AND JavaScript removes `Math.random()` in favour of a CSPRNG-backed
     primitive — at which point static detection of these patterns is
     belt-and-braces.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # P8 — Insecure Cryptographic Mode or Static IV/Nonce

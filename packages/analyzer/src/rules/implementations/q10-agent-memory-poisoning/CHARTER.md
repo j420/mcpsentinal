@@ -73,6 +73,13 @@ obsolescence:
     MCP spec adds a structured `memory_category` annotation that
     declares whether a tool writes facts, instructions, or neither,
     rendering description-level heuristics unnecessary.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # Q10 — Agent Memory Poisoning

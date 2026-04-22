@@ -44,6 +44,9 @@ evidence_contract:
     - source
 obsolescence:
   retire_when: "MCP spec mandates a handshake deadline (e.g. 30s) AND mainstream MCP SDKs enforce it by default with a configurable override."
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # N10 — Incomplete Handshake Denial of Service

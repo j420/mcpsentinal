@@ -94,6 +94,9 @@ obsolescence:
     LD_PRELOAD sanitisation at the runtime level AND /etc/ld.so.preload
     is mounted read-only by default. Neither is standard yet; until
     both land, this rule remains front-line.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # P6 — LD_PRELOAD and Shared Library Hijacking

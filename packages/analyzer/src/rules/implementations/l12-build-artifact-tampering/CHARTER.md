@@ -104,6 +104,13 @@ obsolescence:
     AND the leading MCP clients refuse to install packages whose
     provenance does not pass. Until both hold, post-build tampering
     remains undetectable to consumers at install time.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # L12 — Build Artifact Tampering

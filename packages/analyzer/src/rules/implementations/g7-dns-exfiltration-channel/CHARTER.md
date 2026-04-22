@@ -112,6 +112,13 @@ obsolescence:
     sandbox boundary), such that dynamic hostnames simply do not
     resolve. At that point the source-code primitive becomes
     unexploitable and G7 becomes redundant coverage of F1/F7.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # G7 — DNS-Based Data Exfiltration Channel

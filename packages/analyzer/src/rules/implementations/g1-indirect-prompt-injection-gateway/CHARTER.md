@@ -119,6 +119,13 @@ obsolescence:
     At that point the structural coexistence of ingestion + sink inside a
     single server is no longer sufficient evidence of the indirect-injection
     gateway, because the trust boundary is enforced at the protocol layer.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # G1 — Indirect Prompt Injection Gateway

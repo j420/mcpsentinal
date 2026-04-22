@@ -68,6 +68,9 @@ obsolescence:
     layer — if a server issues a sampling/create without having
     declared sampling at init, the client rejects before the server
     handler ever runs.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # I12 — Capability Escalation Post-Init

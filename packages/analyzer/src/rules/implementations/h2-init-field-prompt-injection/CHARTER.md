@@ -159,6 +159,13 @@ obsolescence:
     Unicode / LLM-special-token / base64 signals in H2 are
     language-agnostic and unaffected; only the directive-phrase
     catalogue needs Phase 2+ expansion.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # H2 — Prompt Injection in MCP Initialize Response Fields

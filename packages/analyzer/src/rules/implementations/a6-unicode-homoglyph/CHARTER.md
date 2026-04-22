@@ -96,6 +96,13 @@ obsolescence:
     Moderately-Restrictive tool-name policy AND reference MCP clients reject
     mixed-script identifiers at registration time. At that point homoglyph
     attacks are structurally impossible and this rule becomes redundant.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # A6 — Unicode Homoglyph Attack

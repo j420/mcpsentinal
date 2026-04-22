@@ -80,6 +80,13 @@ obsolescence:
     MCP registries perform automated URL reputation checks on every
     published description and reject submissions containing
     shortener / tunnel / canary hosts.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # A3 — Suspicious URLs in Tool Description

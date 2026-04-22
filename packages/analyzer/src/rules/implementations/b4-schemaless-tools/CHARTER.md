@@ -62,6 +62,13 @@ evidence_contract:
 obsolescence:
   retire_when: >
     MCP spec rejects tools with no input_schema at registration time.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # B4 — Schema-less Tools

@@ -103,6 +103,9 @@ obsolescence:
     registry level such that pulls without a verified, content-addressable
     digest are refused by every compliant registry — at which point
     Dockerfile-side pinning is belt-and-braces, not the control surface.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # L3 — Dockerfile Base Image Supply Chain Risk

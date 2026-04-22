@@ -101,6 +101,13 @@ obsolescence:
     list every OS / hardware / dependency enumeration primitive
     they call as part of their declared capabilities. Neither
     exists as of 2026-04.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # O10 — Privacy-Violating Telemetry

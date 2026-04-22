@@ -102,6 +102,9 @@ obsolescence:
     rejects --privileged without explicit cluster-admin opt-in. At
     that point source-level detection remains belt-and-braces for
     legacy YAML still in circulation.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # P2 — Dangerous Container Capabilities & Privileged Mode

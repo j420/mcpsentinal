@@ -72,6 +72,9 @@ obsolescence:
     MCP clients refuse to render clickable URLs from tool descriptions,
     and elicitation responses with URL content require an out-of-AI
     user confirmation.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # I10 — Elicitation URL Redirect

@@ -110,6 +110,13 @@ obsolescence:
     stripping by default. At that point the server-side presence of
     a token is no longer exploitable because the client will not
     propagate it into the model input.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # M1 — Special Token Injection in Tool Metadata

@@ -110,6 +110,12 @@ obsolescence:
     process-level request timeout — or OWASP ASI08 / EU AI Act Art.15
     adopt a post-hoc observability model that accepts runtime hangs
     provided they are surfaced. Neither direction is current.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # K17 — Missing Timeout or Circuit Breaker

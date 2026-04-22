@@ -107,6 +107,12 @@ obsolescence:
     and Handlebars helpers-only mode would be acceptable paths. Until every
     mainstream engine requires an explicit "I trust this string" flag, C13
     stays active.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # C13 — Server-Side Template Injection (Taint-Aware)

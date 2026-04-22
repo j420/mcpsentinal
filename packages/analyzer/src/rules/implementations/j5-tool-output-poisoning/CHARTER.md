@@ -68,6 +68,12 @@ obsolescence:
     MCP clients structurally tag tool response bytes as low-trust
     data that cannot reinject into the reasoning context without an
     additional user-confirmation step.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # J5 — Tool Output Poisoning Patterns

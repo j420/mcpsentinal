@@ -91,6 +91,12 @@ obsolescence:
     the io_uring openat2() with RESOLVE_NO_SYMLINKS flag — at which
     point static analysis of Node fs calls no longer covers the
     remaining risk surface.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # L6 — Config Directory Symlink Attack

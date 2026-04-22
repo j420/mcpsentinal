@@ -94,6 +94,13 @@ obsolescence:
     mainstream client implementations redact or opaque-ify these fields
     before display. Until then, the server-side avoidance is the only
     defence.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # N4 — JSON-RPC Error Object Injection

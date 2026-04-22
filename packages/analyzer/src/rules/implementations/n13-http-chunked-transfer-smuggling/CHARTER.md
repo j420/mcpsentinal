@@ -84,6 +84,13 @@ obsolescence:
     MCP SDKs mandate the use of well-tested HTTP libraries for Streamable
     HTTP transports, and explicit Transfer-Encoding / Content-Length
     manipulation is disallowed at the framework layer.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # N13 — HTTP Chunked Transfer Smuggling

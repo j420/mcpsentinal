@@ -75,6 +75,12 @@ obsolescence:
     MCP servers are required by the spec to emit a response time
     budget and each tool has a server-enforced constant timer that
     flushes the response regardless of internal branching.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # O4 — Timing-Based Data Inference

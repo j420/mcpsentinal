@@ -69,6 +69,13 @@ obsolescence:
     per-tool user confirmation regardless, OR the DXT format adds
     signed-manifest attestation that clients enforce. Neither is
     current as of 2026-04.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # Q7 — Desktop Extension Privilege Chain (DXT)

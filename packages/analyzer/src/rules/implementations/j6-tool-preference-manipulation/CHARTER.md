@@ -63,6 +63,9 @@ obsolescence:
     AI clients use provenance-anchored tool selection (signed tool
     catalogues, consent-gated tool-priority declarations) rather
     than linguistic-signal-driven selection.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # J6 — Tool Preference Manipulation

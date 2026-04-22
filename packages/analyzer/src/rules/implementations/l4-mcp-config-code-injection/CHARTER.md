@@ -86,6 +86,13 @@ obsolescence:
     LOG_LEVEL, NODE_ENV). Until then, L4 remains necessary because the
     current MCP auto-approval heuristics only check source code
     signatures, not config literal content.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # L4 — MCP Config Code Injection

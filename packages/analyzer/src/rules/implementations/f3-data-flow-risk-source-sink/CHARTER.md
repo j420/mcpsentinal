@@ -89,6 +89,9 @@ obsolescence:
     whose annotations declare external egress) — at which point the
     credential-exposure pattern becomes unrepresentable at the
     protocol level and F3 retires.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # F3 — Data Flow Risk: Source → Sink (Companion of F1)
