@@ -75,6 +75,14 @@ import "./implementations/c2-path-traversal/index.js";
 import "./implementations/c5-hardcoded-secrets/index.js";
 import "./implementations/c10-prototype-pollution/index.js";
 import "./implementations/c14-jwt-algorithm-confusion/index.js";
+// Chunk 1.9: L1/L2/L6/L13 migrated out of advanced-supply-chain-detector.ts
+// into per-rule Rule Standard v2 directories (L7/K3/K5/K8 remain in the legacy
+// file as tombstones). These imports are appended after the C-rules to keep
+// the taint-kit-based rules registered after their shared infrastructure.
+import "./implementations/l1-github-actions-tag-poisoning/index.js";
+import "./implementations/l2-malicious-build-plugin/index.js";
+import "./implementations/l6-config-symlink-attack/index.js";
+import "./implementations/l13-build-credential-file-theft/index.js";
 import "./implementations/ai-manipulation-detector.js";
 import "./implementations/infrastructure-detector.js";
 import "./implementations/advanced-supply-chain-detector.js";
