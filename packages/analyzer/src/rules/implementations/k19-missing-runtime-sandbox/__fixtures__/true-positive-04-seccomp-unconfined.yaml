@@ -1,0 +1,13 @@
+# Charter lethal edge case #4 — explicit seccomp Unconfined.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mcp-server
+spec:
+  containers:
+    - name: mcp
+      image: mcp/server@sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+      securityContext:
+        seccomp: Unconfined
+        runAsNonRoot: true
+        readOnlyRootFilesystem: true

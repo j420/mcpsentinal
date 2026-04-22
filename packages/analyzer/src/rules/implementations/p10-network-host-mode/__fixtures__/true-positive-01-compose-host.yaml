@@ -1,0 +1,5 @@
+services:
+  mcp:
+    image: mcp/server@sha256:0b3c98f3e41e0c94a2b8d6b47c2c4a1f9c6d4e5b8a7b2c1d3f9e8a7b6c5d4e3f
+    # True positive #1 — docker-compose network_mode: host
+    network_mode: host

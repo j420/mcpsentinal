@@ -1,0 +1,18 @@
+# True negative — CIS Baseline-compliant pod spec.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mcp-server
+spec:
+  containers:
+    - name: mcp
+      image: mcp/server@sha256:0b3c98f3e41e0c94a2b8d6b47c2c4a1f9c6d4e5b8a7b2c1d3f9e8a7b6c5d4e3f
+      securityContext:
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        seccompProfile:
+          type: RuntimeDefault
+        capabilities:
+          drop:
+            - ALL

@@ -1,0 +1,14 @@
+# Charter lethal edge case #3 — host namespace sharing without privileged.
+# Non-privileged container with hostPID: true is still a sandbox defeat.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mcp-server
+spec:
+  hostPID: true
+  containers:
+    - name: mcp
+      image: mcp/server@sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+      securityContext:
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
