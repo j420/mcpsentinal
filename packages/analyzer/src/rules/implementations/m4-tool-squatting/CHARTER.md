@@ -1,7 +1,7 @@
 ---
 rule_id: M4
-interface_version: "2.0"
-severity: medium
+interface_version: "v2"
+severity: high
 
 threat_refs:
   - kind: spec

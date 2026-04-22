@@ -1,6 +1,6 @@
 ---
 rule_id: L15
-interface_version: "2.0"
+interface_version: "v2"
 severity: high
 
 threat_refs:
