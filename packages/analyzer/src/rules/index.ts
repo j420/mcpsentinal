@@ -63,7 +63,12 @@ import "./implementations/f7-multi-step-exfiltration-chain/index.js";
 import "./implementations/g4-context-window-saturation/index.js";
 // tainted-execution-detector.ts removed in Phase 1 Chunk 1.16; its six rules
 // (C4, C12, C13, C16, K9, J2) have each been migrated to their own directory.
-import "./implementations/cross-tool-risk-detector.js";
+// cross-tool-risk-detector.ts removed in Phase 1 Wave 6 Chunk A; its four rules
+// (I1, I2 stub, I13, I16) have each been migrated to their own directory.
+import "./implementations/i1-annotation-deception/index.js";
+import "./implementations/i2-missing-destructive-annotation/index.js";
+import "./implementations/i13-cross-config-lethal-trifecta/index.js";
+import "./implementations/i16-consent-fatigue-exploitation/index.js";
 // config-poisoning-detector.ts removed in Phase 1 Chunk 1.15; its four rules
 // (J1, L4, L11, Q4) have each been migrated to their own directory.
 import "./implementations/j1-cross-agent-config-poisoning/index.js";
