@@ -105,7 +105,9 @@ import "./implementations/protocol-ai-runtime-detector.js";
 import "./implementations/data-privacy-cross-ecosystem-detector.js";
 import "./implementations/description-schema-detector.js";
 import "./implementations/dependency-behavioral-detector.js";
-import "./implementations/ecosystem-adversarial-detector.js";
+// ecosystem-adversarial-detector.ts deleted in Phase 1 Chunk 1.26; its five
+// rules (F4, F5, G6, H1, H3) have each been migrated to their own directory
+// with full Rule Standard v2 charters.
 import "./implementations/f4-mcp-spec-non-compliance/index.js";
 import "./implementations/f5-official-namespace-squatting/index.js";
 import "./implementations/g6-rug-pull-tool-drift/index.js";
