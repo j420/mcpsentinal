@@ -1,0 +1,3 @@
+# Scoped enterprise mirror — global resolution still goes to npmjs.
+@corp:registry=https://artifactory.corp.example.com/npm/
+registry=https://registry.npmjs.org/
