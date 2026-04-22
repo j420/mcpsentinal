@@ -60,7 +60,7 @@ import "./implementations/f2-high-risk-capability-profile/index.js";
 import "./implementations/f3-data-flow-risk-source-sink/index.js";
 import "./implementations/f6-circular-data-loop/index.js";
 import "./implementations/f7-multi-step-exfiltration-chain/index.js";
-import "./implementations/g4-context-saturation.js";
+import "./implementations/g4-context-window-saturation/index.js";
 // tainted-execution-detector.ts removed in Phase 1 Chunk 1.16; its six rules
 // (C4, C12, C13, C16, K9, J2) have each been migrated to their own directory.
 import "./implementations/cross-tool-risk-detector.js";

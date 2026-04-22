@@ -25,7 +25,7 @@ import "../src/rules/implementations/f2-high-risk-capability-profile/index.js";
 import "../src/rules/implementations/f3-data-flow-risk-source-sink/index.js";
 import "../src/rules/implementations/f6-circular-data-loop/index.js";
 import "../src/rules/implementations/f7-multi-step-exfiltration-chain/index.js";
-import "../src/rules/implementations/g4-context-saturation.js";
+import "../src/rules/implementations/g4-context-window-saturation/index.js";
 // tainted-execution-detector.ts deleted in Phase 1 Chunk 1.16.
 import "../src/rules/implementations/c4-sql-injection/index.js";
 import "../src/rules/implementations/c12-unsafe-deserialization/index.js";
