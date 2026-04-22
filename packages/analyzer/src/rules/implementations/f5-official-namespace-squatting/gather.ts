@@ -30,8 +30,15 @@ export type SquatClassifier =
   | "unicode-confusable";
 
 export interface F5Site {
-  /** Tool-kind Location naming the server (server name acts as the tool-scope). */
-  serverLocation: Location; // kind: "tool"
+  /**
+   * Initialize-kind Location naming the server via the advertised
+   * `serverInfo.name` field from the MCP initialize handshake. F5 is an
+   * identity-level finding (the server NAME squats an official vendor
+   * namespace) — it is NOT a per-tool finding, so Location.tool would
+   * misidentify the scope and the evidence-integrity harness would reject
+   * it because the server name is not one of `context.tools[].name`.
+   */
+  serverLocation: Location; // kind: "initialize", field: "server_name"
   /** Capability-kind Location if we want to escalate to capability-level scope. */
   capabilityLocation: Location; // kind: "capability"
   /** The server name as observed (lowercased for comparison record). */
@@ -179,7 +186,7 @@ function makeSite(
   },
 ): F5Site {
   return {
-    serverLocation: { kind: "tool", tool_name: serverName },
+    serverLocation: { kind: "initialize", field: "server_name" },
     capabilityLocation: { kind: "capability", capability: "tools" },
     serverName,
     vendor,
