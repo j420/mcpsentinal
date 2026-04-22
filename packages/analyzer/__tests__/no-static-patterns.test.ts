@@ -1,31 +1,23 @@
 /**
  * No-Static-Patterns Guard (Analyzer Mirror)
  *
- * Phase 0, Chunk 0.3. Mirrors `packages/compliance-agents/__tests__/no-static-patterns.test.ts`
+ * Mirrors `packages/compliance-agents/__tests__/no-static-patterns.test.ts`
  * so the same AST-level ban that protects `packages/compliance-agents/src/rules/`
  * also tracks `packages/analyzer/src/rules/implementations/`.
  *
- * Semantics differ from the compliance-agents version:
+ * This guard enforces a MONOTONIC RATCHET against a committed baseline file
+ * (`docs/census/regex-baseline.json`):
  *
- *   - The compliance-agents guard is STRICT from day one (zero tolerance) —
- *     that package was authored under the no-static-patterns rule from scratch.
+ *   new regex literal in a file → fail CI
+ *   new `new RegExp(...)` call  → fail CI
+ *   new string-literal array >5 → fail CI
+ *   removing an existing one     → info; run `pnpm rule:baseline` to ratchet down
  *
- *   - The analyzer is in the middle of a Phase 1 migration. It starts with
- *     853 regex literals across 37 detector files (see docs/census/latest.md).
- *     Applying strict enforcement today would block the repo.
- *
- *   - Instead, this guard enforces a MONOTONIC RATCHET against a committed
- *     baseline file (`docs/census/regex-baseline.json`):
- *
- *       new regex literal in a file → fail CI
- *       new `new RegExp(...)` call  → fail CI
- *       new string-literal array >5 → fail CI
- *       removing an existing one     → info; run `pnpm rule:baseline` to ratchet down
- *
- * Phase 0 makes this test **warn-only** — it reports, but never fails. The
- * mode flips to enforcing at the end of Phase 1, Chunk 1.27, when every
- * detector file has been migrated or its baseline agreed. To flip early,
- * set ANALYZER_STATIC_GUARD_STRICT=true in the environment.
+ * The guard is STRICT (always-fail) as of Phase 1 Chunk 1.28 (2026-04-22). All
+ * analyzer rules are now TypedRuleV2; the monotonic ratchet against
+ * `docs/census/regex-baseline.json` enforces no regression. The prior warn-only
+ * migration mode (ANALYZER_STATIC_GUARD_STRICT env var) is retired. Removing
+ * this enforcement requires an ADR.
  */
 
 import { describe, it, expect } from "vitest";
@@ -41,7 +33,6 @@ const RULES_ROOT = join(PACKAGE_ROOT, "src", "rules", "implementations");
 const BASELINE_PATH = join(REPO_ROOT, "docs", "census", "regex-baseline.json");
 
 const MAX_STRING_ARRAY_LITERAL = 5;
-const STRICT = process.env.ANALYZER_STATIC_GUARD_STRICT === "true";
 
 interface FileCounts {
   regex_literals: number;
@@ -181,7 +172,7 @@ function diff(current: Record<string, FileCounts>, baseline: Baseline): {
   return { regressions, improvements, untracked_new_files: untracked };
 }
 
-describe("no-static-patterns guard (analyzer, warn-only in Phase 0)", () => {
+describe("no-static-patterns guard (analyzer, strict)", () => {
   it("baseline file exists (or is written on first run)", () => {
     const current = snapshotCurrent();
     const baseline = loadBaseline();
@@ -228,10 +219,6 @@ describe("no-static-patterns guard (analyzer, warn-only in Phase 0)", () => {
       `  (a) Remove the new regex / RegExp call / string-array > ${MAX_STRING_ARRAY_LITERAL} and use AST / capability-graph analysis instead.\n` +
       `  (b) If you are INTENTIONALLY raising a baseline (very rare — requires review), update ${relative(REPO_ROOT, BASELINE_PATH)} in the same PR.`;
 
-    if (STRICT) {
-      throw new Error(msg);
-    } else {
-      console.warn(`[warn-only — ANALYZER_STATIC_GUARD_STRICT=true to enforce]\n${msg}`);
-    }
+    throw new Error(msg);
   });
 });
