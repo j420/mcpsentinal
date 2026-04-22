@@ -268,6 +268,24 @@ import "./implementations/k20-insufficient-audit-context/index.js";
 import "./implementations/m2-prompt-leak-via-response/index.js";
 import "./implementations/m7-multi-turn-state-injection/index.js";
 import "./implementations/m8-encoding-attack-on-input/index.js";
+// K13/K15/K18 pre-existing gap from Phase 1 Chunk 1.7 (never imported
+// since the wave-1 k-remaining-v2.ts deletion). O5/O9/Q3/Q6/Q7/Q13 gap
+// from wave-6/E — E's cleanup commit that would have added these imports
+// was skipped during cherry-pick to avoid pulling in the 4 misnamed
+// rules. Both gaps caught by the 6th-agent audit: tests passed because
+// per-rule __tests__/index.test.ts import siblings directly, but
+// production AnalysisEngine loads only via rules/index.ts — these
+// 9 rules silently no-op'd. Same class of bug as wave-4's P1-P7
+// missing-import regression.
+import "./implementations/k13-unsanitized-tool-output/index.js";
+import "./implementations/k15-multi-agent-collusion-preconditions/index.js";
+import "./implementations/k18-cross-trust-boundary-data-flow/index.js";
+import "./implementations/o5-env-var-harvesting/index.js";
+import "./implementations/o9-ambient-credential/index.js";
+import "./implementations/q3-localhost-service-hijacking/index.js";
+import "./implementations/q6-agent-identity-impersonation/index.js";
+import "./implementations/q7-dxt-privilege-chain/index.js";
+import "./implementations/q13-mcp-bridge-supply-chain/index.js";
 // compliance-remaining-detector.ts deleted in Phase 1 Chunk 1.6 (wave-6/E).
 // Its 4 live rules (O6, O8, O10, Q15) migrated to per-rule Rule Standard v2
 // directories by wave-6 E3. 2 retired rules (Q12, Q14) stripped at file deletion.
