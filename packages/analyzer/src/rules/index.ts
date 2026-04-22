@@ -157,7 +157,7 @@ import "./implementations/k6-overly-broad-oauth-scopes/index.js";
 import "./implementations/k7-long-lived-tokens/index.js";
 import "./implementations/k17-missing-timeout/index.js";
 import "./implementations/m4-tool-squatting/index.js";
-import "./implementations/m5-context-window-flooding.js";
+import "./implementations/m5-context-window-flooding/index.js";
 import "./implementations/l-supply-chain-v2.js";
 import "./implementations/o4-q10-v2.js";
 // docker-k8s-crypto-v2.ts deleted in Phase 1 Chunk 1.12; its five rules
