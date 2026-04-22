@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated_at": "2026-04-21T12:08:04.908Z",
+  "generated_at": "2026-04-21T18:31:35.424Z",
   "notes": "Phase 0, Chunk 0.3 regex baseline for packages/analyzer/src/rules/implementations/. The analyzer no-static-patterns guard fails CI if any file exceeds the counts recorded here. Phase 1's per-rule migrations reduce the baseline file-by-file toward zero. Regenerate with `pnpm rule:baseline`.",
   "files": {
     "packages/analyzer/src/rules/implementations/_shared/taint-rule-kit/build-chain.ts": {
@@ -69,9 +69,9 @@
       "string_arrays_over_5": 0
     },
     "packages/analyzer/src/rules/implementations/advanced-supply-chain-detector.ts": {
-      "regex_literals": 36,
+      "regex_literals": 19,
       "new_regexp_calls": 0,
-      "string_arrays_over_5": 1
+      "string_arrays_over_5": 0
     },
     "packages/analyzer/src/rules/implementations/ai-manipulation-detector.ts": {
       "regex_literals": 25,
@@ -89,6 +89,21 @@
       "string_arrays_over_5": 0
     },
     "packages/analyzer/src/rules/implementations/c1-command-injection/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/c10-prototype-pollution/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/c10-prototype-pollution/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/c10-prototype-pollution/verification.ts": {
       "regex_literals": 0,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
@@ -123,6 +138,21 @@
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
+    "packages/analyzer/src/rules/implementations/c14-jwt-algorithm-confusion/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/c14-jwt-algorithm-confusion/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/c14-jwt-algorithm-confusion/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
     "packages/analyzer/src/rules/implementations/c16-eval-injection/gather.ts": {
       "regex_literals": 0,
       "new_regexp_calls": 0,
@@ -134,6 +164,21 @@
       "string_arrays_over_5": 0
     },
     "packages/analyzer/src/rules/implementations/c16-eval-injection/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/c2-path-traversal/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/c2-path-traversal/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/c2-path-traversal/verification.ts": {
       "regex_literals": 0,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
@@ -153,24 +198,29 @@
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
-    "packages/analyzer/src/rules/implementations/code-remaining-detector.ts": {
-      "regex_literals": 19,
+    "packages/analyzer/src/rules/implementations/c5-hardcoded-secrets/gather.ts": {
+      "regex_literals": 0,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
-    "packages/analyzer/src/rules/implementations/code-security-deep-detector.ts": {
-      "regex_literals": 35,
+    "packages/analyzer/src/rules/implementations/c5-hardcoded-secrets/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/c5-hardcoded-secrets/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/code-remaining-detector.ts": {
+      "regex_literals": 19,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
     "packages/analyzer/src/rules/implementations/compliance-remaining-detector.ts": {
       "regex_literals": 7,
       "new_regexp_calls": 0,
-      "string_arrays_over_5": 0
-    },
-    "packages/analyzer/src/rules/implementations/config-poisoning-detector.ts": {
-      "regex_literals": 44,
-      "new_regexp_calls": 1,
       "string_arrays_over_5": 0
     },
     "packages/analyzer/src/rules/implementations/cross-tool-risk-detector.ts": {
@@ -228,10 +278,40 @@
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
+    "packages/analyzer/src/rules/implementations/g7-dns-exfiltration-channel/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/g7-dns-exfiltration-channel/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/g7-dns-exfiltration-channel/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
     "packages/analyzer/src/rules/implementations/infrastructure-detector.ts": {
       "regex_literals": 44,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 1
+    },
+    "packages/analyzer/src/rules/implementations/j1-cross-agent-config-poisoning/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/j1-cross-agent-config-poisoning/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/j1-cross-agent-config-poisoning/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
     },
     "packages/analyzer/src/rules/implementations/j2-git-argument-injection/gather.ts": {
       "regex_literals": 0,
@@ -248,28 +328,8 @@
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
-    "packages/analyzer/src/rules/implementations/jsonrpc-protocol-v2.ts": {
-      "regex_literals": 64,
-      "new_regexp_calls": 0,
-      "string_arrays_over_5": 0
-    },
     "packages/analyzer/src/rules/implementations/k-compliance-v2.ts": {
-      "regex_literals": 15,
-      "new_regexp_calls": 0,
-      "string_arrays_over_5": 0
-    },
-    "packages/analyzer/src/rules/implementations/j2-git-argument-injection/verification.ts": {
-      "regex_literals": 0,
-      "new_regexp_calls": 0,
-      "string_arrays_over_5": 0
-    },
-    "packages/analyzer/src/rules/implementations/jsonrpc-protocol-v2.ts": {
-      "regex_literals": 64,
-      "new_regexp_calls": 0,
-      "string_arrays_over_5": 0
-    },
-    "packages/analyzer/src/rules/implementations/k-compliance-v2.ts": {
-      "regex_literals": 15,
+      "regex_literals": 27,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
@@ -318,6 +378,21 @@
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
+    "packages/analyzer/src/rules/implementations/k13-unsanitized-tool-output/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k13-unsanitized-tool-output/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k13-unsanitized-tool-output/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
     "packages/analyzer/src/rules/implementations/k14-agent-credential-propagation/gather.ts": {
       "regex_literals": 0,
       "new_regexp_calls": 0,
@@ -329,6 +404,21 @@
       "string_arrays_over_5": 0
     },
     "packages/analyzer/src/rules/implementations/k14-agent-credential-propagation/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k15-multi-agent-collusion-preconditions/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k15-multi-agent-collusion-preconditions/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k15-multi-agent-collusion-preconditions/verification.ts": {
       "regex_literals": 0,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
@@ -369,6 +459,36 @@
       "string_arrays_over_5": 0
     },
     "packages/analyzer/src/rules/implementations/k17-missing-timeout/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k18-cross-trust-boundary-data-flow/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k18-cross-trust-boundary-data-flow/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k18-cross-trust-boundary-data-flow/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k2-audit-trail-destruction/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k2-audit-trail-destruction/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/k2-audit-trail-destruction/verification.ts": {
       "regex_literals": 0,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
@@ -468,6 +588,111 @@
       "new_regexp_calls": 2,
       "string_arrays_over_5": 1
     },
+    "packages/analyzer/src/rules/implementations/l1-github-actions-tag-poisoning/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/l1-github-actions-tag-poisoning/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/l1-github-actions-tag-poisoning/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/l11-env-var-injection-via-config/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/l11-env-var-injection-via-config/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/l11-env-var-injection-via-config/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/l13-build-credential-file-theft/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/l13-build-credential-file-theft/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/l13-build-credential-file-theft/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/l2-malicious-build-plugin/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/l2-malicious-build-plugin/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/l2-malicious-build-plugin/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/l4-mcp-config-code-injection/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/l4-mcp-config-code-injection/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/l4-mcp-config-code-injection/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/l6-config-symlink-attack/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/l6-config-symlink-attack/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/l6-config-symlink-attack/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/l9-ci-secret-exfiltration/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/l9-ci-secret-exfiltration/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/l9-ci-secret-exfiltration/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
     "packages/analyzer/src/rules/implementations/m-runtime-v2.ts": {
       "regex_literals": 43,
       "new_regexp_calls": 0,
@@ -480,6 +705,96 @@
     },
     "packages/analyzer/src/rules/implementations/m5-context-window-flooding.ts": {
       "regex_literals": 11,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/n1-jsonrpc-batch-request-abuse/gather.ts": {
+      "regex_literals": 2,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/n1-jsonrpc-batch-request-abuse/index.ts": {
+      "regex_literals": 1,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/n1-jsonrpc-batch-request-abuse/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/n10-incomplete-handshake-dos/gather.ts": {
+      "regex_literals": 3,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/n10-incomplete-handshake-dos/index.ts": {
+      "regex_literals": 1,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/n10-incomplete-handshake-dos/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/n2-jsonrpc-notification-flooding/gather.ts": {
+      "regex_literals": 1,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/n2-jsonrpc-notification-flooding/index.ts": {
+      "regex_literals": 1,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/n2-jsonrpc-notification-flooding/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/n3-jsonrpc-id-collision/gather.ts": {
+      "regex_literals": 4,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/n3-jsonrpc-id-collision/index.ts": {
+      "regex_literals": 1,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/n3-jsonrpc-id-collision/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/n7-progress-token-abuse/gather.ts": {
+      "regex_literals": 3,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/n7-progress-token-abuse/index.ts": {
+      "regex_literals": 1,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/n7-progress-token-abuse/verification.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/n8-cancellation-race-condition/gather.ts": {
+      "regex_literals": 1,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/n8-cancellation-race-condition/index.ts": {
+      "regex_literals": 1,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/n8-cancellation-race-condition/verification.ts": {
+      "regex_literals": 0,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
@@ -498,8 +813,18 @@
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
-    "packages/analyzer/src/rules/implementations/secret-exfil-detector.ts": {
-      "regex_literals": 14,
+    "packages/analyzer/src/rules/implementations/q4-ide-mcp-config-injection/gather.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/q4-ide-mcp-config-injection/index.ts": {
+      "regex_literals": 0,
+      "new_regexp_calls": 0,
+      "string_arrays_over_5": 0
+    },
+    "packages/analyzer/src/rules/implementations/q4-ide-mcp-config-injection/verification.ts": {
+      "regex_literals": 0,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
