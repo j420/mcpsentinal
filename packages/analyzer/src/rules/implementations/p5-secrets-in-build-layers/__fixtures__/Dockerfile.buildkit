@@ -1,0 +1,7 @@
+# True negative #1 — BuildKit secret mount (lethal edge #4 — exempt).
+# syntax=docker/dockerfile:1.4
+FROM node:20
+WORKDIR /app
+COPY package.json .
+RUN --mount=type=secret,id=npmrc cp /run/secrets/npmrc ~/.npmrc && npm install && rm ~/.npmrc
+COPY . .
