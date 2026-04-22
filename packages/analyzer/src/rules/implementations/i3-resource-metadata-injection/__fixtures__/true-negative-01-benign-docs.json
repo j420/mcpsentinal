@@ -1,0 +1,10 @@
+{
+  "resources": [
+    {
+      "uri": "https://example.com/readme",
+      "name": "project-readme",
+      "description": "Project documentation for the data pipeline.",
+      "mimeType": "text/markdown"
+    }
+  ]
+}
