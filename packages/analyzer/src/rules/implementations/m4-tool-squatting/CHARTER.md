@@ -1,12 +1,7 @@
 ---
 rule_id: M4
-<<<<<<< HEAD
-interface_version: "2.0"
-severity: medium
-=======
 interface_version: "v2"
 severity: high
->>>>>>> claude/phase-1/1.6-D-v2-shell-extract
 
 threat_refs:
   - kind: spec
@@ -69,26 +64,6 @@ lethal_edge_cases:
     to cover it. A future chunk adds a language-detect pre-pass.
 
 edge_case_strategies:
-<<<<<<< HEAD
-  - negation-prefix-detection     # "unofficial" drops confidence, not raises
-  - vendor-without-claim-verb     # sentence-initial vendor token counts
-  - word-boundary-tokenisation    # split on [^\w]+ before matching
-  - multi-signal-required         # bare "trusted" needs a second signal
-  - language-acknowledge-gap      # English-only vocabulary documented
-
-evidence_contract:
-  minimum_chain:
-    source: true        # the tool description surface
-    propagation: false  # linguistic-only rule, no data-flow
-    sink: true          # the squatting signal that an LLM consumes
-    mitigation: true    # MUST report whether negation was detected
-    impact: true        # must describe tool-selection displacement
-  required_factors:
-    - noisy_or_confidence         # 1 - Π(1 - wᵢ) over matched signals
-    - negation_adjustment         # -x applied if negation token was found
-  location_kinds:
-    - tool              # signals live on the tool metadata surface
-=======
   - negation-prefix-detection
   - vendor-without-claim-verb
   - word-boundary-tokenisation
@@ -107,7 +82,6 @@ evidence_contract:
     - negation_adjustment
   location_kinds:
     - tool
->>>>>>> claude/phase-1/1.6-D-v2-shell-extract
 
 confidence_cap: 0.85
 
@@ -147,29 +121,14 @@ structured account of which signals matched. An auditor will accept:
 4. **Impact statement** — tool-selection displacement. The LLM ranks
    tools by description authority signals; a squatting tool with two
    matched signals is likely to be chosen over a legitimate tool with
-<<<<<<< HEAD
-   no authority language. The scenario describes what happens if the
-   squatting tool is malicious.
-=======
    no authority language.
->>>>>>> claude/phase-1/1.6-D-v2-shell-extract
 
 ## Why confidence is capped at 0.85
 
 Linguistic-only rules cannot reach 0.90+ because authorship cannot be
 confirmed from text alone — an "official Anthropic server" may in fact
 be an official Anthropic server. The confidence cap acknowledges this
-<<<<<<< HEAD
-uncertainty: the rule reports "this description makes authority claims
-that look like squatting" rather than "this is proven to be squatting".
-
-The cap also reserves headroom for a future Phase-2 enrichment that
-cross-checks the npm/PyPI package author against the vendor named in
-the description — combined evidence would justify lifting the cap to
-0.95+.
-=======
 uncertainty.
->>>>>>> claude/phase-1/1.6-D-v2-shell-extract
 
 ## What the rule does NOT claim
 
@@ -177,9 +136,4 @@ uncertainty.
   pattern in metadata; the tool behind it may still be safe.
 - It does not verify vendor authorship. That is out of scope for a
   static description scan.
-<<<<<<< HEAD
-- It does not handle non-English descriptions. That is documented
-  as an acknowledged gap in the lethal edge cases above.
-=======
 - It does not handle non-English descriptions.
->>>>>>> claude/phase-1/1.6-D-v2-shell-extract
