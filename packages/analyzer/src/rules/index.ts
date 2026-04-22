@@ -123,7 +123,21 @@ import "./implementations/p4-tls-bypass/index.js";
 import "./implementations/p5-secrets-in-build-layers/index.js";
 import "./implementations/p6-ld-preload-hijack/index.js";
 import "./implementations/p7-host-filesystem-mount/index.js";
-import "./implementations/protocol-ai-runtime-detector.js";
+// protocol-ai-runtime-detector.ts deleted in Phase-1 chunk 1.6 (wave-6/C) —
+// 12 live rules (M1, M6, M9, N4, N5, N6, N9, N11, N12, N13, N14, N15)
+// migrated to per-rule Rule Standard v2 directories; M3 retired (enabled=false).
+import "./implementations/m1-special-token-injection/index.js";
+import "./implementations/m6-progressive-context-poisoning/index.js";
+import "./implementations/m9-model-specific-system-prompt-extraction/index.js";
+import "./implementations/n4-jsonrpc-error-object-injection/index.js";
+import "./implementations/n5-capability-downgrade-deception/index.js";
+import "./implementations/n6-sse-reconnection-hijacking/index.js";
+import "./implementations/n9-mcp-logging-protocol-injection/index.js";
+import "./implementations/n11-protocol-version-downgrade/index.js";
+import "./implementations/n12-resource-subscription-content-mutation/index.js";
+import "./implementations/n13-http-chunked-transfer-smuggling/index.js";
+import "./implementations/n14-tofu-bypass/index.js";
+import "./implementations/n15-jsonrpc-method-name-confusion/index.js";
 import "./implementations/data-privacy-cross-ecosystem-detector.js";
 // description-schema-detector.ts deleted in Phase-1 chunk 1.20 — 13 rules
 // (A1-A5, A8, B1-B7) migrated to per-rule Rule Standard v2 directories.
