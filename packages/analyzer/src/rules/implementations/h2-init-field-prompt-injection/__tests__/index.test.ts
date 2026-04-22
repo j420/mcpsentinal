@@ -9,6 +9,7 @@ import { buildContext as tp03 } from "../__fixtures__/true-positive-03-base64-in
 import { buildContext as tp04 } from "../__fixtures__/true-positive-04-unicode-in-name.js";
 import { buildContext as tn01 } from "../__fixtures__/true-negative-01-null-metadata.js";
 import { buildContext as tn02 } from "../__fixtures__/true-negative-02-benign-instructions.js";
+import { buildContext as tn03 } from "../__fixtures__/true-negative-03-short-non-semver-version.js";
 
 // Use the class directly to avoid registry coexistence with the legacy
 // v1 rule still registered from ai-manipulation-detector.ts (deleted
@@ -87,6 +88,9 @@ describe("H2 True Negatives", () => {
   });
   it("TN-02 legitimate initialize metadata produces zero findings", () => {
     expect(rule.analyze(tn02()).length).toBe(0);
+  });
+  it('TN-03 short non-semver server_version="2.0" produces zero findings (locks version-shape FP fix)', () => {
+    expect(rule.analyze(tn03()).length).toBe(0);
   });
 });
 
