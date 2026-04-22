@@ -1,0 +1,12 @@
+# True negative #2 — ordinary Dockerfile, no credentials.
+FROM node:20 AS build
+WORKDIR /app
+COPY package.json .
+RUN npm ci
+COPY . .
+RUN npm run build
+
+FROM node:20-slim
+COPY --from=build /app/dist /app
+ENV NODE_ENV=production
+CMD ["node", "/app/server.js"]

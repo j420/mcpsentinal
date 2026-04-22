@@ -1,0 +1,10 @@
+# True positive #3 — IMDSv2 hop-limit inflation (lethal edge #5).
+# CloudFormation launch template widening IMDS reach to pod network.
+Resources:
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        MetadataOptions:
+          HttpTokens: required
+          HttpPutResponseHopLimit: 2

@@ -100,12 +100,56 @@ import "./implementations/k3-audit-log-tampering/index.js";
 import "./implementations/k5-auto-approve-bypass/index.js";
 import "./implementations/k8-cross-boundary-credential-sharing/index.js";
 import "./implementations/ai-manipulation-detector.js";
-import "./implementations/infrastructure-detector.js";
+// infrastructure-detector.ts deleted in Phase 1 Chunk 1.13; its seven rules
+// (P1, P2, P3, P4, P5, P6, P7) have each been migrated to their own directory.
+// P8, P9, P10 live in their own directories from wave-3 (chunk 1.12).
+import "./implementations/p1-docker-socket-mount/index.js";
+import "./implementations/p2-dangerous-container-capabilities/index.js";
+import "./implementations/p3-cloud-metadata-access/index.js";
+import "./implementations/p4-tls-bypass/index.js";
+import "./implementations/p5-secrets-in-build-layers/index.js";
+import "./implementations/p6-ld-preload-hijack/index.js";
+import "./implementations/p7-host-filesystem-mount/index.js";
 import "./implementations/protocol-ai-runtime-detector.js";
 import "./implementations/data-privacy-cross-ecosystem-detector.js";
-import "./implementations/description-schema-detector.js";
-import "./implementations/dependency-behavioral-detector.js";
-import "./implementations/ecosystem-adversarial-detector.js";
+// description-schema-detector.ts deleted in Phase-1 chunk 1.20 — 13 rules
+// (A1-A5, A8, B1-B7) migrated to per-rule Rule Standard v2 directories.
+import "./implementations/a1-prompt-injection-description/index.js";
+import "./implementations/a2-excessive-scope-claims/index.js";
+import "./implementations/a3-suspicious-urls/index.js";
+import "./implementations/a4-tool-name-shadowing/index.js";
+import "./implementations/a5-description-length-anomaly/index.js";
+import "./implementations/a8-description-capability-mismatch/index.js";
+import "./implementations/b1-missing-input-validation/index.js";
+import "./implementations/b2-dangerous-parameter-types/index.js";
+import "./implementations/b3-excessive-parameter-count/index.js";
+import "./implementations/b4-schemaless-tools/index.js";
+import "./implementations/b5-prompt-injection-parameter/index.js";
+import "./implementations/b6-unconstrained-additional-properties/index.js";
+import "./implementations/b7-dangerous-default-values/index.js";
+// dependency-behavioral-detector.ts deleted in Phase 1 Chunk 1.23; its ten
+// rules (D1, D2, D4, D5, D6, D7, E1, E2, E3, E4) have each been migrated to
+// their own directory. D-rules consume `context.dependencies[]`; E-rules
+// consume `context.connection_metadata`. D3 was migrated earlier in wave-1
+// chunk 1.24 (`d3-typosquatting/`).
+import "./implementations/d1-known-cves/index.js";
+import "./implementations/d2-abandoned-deps/index.js";
+import "./implementations/d4-excessive-deps/index.js";
+import "./implementations/d5-known-malicious-packages/index.js";
+import "./implementations/d6-weak-cryptography/index.js";
+import "./implementations/d7-dependency-confusion/index.js";
+import "./implementations/e1-no-auth-required/index.js";
+import "./implementations/e2-insecure-transport/index.js";
+import "./implementations/e3-response-time-anomaly/index.js";
+import "./implementations/e4-excessive-tool-count/index.js";
+// ecosystem-adversarial-detector.ts deleted in Phase 1 Chunk 1.26; its five
+// rules (F4, F5, G6, H1, H3) have each been migrated to their own directory
+// with full Rule Standard v2 charters.
+import "./implementations/f4-mcp-spec-non-compliance/index.js";
+import "./implementations/f5-official-namespace-squatting/index.js";
+import "./implementations/g6-rug-pull-tool-drift/index.js";
+import "./implementations/h1-oauth-insecure-implementation/index.js";
+import "./implementations/h3-multi-agent-propagation-risk/index.js";
 import "./implementations/protocol-surface-remaining-detector.js";
 import "./implementations/k1-absent-structured-logging/index.js";
 import "./implementations/k4-missing-human-confirmation/index.js";

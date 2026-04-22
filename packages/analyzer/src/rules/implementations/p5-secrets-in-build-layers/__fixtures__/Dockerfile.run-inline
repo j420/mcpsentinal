@@ -1,0 +1,6 @@
+# True positive #3 — inline RUN assignment (lethal edge #5).
+FROM node:20
+WORKDIR /app
+COPY package.json .
+RUN NPM_TOKEN=deadbeef npm install
+COPY . .

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mcp-priv
+spec:
+  containers:
+    - name: mcp
+      image: mcp/server:latest
+      # True positive #1 — privileged: true (lethal edge #3, implicit ALL caps).
+      securityContext:
+        privileged: true

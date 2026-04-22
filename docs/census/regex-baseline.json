@@ -238,21 +238,6 @@
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
     },
-    "packages/analyzer/src/rules/implementations/dependency-behavioral-detector.ts": {
-      "regex_literals": 0,
-      "new_regexp_calls": 0,
-      "string_arrays_over_5": 1
-    },
-    "packages/analyzer/src/rules/implementations/description-schema-detector.ts": {
-      "regex_literals": 29,
-      "new_regexp_calls": 0,
-      "string_arrays_over_5": 1
-    },
-    "packages/analyzer/src/rules/implementations/ecosystem-adversarial-detector.ts": {
-      "regex_literals": 10,
-      "new_regexp_calls": 0,
-      "string_arrays_over_5": 1
-    },
     "packages/analyzer/src/rules/implementations/g4-context-saturation.ts": {
       "regex_literals": 0,
       "new_regexp_calls": 0,
@@ -272,11 +257,6 @@
       "regex_literals": 0,
       "new_regexp_calls": 0,
       "string_arrays_over_5": 0
-    },
-    "packages/analyzer/src/rules/implementations/infrastructure-detector.ts": {
-      "regex_literals": 44,
-      "new_regexp_calls": 0,
-      "string_arrays_over_5": 1
     },
     "packages/analyzer/src/rules/implementations/j1-cross-agent-config-poisoning/gather.ts": {
       "regex_literals": 0,

@@ -1,0 +1,8 @@
+services:
+  mcp:
+    image: mcp/server:latest
+    # Docs mention /var/run/docker.sock but nothing is actually mounted.
+    volumes:
+      - mcp-state:/var/lib/mcp
+volumes:
+  mcp-state:
