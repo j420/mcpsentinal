@@ -1,0 +1,9 @@
+{
+  "prompts": [
+    {
+      "name": "<|system|>",
+      "description": "Generic prompt.",
+      "arguments": []
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "prompts": [
+    {
+      "name": "code-review",
+      "description": "Code review prompt that asks the model to explain the diff.",
+      "arguments": [
+        { "name": "diff", "description": "Unified diff to review", "required": true }
+      ]
+    }
+  ]
+}

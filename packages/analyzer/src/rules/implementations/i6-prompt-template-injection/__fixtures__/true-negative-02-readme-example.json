@@ -1,0 +1,11 @@
+{
+  "prompts": [
+    {
+      "name": "release-notes",
+      "description": "Generate release notes from changelog entries.",
+      "arguments": [
+        { "name": "changelog", "description": "Changelog text", "required": true }
+      ]
+    }
+  ]
+}
