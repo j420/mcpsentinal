@@ -206,3 +206,87 @@ jobs:
           fi
 
           echo "✅ Rule accuracy passes the Layer 5 threshold (≥80% precision)"
+
+      # ── Per-rule dashboard with regression gate (chunk 2.4) ───────────────────
+      #
+      # Runs the accuracy-dashboard CLI, which consumes rules/accuracy-targets.yaml,
+      # compares measured per-rule precision/recall against declared targets,
+      # detects regressions vs the prior snapshot committed at docs/accuracy/latest.json,
+      # and writes updated dashboard artefacts (latest.json + trend.md).
+      #
+      # --fail-on-regression causes exit 1 when any rule:
+      #   * measures below its target_precision or target_recall, OR
+      #   * regresses vs the prior snapshot by more than the threshold (default 5pp).
+      # On the very first run (no prior snapshot committed) only below-target
+      # failures are ignored so the baseline can be recorded honestly.
+
+      - name: Run Accuracy Dashboard
+        id: accuracy_dashboard
+        run: |
+          pnpm --filter=@mcp-sentinel/red-team exec tsx src/accuracy/cli.ts \
+            --fail-on-regression
+
+      - name: Upload accuracy dashboard artefacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: accuracy-dashboard-${{ github.run_id }}
+          path: |
+            docs/accuracy/latest.json
+            docs/accuracy/trend.md
+          retention-days: 90
+
+      # PR comment: only on pull_request triggers. Summarises the dashboard
+      # delta so reviewers can see regression impact at a glance.
+      - name: Comment on PR with dashboard deltas
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (!fs.existsSync('docs/accuracy/latest.json')) return;
+            const snap = JSON.parse(fs.readFileSync('docs/accuracy/latest.json', 'utf-8'));
+            const a = snap.aggregate;
+            const pct = v => `${(v * 100).toFixed(1)}%`;
+            const pp = v => `${(v * 100).toFixed(1)}pp`;
+            const regressed = snap.rules.filter(r => r.regressed);
+            const below = snap.rules.filter(r => !r.passes);
+
+            const lines = [];
+            lines.push('## Rule Accuracy Dashboard');
+            lines.push('');
+            lines.push(`**Aggregate precision:** ${pct(a.precision)} · **Aggregate recall:** ${pct(a.recall)}`);
+            lines.push(`**Passing target:** ${a.passes_count} / ${a.rule_count} · **Regressions:** ${a.regressions_count}`);
+            lines.push('');
+            if (regressed.length === 0 && below.length === 0) {
+              lines.push('_No regressions, no rules below target._');
+            } else {
+              if (regressed.length > 0) {
+                lines.push('### Regressions vs prior snapshot');
+                lines.push('');
+                lines.push('| Rule | Δ Precision | Δ Recall |');
+                lines.push('|---|---|---|');
+                for (const r of regressed.slice(0, 20)) {
+                  lines.push(`| ${r.rule_id} | ${pp(r.delta_precision)} | ${r.target_recall === null ? 'N/A' : pp(r.delta_recall)} |`);
+                }
+                lines.push('');
+              }
+              if (below.length > 0) {
+                lines.push('### Rules below target');
+                lines.push('');
+                lines.push('| Rule | Measured Precision / Target | Measured Recall / Target |');
+                lines.push('|---|---|---|');
+                for (const r of below.slice(0, 20)) {
+                  const mr = r.target_recall === null ? 'N/A' : `${pct(r.measured_recall)} / ${pct(r.target_recall)}`;
+                  lines.push(`| ${r.rule_id} | ${pct(r.measured_precision)} / ${pct(r.target_precision)} | ${mr} |`);
+                }
+                lines.push('');
+              }
+            }
+            lines.push('_Full report: see the \`accuracy-dashboard-${{ github.run_id }}\` artefact._');
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: lines.join('\n'),
+            });
