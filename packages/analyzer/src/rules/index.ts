@@ -1,34 +1,26 @@
 /**
- * TypedRule Registry — Auto-registers all typed rule implementations.
+ * TypedRuleV2 Registry — Auto-registers all detection rule implementations.
  *
- * Import this module to register all typed rules with the engine.
- * Each implementation file calls registerTypedRule() on import.
+ * Import this module to register all rules with the engine. Each implementation
+ * file calls `registerTypedRuleV2(new MyRule())` at module load.
  */
 
-// Core framework — v1 (legacy, backward-compatible)
-export {
-  type TypedRule,
-  type TypedFinding,
-  registerTypedRule,
-  getTypedRule,
-  getAllTypedRules,
-  hasTypedRule,
-} from "./base.js";
-
-// Core framework — v2 (mandatory evidence chains)
+// Core framework — TypedRuleV2 is the only rule interface.
 export {
   type TypedRuleV2,
+  type TypedFinding,
   type RuleResult,
   type RuleRequirements,
   type AnalysisTechnique,
+  type TypedRuleHandle,
   registerTypedRuleV2,
   getTypedRuleV2,
   getAllTypedRulesV2,
-  hasNativeV2Rule,
-  migrationStats,
+  getTypedRule,
+  getAllTypedRules,
+  hasTypedRule,
   checkRequirements,
   ruleResultToTypedFinding,
-  V1RuleAdapter,
 } from "./base.js";
 
 // Analyzers (shared analysis toolkits)

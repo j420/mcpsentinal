@@ -180,35 +180,10 @@ describe("scoredFindings() carries confidence to scorer", () => {
     expect(c1Scored!.confidence).toBeLessThanOrEqual(0.99);
   });
 
-  it("legacy rules get default confidence 0.5 (not 1.0)", () => {
-    // Build an engine with C1 (typed) + a dummy legacy rule to ensure both run
-    const legacyRule: DetectionRule = {
-      id: "TEST-LEGACY",
-      name: "Test Legacy Rule",
-      category: "code-analysis",
-      severity: "medium",
-      owasp: null,
-      mitre: null,
-      detect: {
-        type: "regex",
-        context: "source_code",
-        patterns: ["exec\\("],
-      },
-      remediation: "Test remediation.",
-      enabled: true,
-    };
-    const mixedEngine = new AnalysisEngine([c1Rule, legacyRule]);
-    const result = mixedEngine.analyzeWithProfile(execServer());
-
-    // The legacy regex rule should fire on the exec() call
-    const legacyFinding = result.all_annotated.find(
-      (f) => f.rule_id === "TEST-LEGACY"
-    );
-    expect(legacyFinding).toBeDefined();
-    // Legacy rules without evidence chains get 0.5 default
-    expect(legacyFinding!.confidence).toBe(0.5);
-    expect(legacyFinding!.evidence_chain).toBeNull();
-  });
+  // Removed in Phase 1 chunk 1.28: the "legacy rules get default confidence 0.5"
+  // test constructed a YAML regex DetectionRule and relied on runRegexRule +
+  // enrichFindings, both of which have been deleted. All 164 active rules are
+  // TypedRuleV2 and carry confidence derived from their evidence chains.
 });
 
 // ═════════════════════════════════════════════════════════════════════════════

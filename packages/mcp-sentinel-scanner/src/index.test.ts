@@ -3,7 +3,7 @@ import { readdirSync, readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { AnalysisEngine, loadRules, type AnalysisContext } from "@mcp-sentinel/analyzer";
-import { hasTypedRule, getAllTypedRules } from "@mcp-sentinel/analyzer";
+import { getAllTypedRulesV2, getTypedRuleV2 } from "@mcp-sentinel/analyzer";
 import { computeScore } from "@mcp-sentinel/scorer";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -39,19 +39,23 @@ describe("Rule Loading", () => {
   });
 });
 
-// ─── TypedRule registration ────────────────────────────────────────────────
+// ─── TypedRuleV2 registration ──────────────────────────────────────────────
 
-describe("TypedRule Registration", () => {
-  it("has TypedRules registered (at least original 6)", () => {
-    // In dev/test context, not all TypedRules may auto-register due to module resolution.
+describe("TypedRuleV2 Registration", () => {
+  it("has TypedRuleV2 rules registered (at least original 6)", () => {
+    // In dev/test context, not all rules may auto-register due to module resolution.
     // The bundled npm package includes all 164 active rules via esbuild. Here we verify at least
-    // the original 6 TypedRules (C1, A6, A7, A9, D3, G4, F1) register through the engine import.
-    const all = getAllTypedRules();
+    // the original 6 rules (C1, A6, A7, A9, D3, G4, F1) register through the engine import.
+    const all = getAllTypedRulesV2();
     expect(all.length).toBeGreaterThanOrEqual(6);
+    // Sanity check: at least one of the original TypedRuleV2 rules is present.
+    expect(getTypedRuleV2("C1") !== undefined
+      || getTypedRuleV2("A6") !== undefined
+      || getTypedRuleV2("F1") !== undefined).toBe(true);
   });
 
   it("engine produces findings for typed rules", () => {
-    // Verify the engine can dispatch to TypedRules (C1 command injection)
+    // Verify the engine can dispatch to TypedRuleV2 rules (C1 command injection)
     const rules = loadRules(rulesDir);
     const engine = new AnalysisEngine(rules);
     const findings = engine.analyze({

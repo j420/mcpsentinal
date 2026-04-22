@@ -13,8 +13,13 @@ export {
 // These replace YAML regex rules with real analysis: taint tracking, entropy,
 // graph algorithms, Unicode codepoint analysis, multi-algorithm similarity.
 export {
-  type TypedRule,
+  type TypedRuleV2,
   type TypedFinding,
+  type RuleResult,
+  type AnalysisTechnique,
+  type TypedRuleHandle,
+  getAllTypedRulesV2,
+  getTypedRuleV2,
   getAllTypedRules,
   hasTypedRule,
 } from "./rules/index.js";
