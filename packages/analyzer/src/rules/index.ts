@@ -105,7 +105,21 @@ import "./implementations/ai-manipulation-detector.js";
 // Orchestrator will add per-rule imports in the wave cleanup commit.
 import "./implementations/protocol-ai-runtime-detector.js";
 import "./implementations/data-privacy-cross-ecosystem-detector.js";
-import "./implementations/description-schema-detector.js";
+// description-schema-detector.ts deleted in Phase-1 chunk 1.20 — 13 rules
+// (A1-A5, A8, B1-B7) migrated to per-rule Rule Standard v2 directories.
+import "./implementations/a1-prompt-injection-description/index.js";
+import "./implementations/a2-excessive-scope-claims/index.js";
+import "./implementations/a3-suspicious-urls/index.js";
+import "./implementations/a4-tool-name-shadowing/index.js";
+import "./implementations/a5-description-length-anomaly/index.js";
+import "./implementations/a8-description-capability-mismatch/index.js";
+import "./implementations/b1-missing-input-validation/index.js";
+import "./implementations/b2-dangerous-parameter-types/index.js";
+import "./implementations/b3-excessive-parameter-count/index.js";
+import "./implementations/b4-schemaless-tools/index.js";
+import "./implementations/b5-prompt-injection-parameter/index.js";
+import "./implementations/b6-unconstrained-additional-properties/index.js";
+import "./implementations/b7-dangerous-default-values/index.js";
 import "./implementations/dependency-behavioral-detector.js";
 // ecosystem-adversarial-detector.ts deleted in Phase 1 Chunk 1.26; its five
 // rules (F4, F5, G6, H1, H3) have each been migrated to their own directory
