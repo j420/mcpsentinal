@@ -163,7 +163,25 @@ import "./implementations/f5-official-namespace-squatting/index.js";
 import "./implementations/g6-rug-pull-tool-drift/index.js";
 import "./implementations/h1-oauth-insecure-implementation/index.js";
 import "./implementations/h3-multi-agent-propagation-risk/index.js";
-import "./implementations/protocol-surface-remaining-detector.js";
+// Phase 1 chunk 1.6/B: protocol-surface-remaining-detector.ts deleted; its
+// 16 rules (I3, I4, I5, I6, I7, I8, I9, I10, I11, I12, I15, J3, J4, J5, J6,
+// J7) each migrated to their own Rule Standard v2 directory.
+import "./implementations/i3-resource-metadata-injection/index.js";
+import "./implementations/i4-dangerous-resource-uri/index.js";
+import "./implementations/i5-resource-tool-shadowing/index.js";
+import "./implementations/i6-prompt-template-injection/index.js";
+import "./implementations/i7-sampling-capability-abuse/index.js";
+import "./implementations/i8-sampling-cost-attack/index.js";
+import "./implementations/i9-elicitation-credential-harvesting/index.js";
+import "./implementations/i10-elicitation-url-redirect/index.js";
+import "./implementations/i11-over-privileged-root/index.js";
+import "./implementations/i12-capability-escalation-post-init/index.js";
+import "./implementations/i15-transport-session-security/index.js";
+import "./implementations/j3-full-schema-poisoning/index.js";
+import "./implementations/j4-health-endpoint-info-disclosure/index.js";
+import "./implementations/j5-tool-output-poisoning/index.js";
+import "./implementations/j6-tool-preference-manipulation/index.js";
+import "./implementations/j7-openapi-spec-field-injection/index.js";
 import "./implementations/k1-absent-structured-logging/index.js";
 import "./implementations/k4-missing-human-confirmation/index.js";
 import "./implementations/k6-overly-broad-oauth-scopes/index.js";
