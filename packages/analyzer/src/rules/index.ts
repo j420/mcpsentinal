@@ -186,14 +186,13 @@ import "./implementations/n3-jsonrpc-id-collision/index.js";
 import "./implementations/n7-progress-token-abuse/index.js";
 import "./implementations/n8-cancellation-race-condition/index.js";
 import "./implementations/n10-incomplete-handshake-dos/index.js";
-import "./implementations/k-compliance-v2.js";
+// k-compliance-v2.ts deleted in Phase 1 Chunk 1.6/D (wave-6); K12 and K20
+// now have their own per-rule Rule Standard v2 directories. K14 and K16
+// were migrated earlier in chunks 1.6b and 1.6c.
 import "./implementations/k11-missing-server-integrity-verification/index.js";
 import "./implementations/k12-executable-content-response/index.js";
 import "./implementations/k14-agent-credential-propagation/index.js";
 import "./implementations/k16-unbounded-recursion/index.js";
-// k20 migrated in chunk 1.6d but the import was never wired — surfaced during
-// wave-2 integration. Re-importing after k-compliance-v2 ensures the per-rule
-// v2 implementation supersedes the legacy K20Rule embedded in k-compliance-v2.
 import "./implementations/k20-insufficient-audit-context/index.js";
 import "./implementations/m-runtime-v2.js";
 import "./implementations/compliance-remaining-detector.js";
