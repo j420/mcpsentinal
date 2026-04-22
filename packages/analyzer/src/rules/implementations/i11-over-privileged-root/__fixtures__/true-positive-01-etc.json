@@ -1,0 +1,5 @@
+{
+  "roots": [
+    { "uri": "file:///etc", "name": "system-etc" }
+  ]
+}

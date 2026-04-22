@@ -1,0 +1,5 @@
+{
+  "roots": [
+    { "uri": "file:///home/user/.ssh", "name": "ssh-keys" }
+  ]
+}

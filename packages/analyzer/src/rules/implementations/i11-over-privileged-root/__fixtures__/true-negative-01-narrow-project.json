@@ -1,0 +1,5 @@
+{
+  "roots": [
+    { "uri": "file:///workspace/my-project", "name": "project" }
+  ]
+}
