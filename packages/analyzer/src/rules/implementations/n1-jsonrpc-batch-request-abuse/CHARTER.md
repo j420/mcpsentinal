@@ -38,14 +38,14 @@ edge_case_strategies:
   - batch_handler_without_length_guard
 evidence_contract:
   minimum_chain:
-    - source
-    - sink
-    - mitigation
-    - impact
+    source: true        # attacker-controlled batch array enters the handler
+    sink: true          # synchronous per-entry dispatch (forEach/map/for..of)
+    mitigation: true    # MUST report presence/absence of size guard or throttle
+    impact: true        # DoS amplification scoped to the server host
   required_factors:
     - unbounded_batch_iteration
   location_kinds:
-    - source_code_line
+    - source
 obsolescence:
   retire_when: "MCP spec mandates a server-enforced max batch size with a protocol-level rejection code, AND >90% of tracked MCP SDKs set a bounded default."
 ---

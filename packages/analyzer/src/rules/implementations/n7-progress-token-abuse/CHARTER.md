@@ -34,14 +34,14 @@ edge_case_strategies:
   - progress_token_from_timestamp
 evidence_contract:
   minimum_chain:
-    - source
-    - propagation
-    - sink
-    - impact
+    source: true        # assignment of a weak expression to a progress token
+    propagation: true   # token flows to the notifications/progress correlation field
+    sink: true          # weak token reaches outbound progress payload
+    impact: true        # progress spoof / cross-session signalling
   required_factors:
     - weak_progress_token_source
   location_kinds:
-    - source_code_line
+    - source
 obsolescence:
   retire_when: "MCP spec mandates unpredictable progressToken generators AND MCP clients validate token ownership against active request maps before accepting notifications/progress payloads."
 ---

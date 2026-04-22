@@ -34,14 +34,14 @@ edge_case_strategies:
   - emit_call_in_enclosing_loop
 evidence_contract:
   minimum_chain:
-    - source
-    - sink
-    - mitigation
-    - impact
+    source: true        # notification emitter reached from an unbounded loop
+    sink: true          # per-iteration wire emit (notify/emit/send*)
+    mitigation: true    # MUST report throttle / debounce / backpressure presence
+    impact: true        # downstream saturation, client buffer exhaustion
   required_factors:
     - notification_emission_in_unbounded_loop
   location_kinds:
-    - source_code_line
+    - source
 obsolescence:
   retire_when: "MCP transport SDKs ship with bounded notification queues by default (drop-oldest at ≤100) and the spec mandates server-enforced per-subscription rate limits."
 ---

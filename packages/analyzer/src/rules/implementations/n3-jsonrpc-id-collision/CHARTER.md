@@ -34,14 +34,15 @@ edge_case_strategies:
   - integer_literal_assigned_to_id
 evidence_contract:
   minimum_chain:
-    - source
-    - sink
-    - mitigation
-    - impact
+    source: true        # assignment of a predictable expression to an id identifier
+    propagation: true   # token flows from RHS to the outbound JSON-RPC payload
+    sink: true          # id reaches the wire as the correlation key
+    mitigation: true    # MUST report presence/absence of crypto random generator
+    impact: true        # response spoofing (CVE-2025-6515 class)
   required_factors:
     - predictable_request_id_generator
   location_kinds:
-    - source_code_line
+    - source
 obsolescence:
   retire_when: "All major MCP SDKs default to crypto.randomUUID() for request ids AND the spec mandates unpredictable ids in a future revision."
 ---

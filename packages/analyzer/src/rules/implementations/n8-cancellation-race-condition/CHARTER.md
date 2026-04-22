@@ -34,15 +34,15 @@ edge_case_strategies:
   - catch_abort_error_then_delete_or_rollback
 evidence_contract:
   minimum_chain:
-    - source
-    - propagation
-    - sink
-    - mitigation
-    - impact
+    source: true        # cancel signal (AbortSignal / notifications/cancelled / handler)
+    propagation: true   # cancel path reaches a mutation call
+    sink: true          # mutation executes without atomic guard
+    mitigation: true    # MUST report presence/absence of transaction/lock/mutex
+    impact: true        # CWE-367 TOCTOU — rollback of committed state
   required_factors:
     - cancellation_without_atomic_guard
   location_kinds:
-    - source_code_line
+    - source
 obsolescence:
   retire_when: "MCP spec mandates that servers MUST wrap cancellable mutations in a transaction OR explicitly document the non-atomic contract, AND mainstream MCP SDKs ship helpers that encapsulate this pattern."
 ---

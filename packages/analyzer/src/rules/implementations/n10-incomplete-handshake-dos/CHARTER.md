@@ -34,14 +34,14 @@ edge_case_strategies:
   - websocket_server_without_deadline_on_initialize
 evidence_contract:
   minimum_chain:
-    - source
-    - sink
-    - mitigation
-    - impact
+    source: true        # the connection-accept site (createServer / WebSocketServer / listen)
+    sink: true          # the handshake read path with no deadline
+    mitigation: true    # MUST report presence/absence of a per-connection handshake timeout
+    impact: true        # resource-exhaustion (Slowloris class) scoped to the MCP host
   required_factors:
     - handshake_deadline_absent
   location_kinds:
-    - source_code_line
+    - source
 obsolescence:
   retire_when: "MCP spec mandates a handshake deadline (e.g. 30s) AND mainstream MCP SDKs enforce it by default with a configurable override."
 ---
