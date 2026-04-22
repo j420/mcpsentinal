@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mcp-cap
+spec:
+  containers:
+    - name: mcp
+      image: mcp/server:latest
+      # True positive #2 — drop ALL then add SYS_ADMIN (lethal edge #2).
+      # The add is what matters; drop-all is NOT a mitigation here.
+      securityContext:
+        capabilities:
+          drop:
+            - ALL
+          add:
+            - sys_admin
