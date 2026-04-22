@@ -1,8 +1,19 @@
 /**
- * Scratch test for iterating on the benign catalogue. NOT part of the
- * committed corpus — kept during development only and deleted before
- * commit. Prints ALL findings (not just critical/high) so I can see
- * whether allowed_findings needs declaring.
+ * Benign-catalogue regression gate.
+ *
+ * Runs every registered TypedRuleV2 against every fixture in the
+ * 108-fixture benign catalogue (10 anthropic-official + 21 smithery-top +
+ * 24 canonical-non-mcp + 53 edge-of-spec). Asserts zero CRITICAL and
+ * zero HIGH findings across the combined corpus.
+ *
+ * Medium / low / informational findings are tolerated and printed for
+ * visibility. Any critical or high finding on a benign fixture is a hard
+ * failure — it means either (a) the fixture is accidentally malicious
+ * (rewrite the fixture) or (b) a rule has a false positive (flag it in
+ * docs/accuracy/trend.md; do NOT silence the finding here).
+ *
+ * Do NOT add allowed_findings entries for critical/high severities —
+ * they are never permitted on benign fixtures, regardless of the list.
  */
 import { describe, it, expect } from "vitest";
 import { getAllTypedRules } from "../src/rules/base.js";
