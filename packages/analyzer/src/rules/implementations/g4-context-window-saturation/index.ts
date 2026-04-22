@@ -68,10 +68,26 @@ class G4Rule implements TypedRuleV2 {
     const builder = new EvidenceChainBuilder();
 
     // Source: the oversized description itself.
+    //
+    // When the peer sample is too small to compute a z-score
+    // (site.peer_zscore === null — server has fewer than
+    // min_peer_sample sibling tools), the rule can still fire from the
+    // absolute-threshold signals (length, tail-payload density, ratio,
+    // repetition). Prepending an "absolute-threshold fallback" prefix
+    // to the source-link narrative gives auditors a loud, explicit
+    // signal that z-score did NOT contribute — they should not expect
+    // the peer-relative evidence later in the chain to be statistically
+    // meaningful.
+    const absoluteFallbackPrefix =
+      site.peer_zscore === null
+        ? `absolute-threshold fallback (peer sample below ` +
+          `min_peer_sample=${T.min_peer_sample}): `
+        : "";
     builder.source({
       source_type: "external-content",
       location: loc,
       observed:
+        absoluteFallbackPrefix +
         `Tool "${site.tool_name}" has a ${site.description_length}-byte ` +
         `description across ${site.parameter_count} declared parameter(s) ` +
         `(${site.description_parameter_ratio.toFixed(0)} bytes/param).`,
