@@ -101,6 +101,13 @@ obsolescence:
     value for `Access-Control-Allow-Origin` when `Access-Control-
     Allow-Credentials` is true. Until both halves exist C7 retains
     high severity.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # C7 — Wildcard CORS Configuration

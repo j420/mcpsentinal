@@ -90,6 +90,13 @@ obsolescence:
     first-class field with per-call SLO tracking AND the scanner
     subscribes to that surface. Under those conditions the one-shot
     10s threshold is replaced by per-call SLO percentiles.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # E3 — Response Time Anomaly

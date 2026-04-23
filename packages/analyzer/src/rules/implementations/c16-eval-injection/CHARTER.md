@@ -105,6 +105,15 @@ obsolescence:
     those APIs receive a string), and Python removes the __import__ /
     importlib.import_module surfaces from its default interpreter. Neither
     is plausible before C16 matters most — the rule stays critical.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - intermediate-variable
+  - add-noop-conditional
+mutations_acknowledged_blind:
+  - rename-danger-symbol
 ---
 
 # C16 — Dynamic Code Evaluation with User Input (Taint-Aware)

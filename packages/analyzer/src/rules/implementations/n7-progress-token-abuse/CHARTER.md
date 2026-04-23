@@ -44,6 +44,9 @@ evidence_contract:
     - source
 obsolescence:
   retire_when: "MCP spec mandates unpredictable progressToken generators AND MCP clients validate token ownership against active request maps before accepting notifications/progress payloads."
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # N7 — Progress Token Prediction and Injection

@@ -106,6 +106,13 @@ obsolescence:
     authorization spec) AND the reference client refuses to connect to
     an unauthenticated server. Under those conditions the unauth
     posture is impossible to reach production.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # E1 — No Authentication Required

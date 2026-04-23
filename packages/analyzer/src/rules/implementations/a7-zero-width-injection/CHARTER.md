@@ -110,6 +110,13 @@ obsolescence:
     reference clients strip invisible codepoints from all tool metadata at
     registration. At that point invisible-codepoint injection is
     structurally impossible against MCP, and this rule becomes redundant.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # A7 — Zero-Width and Invisible Character Injection

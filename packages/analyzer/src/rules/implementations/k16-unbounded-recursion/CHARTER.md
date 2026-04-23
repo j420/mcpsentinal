@@ -135,6 +135,12 @@ obsolescence:
     (today Anthropic Desktop, Cursor, and Claude Code all lack one).
     Neither direction is on a published roadmap; the rule is expected
     to remain load-bearing through 2027.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # K16 — Unbounded Recursion / Missing Depth Limits

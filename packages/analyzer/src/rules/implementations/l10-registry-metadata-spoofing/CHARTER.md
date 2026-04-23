@@ -41,6 +41,13 @@ evidence_contract:
     - source
 
 confidence_cap: 0.80
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # L10 — Registry Metadata Spoofing

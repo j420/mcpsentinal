@@ -103,6 +103,13 @@ obsolescence:
     valid integrity signature. At that point the architectural shape
     alone is insufficient evidence because the trust label travels with
     the data.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # M6 — Progressive Context Poisoning Enablers

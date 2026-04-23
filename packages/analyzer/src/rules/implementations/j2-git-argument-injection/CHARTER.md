@@ -118,6 +118,15 @@ obsolescence:
     argument-looking arguments by default (simple-git 4.x + strictArgCheck
     flag is the current direction), AND the MCP spec mandates schema-level
     validation of path/ref arguments. Until both land, J2 stays critical.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - intermediate-variable
+  - add-noop-conditional
+mutations_acknowledged_blind:
+  - rename-danger-symbol
 ---
 
 # J2 — Git Argument Injection (Taint-Aware + Structural)

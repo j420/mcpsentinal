@@ -115,6 +115,13 @@ obsolescence:
     install packages whose two manifest views do not match. Until both
     conditions hold, L5 stays in the ruleset because the attack surface
     is structurally unfixed.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # L5 — Package Manifest Confusion

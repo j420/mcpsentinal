@@ -103,6 +103,12 @@ obsolescence:
     traversal attempt — AND the MCP SDK generators only emit that API
     when a tool is declared filesystem-scoped. Until both halves exist
     C2 retains critical severity.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # C2 — Path Traversal (Taint-Aware)

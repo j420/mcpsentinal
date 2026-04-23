@@ -99,6 +99,13 @@ obsolescence:
     tools of different servers, OR cross-server isolation becomes
     a standard deployment pattern and the trifecta distribution
     stops being a structurally observable threat.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # I13 — Cross-Config Lethal Trifecta

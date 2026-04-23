@@ -100,6 +100,12 @@ obsolescence:
     untrusted input — OR all agent configuration objects are created
     with Object.create(null) by the MCP SDK. Until either, C10 retains
     critical severity.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # C10 — Prototype Pollution (Taint-Aware)

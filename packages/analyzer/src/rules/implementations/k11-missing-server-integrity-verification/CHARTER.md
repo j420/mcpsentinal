@@ -115,6 +115,12 @@ obsolescence:
     by the protocol layer — at which point integrity verification
     becomes a protocol invariant and a static rule that names the
     gap no longer has work to do.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # K11 — Missing Server Integrity Verification

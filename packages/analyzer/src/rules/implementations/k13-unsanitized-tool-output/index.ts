@@ -53,7 +53,18 @@ class K13UnsanitizedToolOutputRule implements TypedRuleV2 {
   readonly id = RULE_ID;
   readonly name = RULE_NAME;
   readonly requires: RuleRequirements = { source_code: true };
-  readonly technique: AnalysisTechnique = "ast-taint";
+  // K13 uses a bespoke TypeScript-AST walker (gather.ts) that identifies
+  // function-level external-source reads and response-emission sites, then
+  // classifies the flow as sanitised or unsanitised within the enclosing
+  // function. It does NOT route through `analyzeASTTaint` — the generic
+  // taint engine's source vocabulary (req.body, process.env, readFileSync)
+  // and sink vocabulary (exec, eval, SQL query) don't match K13's concept
+  // of "external content reaching a return statement". Declaring
+  // `ast-taint` was historically aspirational; the evidence-integrity
+  // harness correctly rejects the claim because isReachable() asks the
+  // taint engine to prove a flow the taint engine has no vocabulary for.
+  // `structural` is the accurate label for this AST-walk analysis.
+  readonly technique: AnalysisTechnique = "structural";
 
   analyze(context: AnalysisContext): RuleResult[] {
     const gathered = gatherK13(context);

@@ -45,6 +45,9 @@ evidence_contract:
     - source
 obsolescence:
   retire_when: "MCP spec mandates that servers MUST wrap cancellable mutations in a transaction OR explicitly document the non-atomic contract, AND mainstream MCP SDKs ship helpers that encapsulate this pattern."
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # N8 — Cancellation Race Condition

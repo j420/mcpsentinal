@@ -109,6 +109,12 @@ obsolescence:
     jwt.verify(token, secret) with no options) — AND RFC 8725 becomes
     a MUST in the baseline MCP authorisation spec. Until both, C14
     retains critical severity on the clearly-unsafe patterns.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # C14 — JWT Algorithm Confusion / None Algorithm Attack

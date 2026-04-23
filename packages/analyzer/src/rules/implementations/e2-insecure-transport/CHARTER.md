@@ -95,6 +95,13 @@ obsolescence:
     network transport AND every MCP client implementation refuses to
     connect to a non-TLS URL. Under those conditions E2's attack surface
     is extinguished.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # E2 — Insecure Transport (HTTP/WS)

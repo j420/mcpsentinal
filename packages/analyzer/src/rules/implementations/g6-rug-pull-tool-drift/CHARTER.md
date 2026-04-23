@@ -130,6 +130,13 @@ obsolescence:
     must verify before every tools/list refresh. Under those
     conditions rug-pull attacks cannot inherit prior trust, so G6's
     detection layer becomes redundant.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # G6 — Rug Pull / Tool Behavior Drift

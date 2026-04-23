@@ -100,6 +100,13 @@ obsolescence:
     servers must opt into explicitly, making an undeclared encoding a
     protocol violation rather than a detection problem. Neither direction
     is current as of 2026-04.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # A9 — Encoded or Obfuscated Instructions in Tool Description

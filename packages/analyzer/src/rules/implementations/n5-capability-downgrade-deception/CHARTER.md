@@ -84,6 +84,13 @@ obsolescence:
     response, AND the spec's conformance suite catches servers that
     register handlers for undeclared capabilities. Until then, the
     server-side invariant is the only enforcement.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # N5 — Capability Downgrade Deception

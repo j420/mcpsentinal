@@ -94,6 +94,9 @@ obsolescence:
     violation that needs its own stand-alone scanner), OR because I1
     is split so that I2 can run on its own without re-walking the
     tool set and re-running schema inference.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # I2 — Missing Destructive Annotation (Companion of I1)

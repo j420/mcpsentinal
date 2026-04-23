@@ -116,6 +116,13 @@ obsolescence:
     network-capable tool), making the read→send chain unrepresentable
     at the protocol level. Until then, F7 is the static-time
     approximation the regulator asks for.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # F7 — Multi-Step Exfiltration Chain

@@ -102,6 +102,12 @@ obsolescence:
     the MCP spec declares a typed latency budget that is stripped
     of tool-derived values before reaching the client. Neither
     exists as of 2026-04.
+
+mutations_survived:
+  - unicode-homoglyph-identifier
+mutations_acknowledged_blind:
+  - split-string-literal
+  - base64-wrap-payload
 ---
 
 # O8 — Timing-Based Covert Channel

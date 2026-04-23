@@ -90,6 +90,13 @@ obsolescence:
     truncates responses exceeding a hard cap (e.g. 8000 tokens) AND
     returns a continuation token, making unbounded-description
     claims inert at runtime.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # M5 — Context Window Flooding

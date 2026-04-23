@@ -116,6 +116,13 @@ obsolescence:
     tools refuse to install from an abandoned manifest. Under those
     conditions the rule's heuristic is superseded by registry ground
     truth.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # D2 — Abandoned Dependencies

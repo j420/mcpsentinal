@@ -119,6 +119,13 @@ obsolescence:
     declared in `outputSchema` (not free-form prose). Until
     both hold, static detection of protocol-mimic phrasing is
     the only static signal available.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # G3 — Tool Response Format Injection

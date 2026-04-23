@@ -81,6 +81,13 @@ obsolescence:
     the name, OR every ecosystem MCP client displays server
     identity alongside the trust-anchor fingerprint so the user
     can verify. Neither exists as of 2026-04.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # Q6 — Agent Identity Impersonation via MCP

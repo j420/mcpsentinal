@@ -88,6 +88,9 @@ obsolescence:
     mount namespaces, macOS sandbox_init) BEFORE resolving any server
     tool-call, so declared roots are advisory and the actual fs
     access is hard-bounded by the client's sandbox.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # I11 — Over-Privileged Root

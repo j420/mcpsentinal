@@ -12,30 +12,50 @@ const rulesDir = join(__dirname, "..", "..", "..", "rules");
 // ─── Rule loading ──────────────────────────────────────────────────────────
 
 describe("Rule Loading", () => {
-  it("rules directory exists and contains 177+ YAML files", () => {
-    const files = readdirSync(rulesDir).filter(f => f.endsWith(".yaml") && !f.startsWith("framework-"));
+  it("rules directory exists and contains 177 rule YAML files", () => {
+    // 177 = 164 active + 13 retired. Sidecar config files (framework-*,
+    // accuracy-targets) are excluded.
+    const files = readdirSync(rulesDir).filter(
+      (f) =>
+        f.endsWith(".yaml") &&
+        !f.startsWith("framework-") &&
+        f !== "accuracy-targets.yaml",
+    );
     expect(files.length).toBe(177);
   });
 
   it("all 17 rule categories are present (A-Q)", () => {
-    const files = readdirSync(rulesDir).filter(f => f.endsWith(".yaml"));
-    const prefixes = new Set(files.map(f => f.charAt(0)));
+    const files = readdirSync(rulesDir).filter(
+      (f) =>
+        f.endsWith(".yaml") &&
+        !f.startsWith("framework-") &&
+        f !== "accuracy-targets.yaml",
+    );
+    const prefixes = new Set(files.map((f) => f.charAt(0)));
     for (const cat of "ABCDEFGHIJKLMNOPQ") {
       expect(prefixes.has(cat), `Missing category ${cat}`).toBe(true);
     }
   });
 
-  it("all YAML rules have detect.type: typed", () => {
-    const files = readdirSync(rulesDir).filter(f => f.endsWith(".yaml") && !f.startsWith("framework-"));
+  it("all rule YAMLs have detect.type: typed", () => {
+    const files = readdirSync(rulesDir).filter(
+      (f) =>
+        f.endsWith(".yaml") &&
+        !f.startsWith("framework-") &&
+        f !== "accuracy-targets.yaml",
+    );
     for (const f of files) {
       const content = readFileSync(join(rulesDir, f), "utf8");
       expect(content).toContain("type: typed");
     }
   });
 
-  it("loadRules successfully parses all 164 active rules (13 retired)", () => {
+  it("loadRules successfully parses 163 active rules (14 disabled: 13 retired + I14 unimplemented)", () => {
+    // I14 was flipped to enabled:false in chunk 2.1-bugfix because it has
+    // no TypedRuleV2 implementation (tracked as Phase 2 follow-up). That
+    // brings the "enabled in YAML" count to 163. When I14 ships, bump to 164.
     const rules = loadRules(rulesDir);
-    expect(rules.length).toBe(164);
+    expect(rules.length).toBe(163);
   });
 });
 

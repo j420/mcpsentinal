@@ -109,6 +109,13 @@ obsolescence:
     OIDC tokens instead of long-lived PATs. At that point the secret
     exfiltration primitive becomes effectively unexploitable and L9
     becomes redundant coverage vs. C5 / K8.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # L9 — CI/CD Secret Exfiltration Patterns

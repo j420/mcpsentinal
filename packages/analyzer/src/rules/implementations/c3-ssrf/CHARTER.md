@@ -118,6 +118,12 @@ obsolescence:
     private/loopback/link-local ranges by default — AND the SDK
     generators emit that helper for every tool whose schema declares
     a URL parameter. Until both halves exist C3 retains high severity.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # C3 — Server-Side Request Forgery (Taint-Aware)

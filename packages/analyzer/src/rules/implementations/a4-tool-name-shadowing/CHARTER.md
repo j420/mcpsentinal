@@ -77,6 +77,13 @@ obsolescence:
     MCP clients implement namespaced tool routing by default (every
     tool invocation binds to a specific server id) so that name collisions
     are resolved unambiguously at invocation time.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # A4 — Cross-Server Tool Name Shadowing

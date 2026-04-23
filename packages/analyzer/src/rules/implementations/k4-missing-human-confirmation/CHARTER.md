@@ -158,6 +158,12 @@ obsolescence:
     independently of the tool's own schema — OR EU AI Act Art.14 is
     superseded by a control that accepts post-hoc log-only oversight, which
     is not a direction the regulatory trajectory is taking.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # K4 — Missing Human Confirmation for Destructive Operations

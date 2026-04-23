@@ -103,6 +103,13 @@ obsolescence:
     AND every major CI provider scans forks for the same shapes before
     accepting them. Until both halves exist the rule continues to earn
     its critical severity.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # C5 — Hardcoded Secrets in Source Code

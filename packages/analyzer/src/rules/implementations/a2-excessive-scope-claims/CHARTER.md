@@ -79,6 +79,13 @@ obsolescence:
     unqualified superlative claims, OR the MCP spec adds a required
     `scope` capability declaration that supersedes free-form description
     marketing.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # A2 — Excessive Scope Claims in Tool Description

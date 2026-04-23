@@ -109,6 +109,9 @@ obsolescence:
     new Kubernetes clusters AND Docker refuses --network=host without
     explicit capability opt-in — at which point source-level detection
     is belt-and-braces for pods that no longer ship.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # P10 — Host Network Mode and Missing Egress Controls

@@ -102,6 +102,13 @@ obsolescence:
     did NOT do this as of CVE-2026-21852 disclosure — the CVE remains
     actionable until all major clients ship the allowlist filter by
     default.
+
+mutations_survived:
+  - unicode-homoglyph-identifier
+  - reorder-object-properties
+mutations_acknowledged_blind:
+  - split-string-literal
+  - base64-wrap-payload
 ---
 
 # L11 — Environment Variable Injection via MCP Config

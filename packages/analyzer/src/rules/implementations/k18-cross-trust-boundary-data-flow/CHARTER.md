@@ -105,6 +105,12 @@ obsolescence:
     band, and clients enforce classification-aware rendering — at
     which point server-side redaction becomes a protocol invariant
     and K18's static detection moves to the client layer.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # K18 — Cross-Trust-Boundary Data Flow in Tool Response

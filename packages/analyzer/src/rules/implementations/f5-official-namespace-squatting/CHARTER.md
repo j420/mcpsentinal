@@ -127,6 +127,13 @@ obsolescence:
     contain a vendor-reserved substring unless the submitter proves
     ownership via the trust root. Under those conditions F5's
     structural signal is redundant.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # F5 — Official Namespace Squatting

@@ -36,6 +36,12 @@ evidence_contract:
     - source
 
 confidence_cap: 0.80
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # M2 — Prompt Leaking via Tool Response

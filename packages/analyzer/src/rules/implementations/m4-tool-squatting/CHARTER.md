@@ -92,6 +92,13 @@ obsolescence:
     description-level claims become unnecessary to scan — OR the
     MCP spec adds a structured `vendor_attestation` field that
     supersedes freeform description claims.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # M4 — Tool Squatting

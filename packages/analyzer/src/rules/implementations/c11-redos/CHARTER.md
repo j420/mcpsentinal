@@ -102,6 +102,9 @@ obsolescence:
     backtracking is impossible by construction — AND the V8
     `--no-experimental-fetch`-style flag for "safe regex only" is
     on by default. Until both halves exist, C11 retains high severity.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # C11 — ReDoS — Catastrophic Regex Backtracking

@@ -114,6 +114,13 @@ obsolescence:
     the initialize handshake rejects servers whose protocolVersion
     field is not a published spec revision. Under those conditions
     F4 becomes a post-hoc duplicate of the transport's own validator.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # F4 — MCP Spec Non-Compliance

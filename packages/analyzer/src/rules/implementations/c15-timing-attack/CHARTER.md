@@ -94,6 +94,9 @@ obsolescence:
     that is constant-time on byte sequences AND the MCP SDK enforces
     a `verifyToken` helper for every authentication flow. Until both
     halves exist, C15 retains high severity.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # C15 — Timing Attack on Secret or Token Comparison

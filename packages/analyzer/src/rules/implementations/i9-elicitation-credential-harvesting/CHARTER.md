@@ -81,6 +81,9 @@ obsolescence:
     tokens, SSN shapes) from elicitation replies to server tool-
     call arguments, AND client-level credential-request dialogs
     require an out-of-AI user approval step.
+
+mutations_survived: []
+mutations_acknowledged_blind: []
 ---
 
 # I9 — Elicitation Credential Harvesting

@@ -134,6 +134,13 @@ obsolescence:
     in-description permission claim structurally ineffective.
     English-only catalogue (see docs/standards/linguistic-rule-gaps.md) —
     Phase 2+ expansion will broaden language coverage.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # G5 — Capability Escalation via Prior Approval

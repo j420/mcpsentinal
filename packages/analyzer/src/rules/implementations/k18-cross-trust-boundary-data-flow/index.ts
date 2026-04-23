@@ -57,7 +57,17 @@ class K18CrossTrustBoundaryDataFlowRule implements TypedRuleV2 {
   readonly id = RULE_ID;
   readonly name = RULE_NAME;
   readonly requires: RuleRequirements = { source_code: true };
-  readonly technique: AnalysisTechnique = "ast-taint";
+  // K18 uses a bespoke TypeScript-AST walker (gather.ts creates its own
+  // ts.SourceFile and visits function bodies) to correlate sensitive-source
+  // reads (env-secret, credential-call, sensitive-path) with response-emission
+  // sites in the same function. It does NOT call analyzeASTTaint — the
+  // generic taint engine's source/sink vocabulary does not cover K18's
+  // cross-trust-boundary concept. Declaring ast-taint caused the
+  // evidence-integrity harness to ask isReachable() to prove flows the
+  // taint engine has no vocabulary for (3 TP fixtures all failed with
+  // "no-flow-in-file"). Re-labelled as `structural` — the accurate
+  // description of the AST-walk analysis K18 actually performs.
+  readonly technique: AnalysisTechnique = "structural";
 
   analyze(context: AnalysisContext): RuleResult[] {
     const gathered = gatherK18(context);

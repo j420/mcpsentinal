@@ -149,6 +149,12 @@ obsolescence:
     handler's internal logging adequacy no longer gates the audit
     record. Alternatively, retire when ISO/IEC 27001:2022 A.8.15 is
     superseded by a control that does not require structured fields.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # K20 — Insufficient Audit Context in Logging

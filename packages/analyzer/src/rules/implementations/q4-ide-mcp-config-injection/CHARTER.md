@@ -103,6 +103,13 @@ obsolescence:
     (CurXecute) and CVE-2025-59944 (case-bypass) remain unpatched
     across some IDEs as of disclosure; Q4 stays actionable until
     those CVEs close.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # Q4 — IDE MCP Configuration Injection

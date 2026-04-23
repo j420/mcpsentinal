@@ -100,6 +100,12 @@ obsolescence:
     mainstream MCP filesystem server enforces a root via the
     `roots` capability declared at handshake. Until both halves
     exist, C9 retains high severity.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # C9 — Excessive Filesystem Scope

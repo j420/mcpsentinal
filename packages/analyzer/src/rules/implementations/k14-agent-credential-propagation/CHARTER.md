@@ -89,6 +89,12 @@ obsolescence:
     serialisation (a `sensitive: true` schema flag that the runtime
     strips before any cross-agent state write), at which point shared
     memory cannot carry raw credentials regardless of caller intent.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+mutations_acknowledged_blind: []
 ---
 
 # K14 — Agent Credential Propagation via Shared State

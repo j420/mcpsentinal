@@ -125,6 +125,13 @@ obsolescence:
     generators refuse to record a package flagged in any authoritative
     advisory. Under those conditions a malicious package cannot reach
     a consumer's manifest and D5 becomes redundant.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # D5 — Known Malicious Packages

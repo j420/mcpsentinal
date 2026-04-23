@@ -45,6 +45,13 @@ evidence_contract:
     - source
 
 confidence_cap: 0.85
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # L8 — Version Rollback Attack

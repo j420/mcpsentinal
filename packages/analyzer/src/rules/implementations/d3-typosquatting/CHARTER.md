@@ -136,6 +136,13 @@ obsolescence:
     radius. Under those conditions typosquats cannot reach a consumer's
     build environment in the first place, so the D3 detector becomes
     redundant.
+
+mutations_survived:
+  - split-string-literal
+  - unicode-homoglyph-identifier
+  - base64-wrap-payload
+  - reorder-object-properties
+mutations_acknowledged_blind: []
 ---
 
 # D3 — Typosquatting Risk in Dependencies
