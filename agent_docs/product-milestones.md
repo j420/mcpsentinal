@@ -1,9 +1,9 @@
 # MCP Sentinel — Product Milestones
 ## P12 Product Strategist Output — v1.1
 
-_Last updated: 2026-03-25_
+_Last updated: 2026-04-23_
 
-### Active Layer: Layer 3 (Public Interface) — polish & SEO
+### Active Layer: Layer 6 (Compliance & Enterprise) — Phase 3 hallucination firewall + report publication
 
 ### 6-Layer Registry Plan
 
@@ -11,10 +11,10 @@ _Last updated: 2026-03-25_
 |-------|------|--------|-------------|
 | 1 | Data Foundation | **COMPLETE** | None |
 | 2 | Security Intelligence | **COMPLETE** | Layer 1 |
-| 3 | Public Interface | **ACTIVE** — pages built, needs SEO polish | Layer 2 |
+| 3 | Public Interface | **COMPLETE** — SEO polish landed | Layer 2 |
 | 4 | Developer Tools | **COMPLETE** | Layer 3 |
 | 5 | Advanced Detection | **COMPLETE** | Layer 4 |
-| 6 | Compliance & Enterprise | Pending | Layer 5 |
+| 6 | Compliance & Enterprise | **ACTIVE** — signed compliance reports (PR #205) and CVE replay corpus (PR #204) shipped; hallucination-firewall tests + public reports remaining | Layer 5 |
 
 ---
 
@@ -60,7 +60,7 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
   - O: Data Privacy Attacks (6, 4 retired), P: Infrastructure Runtime (10), Q: Cross-Ecosystem Emergent (7, 8 retired)
 - [x] Analysis engine — `packages/analyzer/src/engine.ts` (specialized engines + 164 active TypedRule dispatch)
 - [x] **ALL rules migrated to TypedRules** — AST taint, capability graph, entropy, structural parsing (23 detector files, ~13K lines). 13 rules subsequently retired due to high FP rates; 164 active.
-- [x] 1642 tests passing (1443 analyzer + 49 red-team + 150 attack-graph), 30+ per category across 33 test files
+- [x] ~3350 tests passing across 190 test files — analyzer (~2853) + compliance-reports (142) + api (108) + red-team (~100 incl. 33 CVE-corpus harness + 22 CVE cases) + attack-graph (150). All 164 active rules registered; 13 retired disabled in YAML
 - [x] Rule loader — `packages/analyzer/src/rule-loader.ts` (YAML metadata interpretation)
 - [x] npm package published: `mcp-sentinel-scanner@0.2.0` with all TypedRules bundled
 - [x] Tool fingerprinting — `packages/analyzer/src/tool-fingerprint.ts`
@@ -144,15 +144,15 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 - [x] Ecosystem intelligence reports — `packages/reports/src/` (generator.ts, category-breakdown.ts, ecosystem-stats.ts, trend-analysis.ts, cli.ts)
   - Category breakdown, ecosystem stats, trend analysis, CLI for report generation
 
-**Verification (2026-04-07):** All 1631 tests pass across 33 test files (1432 analyzer + 49 red-team + 150 attack-graph). All 164/164 active TypedRules registered (13 retired). 262 evidence chain assertions across 11 category test files. 55 benign corpus fixtures (zero false positives). Evidence validation script enforces ≥90% chain coverage. Pipeline audit clean. CI green.
+**Verification (2026-04-23, post-Phase-5):** ~3350 tests pass across 190 test files in core packages — analyzer ~2853 across 162 files, compliance-reports 142 across 16 files, api 108 across 3 files, red-team ~100 across 4 files (incl. CVE corpus harness), attack-graph 150 across 5 files. All 164 active TypedRuleV2s registered; 13 retired disabled in YAML. 262 evidence chain assertions across 11 category test files. 163 benign corpus fixtures (zero critical/high findings tolerated). Evidence-integrity harness (Phase 2) enforces Location resolution + AST reachability + confidence derivation + CVE-manifest completeness on every rule. Mutation suite (Phase 2) aggregate survival rate 95.4% with always-fail parity guard. Per-rule accuracy dashboard (Phase 2) with CI regression gate. CVE replay corpus (Phase 4) — 22 cases pass end-to-end. Signed compliance reports (Phase 5) render HTML/PDF/JSON + SVG badges for all 7 frameworks. Pipeline audit clean. CI green.
 
 **Success Criteria:** Detection precision >80% across all rule categories.
 
 ---
 
-### Layer 6: Compliance & Enterprise
+### Layer 6: Compliance & Enterprise — ACTIVE
 
-**Goal:** Compliance mapping, enterprise features, "State of MCP Security" report.
+**Goal:** Regulator-facing signed compliance artifacts + "State of MCP Security" public reports.
 
 **Deliverables:**
 - [x] **Adversarial Compliance Framework** — `packages/compliance-agents/` (ADR-009 LLM exception)
@@ -166,19 +166,44 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
   - LLM audit log: every prompt/response/model/temperature persisted for replay
   - Confidence cap at 0.85 for LLM-derived findings; mock LLM client default for reproducibility
   - No-static-patterns guard + charter-traceability guard enforce "no regex, nothing static" in `src/rules/`
-- [ ] OWASP MCP Top 10 mapping complete
-- [ ] MITRE ATLAS mapping complete
-- [ ] EU AI Act readiness assessment template
-- [ ] "State of MCP Security" quarterly report
+- [x] **CVE Replay Corpus** — `packages/red-team/src/cve-corpus/` (Phase 4, PR #204)
+  - Harness contract at `docs/standards/cve-replay-corpus-spec.md`
+  - 22 falsifiable cases: 16 CVEs (CVE-2025-6514, 6515, 53109, 53110, 53773, 54135, 59536, 59944, 68143, 68144, 68145, 2017-5941, 30066, 2026-21852, 22785, 29787) + 6 research replays (Embrace-The-Red, Invariant Labs, Trail of Bits, CyberArk FSP+ATPA, MPMA)
+  - Auto-generated `docs/cve-coverage.md` — 20 unique rules covered, 143 uncovered rules listed transparently
+  - 33 harness self-tests + 22/22 real cases pass end-to-end
+- [x] **Regulator-Facing Signed Compliance Reports** — `packages/compliance-reports/` (Phase 5, PR #205)
+  - Data model: `ComplianceReport`, `SignedComplianceReport`, `ControlResult`, `KillChainNarrative`
+  - RFC 8785 JSON canonicalization (byte-for-byte reproducible; regulators verify offline)
+  - HMAC-SHA256 attestation via Node's built-in `crypto` (no crypto deps)
+  - 7 framework registries: EU AI Act, ISO 27001, OWASP MCP, OWASP ASI, CoSAI, MAESTRO, MITRE ATLAS — 62 controls total, 61 with assessor rules, 1 honest gap (ASI10 Agentic Data Poisoning — out of scope for an MCP scanner)
+  - HTML/PDF/JSON renderers (21 (format × framework) registrations from single shared impl per format)
+  - PDF via `pdfkit` with deterministic CreationDate/ModDate pinned to `signed_at`
+  - Kill-chain narrative synthesizer wires KC01–KC07 to Phase 4 CVE corpus evidence (KC07 honest gap: no Phase 4 exemplar yet)
+  - 7 per-framework SVG badges (shields.io-style with framework accent colors + attestation in XML comment)
+  - Signed API endpoints at `packages/api`: `GET /api/v1/servers/:slug/compliance/:framework.{json,html,pdf}` + `/badge.svg`
+  - Response headers: `X-MCP-Sentinel-{Signature,Key-Id,Signed-At,Algorithm,Canonicalization}`
+  - 142/142 compliance-reports tests + 108/108 api tests
+- [x] OWASP MCP Top 10 mapping complete (10/10 covered in `frameworks/owasp_mcp.ts`)
+- [x] OWASP Agentic Top 10 mapping complete (9/10 — ASI10 honest gap)
+- [x] MITRE ATLAS mapping complete (9/9 covered in `frameworks/mitre_atlas.ts`)
+- [x] EU AI Act readiness assessment template (5 articles covered: Art. 9, 12, 13, 14, 15)
+- [ ] Production signing keys wired — `COMPLIANCE_SIGNING_KEY` + `COMPLIANCE_SIGNING_KEY_ID` in Railway env (launch-blocker)
+- [ ] **Phase 3 — hallucination firewall** (parked; resume to ship regulator-grade LLM verdict testing)
+  - 3.1 Judge triad (26 × 3 = 78 tests per rule)
+  - 3.2 LLM-replay adversarial corpus (20 recorded bad responses)
+  - 3.3 Confidence-cap enforcement test (every LLM finding ≤ 0.85 with `analysis_technique: "llm-reasoning"`)
+- [ ] "State of MCP Security" quarterly report (via `packages/reports/`)
+- [ ] Competitive benchmark publication (via `packages/benchmark/`)
 - [ ] Responsible disclosure policy
 
-**Success Criteria:** Report published, cited by 3+ publications.
+**Success Criteria:** Compliance report endpoints live + signed; "State of MCP Security" published, cited by 3+ publications.
 
 ---
 
 ### This Week's Priorities
-1. Layer 3: SEO optimization (meta tags, Open Graph, structured data)
-2. Layer 3: Content polish and final UI review
+1. Layer 6: resume Phase 3 (compliance-agents hallucination firewall — judge triad, LLM-replay corpus, confidence-cap enforcement)
+2. Layer 6: wire production signing keys (`COMPLIANCE_SIGNING_KEY`/`COMPLIANCE_SIGNING_KEY_ID`) before public launch
+3. Layer 6: publish "State of MCP Security Q2 2026" via `packages/reports/`
 
 ### What NOT To Build Now
 - User authentication
@@ -189,7 +214,7 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 
 ---
 
-### Completed Work Summary (as of 2026-04-07)
+### Completed Work Summary (as of 2026-04-23)
 
 | Component | Package | Key Files | Tests |
 |-----------|---------|-----------|-------|
@@ -197,23 +222,26 @@ _Note: Ecosystem grew to 10,000+ active servers by December 2025 (AAIF announcem
 | 7 Crawlers | `packages/crawler` | sources/{npm,github,pypi,pulsemcp,smithery,mcpregistry,modelcontextprotocol-repo}.ts | 3 test files |
 | Crawler orchestration | `packages/crawler` | orchestrator.ts, cli.ts | orchestrator.test.ts |
 | MCP Connector | `packages/connector` | connector.ts | — |
-| Analysis Engine | `packages/analyzer` | engine.ts (73 KB), rule-loader.ts, tool-fingerprint.ts | 29 test files, 1432 tests |
-| Python Taint Analysis | `packages/analyzer` | taint.ts, taint-python.ts, taint-ast.ts (2,442 lines) | — |
-| 164 Active Detection Rules | `rules/` | 177 YAML files across A-Q categories (13 retired) | 262 evidence chain assertions |
-| Test Infrastructure | `packages/analyzer` | test-helpers.ts, benign-corpus.test.ts, validate-evidence-chains.ts | 55 benign corpus fixtures |
+| Analysis Engine | `packages/analyzer` | engine.ts (post-1.28 cutover: 463 lines, was 2177), rule-loader.ts, tool-fingerprint.ts | 162 test files, ~2853 tests |
+| 164 Active TypedRuleV2 Implementations | `packages/analyzer/src/rules/implementations/<rule-id>/` | 164 per-rule dirs (CHARTER + gather + verification + index + data/ + __fixtures__/ + __tests__/) | 262 evidence chain assertions |
+| Python Taint Analysis | `packages/analyzer` | taint.ts, taint-python.ts, taint-ast.ts | — |
+| Test Infrastructure (Phase 2) | `packages/analyzer/__tests__/` | evidence-integrity, mutation-charter-parity, benign-catalogue, no-static-patterns, charter-traceability | 163 benign corpus fixtures; mutation suite 95.4% survival |
 | Scoring Algorithm | `packages/scorer` | scorer.ts, cli.ts | scorer.test.ts |
-| Scan Pipeline | `packages/scanner` | pipeline.ts (30 KB), fetcher.ts, auditor.ts, enumerate.ts, cli.ts | scanner.test.ts |
-| REST API | `packages/api` | server.ts (20 KB), badge.ts | 2 test files |
+| Scan Pipeline | `packages/scanner` | pipeline.ts (calls `analyzeWithProfile()` for evidence chain persistence), fetcher.ts, auditor.ts, enumerate.ts, cli.ts | scanner.test.ts |
+| REST API | `packages/api` | server.ts + compliance-report-routes.ts (signed endpoints) + badge.ts | 3 test files, 108 tests |
+| Compliance Reports (Phase 5) | `packages/compliance-reports` | types.ts, canonicalize.ts (RFC 8785), attestation.ts (HMAC-SHA256), frameworks/ (7), build-report.ts, render/ (HTML/PDF/JSON × 21 regs), kill-chain/, badges/ | 16 test files, 142 tests |
 | Next.js Website | `packages/web` | 9 page routes (home, servers, detail, categories, dashboard, about, taxonomy) | — |
-| CLI Tool | `packages/cli` | cli.ts (63 KB) | cli.test.ts |
+| CLI Tool | `packages/cli` | cli.ts | cli.test.ts |
+| MCP Scanner Server | `packages/mcp-sentinel-scanner` | index.ts (MCP server exposing scanning as tools) | smoke tests |
 | Dynamic Tester | `packages/dynamic-tester` | index.ts, consent.ts, canary.ts, audit-log.ts, output-scanner.ts | 5 test files |
 | Risk Matrix | `packages/risk-matrix` | index.ts, patterns.ts, graph.ts, cli.ts | 2 test files |
-| Attack Graph | `packages/attack-graph` | engine, scoring, narratives, templates | 3 test files, 150 tests |
-| Red Team | `packages/red-team` | runner.ts, reporter.ts, cli.ts, 900+ fixtures | fixtures.test.ts, 49 tests |
+| Attack Graph | `packages/attack-graph` | engine, scoring, narratives, KC01-KC07 templates | 5 test files, 150 tests |
+| Red Team (incl. Phase 4 CVE corpus) | `packages/red-team` | runner.ts, reporter.ts, accuracy/, mutation/, cve-corpus/ (22 cases), 900+ fixtures | 4 test files, ~100 tests |
 | Benchmark | `packages/benchmark` | index.ts, corpus.ts, competitors.ts, ground-truth.ts, report.ts | — |
 | Reports | `packages/reports` | generator.ts, category-breakdown.ts, ecosystem-stats.ts, trend-analysis.ts, cli.ts | — |
+| Compliance Agents | `packages/compliance-agents` | 6 framework agents, LLM-gated per ADR-009, mock-LLM default + judge() firewall | integration/smoke tests |
 | CI/CD | `.github/workflows/` | ci.yml, crawl.yml, scan.yml, accuracy.yml, publish.yml | — |
-| **Total** | **16 packages** | **~300 KB of core logic** | **33 test files, 1642 tests** |
+| **Total** | **17 packages** | **~400+ KB of core logic** | **190 test files, ~3350 tests (in core packages)** |
 
 ---
 

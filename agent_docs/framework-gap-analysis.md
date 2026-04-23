@@ -220,8 +220,8 @@
 
 ## What This Makes Us
 
-With K-category fully implemented, MCP Sentinel has:
-- **103 detection rules** across 11 categories (A-K)
+MCP Sentinel has:
+- **164 active detection rules** across 17 categories (A–Q) — 13 retired. All rules are `TypedRuleV2` implementations with mandatory `EvidenceChain` (Rule Standard v2).
 - Coverage of **8 security frameworks** with documented per-rule mappings
 - **7 threat categories** from the specification fully addressed
 - Compliance evidence for **NIST AI RMF**, **NIST Cyber AI Profile**, **OWASP Agentic Top 10**, **MITRE ATLAS**, **EU AI Act**, **ISO 42001**, **ISO 27001**, **CoSAI MCP Security**, **MAESTRO**, and **CSA AICM**

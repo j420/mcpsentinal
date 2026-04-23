@@ -49,7 +49,8 @@ mcp-sentinel/
 │   ├── red-team/                ← 900+ adversarial fixtures across A-Q categories (has CLAUDE.md)
 │   ├── benchmark/               ← Competitive benchmark framework (has CLAUDE.md)
 │   ├── reports/                 ← Ecosystem intelligence report generation (has CLAUDE.md)
-│   └── compliance-agents/       ← 6 framework agents (OWASP MCP/ASI, CoSAI, MAESTRO, EU AI Act, MITRE ATLAS) — only LLM-using package per ADR-009 (has CLAUDE.md)
+│   ├── compliance-agents/       ← 6 framework agents (OWASP MCP/ASI, CoSAI, MAESTRO, EU AI Act, MITRE ATLAS) — only LLM-using package per ADR-009 (has CLAUDE.md)
+│   └── compliance-reports/      ← Phase 5: signed regulator-facing compliance reports — 7 frameworks × HTML/JSON/PDF + badge SVGs, RFC 8785 canonicalization + HMAC-SHA256 attestation (has CLAUDE.md)
 ├── docs/
 │   └── runbooks/                ← Operational runbooks: add-new-rule, new-cve-response, full-crawl
 ├── tools/
@@ -86,6 +87,14 @@ pnpm cli check --json            # JSON output for CI
 pnpm compliance-scan --server=<id> --framework=eu_ai_act    # single framework
 pnpm compliance-scan --server=<id> --framework=all          # combined mode
 pnpm compliance-scan --server=<id> --framework=all --live   # use real Anthropic API
+# Regulator-facing signed compliance reports (Phase 5)
+# Reports are served by packages/api at:
+#   GET /api/v1/servers/:slug/compliance/:framework.{json,html,pdf}
+#   GET /api/v1/servers/:slug/compliance/:framework/badge.svg
+# Production signing keys (set in Railway env before public launch):
+#   COMPLIANCE_SIGNING_KEY=<hex HMAC-SHA256 key>
+#   COMPLIANCE_SIGNING_KEY_ID=<public key identifier>
+pnpm --filter=@mcp-sentinel/compliance-reports test         # data-model + renderer tests
 # Build & Deploy
 pnpm build                       # Build all packages
 pnpm deploy:web                  # Deploy registry website
