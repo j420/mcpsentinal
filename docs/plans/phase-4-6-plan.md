@@ -1,5 +1,33 @@
 # MCP Sentinel v2: Phase 4 (Test Overhaul) + Phase 6 (Documentation Cleanup)
 
+> **⚠️ SUPERSEDED (2026-04-23)**
+>
+> This document is retained for historical reference only. Its phase numbering
+> collides with the canonical plan and should **NOT** be treated as the active
+> roadmap. When someone says "Phase 4 is done," assume they mean the canonical
+> plan unless they explicitly say otherwise.
+>
+> **Canonical roadmap:** [`docs/plans/full-migration-plan-2026-04-20.md`](./full-migration-plan-2026-04-20.md)
+>
+> **Phase-number collision:**
+>
+> | Term | In this (superseded) doc | In the canonical plan |
+> |---|---|---|
+> | Phase 3 | Rule Migration (done) | Compliance-agents hallucination firewall (parked) |
+> | Phase 4 | Test Overhaul (unreleased) | CVE replay corpus (✅ shipped, PR #204) |
+> | Phase 5 | API & UI (skipped) | Signed regulator-facing compliance reports (✅ shipped, PR #205) |
+> | Phase 6 | Documentation Cleanup (✅ shipped by PR #206) | — (canonical plan stops at Phase 5) |
+>
+> **Where each section of this doc's content ended up:**
+>
+> - **"Phase 4" (Test Overhaul)** in this doc — partially absorbed by the canonical plan's **Phase 2 (Credibility Tests)** which shipped the evidence-integrity harness, adversarial mutation suite, 163-fixture benign corpus, and per-rule accuracy dashboard with CI regression gate (PR #203). Remaining precision/recall follow-ups are tracked in the canonical plan's "Phase 2 explicit follow-ups" section.
+> - **"Phase 5" (API & UI)** in this doc — deliberately deferred indefinitely. The canonical plan's Phase 5 is a different deliverable (signed regulator-facing compliance reports, shipped).
+> - **"Phase 6" (Documentation Cleanup)** in this doc — shipped by PR #206. The `grep` verification commands from this doc's "Phase 6 Verification" block are included in that PR's test plan.
+>
+> Below follows the original Apr 2026 planning document, unmodified.
+
+---
+
 ## Context
 
 Phase 3 (Rule Migration) is COMPLETE. All 164 active rules are TypedRule implementations. 13 rules retired. CI passing after test count fix (177→164). Phase 5 (API & UI) is SKIPPED.
