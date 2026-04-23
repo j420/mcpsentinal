@@ -48,6 +48,21 @@ export {
 export type { ComplianceBadgeRenderer } from "./badges/types.js";
 export { getBadge, registerBadge } from "./badges/types.js";
 
+// ─── Kill-chain narrative synthesizer (Phase 5.3) ────────────────────────
+export {
+  ALL_KC_IDS,
+  KILL_CHAIN_TO_CVE_PATTERNS,
+  buildNarrative,
+  synthesizeKillChains,
+  uniqSorted,
+} from "./kill-chain/index.js";
+export type {
+  AttackChainRow,
+  KCId,
+  KillChainPattern,
+  SynthesizeInput,
+} from "./kill-chain/index.js";
+
 // Side-effect: importing this package populates the renderer registry with
 // all 21 (format × framework) combinations.
 import "./render/index.js";

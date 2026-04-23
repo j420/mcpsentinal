@@ -236,6 +236,9 @@ importers:
       '@mcp-sentinel/database':
         specifier: workspace:*
         version: link:../database
+      '@mcp-sentinel/red-team':
+        specifier: workspace:*
+        version: link:../red-team
       pdfkit:
         specifier: ^0.15.0
         version: 0.15.2
