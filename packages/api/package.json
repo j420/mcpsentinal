@@ -13,6 +13,7 @@
     "start": "node dist/server.js"
   },
   "dependencies": {
+    "@mcp-sentinel/compliance-reports": "workspace:*",
     "@mcp-sentinel/database": "workspace:*",
     "@mcp-sentinel/risk-matrix": "workspace:*",
     "express": "^4.21.0",

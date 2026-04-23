@@ -16,6 +16,7 @@ import type {
 } from "@mcp-sentinel/database";
 import { RiskMatrixAnalyzer } from "@mcp-sentinel/risk-matrix";
 import { createBadgeSvg } from "./badge.js";
+import { createComplianceReportRoutes } from "./compliance-report-routes.js";
 
 // Log to stderr — keeps stdout clean for callers that parse it
 const logger = pino({ name: "api" }, process.stderr);
@@ -319,6 +320,74 @@ app.get(
       res.status(500).json({ error: "Internal server error" });
     }
   }
+);
+
+// ─── Signed compliance reports (Phase 5 chunk 5.4) ───────────────────────────
+// Rendered, attested reports in JSON / HTML / PDF + per-framework SVG
+// badges. Every response is HMAC-SHA256 signed over the RFC 8785
+// canonicalisation of the report body; the signature is duplicated in
+// response headers AND embedded in the rendered artifact so regulators
+// can verify offline.
+//
+// These format-suffixed routes must be registered BEFORE the
+// `/compliance/:framework` route below — Express matches routes in
+// registration order, and without the suffix routes a request for
+// `.../compliance/eu_ai_act.json` would bind `framework = "eu_ai_act.json"`
+// on the older route instead of matching here.
+const complianceReportRoutes = createComplianceReportRoutes({
+  db,
+  rateLimitMiddleware,
+});
+
+// Three format-suffixed routes instead of one :format param because Express
+// path parameters do not stop at a literal dot — a single route written as
+// "/:framework.:format" would confuse requests whose framework id contains
+// underscores with ones that contain dots. The explicit split is clearer.
+//
+//   /api/v1/servers/:slug/compliance/:framework.json  → signed JSON
+//   /api/v1/servers/:slug/compliance/:framework.html  → signed HTML
+//   /api/v1/servers/:slug/compliance/:framework.pdf   → signed PDF
+//
+// Plus the badge:
+//   /api/v1/servers/:slug/compliance/:framework/badge.svg
+app.get(
+  "/api/v1/servers/:slug/compliance/:framework.json",
+  rateLimitMiddleware(),
+  complianceReportRoutes.handleRenderedReport("json"),
+);
+app.get(
+  "/api/v1/servers/:slug/compliance/:framework.html",
+  rateLimitMiddleware(),
+  complianceReportRoutes.handleRenderedReport("html"),
+);
+app.get(
+  "/api/v1/servers/:slug/compliance/:framework.pdf",
+  rateLimitMiddleware(),
+  complianceReportRoutes.handleRenderedReport("pdf"),
+);
+
+app.get(
+  "/api/v1/servers/:slug/compliance/:framework/badge.svg",
+  rateLimitMiddleware(RATE_MAX_BADGE),
+  complianceReportRoutes.handleBadge,
+);
+
+// Catch-all for unrecognised format suffixes (.xml, .md, .csv, …). Without
+// this guard, a request for `…/compliance/eu_ai_act.xml` would fall through
+// to the legacy `/:framework` route below, which would bind
+// `framework = "eu_ai_act.xml"` and return a 400 "Invalid framework id".
+// Per the Phase 5.4 contract, unknown formats must surface as 404 with a
+// structured error naming the format, so the caller knows to switch to
+// `.json|.html|.pdf`.
+app.get(
+  /^\/api\/v1\/servers\/[^/]+\/compliance\/[^/]+\.[a-z0-9]+$/,
+  rateLimitMiddleware(),
+  (_req: Request, res: Response): void => {
+    res.status(404).json({
+      error: "unknown_format",
+      supported: ["json", "html", "pdf"],
+    });
+  },
 );
 
 // GET /api/v1/servers/:slug/compliance/:framework — Single framework
