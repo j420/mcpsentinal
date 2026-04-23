@@ -29,29 +29,29 @@ function countPages(buf: Buffer): number {
 }
 
 describe("pdfRenderer", () => {
-  it("renders a valid PDF for eu_ai_act", () => {
+  it("renders a valid PDF for eu_ai_act", async () => {
     const signed = makeSyntheticSignedReport("eu_ai_act");
-    const buf = pdfRenderer.render(signed) as Buffer;
+    const buf = (await pdfRenderer.render(signed)) as Buffer;
     expect(Buffer.isBuffer(buf)).toBe(true);
     expect(buf.slice(0, 5).toString("ascii")).toBe("%PDF-");
     expect(buf.length).toBeGreaterThan(1024);
   });
 
-  it.each(FRAMEWORK_IDS as readonly FrameworkId[])("renders a non-empty PDF for %s", (framework_id) => {
+  it.each(FRAMEWORK_IDS as readonly FrameworkId[])("renders a non-empty PDF for %s", async (framework_id) => {
     const signed = makeSyntheticSignedReport(framework_id);
-    const buf = pdfRenderer.render(signed) as Buffer;
+    const buf = (await pdfRenderer.render(signed)) as Buffer;
     expect(buf.slice(0, 5).toString("ascii")).toBe("%PDF-");
     expect(buf.length).toBeGreaterThan(1024);
   });
 
-  it("produces a multi-page document (regulators expect a real report)", () => {
+  it("produces a multi-page document (regulators expect a real report)", async () => {
     const signed = makeSyntheticSignedReport("iso_27001");
-    const buf = pdfRenderer.render(signed) as Buffer;
+    const buf = (await pdfRenderer.render(signed)) as Buffer;
     const pages = countPages(buf);
     expect(pages).toBeGreaterThanOrEqual(2);
   });
 
-  it("is byte-deterministic for identical input OR documents the failure", () => {
+  it("is byte-deterministic for identical input OR documents the failure", async () => {
     // pdfkit's internal object-id generation and file-id trailer are not
     // guaranteed to be stable. We pin `CreationDate`/`ModDate` in info to
     // `signed_at`, use only built-in fonts, and avoid wall-clock sources.
@@ -59,8 +59,8 @@ describe("pdfRenderer", () => {
     // same renderer, we assert the weaker contract (valid PDF) rather than
     // silently skipping the check, as instructed by the honest-failure
     // protocol. The stronger byte-equality assertion is attempted first.
-    const a = pdfRenderer.render(makeSyntheticSignedReport("owasp_mcp")) as Buffer;
-    const b = pdfRenderer.render(makeSyntheticSignedReport("owasp_mcp")) as Buffer;
+    const a = (await pdfRenderer.render(makeSyntheticSignedReport("owasp_mcp"))) as Buffer;
+    const b = (await pdfRenderer.render(makeSyntheticSignedReport("owasp_mcp"))) as Buffer;
     // Both must be valid PDFs regardless.
     expect(a.slice(0, 5).toString("ascii")).toBe("%PDF-");
     expect(b.slice(0, 5).toString("ascii")).toBe("%PDF-");

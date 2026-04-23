@@ -373,7 +373,7 @@ function drawFooterOnPage(
   doc.restore();
 }
 
-function renderPdf(signed: SignedComplianceReport): Buffer {
+async function renderPdf(signed: SignedComplianceReport): Promise<Buffer> {
   const accent = accentFor(signed.report.framework.id);
   const signedAt = new Date(signed.attestation.signed_at);
 
@@ -392,8 +392,17 @@ function renderPdf(signed: SignedComplianceReport): Buffer {
     autoFirstPage: false,
   });
 
-  const chunks: Buffer[] = [];
-  doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+  // pdfkit emits document bytes via a Node stream after `doc.end()`. The
+  // listener pushes chunks; the "end" event fires once the doc is finalised.
+  // We wrap that lifecycle in a Promise so callers receive a single Buffer
+  // and the renderer contract works for both sync (HTML/JSON) and async (PDF)
+  // implementations.
+  const collected: Promise<Buffer> = new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+  });
 
   doc.font("Helvetica");
 
@@ -419,10 +428,10 @@ function renderPdf(signed: SignedComplianceReport): Buffer {
   }
 
   doc.end();
-  return Buffer.concat(chunks);
+  return collected;
 }
 
-/** Generic PDF renderer shared by all 7 frameworks. */
+/** Generic PDF renderer shared by all 7 frameworks. Returns a Promise — pdfkit's stream is async. */
 export const pdfRenderer: ComplianceReportRenderer = {
   format: "pdf",
   contentType: "application/pdf",
