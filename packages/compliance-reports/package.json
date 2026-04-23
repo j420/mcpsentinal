@@ -14,6 +14,7 @@
   "dependencies": {
     "@mcp-sentinel/attack-graph": "workspace:*",
     "@mcp-sentinel/database": "workspace:*",
+    "@mcp-sentinel/red-team": "workspace:*",
     "pino": "^9.0.0"
   },
   "devDependencies": {
