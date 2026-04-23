@@ -15,7 +15,14 @@ export interface ComplianceReportRenderer {
   contentType: string;
   /** File extension without dot, e.g. "pdf" or "html". */
   filenameSuffix: string;
-  render(signed: SignedComplianceReport): Buffer | string;
+  /**
+   * Render the signed report. May return a Buffer or string synchronously,
+   * or a Promise of either. Callers must `await` the result. PDF rendering
+   * is async because pdfkit emits its bytes via a deferred Node stream;
+   * HTML and JSON renderers are synchronous and return immediately, but
+   * still type-compatible with the union so any caller works for all formats.
+   */
+  render(signed: SignedComplianceReport): Buffer | string | Promise<Buffer | string>;
 }
 
 type RendererKey = `${RendererFormat}:${FrameworkId}`;

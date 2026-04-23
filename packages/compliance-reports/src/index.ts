@@ -47,3 +47,7 @@ export {
 
 export type { ComplianceBadgeRenderer } from "./badges/types.js";
 export { getBadge, registerBadge } from "./badges/types.js";
+
+// Side-effect: importing this package populates the renderer registry with
+// all 21 (format × framework) combinations.
+import "./render/index.js";
