@@ -15,7 +15,10 @@
     "audit:html": "tsx src/cli.ts --html",
     "accuracy-dashboard": "tsx src/accuracy/cli.ts",
     "mutation:audit": "tsx src/mutation/cli.ts",
-    "mutation:charter": "tsx src/mutation/charter-writer.ts"
+    "mutation:charter": "tsx src/mutation/charter-writer.ts",
+    "cve-corpus": "tsx src/cve-corpus/cli.ts",
+    "cve-corpus:report": "tsx src/cve-corpus/cli.ts --markdown",
+    "cve-corpus:coverage": "tsx src/cve-corpus/cli.ts --generate-coverage-doc"
   },
   "dependencies": {
     "@mcp-sentinel/analyzer": "workspace:*",
