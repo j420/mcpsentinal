@@ -1,0 +1,26 @@
+{
+  "name": "@mcp-sentinel/compliance-reports",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@mcp-sentinel/attack-graph": "workspace:*",
+    "@mcp-sentinel/database": "workspace:*",
+    "pino": "^9.0.0"
+  },
+  "devDependencies": {
+    "@mcp-sentinel/analyzer": "workspace:*",
+    "@mcp-sentinel/scorer": "workspace:*",
+    "yaml": "^2.4.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  }
+}
