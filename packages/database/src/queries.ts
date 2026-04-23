@@ -560,6 +560,41 @@ export class DatabaseQueries {
     total_score_v2?: number | null;
     techniques_v2?: Record<string, string> | null;
   }): Promise<void> {
+    // Defense-in-depth at the storage boundary. Every score column in `scores`
+    // is INTEGER with a CHECK (>= 0 AND <= 100) constraint. The scorer keeps
+    // full fractional precision for analytics (e.g. 87.5 = critical × 0.5
+    // confidence), so we round here. If any value is non-finite (NaN,
+    // Infinity) or out of range, pg rejects with "invalid input syntax for
+    // type integer" AND truncates the offending value out of the stack trace
+    // at column 40 — painful to root-cause from CI. Catch it here with a
+    // diagnostic that names the offending field + scan id.
+    const toIntForDB = (name: string, value: number | null | undefined): number | null => {
+      if (value === null || value === undefined) return null;
+      if (!Number.isFinite(value)) {
+        throw new Error(
+          `insertScore: ${name}=${String(value)} is not a finite number ` +
+            `(server_id=${score.server_id}, scan_id=${score.scan_id}). ` +
+            `Likely a NaN/Infinity from the scorer — check finding.confidence values.`,
+        );
+      }
+      const rounded = Math.round(value);
+      if (rounded < 0 || rounded > 100) {
+        throw new Error(
+          `insertScore: ${name}=${value} (rounded=${rounded}) out of 0..100 range ` +
+            `(server_id=${score.server_id}, scan_id=${score.scan_id}).`,
+        );
+      }
+      return rounded;
+    };
+
+    const totalScoreInt = toIntForDB("total_score", score.total_score);
+    const codeScoreInt = toIntForDB("code_score", score.code_score);
+    const depsScoreInt = toIntForDB("deps_score", score.deps_score);
+    const configScoreInt = toIntForDB("config_score", score.config_score);
+    const descriptionScoreInt = toIntForDB("description_score", score.description_score);
+    const behaviorScoreInt = toIntForDB("behavior_score", score.behavior_score);
+    const totalScoreV2Int = toIntForDB("total_score_v2", score.total_score_v2);
+
     await this.pool.query(
       `INSERT INTO scores (server_id, scan_id, total_score, code_score, deps_score, config_score, description_score, behavior_score, owasp_coverage, total_score_v2, techniques_v2)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
@@ -576,25 +611,25 @@ export class DatabaseQueries {
       [
         score.server_id,
         score.scan_id,
-        score.total_score,
-        score.code_score,
-        score.deps_score,
-        score.config_score,
-        score.description_score,
-        score.behavior_score,
+        totalScoreInt,
+        codeScoreInt,
+        depsScoreInt,
+        configScoreInt,
+        descriptionScoreInt,
+        behaviorScoreInt,
         JSON.stringify(score.owasp_coverage),
-        score.total_score_v2 ?? null,
+        totalScoreV2Int,
         score.techniques_v2 ? JSON.stringify(score.techniques_v2) : null,
       ]
     );
 
-    // Update server's latest score
+    // Update server's latest score (also INTEGER 0..100 — use the rounded value)
     await this.pool.query(
       "UPDATE servers SET latest_score = $1, updated_at = NOW() WHERE id = $2",
-      [score.total_score, score.server_id]
+      [totalScoreInt, score.server_id]
     );
 
-    // Record in history
+    // Record in history (score column is also INTEGER 0..100)
     const findingsCount = await this.pool.query(
       "SELECT COUNT(*) as cnt FROM findings WHERE server_id = $1 AND scan_id = $2",
       [score.server_id, score.scan_id]
@@ -603,7 +638,7 @@ export class DatabaseQueries {
     await this.pool.query(
       `INSERT INTO score_history (server_id, score, findings_count, rules_version)
        VALUES ($1, $2, $3, $4)`,
-      [score.server_id, score.total_score, parseInt(findingsCount.rows[0].cnt, 10), score.rules_version ?? null]
+      [score.server_id, totalScoreInt, parseInt(findingsCount.rows[0].cnt, 10), score.rules_version ?? null]
     );
   }
 

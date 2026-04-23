@@ -125,10 +125,20 @@ async function main(): Promise<void> {
 
     // Exit 1 only if there were servers to scan AND the failure rate is too high.
     // Zero servers to scan (incremental mode, all already scanned) is NOT a failure.
-    // Individual server failures (timeouts, bad endpoints) are expected and
-    // should not fail the workflow job — that would make scan.yml unreliable.
+    // Individual server failures (timeouts, bad endpoints, malformed metadata)
+    // are expected — that would make scan.yml unreliable on fresh-crawl runs
+    // where the long tail of registry data quality is unknowable up front.
+    //
+    // Threshold: 25% — empirically a fresh post-crawl batch sees ~10-15% data
+    // quality issues from registry sources (missing/malformed manifests,
+    // GitHub repos that 404, etc.). Below 25%, the score job downstream still
+    // has plenty of fresh data to recompute. Above 25% indicates a systemic
+    // bug (DB schema drift, scorer regression) that warrants halting the
+    // pipeline so it doesn't pollute history with empty scores.
+    const FAILURE_RATE_THRESHOLD = 0.25;
     const failureRate = stats.total > 0 ? stats.failed / stats.total : 0;
-    const criticalFailure = stats.total > 0 && (stats.succeeded === 0 || failureRate > 0.1);
+    const criticalFailure =
+      stats.total > 0 && (stats.succeeded === 0 || failureRate > FAILURE_RATE_THRESHOLD);
     process.exitCode = criticalFailure ? 1 : 0;
   } finally {
     await pool.end();
