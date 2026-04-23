@@ -1,15 +1,36 @@
 # Package: red-team
 
-**Purpose:** Precision/recall accuracy auditing for all 164 active detection rules across 17 categories (13 retired). Runs rule fixtures through the analyzer engine, computes per-rule metrics, and enforces the Layer 5 quality gate (precision >= 80%).
+**Purpose:** Adversarial validation for MCP Sentinel. Three subsystems:
+1. **Accuracy runner** — precision/recall audit for all 164 active detection rules across 17 categories (13 retired). Enforces the Layer 5 quality gate (precision ≥ 80%).
+2. **Mutation suite (Phase 2.2)** — 8 TS-AST mutations × 163 rules; always-fail parity guard against CHARTER `mutations_survived` frontmatter.
+3. **CVE replay corpus (Phase 4)** — 22 falsifiable cases (16 CVEs + 6 research attacks) that each prove specific detection rules catch specific real-world attacks. Harness contract at `docs/standards/cve-replay-corpus-spec.md`.
 
 ## Key Files
+
+**Accuracy runner:**
 - `src/runner.ts` — `AccuracyRunner` class (loads rules, runs fixtures, computes metrics)
 - `src/types.ts` — `RuleFixture`, `RuleFixtureSet`, `RuleAccuracy`, `AccuracyReport`, `CategoryAccuracy`
 - `src/reporter.ts` — Text, JSON, and HTML report formatters
 - `src/cli.ts` — `pnpm red-team` CLI entry point
 - `src/fixtures/` — 17 category fixture files (A through Q), ~900 fixtures total
 - `src/fixtures/index.ts` — `ALL_FIXTURES` aggregate + `getFixturesForRule()` lookup
-- `src/__tests__/` — 49 tests
+- `src/accuracy/` — dashboard module (reads `rules/accuracy-targets.yaml`, emits `docs/accuracy/latest.json` + `trend.md`)
+
+**Mutation suite (Phase 2.2):**
+- `src/mutation/` — 8 AST mutations (rename-danger-symbol, split-string-literal, unicode-homoglyph-identifier, base64-wrap-payload, intermediate-variable, add-noop-conditional, swap-option-shape, reorder-object-properties) + runner + CLI
+- Baseline at `docs/mutations/latest.{json,md}`
+
+**CVE replay corpus (Phase 4):**
+- `src/cve-corpus/types.ts` — `CVEReplayCase`, `CVECaseResult`, `CVECorpusReport`
+- `src/cve-corpus/registry.ts` — `registerCVECase()` + ID format + duplicate guard
+- `src/cve-corpus/loader.ts` — side-effect import driver + CVE manifest loader
+- `src/cve-corpus/runner.ts` — `CVECorpusRunner` with 4 assertion classes (manifest membership, expected rules fire, forbidden rules silence, patched fixture silence)
+- `src/cve-corpus/reporter.ts` — text/JSON/markdown formatters
+- `src/cve-corpus/coverage-doc-generator.ts` — emits `docs/cve-coverage.md`
+- `src/cve-corpus/cli.ts` — `pnpm --filter=@mcp-sentinel/red-team cve-corpus`
+- `src/cve-corpus/cases/cve/*.ts` — 16 CVE cases
+- `src/cve-corpus/cases/research/*.ts` — 6 research-attack replays
+- `src/cve-corpus/cases/__example__/` — reference synthetic case (registered only in tests)
 
 ## Fixture Format
 
@@ -37,15 +58,21 @@ Every rule requires minimum 2 true positives + 2 true negatives (per `agent_docs
 ## CLI Usage
 
 ```bash
+# Accuracy runner
 pnpm red-team                       # Run all fixtures (text output)
 pnpm red-team --json                # JSON output for CI
 pnpm red-team --html                # HTML report for dashboards
 pnpm red-team --rule A1             # Test single rule
 pnpm red-team --category C          # Test single category
 pnpm red-team --fail-fast           # Exit on first failure
+
+# CVE replay corpus (Phase 4)
+pnpm --filter=@mcp-sentinel/red-team cve-corpus              # Run all cases (text output)
+pnpm --filter=@mcp-sentinel/red-team cve-corpus:report       # Markdown report
+pnpm --filter=@mcp-sentinel/red-team cve-corpus:coverage     # Regenerate docs/cve-coverage.md
 ```
 
-Exit code = 1 if `total_failed > 0` OR precision < 80%.
+Accuracy runner exit code = 1 if `total_failed > 0` OR precision < 80%. CVE corpus exit code = 1 on any case failure OR any cve-kind id missing from `docs/cve-manifest.json`.
 
 ## Fixture Categories
 
