@@ -307,7 +307,10 @@ export function createComplianceReportRoutes(
           return;
         }
 
-        const body = renderer.render(signed);
+        // PDF renderer is async (pdfkit emits via deferred Node stream);
+        // HTML and JSON renderers are sync. The contract returns
+        // Buffer | string | Promise<Buffer | string>; await covers both.
+        const body = await renderer.render(signed);
         writeAttestationHeaders(res, signed);
         res.setHeader("Cache-Control", CACHE_CONTROL);
         res.setHeader("Content-Type", renderer.contentType ?? FORMAT_CONTENT_TYPES[format]);
