@@ -229,7 +229,11 @@ export function computeScore(
     // Scale penalty by confidence: high-confidence findings pay full price,
     // low-confidence findings pay proportionally less.
     // Default confidence is 1.0 (full penalty) for backward compatibility.
-    const confidence = (finding as FindingWithConfidence).confidence ?? 1.0;
+    // Treat any non-finite confidence (NaN, Infinity) as 1.0 — `??` only
+    // catches null/undefined, so a NaN slipping through would poison the
+    // entire totalPenalty accumulator with NaN and break the INTEGER write.
+    const rawConfidence = (finding as FindingWithConfidence).confidence ?? 1.0;
+    const confidence = Number.isFinite(rawConfidence) ? rawConfidence : 1.0;
     const penalty = Math.round(basePenalty * confidence * 100) / 100;
     totalPenalty += penalty;
 
@@ -271,7 +275,19 @@ export function computeScore(
     }
   }
 
-  let totalScore = Math.max(0, Math.min(100, 100 - totalPenalty));
+  // Final clamp: if a non-finite value somehow slipped through (NaN penalty
+  // from a malformed finding, Infinity from an upstream bug), fall back to
+  // 100 and log loudly rather than letting `Math.max(0, NaN) === NaN` flow
+  // downstream. The DB layer rounds to INTEGER at the storage boundary;
+  // scorer output keeps its full fractional precision for tests + analytics.
+  const rawTotalScore = Math.max(0, Math.min(100, 100 - totalPenalty));
+  let totalScore = Number.isFinite(rawTotalScore) ? rawTotalScore : 100;
+  if (!Number.isFinite(rawTotalScore)) {
+    logger.warn(
+      { totalPenalty, findings_count: findings.length },
+      "Non-finite totalScore from scorer — defaulting to 100; check for NaN confidence on a finding",
+    );
+  }
 
   // Lethal trifecta cap
   if (hasLethalTrifecta && totalScore > 40) {
@@ -282,7 +298,8 @@ export function computeScore(
   // Shadow v2 score — only meaningful when at least one rule is engine_v2.
   let totalScoreV2: number | null = null;
   if (anyV2Rule) {
-    totalScoreV2 = Math.max(0, Math.min(100, 100 - totalPenaltyV2));
+    const rawV2 = Math.max(0, Math.min(100, 100 - totalPenaltyV2));
+    totalScoreV2 = Number.isFinite(rawV2) ? rawV2 : 100;
     if (hasLethalTrifectaV2 && totalScoreV2 > 40) {
       totalScoreV2 = 40;
     }
