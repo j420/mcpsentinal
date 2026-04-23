@@ -47,6 +47,9 @@ export {
 
 export type { ComplianceBadgeRenderer } from "./badges/types.js";
 export { getBadge, registerBadge } from "./badges/types.js";
+// ─── Badge renderer (Phase 5.4) ──────────────────────────────────────────
+export { SVG_BADGE_RENDERER } from "./badges/svg-renderer.js";
+export { registerAllBadges } from "./badges/register-all.js";
 
 // ─── Kill-chain narrative synthesizer (Phase 5.3) ────────────────────────
 export {
