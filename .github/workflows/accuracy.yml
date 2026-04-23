@@ -40,8 +40,17 @@ on:
         default: false
 
 concurrency:
-  group: accuracy-audit
-  cancel-in-progress: false  # Never cancel a running audit — finish the full report
+  # Event-scoped concurrency:
+  #   * pull_request: one group per PR, cancel-in-progress = true.
+  #     A rapid 3-commits-in-5-minutes burst on a PR would otherwise stack
+  #     3 parallel audits (cancel-in-progress: false), producing noisy
+  #     failure history for runs the user is about to supersede.
+  #   * schedule / workflow_dispatch / push to main: shared `accuracy-audit`
+  #     group, cancel-in-progress = false. The weekly cron audit must
+  #     never be killed by a newer trigger — this is the original intent
+  #     of the concurrency block and is preserved verbatim for non-PR events.
+  group: ${{ github.event_name == 'pull_request' && format('accuracy-audit-pr-{0}', github.event.pull_request.number) || 'accuracy-audit' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   accuracy-audit:
