@@ -57,6 +57,9 @@ importers:
 
   packages/api:
     dependencies:
+      '@mcp-sentinel/compliance-reports':
+        specifier: workspace:*
+        version: link:../compliance-reports
       '@mcp-sentinel/database':
         specifier: workspace:*
         version: link:../database

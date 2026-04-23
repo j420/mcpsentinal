@@ -47,3 +47,5 @@ export {
 
 export type { ComplianceBadgeRenderer } from "./badges/types.js";
 export { getBadge, registerBadge } from "./badges/types.js";
+export { SVG_BADGE_RENDERER } from "./badges/svg-renderer.js";
+export { registerAllBadges } from "./badges/register-all.js";
