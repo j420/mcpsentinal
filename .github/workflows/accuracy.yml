@@ -48,6 +48,17 @@ jobs:
     name: Rule Accuracy Audit
     runs-on: ubuntu-latest
 
+    # Default GITHUB_TOKEN permissions are restricted. We need:
+    #   - contents: read  → actions/checkout
+    #   - pull-requests: write → PR-comment step below (uses the Issues
+    #     comments API under the hood, which is what github.rest.issues
+    #     .createComment hits). Without this the comment step fails with
+    #     HTTP 403 "Resource not accessible by integration" on PR runs.
+    # All other permissions remain denied (tight least-privilege).
+    permissions:
+      contents: read
+      pull-requests: write
+
     steps:
       - uses: actions/checkout@v4
 
