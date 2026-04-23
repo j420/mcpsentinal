@@ -91,10 +91,10 @@ _Per-chunk template: charter → v2 refactor → regex→structural → Location
 
 ## Phase 5 — Framework reports for regulators
 
-- [ ] **5.1 — Report data model** (`ComplianceReport` interface with attestation + canonicalised JSON)
-- [ ] **5.2 — Renderers: HTML + JSON + PDF** (six framework templates: EU AI Act, ISO 27001, OWASP MCP, OWASP ASI, CoSAI, MAESTRO, MITRE ATLAS)
-- [ ] **5.3 — Cross-framework kill-chain narratives** (KC01–KC07 wiring into every report)
-- [ ] **5.4 — Public endpoints + attestation signing** (`/api/v1/servers/:slug/compliance/:framework.(pdf|html|json)`, HMAC signature, per-framework badge SVG)
+- [x] **5.1 — Report data model** (`ComplianceReport` interface with attestation + canonicalised JSON) — merge `d5120e3`
+- [x] **5.2 — Renderers: HTML + JSON + PDF** (seven framework templates: EU AI Act, ISO 27001, OWASP MCP, OWASP ASI, CoSAI, MAESTRO, MITRE ATLAS) — merge `ca16d11` + async-contract fix `aea889b`
+- [x] **5.3 — Cross-framework kill-chain narratives** (KC01–KC07 wiring with Phase 4 CVE corpus evidence) — merge `19faba3`
+- [x] **5.4 — Public endpoints + attestation signing** (`/api/v1/servers/:slug/compliance/:framework.{pdf,html,json}`, HMAC signature, per-framework badge SVG) — merge `c017d88` + await-integration fix `c5796d2`
 
 ---
 
@@ -108,7 +108,7 @@ _Per-chunk template: charter → v2 refactor → regex→structural → Location
 
 ---
 
-## Completion summary (updated 2026-04-23, post Phase 4)
+## Completion summary (updated 2026-04-23, post Phase 5)
 
 | Phase | Done | Partial | Total | % |
 |---|---:|---:|---:|---:|
@@ -117,14 +117,71 @@ _Per-chunk template: charter → v2 refactor → regex→structural → Location
 | 2 | 4 | 0 | 4 | 100% |
 | 3 | 0 | — | 3 | 0% |
 | 4 | 2 | 0 | 2 | 100% |
-| 5 | 0 | — | 4 | 0% |
-| **Total** | **39** | **0** | **46** | **85%** |
+| 5 | 4 | 0 | 4 | 100% |
+| **Total** | **43** | **0** | **46** | **94%** |
 
 **Phase 1 is COMPLETE.** All 163 active rules (was 164; I14 disabled in 2.1 bugfix until implementation lands) are `TypedRuleV2` with mandatory `EvidenceChain`; zero v1 code survives; strict guards are always-fail.
 
 **Phase 2 is COMPLETE.** Evidence-integrity harness 171/171 green; mutation suite frozen in 163 CHARTERs with always-fail parity guard; benign corpus 55 → 163 fixtures with zero critical/high regression gate; per-rule accuracy dashboard with CI regression gate, filtering disabled YAML rules to avoid vacuous rows.
 
 **Phase 4 is COMPLETE.** CVE replay corpus delivers 22 cases (16 CVEs + 6 research attacks) — every case is a falsifiable assertion that a specific rule catches a specific real-world attack. Harness ships 33 self-tests + an integration test + a coverage-doc generator. End-to-end run: **22/22 cases pass, 20 unique rules covered out of 163 active (12%)** — the remaining 143 rules are listed transparently in `docs/cve-coverage.md` "Uncovered Active Rules" so a regulator sees both the corroborated and the uncorroborated rules. The corpus deliberately prioritises CVE-backed coverage first; expansion is Phase 5+ work.
+
+**Phase 5 is COMPLETE.** Regulator-facing signed compliance reports ship in 3 formats (HTML / PDF / JSON) across 7 frameworks (EU AI Act, ISO 27001, OWASP MCP Top 10, OWASP Agentic ASI Top 10, CoSAI MCP, MAESTRO, MITRE ATLAS) plus 7 per-framework SVG badges. Every artifact is HMAC-SHA256 attested over the RFC 8785-canonicalised report body; signatures are duplicated in response headers AND embedded in the rendered body so regulators can verify offline. `packages/compliance-reports` is a pure assembly + attestation layer with zero DB / HTTP dependencies; `packages/api` wires signed endpoints at `/api/v1/servers/:slug/compliance/:framework.{json,html,pdf}` and `.../badge.svg`. KC01–KC07 narratives now cite Phase 4 CVE corpus cases (KC07 explicit `// GAP` — no Phase 4 exemplar yet). Two honest gaps surfaced: OWASP ASI10 (Agentic Data Poisoning) has zero assessor rules because MCP Sentinel scans deployed servers, not training pipelines; KC07 (Database Privilege Escalation → Theft) has no Phase 4 case exemplar yet. Test gates: **compliance-reports 142/142, api 108/108, both typecheck clean, all Phase 5 dependency packages (database, analyzer, scorer, risk-matrix, attack-graph, red-team) build clean.**
+
+### Completed in Phase 5 (branch `claude/phase-5-compliance-reports`, 2026-04-23)
+
+Phase 5 shipped **the regulator-facing signed compliance report system** — the end-user deliverable Phase 4's CVE corpus was built to support. Execution pattern: 4 parallel sub-agents (one per chunk) + orchestrator integration work on an integration branch + 1 reviewer/PR-creator on top. Net effect: new package `packages/compliance-reports` (data model + canonicalisation + HMAC attestation + 7 framework registries + HTML/PDF/JSON renderers + kill-chain synthesizer + 7-framework SVG badges), 4 signed API endpoints in `packages/api` (3 rendered formats × 7 frameworks + badge per framework), 190 new tests (142 in compliance-reports + 48 net-new in api), zero regressions in the pre-existing 60 api tests. **Every response is HMAC-SHA256 attested; the signature is in both response headers AND the rendered body; regulators can verify offline.**
+
+| Chunk | Deliverable | Commit(s) |
+|---|---|---|
+| 5.1 / Agent 1 | `packages/compliance-reports/` data model — `types.ts` (ComplianceReport + SignedComplianceReport wire contract), `canonicalize.ts` (RFC 8785 JCS — UTF-16 key sort, ECMAScript 2019 numbers, rejects NaN/Infinity), `attestation.ts` (HMAC-SHA256 sign + verify via `crypto.timingSafeEqual`; no crypto npm deps; dev-key fallback with single warning), `frameworks/` (7 registries: eu_ai_act, iso_27001, owasp_mcp, owasp_asi, cosai_mcp, maestro, mitre_atlas; assessor_rule_ids backed by real YAML rules; ASI10 explicit `// NO ASSESSOR RULE` gap), `build-report.ts` (mechanical status derivation; no LLM), 58 tests | `7eb7779` + merge `d5120e3` |
+| 5.2 / Agent 2 | `packages/compliance-reports/src/render/` — shared foundation (status styling + format helpers + attestation block) + `html-renderer.ts` (self-contained HTML5 with inline styles, per-framework accent stripe, draft banner, print CSS, per-control sections with status pills and evidence cites, attestation block with wrapped signature + verification instructions) + `pdf-renderer.ts` (pdfkit-backed, title page + TOC + 6 sections + page footers with attestation timestamp + DRAFT watermark; async contract since pdfkit emits via deferred Node stream) + `json-renderer.ts` (emits the full signed envelope verbatim) + `register-all.ts` (21 format × framework registrations via a single shared impl per format); renderer shared foundation extracted first at `e9c65e0` | `e9c65e0` + `c5e95d9` + async fix `aea889b` + merge `ca16d11` |
+| 5.3 / Agent 3 | `packages/compliance-reports/src/kill-chain/` — narrative synthesizer wiring KC01–KC07 from `packages/attack-graph` with Phase 4 CVE corpus evidence; `data/kc-cve-mapping.ts` cites 10 unique Phase 4 case ids (KC01 ×3 research, KC02 ×4 CVEs, KC03 ×2 CVEs, KC04 ×2 research, KC05 ×1 CVE + 1 research, KC06 ×1 CVE + 1 research, KC07 explicit `// GAP`); added `@mcp-sentinel/red-team` workspace dep + re-exported cve-corpus types through the package index so compliance-reports can load the registry without reaching through private paths; 37 tests including an integration test that loads the real corpus and asserts every cited id resolves | `68b9629` + merge `19faba3` |
+| 5.4 / Agent 4 | `packages/api/src/compliance-report-routes.ts` — 4 signed endpoints (`/servers/:slug/compliance/:framework.{json,html,pdf}` + `/servers/:slug/compliance/:framework/badge.svg`), rate-limit middleware applied, 5 attestation response headers (`X-MCP-Sentinel-Signature/Key-Id/Signed-At/Algorithm/Canonicalization`), dev-key warning header, explicit 404 catch-all for unknown format suffixes, 503 path when no scan data exists for the non-badge routes, badge route never 503s (READMEs shouldn't break), `Cache-Control: public, max-age=300, stale-while-revalidate=60`; `packages/compliance-reports/src/badges/svg-renderer.ts` (shields.io-style SVG, deterministic width from char count, attestation as XML comment, framework accent colors, status colors, registered under all 7 framework ids via `register-all.ts`); 40 new api tests; used stub renderers in tests so API agent could land in parallel with renderer agent | `7f55915` + merge `c017d88` |
+| 5 / orchestrator | (a) PDF async-stream bug — pdfkit emits via a deferred Node stream, so `render()` had to return `Promise<Buffer \| string>`; contract in `render/types.ts` widened and all callers now `await`. (b) Post-merge await-fix in `compliance-report-routes.ts` — Agent 4's test doubles returned sync strings so the route didn't `await`; real PDF returns a Promise, so the route now awaits always. | `aea889b` + `c5796d2` |
+| 5 / reviewer | End-to-end audit across 7 frameworks × 3 formats × signed-header contract + sample-artifact render QA (HTML 19,564 bytes, PDF 9,993 bytes `%PDF-1.3`…`%%EOF`, JSON 10,305 bytes, SVG 1,386 bytes); plan-doc + completion-summary update; PR creation | this commit |
+
+**Per-framework coverage (controls × assessor ratio):**
+
+| Framework | Controls | With ≥1 Assessor | Coverage Ratio | Honest Gaps |
+|---|---:|---:|---:|---|
+| EU AI Act | 5 | 5 | 100% | — |
+| ISO 27001 | 9 | 9 | 100% | — |
+| OWASP MCP | 10 | 10 | 100% | — |
+| OWASP ASI | 10 | 9 | 90% | ASI10 Agentic Data Poisoning (`// NO ASSESSOR RULE` — MCP Sentinel scans deployed MCP servers, not training pipelines) |
+| CoSAI MCP | 12 | 12 | 100% | — |
+| MAESTRO | 7 | 7 | 100% | — |
+| MITRE ATLAS | 10 | 10 | 100% | — |
+| **Total** | **63** | **62** | **98.4%** | 1 honest gap (ASI10) |
+
+**KC → CVE corpus wiring (Phase 4 → Phase 5):**
+
+| KC | Name | Cited Evidence | Gap? |
+|---|---|---|---|
+| KC01 | Indirect Injection → Data Exfiltration | 3 research cases (Embrace-The-Red 2024, Invariant Labs 2025, Trail of Bits Feb 2026) | No |
+| KC02 | Config Poisoning → RCE | 4 CVEs (53773, 54135, 59536, 59944) | No |
+| KC03 | Credential Harvesting Chain | 2 CVEs (2026-21852, 2025-30066) | No |
+| KC04 | Memory Poisoning Persistence | 2 research cases (Invariant Labs 2025, Trail of Bits Feb 2026) | No |
+| KC05 | Code Generation → Execution | 1 CVE + 1 research (CVE-2026-22785, Trail of Bits Feb 2026) | No |
+| KC06 | Multi-Hop Data Exfiltration | 1 CVE + 1 research (CVE-2025-30066, CyberArk ATPA 2025) | No |
+| KC07 | Database Privilege Escalation → Theft | — | **Yes** (explicit `// GAP`; chain is still synthesised + scored by attack-graph; no Phase 4 exemplar yet) |
+
+### Phase 5 known follow-ups (non-blocking)
+
+1. **ASI10 (Agentic Data Poisoning) coverage gap** — currently `// NO ASSESSOR RULE`. Closing it would require MCP Sentinel to scan upstream training pipelines, which is out of scope for "scan deployed MCP servers". Leave as an honest gap; document in the public registry website.
+2. **KC07 (Database Privilege Escalation → Theft) no Phase 4 exemplar** — the attack-graph engine still synthesises and scores this chain from capability preconditions; Phase 6 corpus expansion should add a DB-privesc-via-MCP case.
+3. **Production signing key wiring** — `COMPLIANCE_SIGNING_KEY` + `COMPLIANCE_SIGNING_KEY_ID` must be set in Railway env for the signed endpoints to produce regulator-grade signatures; without them the API logs a warning + sets `X-MCP-Sentinel-Warning: dev-key-in-use` on every response. Wire before public launch.
+4. **PDF byte-determinism caveats** — `pdfkit` has known non-determinism in its document `/ID` trailer entry on some versions. The renderer overrides `CreationDate` + `ModDate` with the signed_at timestamp and uses only built-in fonts to pin everything it can; residual `/ID` drift (if any) is documented honestly in the test suite. Regulators re-verify by re-canonicalising the report body (not the PDF bytes) and recomputing the HMAC.
+5. **API route → KC→CVE mapping not yet wired** — `compliance-report-routes.ts::toKillChainNarrative` currently hardcodes `cve_evidence_ids: []` when projecting attack-graph rows into `KillChainNarrative`. The data in `kc-cve-mapping.ts` exists and is tested; the API path needs to join on `kill_chain_id` to surface the CVE evidence list in live reports. Phase 6 follow-up.
+6. **Cross-framework rationale copy review** — the mechanically-generated per-control rationale ("N assessor rule(s) evaluated this control; M finding(s) observed") is regulator-appropriate but could benefit from framework-specific language tweaks (e.g. EU AI Act article language vs ISO Annex A language). Non-blocking copy polish.
+
+### Phase 5 orchestration lessons (plan-doc addendum)
+
+1. **Stream-idle-timeout pattern recurred for the renderer agent (twice)** — the 2.3-class bulk-write timeout appeared again on Agent 2 (renderers). Each PDF renderer draw call + HTML style block + JSON shaping produces a lot of code, and single-pass generation of 3 renderers × 7 frameworks hits the idle-timeout wall. **Salvageable foundation pattern worked**: the first Agent 2 attempt shipped the shared status-styling + format-helpers + attestation-block foundation (`e9c65e0`) before dying; the retry resumed from that foundation and only wrote the three renderer bodies. Lesson: **for any agent writing ≥3 parallel renderer/format implementations, split the task into (a) shared foundation first, (b) one renderer per agent OR one agent for all three renderers after foundation lands.** Do not fan the foundation and the renderers out together.
+2. **PDF library async-stream pitfall** — `pdfkit` emits document bytes via a deferred Node stream; the doc is only complete after `"end"` fires on the stream. Agent 2's initial contract returned `Buffer | string` sync, which serialised an incomplete buffer. Orchestrator caught this in integration and widened the renderer contract to `Buffer | string | Promise<Buffer | string>` (commit `aea889b`) + added `await` in all callers including the later API route (commit `c5796d2`). Pattern: **any renderer that depends on a Node stream must return a Promise from day one**; document this in the renderer contract's JSDoc (already done in `render/types.ts`).
+3. **Cross-package workspace dep wiring (compliance-reports → red-team → cve-corpus)** — Agent 3 (kill-chain) needed to import the Phase 4 CVE corpus registry. The clean path was: (a) add `@mcp-sentinel/red-team` as a workspace dep of `@mcp-sentinel/compliance-reports`, (b) re-export the cve-corpus types from red-team's `index.ts` so downstream packages don't reach through private paths, (c) load the real corpus in the kill-chain integration test and assert every cited id resolves. Pattern worth promoting in `agent_docs/sub-agent-orchestration.md`: **cross-package data wiring agents need explicit instructions to (i) add the workspace dep, (ii) surface types through the dep's public index, (iii) write an integration test that consumes the real data**. Missing any of these three produces a package that compiles but crashes at runtime when the private path changes.
+4. **Stub-renderer test pattern for parallel API+renderer agents** — Agent 4 (API endpoints) needed to ship tests that verified the route pipeline without waiting for Agent 2's renderers to land. Solution: **stub renderers registered in the test setup that return a fixed string**. Routes dispatch through the same registry; the real renderers land later and the tests don't change. Pattern: for any two-phase deliverable where phase A consumes phase B's registry, phase A can stub phase B's entries in its tests and the parallel work graph unblocks. Added to sub-agent-orchestration.md.
+5. **Integration catch: post-merge await pattern** — after merging Agent 4 (which used sync stub renderers) with Agent 2 (real PDF Promise-returning renderer), the live route silently serialised the unresolved Promise as `"[object Promise]"`. Orchestrator caught this in the sample-render pass (the PDF came back as a 20-byte string instead of `%PDF…`). Fix: add `await renderer.render(signed)` in the route (commit `c5796d2`). Pattern: **every time two agents meet at a shared contract, the orchestrator MUST run an end-to-end smoke render before opening the PR**. A test suite that uses stubs will not catch this class of bug.
 
 ### Completed in Phase 4 (branch `claude/understand-codebase-pdYPm`, 2026-04-23)
 
