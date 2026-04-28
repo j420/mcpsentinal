@@ -4,7 +4,8 @@ import type { Metadata } from "next";
    Instrument Serif: editorial display moments (hero kicker, oversized stats)
    JetBrains Mono: data, eyebrows, numbers */
 import "@fontsource-variable/inter";
-import "@fontsource/instrument-serif";
+import "@fontsource/instrument-serif/400.css";
+import "@fontsource/instrument-serif/400-italic.css";
 import "@fontsource/jetbrains-mono/400.css";
 import "@fontsource/jetbrains-mono/500.css";
 import "@fontsource/jetbrains-mono/600.css";
@@ -145,7 +146,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
                 >
-                  <rect width="34" height="34" rx="6" fill="currentColor" className="logo-bg" />
+                  <rect width="34" height="34" rx="6" />
                   <path
                     d="M17 7L24.5 10.5V16C24.5 21 21.2 25.2 17 26.5C12.8 25.2 9.5 21 9.5 16V10.5L17 7Z"
                     fill="none"
