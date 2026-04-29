@@ -63,6 +63,9 @@ importers:
       '@mcp-sentinel/database':
         specifier: workspace:*
         version: link:../database
+      '@mcp-sentinel/red-team':
+        specifier: workspace:*
+        version: link:../red-team
       '@mcp-sentinel/risk-matrix':
         specifier: workspace:*
         version: link:../risk-matrix

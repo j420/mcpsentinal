@@ -18,6 +18,20 @@ import { RiskMatrixAnalyzer } from "@mcp-sentinel/risk-matrix";
 import { createBadgeSvg } from "./badge.js";
 import { createComplianceReportRoutes } from "./compliance-report-routes.js";
 
+// Lazy red-team manifest load — top-level static import would pull in
+// @mcp-sentinel/analyzer (red-team's transitive dep) at boot, which causes
+// CI hook timeouts in tests that don't actually exercise /servers/:slug.
+// Memoised after first request, so the cost is paid once per process.
+let _corpusManifestPromise: Promise<Record<string, { fixture_count: number; cve_replays: string[] }>> | null = null;
+function loadCorpusManifest(): Promise<Record<string, { fixture_count: number; cve_replays: string[] }>> {
+  if (!_corpusManifestPromise) {
+    _corpusManifestPromise = import("@mcp-sentinel/red-team")
+      .then((mod) => mod.getCorpusManifest())
+      .catch(() => ({}));
+  }
+  return _corpusManifestPromise;
+}
+
 // Log to stderr — keeps stdout clean for callers that parse it
 const logger = pino({ name: "api" }, process.stderr);
 
@@ -179,12 +193,50 @@ app.get("/api/v1/servers/:slug", rateLimitMiddleware(), async (req: Request, res
       res.status(404).json({ error: "Server not found" });
       return;
     }
-    const [tools, findings, score_detail] = await Promise.all([
+    const [
+      tools,
+      findings,
+      score_detail,
+      sources,
+      latest_scan,
+      dependencies,
+      red_team_corpus_links,
+    ] = await Promise.all([
       db.getToolsForServer(server.id),
       db.getFindingsForServer(server.id),
       db.getLatestScoreForServer(server.id),
+      db.getSourcesForServer(server.id),
+      db.getLatestScanStages(server.id),
+      db.getDependenciesForServer(server.id),
+      loadCorpusManifest(),
     ]);
-    res.json({ data: { ...server, tools, findings, score_detail } });
+
+    const dependencies_summary = {
+      total: dependencies.length,
+      with_cve: dependencies.filter((d) => d.has_known_cve).length,
+    };
+
+    const scan_stages = latest_scan
+      ? {
+          stages: latest_scan.stages ?? null,
+          started_at: latest_scan.started_at,
+          completed_at: latest_scan.completed_at,
+          status: latest_scan.status,
+        }
+      : null;
+
+    res.json({
+      data: {
+        ...server,
+        tools,
+        findings,
+        score_detail,
+        sources,
+        scan_stages,
+        dependencies_summary,
+        red_team_corpus_links,
+      },
+    });
   } catch (err) {
     logger.error(err, "Server detail error");
     res.status(500).json({ error: "Internal server error" });

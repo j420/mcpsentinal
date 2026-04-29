@@ -29,6 +29,10 @@ vi.mock("@mcp-sentinel/database", () => {
     getLatestScoreForServer: vi.fn().mockResolvedValue(null),
     getScoreHistory: vi.fn().mockResolvedValue([]),
     getEcosystemStats: vi.fn().mockResolvedValue({ total_servers: 0, scanned: 0 }),
+    // Trust Signature / Attestation Ribbon dependencies (added 2026-04-29).
+    getSourcesForServer: vi.fn().mockResolvedValue([]),
+    getLatestScanStages: vi.fn().mockResolvedValue(null),
+    getDependenciesForServer: vi.fn().mockResolvedValue([]),
   };
 
   return {
@@ -41,6 +45,13 @@ vi.mock("@mcp-sentinel/database", () => {
     _mockDb: mockDb,
   };
 });
+
+// ─── Mock red-team — its real load pulls in @mcp-sentinel/analyzer (164 rules)
+// which adds 5–10s on CI runners and trips the 5s test timeout on the first
+// /servers/:slug request. Tests that need the corpus value can override.
+vi.mock("@mcp-sentinel/red-team", () => ({
+  getCorpusManifest: vi.fn().mockResolvedValue({}),
+}));
 
 // ─── Mock pg to avoid real connection pools ───────────────────────────────────
 vi.mock("pg", () => ({

@@ -671,6 +671,36 @@ export class DatabaseQueries {
     ).rows;
   }
 
+  async getSourcesForServer(serverId: string): Promise<
+    Array<{ source_name: string; external_id: string | null; last_synced: string }>
+  > {
+    const result = await this.pool.query(
+      `SELECT source_name, external_id, last_synced
+       FROM sources
+       WHERE server_id = $1
+       ORDER BY source_name ASC`,
+      [serverId]
+    );
+    return result.rows;
+  }
+
+  async getLatestScanStages(serverId: string): Promise<{
+    stages: Record<string, unknown> | null;
+    started_at: string | null;
+    completed_at: string | null;
+    status: string | null;
+  } | null> {
+    const result = await this.pool.query(
+      `SELECT stages, started_at, completed_at, status
+       FROM scans
+       WHERE server_id = $1
+       ORDER BY started_at DESC
+       LIMIT 1`,
+      [serverId]
+    );
+    return result.rows[0] ?? null;
+  }
+
   // ─── Ecosystem Stats ──────────────────────────────────────────────────────
 
   async getEcosystemStats() {
