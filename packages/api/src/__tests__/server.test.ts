@@ -46,6 +46,13 @@ vi.mock("@mcp-sentinel/database", () => {
   };
 });
 
+// ─── Mock red-team — its real load pulls in @mcp-sentinel/analyzer (164 rules)
+// which adds 5–10s on CI runners and trips the 5s test timeout on the first
+// /servers/:slug request. Tests that need the corpus value can override.
+vi.mock("@mcp-sentinel/red-team", () => ({
+  getCorpusManifest: vi.fn().mockResolvedValue({}),
+}));
+
 // ─── Mock pg to avoid real connection pools ───────────────────────────────────
 vi.mock("pg", () => ({
   default: {
