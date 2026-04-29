@@ -29,6 +29,10 @@ vi.mock("@mcp-sentinel/database", () => {
     getLatestScoreForServer: vi.fn().mockResolvedValue(null),
     getScoreHistory: vi.fn().mockResolvedValue([]),
     getEcosystemStats: vi.fn().mockResolvedValue({ total_servers: 0, scanned: 0 }),
+    // Trust Signature / Attestation Ribbon dependencies (added 2026-04-29).
+    getSourcesForServer: vi.fn().mockResolvedValue([]),
+    getLatestScanStages: vi.fn().mockResolvedValue(null),
+    getDependenciesForServer: vi.fn().mockResolvedValue([]),
   };
 
   return {
