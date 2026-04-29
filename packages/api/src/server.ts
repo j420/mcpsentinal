@@ -15,9 +15,22 @@ import type {
   Server,
 } from "@mcp-sentinel/database";
 import { RiskMatrixAnalyzer } from "@mcp-sentinel/risk-matrix";
-import { getCorpusManifest } from "@mcp-sentinel/red-team";
 import { createBadgeSvg } from "./badge.js";
 import { createComplianceReportRoutes } from "./compliance-report-routes.js";
+
+// Lazy red-team manifest load — top-level static import would pull in
+// @mcp-sentinel/analyzer (red-team's transitive dep) at boot, which causes
+// CI hook timeouts in tests that don't actually exercise /servers/:slug.
+// Memoised after first request, so the cost is paid once per process.
+let _corpusManifestPromise: Promise<Record<string, { fixture_count: number; cve_replays: string[] }>> | null = null;
+function loadCorpusManifest(): Promise<Record<string, { fixture_count: number; cve_replays: string[] }>> {
+  if (!_corpusManifestPromise) {
+    _corpusManifestPromise = import("@mcp-sentinel/red-team")
+      .then((mod) => mod.getCorpusManifest())
+      .catch(() => ({}));
+  }
+  return _corpusManifestPromise;
+}
 
 // Log to stderr — keeps stdout clean for callers that parse it
 const logger = pino({ name: "api" }, process.stderr);
@@ -195,7 +208,7 @@ app.get("/api/v1/servers/:slug", rateLimitMiddleware(), async (req: Request, res
       db.getSourcesForServer(server.id),
       db.getLatestScanStages(server.id),
       db.getDependenciesForServer(server.id),
-      getCorpusManifest().catch(() => ({})),
+      loadCorpusManifest(),
     ]);
 
     const dependencies_summary = {
