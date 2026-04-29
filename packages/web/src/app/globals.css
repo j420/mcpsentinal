@@ -1,51 +1,66 @@
 /* ============================================================
-   MCP Sentinel — Design System v5 (Institutional Dark)
+   MCP Sentinel — Design System v5.1 (Institutional Dark, layered)
    Inspired by: rogo.ai (Together agency, "The Frame", Rooftop sans,
    institutional financial gravitas) + ineffable.ai (stark monumental
    ASI-lab restraint).
 
-   Palette: Near-black slate base (#0A0D12) + warm cream ink (#F4F1EA)
-   Accent:  Warm gold (#E8B25C) — Bloomberg-peer, restrained
+   v5.1 changes (2026-04-29) — semantic colour palette:
+   - Page base lifted slightly toward neutral so cards visibly rise.
+   - Surface tiers pushed apart for clearer hierarchy.
+   - Gold (--accent) is reserved for EDITORIAL moments only:
+       brand voice, score band, lethal trifecta, finding-card framework chip.
+   - NEW steel-blue (--accent-2) carries DATA / receipt moments:
+       attestation ribbon, pipeline glyphs, reproducibility footer link,
+       mono kicker eyebrows on data sections.
+   - NEW deeper amber (--accent-3) for the v2 score gradients only.
+   - Severity palette retuned: info shifted to periwinkle so it stays
+     distinct from the new --accent-2 steel blue.
+
    Type:    Inter Variable (body/UI) · Instrument Serif (display
             moments) · JetBrains Mono (data, eyebrows, numbers)
 
-   Design principles:
+   Design principles (unchanged):
    - Single dark theme. No toggle. Cohesive publication, not landing.
-   - Gold accent is the ONLY brand color. Severity colors retuned for dark.
    - "The Frame" — corner-bracket marks on every primary surface.
    - Mono numbers everywhere data appears. Serif for editorial moments.
-   - 1.5% film grain overlay. No gradient mesh, no glassmorphism, no decoration.
+   - 1.5% film grain overlay. No gradient mesh, no glassmorphism.
    ============================================================ */
 
 /* ── Tokens ─────────────────────────────────────────────── */
 :root {
-  /* ── Backgrounds — deep slate surfaces ── */
-  --bg:           #0A0D12;
-  --surface:      #10141B;
-  --surface-2:    #161B23;
-  --surface-3:    #1E242E;
+  /* ── Backgrounds — deep slate surfaces, tier separation pushed ── */
+  --bg:           #0B0E15;
+  --surface:      #141822;
+  --surface-2:    #1B2030;
+  --surface-3:    #242A3A;
 
   /* ── Borders — hairline, warm-cream tinted ── */
-  --border:        rgba(244, 241, 234, 0.06);
-  --border-md:     rgba(244, 241, 234, 0.10);
-  --border-strong: rgba(244, 241, 234, 0.16);
+  --border:        rgba(244, 241, 234, 0.07);
+  --border-md:     rgba(244, 241, 234, 0.12);
+  --border-strong: rgba(244, 241, 234, 0.18);
 
   /* ── Text — warm cream ink (Rogo cue), not pure white ── */
   --text:         #F4F1EA;
-  --text-2:       #B5B5AC;
-  --text-3:       #8A8D86;
-  --text-inv:     #0A0D12;
+  --text-2:       #BEBDB5;
+  --text-3:       #94978F;
+  --text-inv:     #0B0E15;
 
-  /* ── Accent: warm institutional gold ── */
+  /* ── Accent: warm institutional gold (editorial / brand voice) ── */
   --accent:       #E8B25C;
   --accent-hover: #F1C57A;
   --accent-light: #F1C57A;
   --accent-sub:   rgba(232, 178, 92, 0.08);
   --accent-ring:  rgba(232, 178, 92, 0.32);
 
-  /* ── Secondary accent: deeper amber for gradients ── */
-  --accent-2:     #C8943C;
-  --accent-2-sub: rgba(200, 148, 60, 0.08);
+  /* ── Secondary accent: institutional steel-blue (DATA / receipts) ── */
+  --accent-2:       #5FAEFF;
+  --accent-2-hover: #82C0FF;
+  --accent-2-sub:   rgba(95, 174, 255, 0.08);
+  --accent-2-ring:  rgba(95, 174, 255, 0.32);
+
+  /* ── Tertiary accent: deeper amber for score gradients ── */
+  --accent-3:     #C8943C;
+  --accent-3-sub: rgba(200, 148, 60, 0.08);
 
   /* ── Score semantic colors — tuned for dark bg ── */
   --good:         #5BD68A;
@@ -66,7 +81,7 @@
   --sev-high:     #FF9D4D;
   --sev-medium:   #F0C75E;
   --sev-low:      #5BD68A;
-  --sev-info:     #7FB6FF;
+  --sev-info:     #B5A8FF;
 
   /* ── Capability tag colors — dark bg tuned ── */
   --cap-exec:      rgba(255, 92, 87, 0.10);
@@ -95,14 +110,14 @@
   --sev-high-sub:     rgba(255, 157, 77, 0.08);
   --sev-medium-sub:   rgba(240, 199, 94, 0.08);
   --sev-low-sub:      rgba(91, 214, 138, 0.08);
-  --sev-info-sub:     rgba(127, 182, 255, 0.08);
+  --sev-info-sub:     rgba(181, 168, 255, 0.10);
 
   /* ── Severity border tints ── */
   --sev-critical-border: rgba(255, 92, 87, 0.26);
   --sev-high-border:     rgba(255, 157, 77, 0.26);
   --sev-medium-border:   rgba(240, 199, 94, 0.26);
   --sev-low-border:      rgba(91, 214, 138, 0.26);
-  --sev-info-border:     rgba(127, 182, 255, 0.26);
+  --sev-info-border:     rgba(181, 168, 255, 0.28);
 
   /* ── MITRE / OWASP tag colors ── */
   --tag-mitre:        rgba(180, 140, 255, 0.10);
@@ -116,7 +131,7 @@
   --finding-high-bg:     rgba(255, 157, 77, 0.035);
   --finding-medium-bg:   rgba(240, 199, 94, 0.03);
   --finding-low-bg:      rgba(91, 214, 138, 0.025);
-  --finding-info-bg:     rgba(127, 182, 255, 0.025);
+  --finding-info-bg:     rgba(181, 168, 255, 0.025);
 
   /* ── Hit / violated state tints ── */
   --hit-bg:         rgba(255, 92, 87, 0.04);
@@ -283,7 +298,7 @@ code, pre, kbd {
   top: 0;
   z-index: 100;
   border-bottom: 1px solid var(--border);
-  background: rgba(10, 13, 18, 0.72);
+  background: rgba(11, 14, 21, 0.74);
   backdrop-filter: blur(24px) saturate(140%);
   -webkit-backdrop-filter: blur(24px) saturate(140%);
   transition: box-shadow var(--t-base) var(--ease), border-color var(--t-base) var(--ease);
@@ -2836,7 +2851,7 @@ code, pre, kbd {
 
 /* Card 3 — Gold accent (replaces emerald gradient) */
 .stats-card-green {
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-3) 100%);
   color: var(--text-inv);
   border: 1px solid var(--accent);
 }
@@ -3211,7 +3226,7 @@ code, pre, kbd {
 
 .server-meta-cat {
   background: var(--accent-sub);
-  color: var(--accent-2);
+  color: var(--accent-3);
   font-weight: 600;
 }
 
@@ -9647,4 +9662,64 @@ pre code { background: transparent; padding: 0; }
   color: var(--text-3);
   font-weight: 400;
   letter-spacing: 0.06em;
+}
+
+/* ============================================================
+   v5.1 — Steel-blue data accents
+   Apply --accent-2 to non-editorial data moments so gold is reserved
+   for brand/editorial voice and blue carries technical receipts.
+   ============================================================ */
+
+/* Attestation Ribbon — overall accent coloration */
+.attestation-ribbon { border-color: var(--border); }
+.attestation-ribbon .eyebrow-mono::before {
+  background: var(--accent-2);
+}
+/* RULESET / FINGERPRINT / VALIDATED cells use steel-blue values */
+.attestation-cell:has(.eyebrow-mono:where(:nth-child(1))) .attestation-val { color: var(--text); }
+.attestation-mono { color: var(--accent-2); }
+
+/* Pipeline ok-stage chips: shift to steel-blue (data, not victory) */
+.attestation-stage.stage-ok {
+  color: var(--accent-2);
+}
+
+/* Reproducibility footer link — steel-blue (data-receipt) */
+.ast-repro-link {
+  color: var(--accent-2);
+}
+.ast-repro-link:hover { color: var(--accent-2-hover); }
+
+/* Threat reference id — steel-blue (citation) */
+.ast-threat-id {
+  color: var(--accent-2);
+}
+.ast-threat-link {
+  color: var(--accent-2);
+}
+.ast-threat-link:hover { color: var(--accent-2-hover); }
+
+/* AttackSurfaceTab section eyebrows — steel-blue rule mark for data sections.
+   Override the default --accent rule mark on .ast-section-head .eyebrow-mono. */
+.ast-section-head .eyebrow-mono::before { background: var(--accent-2); }
+.ast-section-head .eyebrow-mono { color: var(--accent-2); }
+
+/* FindingCard rule_id — keep gold (editorial: rule identifier is brand-tied) */
+/* (no change — .fcv2-rule-id stays --accent) */
+
+/* Tools panel surface header — steel-blue eyebrow */
+.fcv2-panel-head .eyebrow-mono { color: var(--accent-2); }
+.fcv2-panel-head .eyebrow-mono::before { display: none; }
+
+/* TrustSignature eyebrow tag — keep gold (it IS the editorial verdict) */
+/* (no change) */
+
+/* Subtle gold-to-blue gradient on the page top, replacing the legacy
+   gold-only blob. Adds the chromatic atmosphere the user asked for without
+   breaking the institutional discipline. */
+.hero::before {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(232, 178, 92, 0.08) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 40% at 78% 18%, rgba(95, 174, 255, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at 22% 28%, rgba(200, 148, 60, 0.04) 0%, transparent 50%);
 }

@@ -286,13 +286,6 @@ export default async function HomePage({
           <span aria-hidden="true">·</span>
           <span>Security Intelligence Registry</span>
         </div>
-        <h1 className="hero-title">
-          Know which MCP servers
-          <br />
-          are <em>safe</em> before they
-          <br />
-          touch your agent.
-        </h1>
         <p className="hero-sub">
           {stats?.total_servers
             ? `${stats.total_servers.toLocaleString()} MCP servers crawled across ${Object.keys(stats.category_breakdown || {}).length} categories.`
