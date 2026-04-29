@@ -3,13 +3,16 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import CategoryDeepDivePanel from "@/components/CategoryDeepDivePanel";
 import type { CddFinding } from "@/components/cdd-data";
-import { RULE_NAMES } from "@/components/cdd-data";
 import ServerProfileCard from "@/components/ServerProfileCard";
 import type { ServerProfileData } from "@/components/ServerProfileCard";
 import AttackChainCard from "@/components/AttackChainCard";
 import type { AttackChainItem } from "@/components/AttackChainCard";
-import EvidenceChainViz from "@/components/EvidenceChainViz";
-import type { EvidenceChainData } from "@/components/EvidenceChainViz";
+import EvidenceSummaryHero from "@/components/EvidenceSummaryHero";
+import AttackSurfaceStrip from "@/components/AttackSurfaceStrip";
+import FindingsEvidenceTab from "@/components/FindingsEvidenceTab";
+import GradeBreakdownTab from "@/components/GradeBreakdownTab";
+import VersionHistoryTab from "@/components/VersionHistoryTab";
+import FooterAttestationBar from "@/components/FooterAttestationBar";
 import ServerTabs, { type ServerTab } from "./ServerTabs";
 import ComplianceTab from "./ComplianceTab";
 
@@ -39,6 +42,23 @@ interface Tool {
   capability_tags: string[];
 }
 
+interface ScoreDetail {
+  total_score: number;
+  code_score: number;
+  deps_score: number;
+  config_score: number;
+  description_score: number;
+  behavior_score: number;
+}
+
+interface ScanStages {
+  stages: unknown;
+  started_at: string | null;
+  completed_at: string | null;
+  status: string;
+  rules_version?: string | null;
+}
+
 interface ServerDetail {
   id: string;
   name: string;
@@ -62,6 +82,10 @@ interface ServerDetail {
   tools: Tool[];
   findings: Finding[];
   owasp_coverage?: Record<string, boolean>;
+  /** Phase 1 score sub-breakdown — used by GradeBreakdownTab. */
+  score_detail?: ScoreDetail | null;
+  /** Latest scan timing/status — used by hero + footer. */
+  scan_stages?: ScanStages | null;
   /** Phase 1: server capability profile. Absent until API serves Phase 1 data. */
   profile?: ServerProfileData | null;
   /** Attack chains involving this server. Absent until API serves attack chain data. */
@@ -97,28 +121,11 @@ export async function generateMetadata({
   const findCount = server.findings?.length ?? 0;
   return {
     title: `${server.name} Security Report`,
-    description: `Security analysis of ${server.name} MCP server. ${findCount} finding${findCount !== 1 ? "s" : ""} detected across 177 detection rules.`,
+    description: `Security analysis of ${server.name} MCP server. ${findCount} finding${findCount !== 1 ? "s" : ""} detected across 164 active detection rules.`,
   };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function fmtNum(n: number | null): string {
-  if (n == null) return "\u2014";
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
-  return n.toLocaleString();
-}
-
-function fmtDate(iso: string | null): string {
-  if (!iso) return "\u2014";
-  const d = new Date(iso);
-  return d.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
 
 const OWASP_NAMES: Record<string, string> = {
   MCP01: "Prompt Injection",
@@ -152,6 +159,93 @@ export default async function ServerDetailPage({
     severity: f.severity,
   }));
 
+  // ── Tab panels (rendered as RSC subtrees, passed across the boundary) ─────
+  const findingsPanel = (
+    <FindingsEvidenceTab findings={findings} scanId={null} />
+  );
+
+  const gradeBreakdownPanel = (
+    <GradeBreakdownTab
+      score_detail={server.score_detail ?? null}
+      findings={findings}
+    />
+  );
+
+  const deepDivePanel = (
+    <div id="deep-dive">
+      <CategoryDeepDivePanel findings={cddFindings} fullFindings={findings} />
+    </div>
+  );
+
+  const versionHistoryPanel = <VersionHistoryTab slug={slug} apiUrl={API_URL} />;
+
+  const toolsPanel = (
+    <section id="tools" className="sd-section">
+      <h2 className="sd-section-title">
+        Tools
+        <span className="sd-section-count">{tools.length}</span>
+      </h2>
+      {tools.length === 0 ? (
+        <p className="sd-section-sub">No tools enumerated for this server.</p>
+      ) : (
+        <div className="sd-tools-grid">
+          {tools.map((tool) => (
+            <div key={tool.name} className="sd-tool">
+              <div className="sd-tool-name">{tool.name}</div>
+              {tool.description && (
+                <div className="sd-tool-desc">{tool.description}</div>
+              )}
+              {tool.capability_tags.length > 0 && (
+                <div className="sd-tool-caps">
+                  {tool.capability_tags.map((tag) => (
+                    <span key={tag} className={`cap-tag cap-${tag}`}>
+                      {tag.replace(/-/g, " ")}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+
+  const tabs: ServerTab[] = [
+    {
+      id: "findings",
+      label: "Findings & Evidence",
+      count: findings.length,
+      content: findingsPanel,
+    },
+    {
+      id: "grade-breakdown",
+      label: "Grade Breakdown",
+      content: gradeBreakdownPanel,
+    },
+    {
+      id: "deep-dive",
+      label: "Deep Dive",
+      content: deepDivePanel,
+    },
+    {
+      id: "compliance",
+      label: "Compliance",
+      content: <ComplianceTab slug={slug} />,
+    },
+    {
+      id: "version-history",
+      label: "Version History",
+      content: versionHistoryPanel,
+    },
+    {
+      id: "tools",
+      label: "Tools",
+      count: tools.length,
+      content: toolsPanel,
+    },
+  ];
+
   return (
     <div className="sd-page">
       {/* Breadcrumb */}
@@ -163,97 +257,28 @@ export default async function ServerDetailPage({
         <span className="sd-bread-current">{server.name}</span>
       </nav>
 
-      {/* ── Hero Section ───────────────────────────────────── */}
-      <section className="sd-hero">
-        <div className="sd-hero-left">
-          <div className="sd-hero-title-row">
-            <h1 className="sd-hero-name">{server.name}</h1>
-            {server.connection_status === "success" && (
-              <span className="sd-status-dot sd-status-connected" title="Connected" aria-label="Connection status: success" role="img" />
-            )}
-            {(server.connection_status === "failed" || server.connection_status === "timeout") && (
-              <span className="sd-status-dot sd-status-error" title="Connection Error" aria-label="Connection status: failed" role="img" />
-            )}
-          </div>
-          {server.description && (
-            <p className="sd-hero-desc">{server.description}</p>
-          )}
-          <div className="sd-meta-row">
-            {server.author && (
-              <span className="sd-meta-chip">
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                  <circle cx="8" cy="5.5" r="2.5" />
-                  <path d="M3 13c0-2.76 2.24-5 5-5s5 2.24 5 5" />
-                </svg>
-                {server.author}
-              </span>
-            )}
-            {server.category && (
-              <span className="sd-meta-chip">{server.category}</span>
-            )}
-            {server.language && (
-              <span className="sd-meta-chip">{server.language}</span>
-            )}
-            {server.license && (
-              <span className="sd-meta-chip">{server.license}</span>
-            )}
-            {server.server_version && (
-              <span className="sd-meta-chip">v{server.server_version}</span>
-            )}
-          </div>
-          <div className="sd-hero-links">
-            {server.github_url && (
-              <a href={server.github_url} target="_blank" rel="noopener noreferrer" className="sd-link-btn">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-                  <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
-                </svg>
-                GitHub
-              </a>
-            )}
-            {server.npm_package && (
-              <a href={`https://www.npmjs.com/package/${server.npm_package}`} target="_blank" rel="noopener noreferrer" className="sd-link-btn">
-                npm
-              </a>
-            )}
-            {server.pypi_package && (
-              <a href={`https://pypi.org/project/${server.pypi_package}`} target="_blank" rel="noopener noreferrer" className="sd-link-btn">
-                PyPI
-              </a>
-            )}
-          </div>
-        </div>
+      {/* ── Evidence Summary Hero (replaces previous identity hero) ────── */}
+      <EvidenceSummaryHero
+        name={server.name}
+        description={server.description}
+        author={server.author}
+        license={server.license}
+        server_version={server.server_version}
+        endpoint_url={server.endpoint_url}
+        github_url={server.github_url}
+        npm_package={server.npm_package}
+        pypi_package={server.pypi_package}
+        last_scanned_at={server.last_scanned_at}
+        score_detail={server.score_detail ?? null}
+        scan_stages={server.scan_stages ?? null}
+        findings={findings}
+        tools={tools}
+      />
 
-        <div className="sd-hero-stats">
-          <div className="sd-hero-stat">
-            <span className="sd-hero-stat-val">{server.tool_count}</span>
-            <span className="sd-hero-stat-label">Tools</span>
-          </div>
-          <div className="sd-hero-stat">
-            <span className="sd-hero-stat-val" style={findings.length > 0 ? { color: "var(--critical)" } : { color: "var(--good)" }}>
-              {findings.length}
-            </span>
-            <span className="sd-hero-stat-label">Findings</span>
-          </div>
-          {server.github_stars != null && (
-            <div className="sd-hero-stat">
-              <span className="sd-hero-stat-val">{fmtNum(server.github_stars)}</span>
-              <span className="sd-hero-stat-label">Stars</span>
-            </div>
-          )}
-          {server.npm_downloads != null && (
-            <div className="sd-hero-stat">
-              <span className="sd-hero-stat-val">{fmtNum(server.npm_downloads)}</span>
-              <span className="sd-hero-stat-label">Downloads</span>
-            </div>
-          )}
-          <div className="sd-hero-stat">
-            <span className="sd-hero-stat-val sd-hero-stat-val-sm">{fmtDate(server.last_scanned_at)}</span>
-            <span className="sd-hero-stat-label">Last Scanned</span>
-          </div>
-        </div>
-      </section>
+      {/* ── Attack Surface Strip (capability domain cards) ─────────────── */}
+      <AttackSurfaceStrip tools={tools} findings={findings} />
 
-      {/* ── OWASP Coverage ─────────────────────────────────── */}
+      {/* ── OWASP Coverage (kept exactly as-is) ────────────────────────── */}
       {server.owasp_coverage && Object.keys(server.owasp_coverage).length > 0 && (
         <section id="owasp" className="sd-section">
           <h2 className="sd-section-title">
@@ -286,115 +311,16 @@ export default async function ServerDetailPage({
       />
 
       {/* ── Tabbed Detail Sections ─────────────────────────── */}
-      {(() => {
-        const findingsPanel = (
-          <section id="findings" className="sd-section">
-            <h2 className="sd-section-title">
-              Security Findings
-              <span className="sd-section-count">{findings.length}</span>
-            </h2>
-            {findings.length === 0 ? (
-              <p className="sd-section-sub">No findings detected. This server passed all 177 detection rules.</p>
-            ) : (
-              <>
-                <p className="sd-section-sub">
-                  {findings.length} finding{findings.length !== 1 ? "s" : ""} detected across {new Set(findings.map(f => f.severity)).size} severity level{new Set(findings.map(f => f.severity)).size !== 1 ? "s" : ""}.
-                  Each finding includes a structured evidence chain answering: WHAT, WHERE, WHY, HOW CONFIDENT, and HOW TO VERIFY.
-                </p>
-                <div className="sd-findings-list">
-                  {findings.map((f) => (
-                    <div key={f.id} className={`sd-finding-card sd-finding-${f.severity}`}>
-                      <div className="sd-finding-header">
-                        <span className={`sev-badge sev-${f.severity}`}>{f.severity}</span>
-                        <span className="sd-finding-rule-id">{f.rule_id}</span>
-                        <span className="sd-finding-rule-name">{RULE_NAMES[f.rule_id] ?? f.rule_id}</span>
-                        {f.owasp_category && <span className="sd-finding-tag sd-finding-owasp">{f.owasp_category}</span>}
-                        {f.mitre_technique && <span className="sd-finding-tag sd-finding-mitre">{f.mitre_technique}</span>}
-                      </div>
-                      <div className="sd-finding-evidence">{f.evidence}</div>
-                      <EvidenceChainViz
-                        chain={f.evidence_chain as EvidenceChainData | null | undefined}
-                        confidence={f.confidence}
-                      />
-                      {f.remediation && (
-                        <div className="sd-finding-remediation">
-                          <strong>Remediation:</strong> {f.remediation}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </section>
-        );
+      <ServerTabs tabs={tabs} />
 
-        const toolsPanel = (
-          <section id="tools" className="sd-section">
-            <h2 className="sd-section-title">
-              Tools
-              <span className="sd-section-count">{tools.length}</span>
-            </h2>
-            {tools.length === 0 ? (
-              <p className="sd-section-sub">No tools enumerated for this server.</p>
-            ) : (
-              <div className="sd-tools-grid">
-                {tools.map((tool) => (
-                  <div key={tool.name} className="sd-tool">
-                    <div className="sd-tool-name">{tool.name}</div>
-                    {tool.description && (
-                      <div className="sd-tool-desc">{tool.description}</div>
-                    )}
-                    {tool.capability_tags.length > 0 && (
-                      <div className="sd-tool-caps">
-                        {tool.capability_tags.map((tag) => (
-                          <span key={tag} className={`cap-tag cap-${tag}`}>
-                            {tag.replace(/-/g, " ")}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-        );
-
-        const deepDivePanel = (
-          <div id="deep-dive">
-            <CategoryDeepDivePanel findings={cddFindings} fullFindings={findings} />
-          </div>
-        );
-
-        const tabs: ServerTab[] = [
-          {
-            id: "deep-dive",
-            label: "Deep Dive",
-            content: deepDivePanel,
-          },
-          {
-            id: "compliance",
-            label: "Compliance",
-            content: <ComplianceTab slug={slug} />,
-          },
-          {
-            id: "tools",
-            label: "Tools",
-            count: tools.length,
-            content: toolsPanel,
-          },
-          {
-            id: "findings",
-            label: "Findings",
-            count: findings.length,
-            content: findingsPanel,
-          },
-        ];
-
-        return <ServerTabs tabs={tabs} />;
-      })()}
-
+      {/* ── Footer attestation bar ─────────────────────────── */}
+      <FooterAttestationBar
+        slug={slug}
+        apiUrl={API_URL}
+        findingsCount={findings.length}
+        scan_stages={server.scan_stages ?? null}
+        rulesVersion={server.scan_stages?.rules_version ?? null}
+      />
     </div>
   );
 }
