@@ -2,15 +2,16 @@
 
 import { useState, useEffect } from "react";
 
+/* Reads CSS tokens at runtime so the animation always tracks the active theme. */
 const SCAN_STEPS = [
-  { label: "Connecting", detail: "initialize + tools/list", color: "#10B981" },
-  { label: "Enumerating", detail: "12 tools found", color: "#10B981" },
-  { label: "Analyzing", detail: "177 rules running...", color: "#F59E0B" },
-  { label: "Finding", detail: "Prompt Injection in description", color: "#EF4444", severity: "critical" },
-  { label: "Finding", detail: "Hardcoded API key detected", color: "#EF4444", severity: "high" },
-  { label: "Finding", detail: "Missing input validation", color: "#F59E0B", severity: "medium" },
-  { label: "Scoring", detail: "Score: 62/100 — Moderate", color: "#F59E0B" },
-  { label: "Complete", detail: "3 findings · 62/100", color: "#10B981" },
+  { label: "Connecting", detail: "initialize + tools/list", color: "var(--accent)" },
+  { label: "Enumerating", detail: "12 tools found", color: "var(--accent)" },
+  { label: "Analyzing", detail: "164 rules running...", color: "var(--sev-medium)" },
+  { label: "Finding", detail: "Prompt Injection in description", color: "var(--sev-critical)", severity: "critical" },
+  { label: "Finding", detail: "Hardcoded API key detected", color: "var(--sev-high)", severity: "high" },
+  { label: "Finding", detail: "Missing input validation", color: "var(--sev-medium)", severity: "medium" },
+  { label: "Scoring", detail: "Score: 62/100 — Moderate", color: "var(--sev-medium)" },
+  { label: "Complete", detail: "3 findings · 62/100", color: "var(--sev-low)" },
 ];
 
 export default function ScannerAnimation() {

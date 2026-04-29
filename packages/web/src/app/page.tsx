@@ -282,28 +282,40 @@ export default async function HomePage({
       {/* ── Hero ──────────────────────────────────────── */}
       <section className="hero">
         <div className="hero-eyebrow">
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-            <path
-              d="M8 1L14 4V8C14 11.5 11.5 14.5 8 15.5C4.5 14.5 2 11.5 2 8V4L8 1Z"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinejoin="round"
-              fill="none"
-            />
-          </svg>
-          Security Intelligence Registry
+          <span className="hero-eyebrow-mark" aria-hidden="true">SCAN-INTEL</span>
+          <span aria-hidden="true">·</span>
+          <span>Security Intelligence Registry</span>
         </div>
         <h1 className="hero-title">
-          Trust Every MCP Server
+          Know which MCP servers
           <br />
-          Before It Touches <em>Your Agent</em>
+          are <em>safe</em> before they
+          <br />
+          touch your agent.
         </h1>
         <p className="hero-sub">
           {stats?.total_servers
-            ? `${stats.total_servers.toLocaleString()} MCP servers discovered across ${Object.keys(stats.category_breakdown || {}).length} categories.`
-            : "22,000+ MCP servers discovered across the ecosystem."}{" "}
-          150+ detection rules. Zero guesswork.
+            ? `${stats.total_servers.toLocaleString()} MCP servers crawled across ${Object.keys(stats.category_breakdown || {}).length} categories.`
+            : "22,000+ MCP servers crawled across the ecosystem."}{" "}
+          164 deterministic detection rules. Evidence chains, not vibes.
         </p>
+        <div className="hero-meta">
+          <span className="hero-meta-item">
+            <span className="hero-meta-dot" aria-hidden="true" />
+            <span className="hero-meta-label">LIVE</span>
+            <span className="hero-meta-value">{stats?.total_scanned?.toLocaleString() || "—"} scanned</span>
+          </span>
+          <span className="hero-meta-sep" aria-hidden="true" />
+          <span className="hero-meta-item">
+            <span className="hero-meta-label">RULES</span>
+            <span className="hero-meta-value">164 active</span>
+          </span>
+          <span className="hero-meta-sep" aria-hidden="true" />
+          <span className="hero-meta-item">
+            <span className="hero-meta-label">FRAMEWORKS</span>
+            <span className="hero-meta-value">8 mapped</span>
+          </span>
+        </div>
       </section>
 
       {/* ── Stats Cards ──────────────────────────────── */}
