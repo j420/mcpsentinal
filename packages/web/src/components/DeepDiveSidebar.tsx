@@ -156,7 +156,14 @@ function readFilterState(params: URLSearchParams): FilterState {
     severities: finalSeverities,
     frameworks: finalFrameworks,
     failOnly: params.get(URL_PARAM_FAIL_ONLY) === "1",
-    showSkipped: params.get(URL_PARAM_SHOW_SKIPPED) === "1",
+    // Cluster D reviewer M2 — `show_skipped` defaults ON. The user's
+    // explicit complaint about Cluster A/B/C was "currently it's hidden
+    // under carpet"; hiding skipped rules from the TOC by default would
+    // recreate that bug at navigation time. Skipped rules are a
+    // first-class regulator-grade signal ("we tried to test K9 but had
+    // no source code") and must be visible by default. To hide, the
+    // user explicitly opts out via `?show_skipped=0`.
+    showSkipped: params.get(URL_PARAM_SHOW_SKIPPED) !== "0",
   };
 }
 
@@ -199,7 +206,9 @@ function writeFilterState(
   if (next.failOnly) out.set(URL_PARAM_FAIL_ONLY, "1");
   else out.delete(URL_PARAM_FAIL_ONLY);
 
-  if (next.showSkipped) out.set(URL_PARAM_SHOW_SKIPPED, "1");
+  // Inverted from the other toggles because `show_skipped` defaults ON
+  // (Cluster D reviewer M2 — regulator-facing visibility default).
+  if (!next.showSkipped) out.set(URL_PARAM_SHOW_SKIPPED, "0");
   else out.delete(URL_PARAM_SHOW_SKIPPED);
 
   return out;
@@ -233,7 +242,7 @@ function buildSearchIndex(categories: DeepDiveCategory[]): SearchToken[] {
       for (const rule of sub.rules) {
         const fwSet = new Set<FrameworkId>(
           rule.framework_controls
-            .map((fc) => fc.framework as FrameworkId)
+            .map((fc) => fc.framework_id as FrameworkId)
             .filter((id): id is FrameworkId =>
               (ALL_FRAMEWORK_IDS as string[]).includes(id),
             ),

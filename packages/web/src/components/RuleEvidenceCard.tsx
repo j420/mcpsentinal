@@ -176,9 +176,10 @@ function skipReasonFor(category: string): string {
  * one-liner. Returns `null` when there is no backing at all so the caller
  * renders the honest "no validation evidence wired" copy instead.
  */
-function summariseBacking(backing: DeepDiveRuleBacking): string | null {
-  const fixtureCount = backing.red_team_fixture_count ?? 0;
-  const cveCount = backing.cve_ids?.length ?? 0;
+function summariseBacking(backing: DeepDiveRuleBacking | null): string | null {
+  if (!backing) return null;
+  const fixtureCount = backing.fixture_count ?? 0;
+  const cveCount = backing.cve_replay_ids?.length ?? 0;
   const hasPrec = typeof backing.precision === "number";
   const hasRecall = typeof backing.recall === "number";
   const parts: string[] = [];
@@ -188,8 +189,8 @@ function summariseBacking(backing: DeepDiveRuleBacking): string | null {
   if (cveCount > 0) {
     parts.push(`${cveCount} CVE${cveCount === 1 ? "" : "s"}`);
   }
-  if (hasPrec) parts.push(`precision ${formatScalar(backing.precision)}`);
-  if (hasRecall) parts.push(`recall ${formatScalar(backing.recall)}`);
+  if (hasPrec && backing.precision !== null) parts.push(`precision ${formatScalar(backing.precision)}`);
+  if (hasRecall && backing.recall !== null) parts.push(`recall ${formatScalar(backing.recall)}`);
   if (parts.length === 0) return null;
   return parts.join(" · ");
 }
@@ -228,8 +229,8 @@ function CardEyebrow({
   // stays compact; deeper detail lives in the methodology block.
   for (const fc of rule.framework_controls) {
     if (refs.length >= 4) break;
-    if (fc.framework === "owasp_mcp" && rule.owasp) continue;
-    if (fc.framework === "mitre_atlas" && rule.mitre) continue;
+    if (fc.framework_id === "owasp_mcp" && rule.owasp) continue;
+    if (fc.framework_id === "mitre_atlas" && rule.mitre) continue;
     refs.push(controlLabel(fc));
   }
 
@@ -287,8 +288,8 @@ function controlLabel(fc: DeepDiveFrameworkControl): string {
     maestro: "MAESTRO",
     mitre_atlas: "MITRE ATLAS",
   };
-  const fw = fwShort[fc.framework] ?? fc.framework;
-  return `${fw} ${fc.control}`;
+  const fw = fwShort[fc.framework_id] ?? fc.framework_id;
+  return `${fw} ${fc.control_id}`;
 }
 
 /**
@@ -306,9 +307,15 @@ function MethodologyBlock({
   collapsible: boolean;
   defaultOpen?: boolean;
 }) {
-  const technique = rule.methodology?.trim();
+  // Cluster D reviewer B5 — `methodology` is an object, not a string.
+  // The card shows `technique` as the headline + verified_edge_cases as a
+  // visible body list (audit doc evidence-first principle: methodology
+  // must be readable, not just a one-word tag).
+  const technique = rule.methodology?.technique?.trim() ?? "";
+  const verifiedEdgeCases = rule.methodology?.verified_edge_cases ?? [];
+  const confidenceCap = rule.methodology?.confidence_cap ?? null;
   const backingSummary = summariseBacking(rule.backing);
-  const lastValidated = fmtRelative(rule.backing.last_validated_at);
+  const lastValidated = fmtRelative(rule.backing?.last_validated_at ?? null);
 
   // The header "summary line" is what is visible when the details element
   // is collapsed — a one-shot density read of the testing posture.
@@ -343,11 +350,27 @@ function MethodologyBlock({
           </dd>
         </div>
 
-        {rule.backing.cve_ids && rule.backing.cve_ids.length > 0 && (
+        {verifiedEdgeCases.length > 0 && (
+          <div className="rec-method-row">
+            <dt className="rec-method-k">Verified edge cases</dt>
+            <dd className="rec-method-v">
+              <ul className="rec-edge-list" aria-label="Verified edge cases">
+                {verifiedEdgeCases.map((edge, i) => (
+                  <li key={`${i}-${edge.slice(0, 24)}`}>
+                    <span className="rec-edge-tick" aria-hidden="true">✓</span>
+                    {edge}
+                  </li>
+                ))}
+              </ul>
+            </dd>
+          </div>
+        )}
+
+        {rule.backing && rule.backing.cve_replay_ids.length > 0 && (
           <div className="rec-method-row">
             <dt className="rec-method-k">CVE replays</dt>
             <dd className="rec-method-v">
-              {rule.backing.cve_ids.map((cve, i) => (
+              {rule.backing.cve_replay_ids.map((cve, i) => (
                 <React.Fragment key={`${cve}-${i}`}>
                   {i > 0 && <span className="rec-method-sep"> </span>}
                   <a
@@ -373,12 +396,12 @@ function MethodologyBlock({
             <dd className="rec-method-v">
               <ul className="rec-fw-list" aria-label="Framework cross-walk">
                 {rule.framework_controls.map((fc, i) => (
-                  <li key={`${fc.framework}-${fc.control}-${i}`}>
+                  <li key={`${fc.framework_id}-${fc.control_id}-${i}`}>
                     <span className="rec-fw-pill">
                       <span className="rec-fw-id">{controlLabel(fc)}</span>
-                      {fc.label && (
-                        <span className="rec-fw-title" title={fc.label}>
-                          {fc.label}
+                      {fc.control_title && (
+                        <span className="rec-fw-title" title={fc.control_title}>
+                          {fc.control_title}
                         </span>
                       )}
                     </span>
@@ -389,30 +412,27 @@ function MethodologyBlock({
           </div>
         )}
 
-        <div className="rec-method-row">
-          <dt className="rec-method-k">Last validated</dt>
-          <dd className="rec-method-v">
-            <span title={rule.backing.last_validated_at ?? ""}>
-              {lastValidated}
-            </span>
-            {rule.backing.last_validation_pass === false && (
-              <span
-                className="rec-method-fail"
-                aria-label="Last validation run failed"
-              >
-                · last run failed
+        {confidenceCap !== null && confidenceCap < 1 && (
+          <div className="rec-method-row">
+            <dt className="rec-method-k">Confidence cap</dt>
+            <dd className="rec-method-v">
+              <span className="rec-method-conf">≤ {confidenceCap.toFixed(2)}</span>
+              <span className="rec-method-conf-note">
+                {" "}
+                — declared in CHARTER (residual uncertainty acknowledged)
               </span>
-            )}
-            {rule.backing.last_validation_pass === true && (
-              <span
-                className="rec-method-pass"
-                aria-label="Last validation run passed"
-              >
-                · pass
-              </span>
-            )}
-          </dd>
-        </div>
+            </dd>
+          </div>
+        )}
+
+        {rule.backing?.last_validated_at && (
+          <div className="rec-method-row">
+            <dt className="rec-method-k">Last validated</dt>
+            <dd className="rec-method-v">
+              <span title={rule.backing.last_validated_at}>{lastValidated}</span>
+            </dd>
+          </div>
+        )}
       </dl>
     </div>
   );
@@ -508,26 +528,10 @@ function FindingPanel({
           confidence={finding.confidence}
         />
 
-        {finding.framework_controls && finding.framework_controls.length > 0 && (
-          <div className="rec-finding-fw">
-            <span className="rec-finding-fw-label">Violates</span>
-            <ul
-              className="rec-finding-fw-list"
-              aria-label="Framework controls violated by this finding"
-            >
-              {finding.framework_controls.map((fc, i) => (
-                <li key={`${fc.framework}-${fc.control}-${i}`}>
-                  <span className="rec-finding-fw-pill">
-                    {controlLabel(fc)}
-                    <span className="rec-finding-fw-mark" aria-hidden="true">
-                      ☑
-                    </span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        {/* Cluster D reviewer B5 — `framework_controls` live on the parent
+            rule, NOT per-finding. The Frameworks row in the methodology
+            block above already renders them. Removed per-finding
+            duplication. */}
 
         {finding.remediation && (
           <div className="rec-finding-rem">

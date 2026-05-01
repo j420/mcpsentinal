@@ -51,8 +51,8 @@ afterEach(() => {
 });
 
 const FW_CONTROLS: DeepDiveFrameworkControl[] = [
-  { framework: "owasp_mcp", control: "MCP01", label: "Prompt Injection" },
-  { framework: "mitre_atlas", control: "AML.T0054.001", label: "Indirect Prompt Injection" },
+  { framework_id: "owasp_mcp", control_id: "MCP01", control_title: "Prompt Injection" },
+  { framework_id: "mitre_atlas", control_id: "AML.T0054.001", control_title: "Indirect Prompt Injection" },
 ];
 
 function baseRule(overrides: Partial<DeepDiveRule> = {}): DeepDiveRule {
@@ -66,14 +66,22 @@ function baseRule(overrides: Partial<DeepDiveRule> = {}): DeepDiveRule {
     summary:
       "Detects MCP servers that ingest external content and pass it to the LLM without trust-boundary tagging.",
     framework_controls: FW_CONTROLS,
-    methodology: "capability-graph + linguistic scoring",
+    methodology: {
+      technique: "capability-graph + linguistic scoring",
+      verified_edge_cases: [
+        "Slack thread history returned verbatim",
+        "RAG retrieval from attacker-poisoned web corpus",
+        "Email body returned without trust-boundary tag",
+      ],
+      edge_case_strategies: [],
+      confidence_cap: null,
+    },
     backing: {
-      cve_ids: ["CVE-2024-12345", "CVE-2024-99999"],
-      red_team_fixture_count: 14,
+      cve_replay_ids: ["CVE-2024-12345", "CVE-2024-99999"],
+      fixture_count: 14,
       precision: 0.92,
       recall: 0.86,
       last_validated_at: "2026-04-30T09:00:00.000Z",
-      last_validation_pass: true,
     },
     remediation:
       "Tag all data ingested from external sources and refuse to interpolate it into prompts without the tag.",
@@ -89,13 +97,13 @@ function makeFinding(
 ): DeepDiveFinding {
   return {
     id,
-    rule_id: "G1",
     severity: "critical",
     evidence: "Slack thread history is returned verbatim through the read_channel_messages tool.",
     remediation: "Wrap returned thread bodies in a TRUSTED_BOUNDARY block.",
     confidence: 0.91,
     evidence_chain: null,
-    framework_controls: FW_CONTROLS,
+    // Cluster D reviewer B5 — `framework_controls` lives on the parent
+    // rule, not per-finding. Removed.
     ...overrides,
   };
 }
@@ -194,15 +202,24 @@ describe("RuleEvidenceCard — STATE A: findings", () => {
     expect(container.querySelectorAll(".ec5-report").length + container.querySelectorAll(".ec5-confidence-only").length).toBeGreaterThanOrEqual(2);
   });
 
-  it("renders the framework cross-walk on each finding", () => {
+  it("renders the framework cross-walk at the rule level (not duplicated per finding)", () => {
+    // Cluster D reviewer B5 lesson — `framework_controls` lives on the
+    // parent rule, not duplicated per finding (DeepDiveFinding has no
+    // framework_controls field per the canonical DB schema). The
+    // rule-level methodology block renders the cross-walk; the per-
+    // finding sub-card no longer does.
     const rule = baseRule({
       status: "findings",
       findings: [makeFinding("f-1")],
     });
     const { container } = render(<RuleEvidenceCard rule={rule} />);
-    const fwBlock = container.querySelector(".rec-finding-fw");
+    // Rule-level Frameworks block in the methodology dl.
+    const fwBlock = container.querySelector(".rec-fw-list");
     expect(fwBlock).not.toBeNull();
     expect(fwBlock?.textContent ?? "").toMatch(/OWASP MCP/);
+    // No duplicate per-finding fw block.
+    const perFinding = container.querySelector(".rec-finding-fw");
+    expect(perFinding).toBeNull();
   });
 });
 
@@ -330,12 +347,11 @@ describe("RuleEvidenceCard — methodology gap honesty", () => {
       status: "passed",
       findings: [],
       backing: {
-        cve_ids: [],
-        red_team_fixture_count: 0,
-        precision: undefined,
-        recall: undefined,
+        cve_replay_ids: [],
+        fixture_count: 0,
+        precision: null,
+        recall: null,
         last_validated_at: null,
-        last_validation_pass: null,
       },
     });
     const { container } = render(<RuleEvidenceCard rule={rule} />);
@@ -343,11 +359,16 @@ describe("RuleEvidenceCard — methodology gap honesty", () => {
     expect(summary).toMatch(/no backing data wired yet/);
   });
 
-  it("renders 'technique not declared' when methodology is empty", () => {
+  it("renders 'technique not declared' when methodology technique is empty", () => {
     const rule = baseRule({
       status: "passed",
       findings: [],
-      methodology: "",
+      methodology: {
+        technique: "",
+        verified_edge_cases: [],
+        edge_case_strategies: [],
+        confidence_cap: null,
+      },
     });
     const { container } = render(<RuleEvidenceCard rule={rule} />);
     const summary = container.querySelector(".rec-method-summary")?.textContent ?? "";

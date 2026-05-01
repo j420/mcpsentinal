@@ -1,24 +1,29 @@
 /**
  * deep-dive.ts — Frozen TypeScript contract for `GET /api/v1/servers/:slug/deep-dive`.
  *
- * This file is consumed by THREE web agents in parallel (Cluster D parts 3, 4, 5):
- *   - Part 3 (this agent): the page restructure + chrome shells
- *   - Part 4: the long-scroll content cards (`<CategorySection/>`,
- *     `<SubCategorySection/>`, `<RuleEvidenceCard/>`)
- *   - Part 5: the sticky rail (`<DeepDiveSidebar/>`)
+ * Mirrors `packages/database/src/schemas.ts` DeepDive*Schema exactly.
+ * Web cannot import from `@mcp-sentinel/database` (web/CLAUDE.md boundary
+ * rule); the contract is duplicated here verbatim. Cluster D reviewer B5
+ * caught the prior version inventing field names — this file is now the
+ * single source of truth on the web side, and field names match the DB
+ * schema 1:1.
  *
- * The shape below is identical to what Agent 2 froze on the API side. We
- * cannot import from `@mcp-sentinel/database` (web boundary rule, see
- * Cluster B `framework-labels.ts` precedent) so the contract is mirrored
- * here verbatim.
+ * Zero runtime code. Components import types only.
  *
- * Pure types only. No runtime code. The other two agents `import type`
- * from this file.
+ * History note (Cluster D reviewer punch-list B5):
+ *   - `framework`/`control`/`label?` → `framework_id`/`control_id`/`control_title`
+ *   - `cve_ids`/`red_team_fixture_count` → `cve_replay_ids`/`fixture_count`
+ *   - `methodology: string` → `methodology: DeepDiveMethodology` (object)
+ *   - `cross_referenced_in: string[]` → `Array<{category_id, sub_category_id}>`
+ *   - `DeepDiveFinding.rule_id` removed (API does not ship it; the parent
+ *     rule already carries the rule_id)
+ *   - `DeepDiveRuleBacking` deleted in favour of `DetectionQuality` (single
+ *     web-side type for both `<DetectionQualityFooter/>` Cluster C consumer
+ *     and the new Deep Dive consumer — Cluster B B1 multi-endpoint lesson).
  */
 
 // ── Severity ──────────────────────────────────────────────────────────────
 
-/** Standard analyzer severity vocabulary (matches `findings.severity`). */
 export type DeepDiveSeverity =
   | "critical"
   | "high"
@@ -26,7 +31,6 @@ export type DeepDiveSeverity =
   | "low"
   | "informational";
 
-/** Per-severity counts. Every level always present, even if zero. */
 export interface DeepDiveSeverityBreakdown {
   critical: number;
   high: number;
@@ -37,118 +41,126 @@ export interface DeepDiveSeverityBreakdown {
 
 // ── Coverage band (page-level) ────────────────────────────────────────────
 
-/**
- * Coverage band for the whole deep-dive payload — drives the hero confidence
- * chip. Identical vocabulary to `score_detail.coverage_band` in the slug
- * endpoint so a consumer looking at both endpoints sees one band, not two.
- *
- * `null` is reserved for legacy scans that pre-date the coverage producer.
- */
 export type DeepDiveCoverageBand = "high" | "medium" | "low" | "minimal";
 
 // ── Per-rule status ───────────────────────────────────────────────────────
 
-/**
- * Status of a single rule against this server:
- *   - `passed`   — rule executed and produced no findings
- *   - `findings` — rule executed and produced ≥1 finding
- *   - `skipped`  — rule could not execute (input missing, e.g. no source code)
- */
 export type DeepDiveRuleStatus = "passed" | "findings" | "skipped";
 
-// ── Rule reference metadata ───────────────────────────────────────────────
+// ── Framework cross-walk reference ─────────────────────────────────────────
 
 /**
- * One framework control reference attached to a rule, e.g.
- * `{ framework: "owasp_mcp", control: "MCP09", label: "Logging & Monitoring" }`.
+ * One framework control reference. Mirrors `FrameworkControlMappingSchema`
+ * in the DB schema verbatim. Identical shape to what `<FindingsEvidenceTab/>`
+ * (Cluster B) consumes from `/findings` and `/servers/:slug` — single
+ * web-side type for both the Deep Dive page and the Findings tab.
  */
 export interface DeepDiveFrameworkControl {
-  framework: string;
-  control: string;
-  label?: string | null;
+  framework_id: string;
+  control_id: string;
+  control_title: string;
 }
 
+// ── Detection quality (rule backing) ──────────────────────────────────────
+
 /**
- * Backing evidence for a rule — produced by `packages/red-team/src/cve-corpus/`
- * and `packages/red-team/src/accuracy/`. Drives the per-finding "Detection
- * Quality" footer (audit invention #4).
+ * Validation backing for a rule — produced by `packages/red-team/src/cve-corpus/`
+ * and `packages/red-team/src/accuracy/`. Mirrors `DetectionQualitySchema`
+ * in the DB schema verbatim. The same shape Cluster C's
+ * `<DetectionQualityFooter/>` consumes; the Deep Dive page reuses it
+ * unchanged.
  *
- * All fields optional: rules without backing data render an empty footer
- * (the audit doc demands honest gaps over fake numbers).
+ * Two distinct empty states (handled by consumers):
+ *   - whole field is `null` → rule not yet wired into either harness
+ *   - non-null but precision/recall null AND fixture_count=0 AND
+ *     cve_replay_ids=[] → harness wired but no validation runs yet
  */
-export interface DeepDiveRuleBacking {
-  cve_ids?: string[];
-  red_team_fixture_count?: number;
-  precision?: number;
-  recall?: number;
-  last_validated_at?: string | null;
-  last_validation_pass?: boolean | null;
+export interface DetectionQuality {
+  precision: number | null;
+  recall: number | null;
+  fixture_count: number;
+  cve_replay_ids: string[];
+  last_validated_at: string | null;
 }
 
-// ── Single finding (light shape) ──────────────────────────────────────────
+// ── Methodology (per-rule) ─────────────────────────────────────────────────
 
 /**
- * Compact finding shape rendered inside `<RuleEvidenceCard/>`. The richer
- * Finding type used by `<FindingsEvidenceTab/>` is not re-exported here —
- * the deep-dive endpoint deliberately keeps the contract narrow and the
- * card surfaces the chain via `evidence_chain` directly.
+ * Mirrors `DeepDiveMethodologySchema`. Drives the "TEST METHODOLOGY"
+ * block on each `<RuleEvidenceCard/>`.
+ *
+ * `verified_edge_cases` is the public name for the CHARTER's
+ * `lethal_edge_cases` — renamed at the API projection layer because
+ * "verified" reads better in regulator-facing UI than "lethal".
+ */
+export interface DeepDiveMethodology {
+  technique: string;
+  verified_edge_cases: string[];
+  edge_case_strategies: string[];
+  confidence_cap: number | null;
+}
+
+// ── Single finding (rule-grouped) ──────────────────────────────────────────
+
+/**
+ * One per-finding row inside a rule. Mirrors `DeepDiveFindingSchema` in
+ * the DB schema. Deliberately a SUBSET of the public Finding shape:
+ *   - no rule_id (the parent rule already carries it)
+ *   - no framework_controls / detection_quality (those live on the parent
+ *     rule, not duplicated per finding — single source of truth per rule)
  */
 export interface DeepDiveFinding {
   id: string;
-  rule_id: string;
   severity: DeepDiveSeverity;
+  confidence: number;
   evidence: string;
+  /** Existing EvidenceChain from packages/analyzer/src/evidence.ts. */
+  evidence_chain: Record<string, unknown> | null;
   remediation: string;
-  /** Phase 1 confidence score (0.0–1.0). Absent on pre-Phase-1 scans. */
-  confidence?: number;
-  /** Phase 1 structured chain. Absent on pre-Phase-1 scans. */
-  evidence_chain?: Record<string, unknown> | null;
-  /** Optional cross-walk for inline framework chips on each finding. */
-  framework_controls?: DeepDiveFrameworkControl[];
+}
+
+// ── Cross-reference back-pointer ───────────────────────────────────────────
+
+/**
+ * Pointer back to a (category, sub-category) where this rule ALSO appears
+ * as a secondary placement. The taxonomy assigns each rule to exactly ONE
+ * canonical sub-category; cross-references render as a "see canonical"
+ * link from the secondary sites. Empty/absent in the common case.
+ */
+export interface DeepDiveCrossReference {
+  category_id: string;
+  sub_category_id: string;
 }
 
 // ── Per-rule node ─────────────────────────────────────────────────────────
 
 /**
- * One rule's worth of deep-dive data — the leaf that `<RuleEvidenceCard/>`
- * renders. Always carries the rule's identity, mappings, methodology and
- * status; carries findings only when `status === "findings"`.
+ * One rule's worth of deep-dive data. Mirrors `DeepDiveRuleSchema`
+ * verbatim. The leaf that `<RuleEvidenceCard/>` renders.
  */
 export interface DeepDiveRule {
   rule_id: string;
   name: string;
   severity: DeepDiveSeverity;
-  /** Engine category (e.g. `code-analysis`, `protocol-surface`). */
+  /** Legacy letter-category (e.g. "C", "K") — useful for filters. */
   category: string;
-  /** OWASP MCP control id, if mapped (e.g. `MCP09`). */
   owasp: string | null;
-  /** MITRE ATLAS technique id, if mapped (e.g. `AML.T0054`). */
   mitre: string | null;
-  /** One-paragraph human-readable summary. */
   summary: string;
-  /** Cross-framework control references for the rule. */
   framework_controls: DeepDiveFrameworkControl[];
-  /** Detection technique blurb (e.g. "AST taint", "entropy + Levenshtein"). */
-  methodology: string;
-  /** Red-team / CVE backing — drives the per-finding quality footer. */
-  backing: DeepDiveRuleBacking;
-  /** Remediation copy for the rule when status is `findings`. */
+  methodology: DeepDiveMethodology;
+  /** Detection-quality backing — `null` when the rule is not yet wired. */
+  backing: DetectionQuality | null;
   remediation: string;
-  /** Whether the rule passed, fired, or was skipped on this scan. */
   status: DeepDiveRuleStatus;
-  /** Findings produced by this rule (empty when status !== "findings"). */
+  /** Findings for this rule against this server. Empty when status !== "findings". */
   findings: DeepDiveFinding[];
-  /** Anchor ids of other categories/sub-categories this rule appears under. */
-  cross_referenced_in?: string[];
+  /** Secondary placements (taxonomy cross-references). Optional. */
+  cross_referenced_in?: DeepDiveCrossReference[];
 }
 
 // ── Counts at category / sub-category level ───────────────────────────────
 
-/**
- * Aggregate counts attached to every category and sub-category. Every field
- * is required and integer-valued so consumers never have to guard against
- * undefined arithmetic.
- */
 export interface DeepDiveCounts {
   rules_total: number;
   rules_passed: number;
@@ -160,12 +172,7 @@ export interface DeepDiveCounts {
 
 // ── Sub-category node ─────────────────────────────────────────────────────
 
-/**
- * One sub-category — a thematic grouping of rules under a parent category.
- * Renders as a `<SubCategorySection/>` inside the long-scroll main column.
- */
 export interface DeepDiveSubCategory {
-  /** Stable anchor id (used by both the sidebar and `id="…"` deep links). */
   id: string;
   title: string;
   summary: string;
@@ -175,16 +182,11 @@ export interface DeepDiveSubCategory {
 
 // ── Category node ─────────────────────────────────────────────────────────
 
-/**
- * One top-level category. Renders as a `<CategorySection/>` heading plus
- * all sub-categories beneath it.
- */
 export interface DeepDiveCategory {
-  /** Stable anchor id. */
   id: string;
   title: string;
   summary: string;
-  /** Frameworks this category contributes evidence toward (label form). */
+  /** Verbatim from taxonomy YAML — e.g. ["MCP01", "ASI01"]. */
   frameworks: string[];
   counts: DeepDiveCounts;
   sub_categories: DeepDiveSubCategory[];
@@ -192,13 +194,6 @@ export interface DeepDiveCategory {
 
 // ── Coverage / hero summary ───────────────────────────────────────────────
 
-/**
- * Page-level coverage summary — drives the deep-dive hero chrome (score
- * confidence chip + the `source / live / deps` pips below the score).
- *
- * `coverage_band: null` means the producer ran but had no signal; treat as
- * "minimal" UI-side or hide the chip. The page never crashes on null.
- */
 export interface DeepDiveCoverageSummary {
   coverage_band: DeepDiveCoverageBand | null;
   total_rules: number;
@@ -211,12 +206,6 @@ export interface DeepDiveCoverageSummary {
 
 // ── Server identity (light) ───────────────────────────────────────────────
 
-/**
- * Minimal identity stub returned alongside the deep-dive payload. The hero
- * chrome already has the full server record from the slug endpoint; this
- * stub only confirms the slug+name agree (defence-in-depth against routing
- * mistakes).
- */
 export interface DeepDiveServerStub {
   slug: string;
   name: string;
@@ -224,20 +213,6 @@ export interface DeepDiveServerStub {
 
 // ── Full envelope ─────────────────────────────────────────────────────────
 
-/**
- * The full envelope returned by `GET /api/v1/servers/:slug/deep-dive`.
- *
- * Shape:
- * ```
- * {
- *   data: {
- *     server:     DeepDiveServerStub,
- *     coverage:   DeepDiveCoverageSummary,
- *     categories: DeepDiveCategory[],
- *   }
- * }
- * ```
- */
 export interface DeepDiveData {
   server: DeepDiveServerStub;
   coverage: DeepDiveCoverageSummary;
@@ -247,3 +222,14 @@ export interface DeepDiveData {
 export interface DeepDiveResponse {
   data: DeepDiveData;
 }
+
+// ── Backwards-compat alias (deprecated) ───────────────────────────────────
+
+/**
+ * Old name for `DetectionQuality`. Kept as a type alias so any in-flight
+ * imports do not break during the Cluster D B5 rewrite. New code should
+ * import `DetectionQuality` directly.
+ *
+ * @deprecated Use `DetectionQuality` instead.
+ */
+export type DeepDiveRuleBacking = DetectionQuality;

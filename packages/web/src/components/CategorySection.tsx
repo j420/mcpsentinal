@@ -104,33 +104,45 @@ function formatAggregateLine(cat: DeepDiveCategory): string {
 
 /**
  * Build a map of sub-category-anchor → set of rule_ids that should render
- * in cross-ref form there. A rule's canonical home is the FIRST
- * sub-category in DOM order whose `id` matches one of its
- * `cross_referenced_in[]` anchors, OR the sub-category that lists it in
- * `rules` if no cross-references exist. Anywhere else, render the
- * compact "see canonical" link.
+ * in cross-ref form there.
  *
- * The contract is intentionally narrow: `cross_referenced_in` carries
- * sub-category anchor ids (the same ones the sidebar uses). We do not
- * traverse the full envelope here — Agent 3 owns the page and may
- * provide a richer resolver later. For now, the rule's first listed
- * sub-category in DOM order wins; secondary placements render xref.
+ * Cluster D reviewer M1 lesson: the API's `rule.cross_referenced_in[]` is
+ * the authoritative cross-reference truth (computed from the taxonomy
+ * YAML). For any rule we encounter inside a sub-category, if that rule
+ * declares `cross_referenced_in` AND the current sub-category appears in
+ * that list, this is a SECONDARY placement and renders as a "see
+ * canonical" link. Otherwise it renders fully (canonical placement).
+ *
+ * Falls back to first-seen-wins ordering when the API hasn't populated
+ * `cross_referenced_in` (older API responses or rules with no
+ * cross-references). This preserves the prior behaviour as a safety net
+ * without ignoring API truth when it's present.
  */
 function buildCrossRefMap(
   cat: DeepDiveCategory,
 ): Map<string, Set<string>> {
-  const seen = new Set<string>();
+  const seenCanonical = new Set<string>();
   const out = new Map<string, Set<string>>();
 
   for (const sub of cat.sub_categories) {
     const xrefHere = new Set<string>();
     for (const rule of sub.rules) {
-      if (seen.has(rule.rule_id)) {
-        // Already rendered canonically in an earlier sub-category;
-        // anywhere else it appears, demote to cross-ref form.
+      const xrefList = rule.cross_referenced_in;
+      const isApiSecondary = Array.isArray(xrefList) && xrefList.some(
+        (x) => x.category_id === cat.id && x.sub_category_id === sub.id,
+      );
+      if (isApiSecondary) {
+        // API authoritative: this sub-category is a non-canonical placement.
+        xrefHere.add(rule.rule_id);
+        continue;
+      }
+      if (seenCanonical.has(rule.rule_id)) {
+        // Fallback: API didn't tell us this is a secondary placement,
+        // but we've already seen the rule canonically earlier in DOM
+        // order. Keep prior behaviour.
         xrefHere.add(rule.rule_id);
       } else {
-        seen.add(rule.rule_id);
+        seenCanonical.add(rule.rule_id);
       }
     }
     out.set(sub.id, xrefHere);

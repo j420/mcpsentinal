@@ -135,19 +135,31 @@ function makeRule(overrides: Partial<DeepDiveRule> = {}): DeepDiveRule {
     mitre: "AML.T0054",
     summary: "Detects role injection and exfiltration directives in tool descriptions.",
     framework_controls: [
-      { framework: "owasp_mcp", control: "MCP01", label: "Prompt Injection" },
-      { framework: "eu_ai_act", control: "Art.15", label: "Robustness" },
+      { framework_id: "owasp_mcp", control_id: "MCP01", control_title: "Prompt Injection" },
+      { framework_id: "eu_ai_act", control_id: "Art.15", control_title: "Robustness" },
     ],
-    methodology: "linguistic scoring + entropy",
-    backing: { precision: 0.92, recall: 0.88, red_team_fixture_count: 23 },
+    methodology: {
+      technique: "linguistic scoring + entropy",
+      verified_edge_cases: [],
+      edge_case_strategies: [],
+      confidence_cap: null,
+    },
+    backing: {
+      precision: 0.92,
+      recall: 0.88,
+      fixture_count: 23,
+      cve_replay_ids: [],
+      last_validated_at: null,
+    },
     remediation: "Sanitize tool descriptions before display.",
     status: "findings",
     findings: [
       {
         id: "f1",
-        rule_id: "A1",
         severity: "critical",
+        confidence: 0.95,
         evidence: "Detected role-injection phrase in description.",
+        evidence_chain: null,
         remediation: "Sanitize tool descriptions.",
       },
     ],
@@ -256,21 +268,23 @@ function buildFixtureCategories(): DeepDiveCategory[] {
         severity: "high",
         status: "findings",
         framework_controls: [
-          { framework: "iso_27001", control: "A.5.21" },
+          { framework_id: "iso_27001", control_id: "A.5.21", control_title: "Supplier Security" },
         ],
         findings: [
           {
             id: "g1-f1",
-            rule_id: "G1",
             severity: "high",
+            confidence: 0.9,
             evidence: "External content ingestion sink found.",
+            evidence_chain: null,
             remediation: "Validate external content before sink.",
           },
           {
             id: "g1-f2",
-            rule_id: "G1",
             severity: "medium",
+            confidence: 0.8,
             evidence: "Secondary path-traversal vector.",
+            evidence_chain: null,
             remediation: "Sanitize input.",
           },
         ],
@@ -293,7 +307,7 @@ function buildFixtureCategories(): DeepDiveCategory[] {
         status: "skipped",
         findings: [],
         framework_controls: [
-          { framework: "owasp_mcp", control: "MCP03" },
+          { framework_id: "owasp_mcp", control_id: "MCP03", control_title: "Command Injection" },
         ],
       }),
     ]),
@@ -316,12 +330,12 @@ describe("TOC structure", () => {
     const desktop = container.querySelector(".dds-desktop")!;
     const cats = desktop.querySelectorAll(".ddt-cat");
     expect(cats.length).toBe(2);
-    // Only matched categories render their sub-list. With include-skipped
-    // OFF (default), code-vulns category's only rule (status="skipped") is
-    // hidden — so the category is unmatched and its sub-list collapsed.
-    // The prompt-injection category contributes both of its 2 sub-items.
+    // Cluster D reviewer M2 — `show_skipped` now defaults ON (regulator-
+    // facing visibility default). Every sub-category is matched: 2 from
+    // prompt-injection + 1 from code-vulns/injection (the C1 rule is
+    // skipped but visible by default).
     const subs = desktop.querySelectorAll(".ddt-sub");
-    expect(subs.length).toBe(2);
+    expect(subs.length).toBe(3);
 
     const text = desktop.textContent ?? "";
     expect(text).toContain("Prompt Injection");
@@ -338,9 +352,11 @@ describe("TOC structure", () => {
     const codeCat = Array.from(cats).find((el) =>
       el.textContent?.includes("Code Vulnerabilities"),
     );
-    // status='skipped' rule is HIDDEN by default, so the rule count is 0.
+    // Cluster D reviewer M2 — `show_skipped` defaults ON. The skipped
+    // C1 rule is now visible in the rule count by default. Findings
+    // count remains 0 (skipped means no findings produced).
     expect(codeCat?.textContent).toContain("(0)");
-    expect(codeCat?.textContent).toContain("0 rules");
+    expect(codeCat?.textContent).toContain("1 rules");
   });
 });
 
@@ -542,26 +558,29 @@ describe("include skipped toggle", () => {
       <DeepDiveSidebar categories={buildFixtureCategories()} />,
     );
 
-    // Default — skipped HIDDEN: code-vulns has 0 rules.
+    // Cluster D reviewer M2 — `show_skipped` defaults ON. Default
+    // state shows the skipped C1 rule in code-vulns count.
     const codeCat = container
       .querySelector("[href='#cat-code-vulns']")
       ?.parentElement;
-    expect(codeCat?.textContent).toContain("0 rules");
+    expect(codeCat?.textContent).toContain("1 rules");
 
     const includeSkipped = Array.from(
       container.querySelectorAll(".ddf-toggle"),
     ).find((b) => b.textContent?.includes("include skipped"));
     expect(includeSkipped).toBeTruthy();
+    // Toggle starts pressed (default ON) — clicking once turns OFF.
+    expect(includeSkipped!.getAttribute("aria-pressed")).toBe("true");
 
     await act(async () => {
       fireEvent.click(includeSkipped!);
     });
 
-    expect(includeSkipped!.getAttribute("aria-pressed")).toBe("true");
+    expect(includeSkipped!.getAttribute("aria-pressed")).toBe("false");
     const codeCatAfter = container
       .querySelector("[href='#cat-code-vulns']")
       ?.parentElement;
-    expect(codeCatAfter?.textContent).toContain("1 rules");
+    expect(codeCatAfter?.textContent).toContain("0 rules");
   });
 });
 

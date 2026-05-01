@@ -52,6 +52,13 @@
 import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import pino from "pino";
+
+// Module-local logger — Cluster D reviewer M3 lesson. Loader failures
+// emit a single warn line so production ops sees the signal instead of
+// silently serving categories: []. Stderr-bound (matches the rest of
+// the api package's pino config).
+const _logger = pino({ name: "api:deep-dive" }, process.stderr);
 import type {
   DeepDiveCategory,
   DeepDiveCoverage,
@@ -172,32 +179,42 @@ let _methodologyPromise: Promise<MethodologyManifest | null> | null = null;
  * handler treats null as "no taxonomy on file" → empty `categories[]`
  * in the response.
  *
- * YAML parsing uses dynamic `import("yaml")` so the api package does not
- * need yaml as a direct dep (and the brief explicitly forbids adding new
- * npm deps). When the dynamic import resolves through pnpm's hoisted
- * tree, the loader works; when it doesn't, the catch returns null and
- * the page degrades gracefully.
+ * Cluster D reviewer B2 — `yaml` is now a direct dep of `packages/api`
+ * (added in this PR). The dynamic specifier remains for forward-compat
+ * with pnpm hoisting changes. Reviewer M3 — failures emit a pino warn
+ * line so production ops sees the signal instead of silently serving
+ * empty categories.
  */
 export function loadTaxonomy(): Promise<TaxonomyShape | null> {
   if (!_taxonomyPromise) {
     _taxonomyPromise = (async () => {
       try {
         const raw = readFileSync(defaultTaxonomyPath(), "utf-8");
-        // Dynamic import via specifier-as-string keeps TypeScript from
-        // resolving the `yaml` module at typecheck time (the api package
-        // does not have yaml as a direct dep — the brief forbids adding
-        // new deps). At runtime, pnpm's hoisting may resolve it through
-        // a sibling workspace dep; if it doesn't, the catch returns null
-        // and the page degrades gracefully (categories: []).
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const yamlSpecifier: string = "yaml";
         const yamlMod = (await import(/* @vite-ignore */ yamlSpecifier).catch(
-          () => null,
+          (err) => {
+            _logger.warn(
+              { err: String(err) },
+              "deep-dive: yaml import failed — degrading to categories:[]",
+            );
+            return null;
+          },
         )) as { parse?: (text: string) => unknown } | null;
         if (!yamlMod || typeof yamlMod.parse !== "function") return null;
         const parsed = yamlMod.parse(raw);
-        return normaliseTaxonomy(parsed);
-      } catch {
+        const normalised = normaliseTaxonomy(parsed);
+        if (!normalised || normalised.categories.length === 0) {
+          _logger.warn(
+            { path: defaultTaxonomyPath() },
+            "deep-dive: taxonomy parsed but contains zero categories",
+          );
+        }
+        return normalised;
+      } catch (err) {
+        _logger.warn(
+          { err: String(err), path: defaultTaxonomyPath() },
+          "deep-dive: failed to load taxonomy — degrading to categories:[]",
+        );
         return null;
       }
     })();
@@ -206,9 +223,16 @@ export function loadTaxonomy(): Promise<TaxonomyShape | null> {
 }
 
 /**
- * Load + memoise the methodology JSON. Returns null on any failure;
- * route handler treats null + missing entry the same way (rule renders
- * with an empty methodology block — see synthesizeMethodology fallback).
+ * Load + memoise the methodology JSON. Returns null on any failure.
+ *
+ * Cluster D reviewer B3/B4 — `data/rule-methodology.json` is wrapped
+ * in `{version, generated_at, rules: { ... }, retired, ...}` (the Agent 1
+ * extractor's shape). We unwrap to the inner `rules` map AND project
+ * each flat entry into the `MethodologyEntry` shape the assembler
+ * expects (renaming `lethal_edge_cases` → `verified_edge_cases`,
+ * promoting flat rule fields under `rule_meta`).
+ *
+ * Reviewer M3 — failures emit a pino warn.
  */
 export function loadRuleMethodology(): Promise<MethodologyManifest | null> {
   if (!_methodologyPromise) {
@@ -216,16 +240,88 @@ export function loadRuleMethodology(): Promise<MethodologyManifest | null> {
       try {
         const raw = readFileSync(defaultMethodologyPath(), "utf-8");
         const parsed = JSON.parse(raw) as unknown;
-        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-          return parsed as MethodologyManifest;
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          _logger.warn(
+            "deep-dive: rule-methodology.json is not a JSON object — degrading",
+          );
+          return null;
         }
-        return null;
-      } catch {
+        const projected = projectMethodologyManifest(parsed);
+        if (!projected || Object.keys(projected).length === 0) {
+          _logger.warn(
+            { path: defaultMethodologyPath() },
+            "deep-dive: rule-methodology.json had zero rules after projection",
+          );
+        }
+        return projected;
+      } catch (err) {
+        _logger.warn(
+          { err: String(err), path: defaultMethodologyPath() },
+          "deep-dive: failed to load rule-methodology.json — degrading",
+        );
         return null;
       }
     })();
   }
   return _methodologyPromise;
+}
+
+/**
+ * Project the on-disk extractor format to the loader's `MethodologyEntry`
+ * shape. Cluster D reviewer B4 — the extractor (Agent 1's
+ * `tools/scripts/build-rule-methodology.ts`) emits flat entries with
+ * `lethal_edge_cases`; the loader/assembler want `verified_edge_cases`
+ * AND a nested `rule_meta`. The projection happens here so neither side
+ * needs to change.
+ *
+ * Tolerant: missing fields degrade to defaults (empty arrays, null).
+ * Fields not on the extractor (`summary`, `requires_inputs`) stay
+ * empty — surfaced as "methodology not fully on file" in the UI.
+ */
+function projectMethodologyManifest(parsed: unknown): MethodologyManifest | null {
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+  const root = parsed as Record<string, unknown>;
+  const rulesField = root["rules"];
+  if (!rulesField || typeof rulesField !== "object" || Array.isArray(rulesField)) {
+    return null;
+  }
+  const out: MethodologyManifest = {};
+  for (const [ruleId, rawEntry] of Object.entries(rulesField as Record<string, unknown>)) {
+    if (!rawEntry || typeof rawEntry !== "object") continue;
+    const e = rawEntry as Record<string, unknown>;
+    const technique = typeof e["technique"] === "string" ? (e["technique"] as string) : "unspecified";
+    const verified = Array.isArray(e["lethal_edge_cases"])
+      ? (e["lethal_edge_cases"] as unknown[]).filter((s): s is string => typeof s === "string")
+      : Array.isArray(e["verified_edge_cases"])
+        ? (e["verified_edge_cases"] as unknown[]).filter((s): s is string => typeof s === "string")
+        : [];
+    const strategies = Array.isArray(e["edge_case_strategies"])
+      ? (e["edge_case_strategies"] as unknown[]).filter((s): s is string => typeof s === "string")
+      : [];
+    const confidenceCap =
+      typeof e["confidence_cap"] === "number" ? (e["confidence_cap"] as number) : null;
+    const severityRaw = e["severity"];
+    const allowedSev: Severity[] = ["critical", "high", "medium", "low", "informational"];
+    const severity: Severity = allowedSev.includes(severityRaw as Severity)
+      ? (severityRaw as Severity)
+      : "informational";
+    out[ruleId] = {
+      technique,
+      verified_edge_cases: verified,
+      edge_case_strategies: strategies,
+      confidence_cap: confidenceCap,
+      summary: typeof e["summary"] === "string" ? (e["summary"] as string) : "",
+      rule_meta: {
+        name: typeof e["name"] === "string" ? (e["name"] as string) : ruleId,
+        severity,
+        category: typeof e["category"] === "string" ? (e["category"] as string) : "",
+        owasp: typeof e["owasp"] === "string" ? (e["owasp"] as string) : null,
+        mitre: typeof e["mitre"] === "string" ? (e["mitre"] as string) : null,
+        remediation: typeof e["remediation"] === "string" ? (e["remediation"] as string) : "",
+      },
+    };
+  }
+  return out;
 }
 
 // ─── Test-only helpers ─────────────────────────────────────────────────────
@@ -266,9 +362,23 @@ function normaliseTaxonomy(parsed: unknown): TaxonomyShape | null {
       const sr = s as Record<string, unknown>;
       const sid = typeof sr["id"] === "string" ? sr["id"] : null;
       if (!sid) continue;
-      const rules = Array.isArray(sr["rules"])
-        ? (sr["rules"] as unknown[]).filter((x): x is string => typeof x === "string")
+      // Cluster D reviewer B2 — the YAML uses `rule_ids` (canonical
+      // placements), not `rules`. The prior `sr["rules"]` lookup
+      // produced empty arrays for every sub-category, dropping the
+      // entire taxonomy at line 279. Fix: read `rule_ids` AND
+      // `cross_references` (reviewer m2) so secondary placements also
+      // populate the cross-reference map.
+      const canonicalRules = Array.isArray(sr["rule_ids"])
+        ? (sr["rule_ids"] as unknown[]).filter((x): x is string => typeof x === "string")
         : [];
+      const crossRefRules = Array.isArray(sr["cross_references"])
+        ? (sr["cross_references"] as unknown[]).filter((x): x is string => typeof x === "string")
+        : [];
+      // Concatenate canonical + cross-reference rule ids so every rule
+      // listed under this sub-category in the YAML appears here. The
+      // assembler's `ruleAppearances` map then sees the full list and
+      // produces correct `cross_referenced_in[]` entries.
+      const rules = [...canonicalRules, ...crossRefRules];
       subNormalised.push({
         id: sid,
         title: typeof sr["title"] === "string" ? sr["title"] : sid,

@@ -17,6 +17,8 @@ import FooterAttestationBar from "@/components/FooterAttestationBar";
 import HonestGaps from "@/components/HonestGaps";
 import DeepDiveHeroChrome from "@/components/DeepDiveHeroChrome";
 import DeepDiveLayout from "@/components/DeepDiveLayout";
+import CategorySection from "@/components/CategorySection";
+import DeepDiveSidebar from "@/components/DeepDiveSidebar";
 import ComplianceTab from "./ComplianceTab";
 import type { DeepDiveResponse, DeepDiveData } from "@/lib/deep-dive";
 
@@ -288,55 +290,12 @@ function DemotedSection({
 
 // ── DEEP DIVE main column placeholder ────────────────────────────────────
 //
-// The Cluster-D-part-3 worktree CANNOT import the per-rule deep-dive
-// components — Agents 4 + 5 own those files in their own worktrees and
-// the orchestrator merges all three on top of main in the same wave.
-// Until those imports resolve, the main column renders an honest "deep
-// dive content loading…" panel that lists every category id from the
-// contract so a developer running the page locally on this branch sees
-// the right shape; the real `<CategorySection/>` stack drops in
-// unchanged once Agent 4's PR merges.
-function DeepDiveMainPlaceholder({ data }: { data: DeepDiveData }) {
-  return (
-    <div className="dd-main-placeholder" data-testid="dd-main-placeholder">
-      {data.categories.map((cat) => (
-        <section
-          key={cat.id}
-          id={cat.id}
-          className="dd-main-cat"
-          aria-labelledby={`dd-cat-${cat.id}-h`}
-        >
-          <h2 id={`dd-cat-${cat.id}-h`} className="dd-main-cat-title">
-            {cat.title}
-          </h2>
-          <p className="dd-main-cat-summary">{cat.summary}</p>
-          <ul className="dd-main-cat-counts">
-            <li>{cat.counts.rules_total} rules</li>
-            <li>{cat.counts.finding_count} findings</li>
-            <li>{cat.counts.rules_skipped} skipped</li>
-          </ul>
-        </section>
-      ))}
-    </div>
-  );
-}
-
-function DeepDiveSidebarPlaceholder({ data }: { data: DeepDiveData }) {
-  return (
-    <nav className="dd-rail-placeholder" aria-label="Deep dive sections">
-      <ol className="dd-rail-list">
-        {data.categories.map((cat) => (
-          <li key={cat.id} className="dd-rail-item">
-            <a href={`#${cat.id}`} className="dd-rail-link">
-              {cat.title}
-            </a>
-            <span className="dd-rail-count">{cat.counts.finding_count}</span>
-          </li>
-        ))}
-      </ol>
-    </nav>
-  );
-}
+// Cluster D reviewer B1 fix — the placeholder DeepDiveMainPlaceholder /
+// DeepDiveSidebarPlaceholder helpers that lived here were the bug: they
+// rendered category titles + counts only, never the per-rule evidence.
+// They have been replaced by the canonical `<CategorySection/>` and
+// `<DeepDiveSidebar/>` mounts in the page body. Do NOT re-introduce
+// placeholder helpers without explicit product approval.
 
 export default async function ServerDetailPage({
   params,
@@ -417,8 +376,16 @@ export default async function ServerDetailPage({
   // user never loses access to Phase-5 content even if the new endpoint
   // is missing. The difference is the hero + main scroll.
   // ──────────────────────────────────────────────────────────────────
+  // Cluster D reviewer M4 — `categories: []` (taxonomy missing in prod
+  // image, yaml dep unresolvable, etc.) used to enter Mode A and render
+  // a thin chrome strip with no content. Now: Mode A only when we have
+  // real deep-dive content (categories non-empty). Empty categories
+  // degrade to Mode B (legacy hero) so the user always sees something
+  // useful.
+  const hasDeepDiveContent =
+    deepDive != null && deepDive.categories.length > 0;
   const heroSlot =
-    deepDive != null ? (
+    hasDeepDiveContent ? (
       <DeepDiveHeroChrome
         slug={slug}
         apiUrl={API_URL}
@@ -550,11 +517,27 @@ export default async function ServerDetailPage({
       {/* ── Hero chrome: thin strip OR legacy 3-column degraded fallback ── */}
       {heroSlot}
 
-      {/* ── Deep dive long scroll OR nothing in degraded mode ───────────── */}
-      {deepDive != null && (
+      {/* ── Deep dive long scroll OR nothing in degraded mode ─────────────
+          Cluster D reviewer B1 — wire the real components in. Cluster D
+          shipped <CategorySection/> (Agent 4) + <DeepDiveSidebar/>
+          (Agent 5) + the per-rule <RuleEvidenceCard/> chain underneath;
+          before this fix the page mounted local placeholders that
+          rendered category titles only. The user's product call ("make
+          Deep Dive section the hero on the server page") is delivered
+          here.
+          Reviewer M4 — only enter Mode A (Deep Dive) when categories
+          actually exist. With empty categories the legacy hero in
+          `heroSlot` already renders fully. */}
+      {deepDive != null && deepDive.categories.length > 0 && (
         <DeepDiveLayout
-          sidebar={<DeepDiveSidebarPlaceholder data={deepDive} />}
-          main={<DeepDiveMainPlaceholder data={deepDive} />}
+          sidebar={<DeepDiveSidebar categories={deepDive.categories} />}
+          main={
+            <div className="dd-main">
+              {deepDive.categories.map((cat) => (
+                <CategorySection key={cat.id} cat={cat} />
+              ))}
+            </div>
+          }
         />
       )}
 
