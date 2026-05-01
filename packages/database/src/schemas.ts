@@ -876,6 +876,42 @@ export const FrameworkControlMappingSchema = z
 export type FrameworkControlMapping = z.infer<typeof FrameworkControlMappingSchema>;
 
 /**
+ * Per-finding detection-quality footer (Cluster C invention #4).
+ *
+ * Every finding row on `GET /api/v1/servers/:slug` and
+ * `GET /api/v1/servers/:slug/findings` carries this object so the
+ * frontend can render the regulator-grade footer:
+ *
+ *   "Backed by N red-team fixtures, CVE-x,y,z, precision p, recall r;
+ *    last validated ${last_validated_at}."
+ *
+ * Two distinct empty states are surfaced — the frontend treats them
+ * differently:
+ *
+ *   1. The whole field is `null` → the rule is NOT YET WIRED into either
+ *      the red-team corpus or the CVE replay manifest (an honest gap;
+ *      the frontend renders "detection quality not yet measured").
+ *
+ *   2. The field is non-null but `precision`/`recall`/`last_validated_at`
+ *      are null and `fixture_count: 0`/`cve_replay_ids: []` → the rule
+ *      is wired but has no validation data on file yet. The frontend
+ *      renders "no validations on file" rather than hiding.
+ *
+ * `precision` and `recall` are `[0..1]` ratios (not percentages) per the
+ * red-team `RuleAccuracy` contract.
+ */
+export const DetectionQualitySchema = z
+  .object({
+    precision: z.number().min(0).max(1).nullable(),
+    recall: z.number().min(0).max(1).nullable(),
+    fixture_count: z.number().int().nonnegative(),
+    cve_replay_ids: z.array(z.string().min(1)),
+    last_validated_at: z.string().nullable(),
+  })
+  .passthrough();
+export type DetectionQuality = z.infer<typeof DetectionQualitySchema>;
+
+/**
  * Public shape of one finding row returned by
  * `GET /api/v1/servers/:slug/findings`. Mirrors the persisted Finding
  * schema and adds the `framework_controls[]` cross-walk computed at the
@@ -887,6 +923,10 @@ export type FrameworkControlMapping = z.infer<typeof FrameworkControlMappingSche
  *     empty array means the rule has no framework alignment yet (an
  *     honest gap — the frontend renders "no framework cross-walk" only
  *     on empty arrays).
+ *   - `detection_quality` is nullable: `null` = the rule is not yet
+ *     wired into red-team/CVE-replay validation; a populated object
+ *     = the rule has validation data on file (with its own internal
+ *     "no data yet" state — see DetectionQualitySchema).
  */
 export const FindingResponseSchema = z
   .object({
@@ -904,9 +944,151 @@ export const FindingResponseSchema = z
     evidence_chain: z.record(z.unknown()).nullable(),
     created_at: z.coerce.date(),
     framework_controls: z.array(FrameworkControlMappingSchema),
+    detection_quality: DetectionQualitySchema.nullable(),
   })
   .passthrough();
 export type FindingResponse = z.infer<typeof FindingResponseSchema>;
+
+// ─── Risk Boundary (Cluster C invention #3) ─────────────────────────────────
+//
+// Surfaces this server's involvement in cross-server risk patterns
+// (P01-P12 from packages/risk-matrix) and kill chains (KC01-KC07 from
+// packages/attack-graph). The Risk Boundary tab on the server detail
+// page consumes the response shape verbatim.
+//
+// Empty-state contract: when neither cross-server analysis nor kill
+// chains have ever been computed for this server, both arrays are
+// empty. Frontend renders that as "no cross-config exposure on file" —
+// this empty state IS a feature, not a bug.
+
+export const RiskBoundaryPatternPairingSchema = z
+  .object({
+    slug: z.string().min(1),
+    name: z.string().min(1),
+  })
+  .passthrough();
+export type RiskBoundaryPatternPairing = z.infer<typeof RiskBoundaryPatternPairingSchema>;
+
+export const RiskBoundaryPatternSchema = z
+  .object({
+    pattern_id: z.string().min(1),
+    pattern_name: z.string().min(1),
+    pattern_summary: z.string().min(1),
+    severity: z.enum(["critical", "high", "medium", "low"]),
+    /**
+     * Number of OTHER registry servers that, paired with this server in
+     * the same client config, would trigger this pattern. May be 0 — an
+     * honest "this pattern has no current pair candidates" signal.
+     */
+    paired_with_count: z.number().int().nonnegative(),
+    /**
+     * Up to 5 sample paired servers (slug + name only). Capped because a
+     * 47-line list is not useful UX. The frontend renders these as "if
+     * you co-deploy with these, you trip P0X".
+     */
+    sample_pairings: z.array(RiskBoundaryPatternPairingSchema).max(5),
+  })
+  .passthrough();
+export type RiskBoundaryPattern = z.infer<typeof RiskBoundaryPatternSchema>;
+
+export const RiskBoundaryKillChainSchema = z
+  .object({
+    kc_id: z.string().min(1),
+    name: z.string().min(1),
+    severity_score: z.number().min(0).max(100),
+    narrative: z.string().min(1),
+    contributing_rule_ids: z.array(z.string().min(1)),
+    cve_evidence_ids: z.array(z.string().min(1)),
+    mitigations: z.array(z.string().min(1)),
+  })
+  .passthrough();
+export type RiskBoundaryKillChain = z.infer<typeof RiskBoundaryKillChainSchema>;
+
+export const RiskBoundaryResponseSchema = z
+  .object({
+    server_slug: z.string().min(1),
+    server_name: z.string().min(1),
+    same_config_patterns: z.array(RiskBoundaryPatternSchema),
+    kill_chains: z.array(RiskBoundaryKillChainSchema),
+  })
+  .passthrough();
+export type RiskBoundaryResponse = z.infer<typeof RiskBoundaryResponseSchema>;
+
+// ─── Drift & History (Cluster C invention #8) ──────────────────────────────
+//
+// Surfaces G6 (rug-pull) + I14 (rolling capability drift) signals as a
+// regulator-grade headline list, plus a compact score history. The
+// Drift & History tab on the server detail page consumes this directly.
+//
+// Resilience: when there are fewer than 2 scans in the requested
+// window, `headlines` is `[]`, `score_history` may be 0–1 entries, and
+// `trend` is "insufficient_data". Frontend renders an explicit "not
+// enough scan history yet" panel — honest gap, never silently hidden.
+
+export const DriftHeadlineKindSchema = z.enum([
+  "tool_added",
+  "tool_removed",
+  "tool_description_changed",
+  "capability_added",
+  "dangerous_capability_introduced",
+  "score_changed",
+]);
+export type DriftHeadlineKind = z.infer<typeof DriftHeadlineKindSchema>;
+
+export const DriftSeverityHintSchema = z.enum([
+  "neutral",
+  "elevated",
+  "degrading",
+  "improving",
+]);
+export type DriftSeverityHint = z.infer<typeof DriftSeverityHintSchema>;
+
+export const DriftHeadlineRefSchema = z
+  .object({
+    tool_name: z.string().nullable().optional(),
+    from: z.string().nullable().optional(),
+    to: z.string().nullable().optional(),
+  })
+  .passthrough();
+export type DriftHeadlineRef = z.infer<typeof DriftHeadlineRefSchema>;
+
+export const DriftHeadlineSchema = z
+  .object({
+    kind: DriftHeadlineKindSchema,
+    severity_hint: DriftSeverityHintSchema,
+    occurred_at: z.string().min(1),
+    summary: z.string().min(1).max(200),
+    ref: DriftHeadlineRefSchema.optional(),
+  })
+  .passthrough();
+export type DriftHeadline = z.infer<typeof DriftHeadlineSchema>;
+
+export const DriftScorePointSchema = z
+  .object({
+    scanned_at: z.string().min(1),
+    score: z.number().int().min(0).max(100),
+  })
+  .passthrough();
+export type DriftScorePoint = z.infer<typeof DriftScorePointSchema>;
+
+export const DriftTrendSchema = z.enum([
+  "neutral",
+  "improving",
+  "degrading",
+  "insufficient_data",
+]);
+export type DriftTrend = z.infer<typeof DriftTrendSchema>;
+
+export const DriftResponseSchema = z
+  .object({
+    server_slug: z.string().min(1),
+    window_days: z.number().int().min(1).max(365),
+    headlines: z.array(DriftHeadlineSchema),
+    score_history: z.array(DriftScorePointSchema),
+    trend: DriftTrendSchema,
+  })
+  .passthrough();
+export type DriftResponse = z.infer<typeof DriftResponseSchema>;
 
 // ─── API Response Schemas ────────────────────────────────────────────────────
 
