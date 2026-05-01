@@ -12,7 +12,7 @@ import FindingsEvidenceTab from "@/components/FindingsEvidenceTab";
 import GradeBreakdownTab from "@/components/GradeBreakdownTab";
 import VersionHistoryTab from "@/components/VersionHistoryTab";
 import FooterAttestationBar from "@/components/FooterAttestationBar";
-import HonestGaps, { type HonestGapsCoverage } from "@/components/HonestGaps";
+import HonestGaps from "@/components/HonestGaps";
 import ServerTabs, { type ServerTab } from "./ServerTabs";
 import ComplianceTab from "./ComplianceTab";
 
@@ -126,12 +126,12 @@ interface ServerDetail {
   profile?: ServerProfileData | null;
   /** Attack chains involving this server. Absent until API serves attack chain data. */
   attack_chains?: AttackChainItem[] | null;
-  /**
-   * Phase 1: per-scan coverage metadata used by the HonestGaps panel.
-   * Absent until the slug endpoint exposes scorer.AnalysisCoverageInput.
-   * The panel renders a "coverage data unavailable" state when null.
-   */
-  analysis_coverage?: HonestGapsCoverage | null;
+  // NOTE: `analysis_coverage` is nested under `score_detail.analysis_coverage`
+  // (per the API contract in packages/database/src/schemas.ts ::
+  // ScoreDetailResponseSchema). Do not declare it here as a top-level field
+  // — Cluster A reviewer B2 caught the divergence: a top-level reference is
+  // always undefined, which makes HonestGaps lie about coverage on every
+  // page view.
 }
 
 // ── Data Fetching ─────────────────────────────────────────────────────────────
@@ -249,6 +249,10 @@ export default async function ServerDetailPage({
   //   Removed: Grade Breakdown, Deep Dive, Tools
   //   Relocated: Grade + Tools to dedicated sections above the tabs;
   //              Deep Dive collapsed into Findings via ?group=category.
+  // Cluster A ships 3 tabs (Findings · Compliance · Version History). The
+  // audit doc's target IA is 4 — "Risk Boundary" (Invention #3) is the
+  // missing tab and is deliberately deferred to Cluster B per the staged
+  // rollout in /root/.claude/plans/have-a-go-through-valiant-lollipop.md.
   const findingsLabel = groupByCategory
     ? "Findings & Evidence (grouped)"
     : "Findings & Evidence";
@@ -384,7 +388,7 @@ export default async function ServerDetailPage({
 
       {/* ── Honest Gaps (Invention #4) — what we did NOT analyse ─ */}
       <HonestGaps
-        analysis_coverage={server.analysis_coverage ?? null}
+        analysis_coverage={server.score_detail?.analysis_coverage ?? null}
         findingsCount={findings.length}
       />
 

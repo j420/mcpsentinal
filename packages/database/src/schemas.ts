@@ -197,17 +197,29 @@ export type CoverageBand = z.infer<typeof CoverageBand>;
  * Each value is an integer 0..100 clamped at the storage boundary (matches
  * the scorer's `Math.round` + 0..100 invariant).
  *
+ * `code_score` is duplicated here (also present on the legacy ScoreSchema)
+ * because the v2 hero renders all 8 buckets in one breakdown — keeping it
+ * inside this object means the UI only has to read one shape, and the
+ * scorer's `ScoreResult` (the source of truth) emits all 8 together.
+ *
+ * `.passthrough()` is intentional: future scorer additions (new bucket,
+ * new metadata) MUST NOT cause `safeParse` in `shapeScoreDetail` to silently
+ * null the whole field. Unknown keys are forwarded to the API consumer.
+ *
  * Authoritative source: `ScoreResult` in `packages/scorer/src/scorer.ts`.
  */
-export const V2SubScoresSchema = z.object({
-  schema_score: z.number().int().min(0).max(100),
-  ecosystem_score: z.number().int().min(0).max(100),
-  protocol_score: z.number().int().min(0).max(100),
-  adversarial_score: z.number().int().min(0).max(100),
-  compliance_score: z.number().int().min(0).max(100),
-  supply_chain_score: z.number().int().min(0).max(100),
-  infrastructure_score: z.number().int().min(0).max(100),
-});
+export const V2SubScoresSchema = z
+  .object({
+    schema_score: z.number().int().min(0).max(100),
+    ecosystem_score: z.number().int().min(0).max(100),
+    protocol_score: z.number().int().min(0).max(100),
+    adversarial_score: z.number().int().min(0).max(100),
+    compliance_score: z.number().int().min(0).max(100),
+    supply_chain_score: z.number().int().min(0).max(100),
+    infrastructure_score: z.number().int().min(0).max(100),
+    code_score: z.number().int().min(0).max(100),
+  })
+  .passthrough();
 export type V2SubScores = z.infer<typeof V2SubScoresSchema>;
 
 /**
@@ -215,18 +227,24 @@ export type V2SubScores = z.infer<typeof V2SubScoresSchema>;
  * Drives the `coverage_band` label and is exposed verbatim on the API so
  * regulators can audit the basis of any given score.
  *
+ * `.passthrough()` for the same reason as V2SubScoresSchema: future scorer
+ * additions to `AnalysisCoverageInput` (new technique tag, new "skipped
+ * because" reason) must not silently null the field at the response seam.
+ *
  * Authoritative source: `AnalysisCoverageInput` in `packages/scorer/src/scorer.ts`
  * (minus `confidence_band`, which we surface as `coverage_band` at the API layer).
  */
-export const AnalysisCoverageSchema = z.object({
-  had_source_code: z.boolean(),
-  had_connection: z.boolean(),
-  had_dependencies: z.boolean(),
-  coverage_ratio: z.number().min(0).max(1),
-  techniques_run: z.array(z.string()),
-  rules_executed: z.number().int().nonnegative(),
-  rules_skipped_no_data: z.number().int().nonnegative(),
-});
+export const AnalysisCoverageSchema = z
+  .object({
+    had_source_code: z.boolean(),
+    had_connection: z.boolean(),
+    had_dependencies: z.boolean(),
+    coverage_ratio: z.number().min(0).max(1),
+    techniques_run: z.array(z.string()),
+    rules_executed: z.number().int().nonnegative(),
+    rules_skipped_no_data: z.number().int().nonnegative(),
+  })
+  .passthrough();
 export type AnalysisCoverage = z.infer<typeof AnalysisCoverageSchema>;
 
 export const ScoreSchema = z.object({

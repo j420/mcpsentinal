@@ -348,7 +348,12 @@ export default function EvidenceSummaryHero(props: Props) {
   const verdict = buildVerdict(props.tools.length, props.tools, props.findings);
 
   const findingsCount = props.findings.length;
-  const totalRules = props.total_rules ?? 164;
+  // No fallback — Cluster A reviewer M4: hard-coding the active rule count
+  // here drifts every time the registry changes (177 → 164 already happened).
+  // When the prop is absent, render an honest em-dash; the truth lives in
+  // analysis_coverage's rules_executed + rules_skipped_no_data, surfaced
+  // separately as the "Coverage" meta row below.
+  const totalRules: number | null = props.total_rules ?? null;
 
   // v6 coverage extensions — both null on legacy scans → fall back to the
   // existing rendering exactly as before.
@@ -467,7 +472,7 @@ export default function EvidenceSummaryHero(props: Props) {
         <div className="esh-meta-row">
           <span className="esh-meta-label">Engine</span>
           <span className="esh-meta-val esh-meta-mono">
-            rules:{totalRules}
+            rules:{totalRules ?? "—"}
           </span>
         </div>
         {rulesExecutedMeta && (
@@ -484,7 +489,7 @@ export default function EvidenceSummaryHero(props: Props) {
         <div className="esh-meta-row">
           <span className="esh-meta-label">Findings</span>
           <span className="esh-meta-val esh-meta-mono">
-            {findingsCount} of {totalRules} rules
+            {findingsCount} of {totalRules ?? "—"} rules
           </span>
         </div>
         <div className="esh-meta-row">

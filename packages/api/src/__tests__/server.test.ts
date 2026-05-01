@@ -40,24 +40,32 @@ vi.mock("@mcp-sentinel/database", () => {
   // packages/database/src/schemas.ts. We re-declare it here (rather than
   // importing) so this test file remains hermetic w.r.t. compiled dist
   // artefacts and the build order of @mcp-sentinel/database.
-  const V2SubScoresSchema = z.object({
-    schema_score: z.number().int().min(0).max(100),
-    ecosystem_score: z.number().int().min(0).max(100),
-    protocol_score: z.number().int().min(0).max(100),
-    adversarial_score: z.number().int().min(0).max(100),
-    compliance_score: z.number().int().min(0).max(100),
-    supply_chain_score: z.number().int().min(0).max(100),
-    infrastructure_score: z.number().int().min(0).max(100),
-  });
-  const AnalysisCoverageSchema = z.object({
-    had_source_code: z.boolean(),
-    had_connection: z.boolean(),
-    had_dependencies: z.boolean(),
-    coverage_ratio: z.number().min(0).max(1),
-    techniques_run: z.array(z.string()),
-    rules_executed: z.number().int().nonnegative(),
-    rules_skipped_no_data: z.number().int().nonnegative(),
-  });
+  // NOTE: V2SubScoresSchema includes `code_score` (8 buckets, not 7) and
+  // both schemas are `.passthrough()` to match the production contract
+  // — future scorer additions must NOT silently null the field.
+  const V2SubScoresSchema = z
+    .object({
+      schema_score: z.number().int().min(0).max(100),
+      ecosystem_score: z.number().int().min(0).max(100),
+      protocol_score: z.number().int().min(0).max(100),
+      adversarial_score: z.number().int().min(0).max(100),
+      compliance_score: z.number().int().min(0).max(100),
+      supply_chain_score: z.number().int().min(0).max(100),
+      infrastructure_score: z.number().int().min(0).max(100),
+      code_score: z.number().int().min(0).max(100),
+    })
+    .passthrough();
+  const AnalysisCoverageSchema = z
+    .object({
+      had_source_code: z.boolean(),
+      had_connection: z.boolean(),
+      had_dependencies: z.boolean(),
+      coverage_ratio: z.number().min(0).max(1),
+      techniques_run: z.array(z.string()),
+      rules_executed: z.number().int().nonnegative(),
+      rules_skipped_no_data: z.number().int().nonnegative(),
+    })
+    .passthrough();
   const ScoreDetailResponseSchema = z.object({
     total_score: z.number().int().min(0).max(100),
     code_score: z.number().int().min(0).max(100),
@@ -503,6 +511,7 @@ describe("Server detail score_detail (v2 contract)", () => {
         compliance_score: 75,
         supply_chain_score: 80,
         infrastructure_score: 100,
+        code_score: 85,
       },
       analysis_coverage: {
         had_source_code: true,
@@ -543,6 +552,7 @@ describe("Server detail score_detail (v2 contract)", () => {
       compliance_score: 75,
       supply_chain_score: 80,
       infrastructure_score: 100,
+      code_score: 85,
     });
     expect(detail.analysis_coverage).toEqual({
       had_source_code: true,
@@ -697,11 +707,62 @@ describe("Server detail score_detail (v2 contract)", () => {
         compliance_score: 50,
         supply_chain_score: 50,
         infrastructure_score: 50,
+        code_score: 50,
       },
       analysis_coverage: null,
     });
     const res = await request(app).get("/api/v1/servers/test-server");
     expect(res.status).toBe(200);
     expect(res.body.data.score_detail).toBeNull();
+  });
+
+  // ── B3 regression — extra unknown fields on v2_sub_scores or analysis_coverage
+  // must not collapse the response. Future scorer additions are forwarded
+  // verbatim via Zod `.passthrough()` rather than silently nulled.
+  it("preserves v2_sub_scores when the row carries an unknown future field (passthrough)", async () => {
+    db.getLatestScoreForServer.mockResolvedValue({
+      total_score: 72,
+      code_score: 85,
+      deps_score: 90,
+      config_score: 60,
+      description_score: 95,
+      behavior_score: 100,
+      owasp_coverage: {},
+      coverage_band: "high",
+      v2_sub_scores: {
+        schema_score: 88,
+        ecosystem_score: 70,
+        protocol_score: 95,
+        adversarial_score: 60,
+        compliance_score: 75,
+        supply_chain_score: 80,
+        infrastructure_score: 100,
+        code_score: 85,
+        // Future scorer field — Zod must forward, not discard.
+        runtime_score: 91,
+      },
+      analysis_coverage: {
+        had_source_code: true,
+        had_connection: true,
+        had_dependencies: true,
+        coverage_ratio: 0.9,
+        techniques_run: ["ast-taint"],
+        rules_executed: 150,
+        rules_skipped_no_data: 14,
+        // Future analysis-coverage field.
+        notes: "future-scorer-metadata",
+      },
+    });
+    const res = await request(app).get("/api/v1/servers/test-server");
+    expect(res.status).toBe(200);
+    const detail = res.body.data.score_detail;
+    // The whole object survived validation — no silent null.
+    expect(detail.v2_sub_scores).not.toBeNull();
+    expect(detail.v2_sub_scores.schema_score).toBe(88);
+    expect(detail.v2_sub_scores.code_score).toBe(85);
+    // Unknown additive field is forwarded verbatim.
+    expect(detail.v2_sub_scores.runtime_score).toBe(91);
+    expect(detail.analysis_coverage).not.toBeNull();
+    expect(detail.analysis_coverage.notes).toBe("future-scorer-metadata");
   });
 });
