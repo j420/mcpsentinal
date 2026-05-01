@@ -279,11 +279,28 @@ app.get("/api/v1/servers/:slug", rateLimitMiddleware(), async (req: Request, res
         }
       : null;
 
+    // Cluster B reviewer B1 — Invention #8 (per-finding framework cross-walk)
+    // ships dark unless the server-detail response carries the same
+    // `framework_controls[]` augmentation that /findings already produces.
+    // The page reads `server.findings` from /servers/:slug; the cross-walk
+    // row in <FindingsEvidenceTab/> is hidden when `framework_controls` is
+    // absent (treated as backwards-compat for older API). Apply the same
+    // memoised reverse-index lookup here so both endpoints expose the same
+    // shape.
+    const findingsAugmented = findings.map((row) => {
+      const r = row as Record<string, unknown>;
+      const ruleId = typeof r["rule_id"] === "string" ? (r["rule_id"] as string) : "";
+      return {
+        ...row,
+        framework_controls: ruleId ? getFrameworkControlsForRule(ruleId) : [],
+      };
+    });
+
     res.json({
       data: {
         ...server,
         tools,
-        findings,
+        findings: findingsAugmented,
         // Shaped through ScoreDetailResponseSchema so the public contract
         // always exposes the additive v2 fields (coverage_band, v2_sub_scores,
         // analysis_coverage) — null for legacy/pre-migration scans, populated

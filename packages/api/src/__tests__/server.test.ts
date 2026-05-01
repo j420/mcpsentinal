@@ -1271,4 +1271,43 @@ describe("Findings — per-finding framework_controls[]", () => {
     const res = await request(app).get("/api/v1/servers/no-such-server/findings");
     expect(res.status).toBe(404);
   });
+
+  // Cluster B reviewer B1 regression — the per-finding cross-walk also has
+  // to ride on the server-detail response (the page reads `server.findings`
+  // from /servers/:slug, never from /findings). Without this, Invention #8
+  // ships dark in production.
+  it("attaches framework_controls[] to every finding on /servers/:slug as well", async () => {
+    db.getFindingsForServer.mockResolvedValue([
+      {
+        id: "55555555-5555-5555-5555-555555555555",
+        server_id: baseServer.id,
+        scan_id: "66666666-6666-6666-6666-666666666666",
+        rule_id: "K1",
+        severity: "high",
+        evidence: "no structured logging",
+        remediation: "use pino",
+        owasp_category: null,
+        mitre_technique: null,
+        disputed: false,
+        confidence: 1.0,
+        evidence_chain: null,
+        created_at: new Date("2026-04-25T12:00:00.000Z"),
+      },
+    ]);
+    const res = await request(app).get("/api/v1/servers/test-server");
+    expect(res.status).toBe(200);
+    const findings = res.body.data.findings;
+    expect(Array.isArray(findings)).toBe(true);
+    expect(findings.length).toBe(1);
+    // The contract: framework_controls is ALWAYS present and ALWAYS an array.
+    expect(Array.isArray(findings[0].framework_controls)).toBe(true);
+    // K1 maps to ISO 27001 A.8.15 + EU AI Act Art.12 + CoSAI MCP-T12 in the
+    // framework registry — at least one entry must be present.
+    expect(findings[0].framework_controls.length).toBeGreaterThan(0);
+    for (const fc of findings[0].framework_controls) {
+      expect(typeof fc.framework_id).toBe("string");
+      expect(typeof fc.control_id).toBe("string");
+      expect(typeof fc.control_title).toBe("string");
+    }
+  });
 });

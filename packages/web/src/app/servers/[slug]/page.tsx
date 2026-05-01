@@ -17,8 +17,15 @@ import HonestGaps from "@/components/HonestGaps";
 import ServerTabs, { type ServerTab } from "./ServerTabs";
 import ComplianceTab from "./ComplianceTab";
 
-export const dynamic = "force-dynamic";
-
+// Cluster B reviewer M1 — `force-dynamic` was disabling RSC fetch caching
+// across the entire page tree, silently making `<SignedEvidencePack/>`'s
+// `next: { revalidate: 300 }` and `<FrameworkPostureMatrix/>`'s identical
+// hint into no-ops. Each page load triggered 7× buildReport() on the API
+// + a fresh /compliance/eu_ai_act.json HEAD-equivalent for the attestation
+// chips. Removed: the page already opts into dynamic rendering implicitly
+// via `searchParams` (Next 15 makes that route segment dynamic
+// automatically), so the explicit `force-dynamic` was redundant for
+// correctness and harmful for performance.
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3100";
 
 // ── Types ─────────────────────────────────────────────────────────────────────

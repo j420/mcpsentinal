@@ -179,9 +179,16 @@ export function buildComplianceMatrix(
 
   // Stable scan_id for buildReport's required `server.scan_id` field. The
   // matrix endpoint does not surface scan_id, but buildReport requires it
-  // for the per-framework signed report contract — passing the newest
-  // finding's scan_id keeps parity with the signed-report assembly.
-  const scanId = findings[0]?.scan_id ?? "00000000-0000-0000-0000-000000000000";
+  // for the per-framework signed report contract. Cluster B reviewer m1:
+  // findings[0] is not guaranteed-newest at this layer (the DB query does
+  // not sort), so we fold once over created_at to find the actual newest.
+  // Falls back to the zero UUID when there are no findings (signed-report
+  // assembly already handles this constant safely).
+  const newestFinding = findings.reduce<typeof findings[number] | null>(
+    (acc, f) => (acc === null || f.created_at > acc.created_at ? f : acc),
+    null,
+  );
+  const scanId = newestFinding?.scan_id ?? "00000000-0000-0000-0000-000000000000";
   // Renderers + signers want a non-null timestamp string. The matrix
   // response surfaces null in `last_assessed_at` when no scan exists, but
   // buildReport itself needs *something* for the embedded timestamp inside
