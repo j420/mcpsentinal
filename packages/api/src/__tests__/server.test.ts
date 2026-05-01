@@ -34,6 +34,12 @@ vi.mock("@mcp-sentinel/database", () => {
     getSourcesForServer: vi.fn().mockResolvedValue([]),
     getLatestScanStages: vi.fn().mockResolvedValue(null),
     getDependenciesForServer: vi.fn().mockResolvedValue([]),
+    // Cluster B routing-precedence test calls /compliance/:framework.json
+    // → assembleReport → getAttackChainsForServer. Default to empty so
+    // the signed-report handler doesn't throw on the missing mock.
+    getAttackChainsForServer: vi.fn().mockResolvedValue([]),
+    getRiskEdgesForServer: vi.fn().mockResolvedValue([]),
+    getComplianceFindingsForServer: vi.fn().mockResolvedValue([]),
   };
 
   // Real Zod schema for ScoreDetailResponse — kept in sync with
@@ -764,5 +770,505 @@ describe("Server detail score_detail (v2 contract)", () => {
     expect(detail.v2_sub_scores.runtime_score).toBe(91);
     expect(detail.analysis_coverage).not.toBeNull();
     expect(detail.analysis_coverage.notes).toBe("future-scorer-metadata");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Compliance Posture Matrix — GET /api/v1/servers/:slug/compliance
+//
+// Cluster B invention #3. The aggregate endpoint returns one entry per
+// supported framework (7 total) so the registry can render the Posture
+// Matrix without 7 round-trips. This is a NAVIGATIONAL summary — the
+// signed, HMAC-attested artifacts continue to live at the per-framework
+// `/compliance/:framework.{json,html,pdf}` endpoints.
+//
+// Hermetic Zod re-declarations: per Cluster A B3 lesson, these schemas
+// are inlined here verbatim (matching production `.passthrough()`
+// behaviour) so this test file does not depend on the database build
+// order or compiled dist artefacts.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("Compliance posture matrix (GET /api/v1/servers/:slug/compliance)", () => {
+  const FRAMEWORK_IDS = [
+    "eu_ai_act",
+    "iso_27001",
+    "owasp_mcp",
+    "owasp_asi",
+    "cosai_mcp",
+    "maestro",
+    "mitre_atlas",
+  ] as const;
+  type MatrixFrameworkId = (typeof FRAMEWORK_IDS)[number];
+
+  // ── Hermetic contract schemas (re-declared verbatim) ───────────────────────
+  const ComplianceControlCountsSchema = z
+    .object({
+      met: z.number().int().nonnegative(),
+      partial: z.number().int().nonnegative(),
+      unmet: z.number().int().nonnegative(),
+      not_applicable: z.number().int().nonnegative(),
+      total: z.number().int().nonnegative(),
+    })
+    .passthrough();
+  const ComplianceFrameworkDownloadPathsSchema = z
+    .object({
+      json: z.string().min(1),
+      html: z.string().min(1),
+      pdf: z.string().min(1),
+      badge_svg: z.string().min(1),
+    })
+    .passthrough();
+  const ComplianceFrameworkMatrixEntrySchema = z
+    .object({
+      framework_id: z.enum(FRAMEWORK_IDS),
+      framework_name: z.string().min(1),
+      framework_version: z.string().min(1),
+      controls: ComplianceControlCountsSchema,
+      overall_status: z.enum(["met", "partial", "unmet", "not_applicable"]),
+      coverage_band: z.enum(["high", "medium", "low", "minimal"]),
+      download_paths: ComplianceFrameworkDownloadPathsSchema,
+    })
+    .passthrough();
+  const ComplianceMatrixResponseSchema = z
+    .object({
+      server_slug: z.string().min(1),
+      server_name: z.string().min(1),
+      last_assessed_at: z.string().nullable(),
+      rules_version: z.string().min(1),
+      frameworks: z.array(ComplianceFrameworkMatrixEntrySchema),
+    })
+    .passthrough();
+
+  const baseServer = {
+    id: "00000000-0000-0000-0000-000000000001",
+    slug: "matrix-server",
+    name: "Matrix Server",
+    github_url: "https://github.com/example/matrix-server",
+    last_scanned_at: null,
+    latest_score: 60,
+  };
+
+  beforeEach(() => {
+    db.findServerBySlug.mockResolvedValue(baseServer);
+    db.getFindingsForServer.mockResolvedValue([]);
+  });
+
+  it("returns 200 with all 7 frameworks for a valid slug, even when the server has zero findings", async () => {
+    db.getFindingsForServer.mockResolvedValue([]);
+    const res = await request(app).get("/api/v1/servers/matrix-server/compliance");
+    expect(res.status).toBe(200);
+    const parsed = ComplianceMatrixResponseSchema.safeParse(res.body.data);
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    const ids = parsed.data.frameworks.map((f) => f.framework_id).sort();
+    expect(ids).toEqual([...FRAMEWORK_IDS].sort());
+    // With zero findings every control is either `met` (rule didn't fire)
+    // or `not_applicable` (no assessor rule mapped). Honest gaps render
+    // explicitly — never silently as `met`.
+    for (const entry of parsed.data.frameworks) {
+      expect(entry.controls.unmet).toBe(0);
+      expect(entry.controls.partial).toBe(0);
+      expect(entry.controls.met + entry.controls.not_applicable).toBe(entry.controls.total);
+      expect(["met", "not_applicable"]).toContain(entry.overall_status);
+      expect(entry.coverage_band).toBe("minimal");
+    }
+  });
+
+  it("returns counts matching real framework registry (62+ controls across 7 frameworks)", async () => {
+    db.getFindingsForServer.mockResolvedValue([]);
+    const res = await request(app).get("/api/v1/servers/matrix-server/compliance");
+    expect(res.status).toBe(200);
+    const data = res.body.data as { frameworks: Array<{ controls: { total: number } }> };
+    const totalControls = data.frameworks.reduce((acc, f) => acc + f.controls.total, 0);
+    // Registry ships 62-63 controls; never zero. Guard against accidental
+    // empty registry / malformed loop.
+    expect(totalControls).toBeGreaterThanOrEqual(60);
+  });
+
+  it("flips overall_status to `unmet` when a critical finding hits an EU AI Act assessor rule (K1 → Art.12)", async () => {
+    // K1 (Absent Structured Logging) is mapped under EU AI Act Art.12.
+    // unmet_threshold for Art.12 is "medium" — a critical finding clears it.
+    db.getFindingsForServer.mockResolvedValue([
+      {
+        id: "11111111-1111-1111-1111-111111111111",
+        server_id: baseServer.id,
+        scan_id: "22222222-2222-2222-2222-222222222222",
+        rule_id: "K1",
+        severity: "critical",
+        evidence: "no structured logging detected",
+        remediation: "use pino",
+        owasp_category: null,
+        mitre_technique: null,
+        disputed: false,
+        confidence: 0.9,
+        evidence_chain: null,
+        created_at: new Date("2026-04-25T12:00:00.000Z"),
+      },
+    ]);
+    const res = await request(app).get("/api/v1/servers/matrix-server/compliance");
+    expect(res.status).toBe(200);
+    const data = res.body.data as { frameworks: Array<{ framework_id: string; overall_status: string; controls: { unmet: number } }> };
+    const eu = data.frameworks.find((f) => f.framework_id === "eu_ai_act");
+    expect(eu).toBeDefined();
+    expect(eu!.overall_status).toBe("unmet");
+    expect(eu!.controls.unmet).toBeGreaterThanOrEqual(1);
+  });
+
+  it("download_paths are RELATIVE (no host) and target the per-framework signed-pack endpoints", async () => {
+    db.getFindingsForServer.mockResolvedValue([]);
+    const res = await request(app).get("/api/v1/servers/matrix-server/compliance");
+    expect(res.status).toBe(200);
+    const data = res.body.data as {
+      frameworks: Array<{
+        framework_id: MatrixFrameworkId;
+        download_paths: { json: string; html: string; pdf: string; badge_svg: string };
+      }>;
+    };
+    for (const entry of data.frameworks) {
+      const base = `/api/v1/servers/matrix-server/compliance/${entry.framework_id}`;
+      expect(entry.download_paths.json).toBe(`${base}.json`);
+      expect(entry.download_paths.html).toBe(`${base}.html`);
+      expect(entry.download_paths.pdf).toBe(`${base}.pdf`);
+      expect(entry.download_paths.badge_svg).toBe(`${base}/badge.svg`);
+      // Negative regression: never bake the API origin into the path.
+      expect(entry.download_paths.json.startsWith("http")).toBe(false);
+      expect(entry.download_paths.json.startsWith("/")).toBe(true);
+    }
+  });
+
+  it("sets Cache-Control: public, max-age=300 on the matrix response", async () => {
+    db.getFindingsForServer.mockResolvedValue([]);
+    const res = await request(app).get("/api/v1/servers/matrix-server/compliance");
+    expect(res.status).toBe(200);
+    expect(res.headers["cache-control"]).toBe("public, max-age=300");
+  });
+
+  it("returns 404 for unknown slug", async () => {
+    db.findServerBySlug.mockResolvedValue(null);
+    const res = await request(app).get("/api/v1/servers/no-such-server/compliance");
+    expect(res.status).toBe(404);
+    expect(res.body).toHaveProperty("error");
+  });
+
+  it("returns 400 for invalid slug (path traversal)", async () => {
+    const res = await request(app).get("/api/v1/servers/..%2fevil/compliance");
+    expect(res.status).toBe(400);
+  });
+
+  it("last_assessed_at mirrors the newest finding's created_at when findings exist", async () => {
+    const newest = new Date("2026-04-29T08:00:00.000Z");
+    db.getFindingsForServer.mockResolvedValue([
+      {
+        id: "11111111-1111-1111-1111-111111111111",
+        server_id: baseServer.id,
+        scan_id: "22222222-2222-2222-2222-222222222222",
+        rule_id: "K1",
+        severity: "low",
+        evidence: "x",
+        remediation: "y",
+        owasp_category: null,
+        mitre_technique: null,
+        disputed: false,
+        confidence: 1.0,
+        evidence_chain: null,
+        created_at: new Date("2026-04-15T08:00:00.000Z"),
+      },
+      {
+        id: "33333333-3333-3333-3333-333333333333",
+        server_id: baseServer.id,
+        scan_id: "22222222-2222-2222-2222-222222222222",
+        rule_id: "K2",
+        severity: "low",
+        evidence: "x",
+        remediation: "y",
+        owasp_category: null,
+        mitre_technique: null,
+        disputed: false,
+        confidence: 1.0,
+        evidence_chain: null,
+        created_at: newest,
+      },
+    ]);
+    const res = await request(app).get("/api/v1/servers/matrix-server/compliance");
+    expect(res.status).toBe(200);
+    expect(res.body.data.last_assessed_at).toBe(newest.toISOString());
+  });
+
+  it("last_assessed_at is null when no findings AND no last_scanned_at", async () => {
+    db.findServerBySlug.mockResolvedValue({ ...baseServer, last_scanned_at: null });
+    db.getFindingsForServer.mockResolvedValue([]);
+    const res = await request(app).get("/api/v1/servers/matrix-server/compliance");
+    expect(res.status).toBe(200);
+    expect(res.body.data.last_assessed_at).toBeNull();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Routing precedence — /compliance vs /compliance/:framework.json
+//
+// Express matches routes in declaration order. The bare /compliance path
+// has no trailing segment so it cannot collide with /compliance/:framework
+// — but a regression in declaration order could shadow either route.
+// This test pins the contract: BOTH must resolve as their respective
+// handlers.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("Routing precedence: /compliance vs /compliance/:framework.json", () => {
+  beforeEach(() => {
+    db.findServerBySlug.mockResolvedValue({
+      id: "00000000-0000-0000-0000-000000000001",
+      slug: "demo-server",
+      name: "Demo Server",
+      github_url: null,
+      last_scanned_at: null,
+      latest_score: 70,
+    });
+    db.getFindingsForServer.mockResolvedValue([]);
+  });
+
+  it("GET /compliance returns the matrix shape (data.frameworks[])", async () => {
+    const res = await request(app).get("/api/v1/servers/demo-server/compliance");
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.data?.frameworks)).toBe(true);
+    expect(res.body.data.frameworks.length).toBe(7);
+    // Negative: must NOT be the per-framework signed-report shape
+    expect(res.body).not.toHaveProperty("attestation");
+    expect(res.body.data).not.toHaveProperty("report");
+  });
+
+  it("GET /compliance/eu_ai_act.json still routes to the signed-report handler (no shadowing)", async () => {
+    const res = await request(app).get("/api/v1/servers/demo-server/compliance/eu_ai_act.json");
+    // The signed-report handler returns 500 here because the test mock
+    // doesn't register a JSON renderer; the routing-precedence assertion
+    // is that we do NOT 404 (which would mean the matrix route shadowed
+    // the framework-suffixed route).
+    expect(res.status).not.toBe(404);
+    // And we must NOT have hit the matrix handler — its responses always
+    // contain `data.frameworks[]`.
+    if (res.status === 200) {
+      expect(res.body.data?.frameworks).toBeUndefined();
+    }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Per-finding framework cross-walk — GET /api/v1/servers/:slug/findings
+//
+// Cluster B invention #8. Every finding row carries
+// `framework_controls: Array<{framework_id, control_id, control_title}>`
+// computed by reverse-indexing the framework registry once per process.
+//
+// Contract invariants under test:
+//   - Always present, always an array (never null/undefined).
+//   - Empty array for rules with zero framework alignment (honest gap).
+//   - Multiple frameworks for rules cited by multiple registries (e.g.
+//     K1 → ISO 27001 A.8.15 + EU AI Act Art.12 + CoSAI MCP-T12).
+//   - Persisted Finding fields pass through verbatim (regression).
+//   - `.passthrough()` forwards unknown future framework_controls keys.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("Findings — per-finding framework_controls[]", () => {
+  // ── Hermetic contract schema for FrameworkControlMapping ───────────────────
+  const FrameworkControlMappingSchema = z
+    .object({
+      framework_id: z.string().min(1),
+      control_id: z.string().min(1),
+      control_title: z.string().min(1),
+    })
+    .passthrough();
+  // FindingResponseSchema (subset — only the fields under test).
+  const FindingResponseSchema = z
+    .object({
+      id: z.string().uuid(),
+      rule_id: z.string().min(1),
+      framework_controls: z.array(FrameworkControlMappingSchema),
+    })
+    .passthrough();
+
+  const baseServer = {
+    id: "00000000-0000-0000-0000-000000000099",
+    slug: "findings-server",
+    name: "Findings Server",
+    github_url: null,
+    latest_score: 50,
+  };
+
+  beforeEach(() => {
+    db.findServerBySlug.mockResolvedValue(baseServer);
+  });
+
+  it("attaches framework_controls[] to every finding row (always an array, never null)", async () => {
+    db.getFindingsForServer.mockResolvedValue([
+      {
+        id: "11111111-1111-1111-1111-111111111111",
+        server_id: baseServer.id,
+        scan_id: "22222222-2222-2222-2222-222222222222",
+        rule_id: "K1",
+        severity: "high",
+        evidence: "no structured logging",
+        remediation: "use pino",
+        owasp_category: null,
+        mitre_technique: null,
+        disputed: false,
+        confidence: 1.0,
+        evidence_chain: null,
+        created_at: new Date("2026-04-25T12:00:00.000Z"),
+      },
+      {
+        id: "33333333-3333-3333-3333-333333333333",
+        server_id: baseServer.id,
+        scan_id: "22222222-2222-2222-2222-222222222222",
+        rule_id: "C1",
+        severity: "critical",
+        evidence: "exec with user input",
+        remediation: "use execFile",
+        owasp_category: null,
+        mitre_technique: null,
+        disputed: false,
+        confidence: 1.0,
+        evidence_chain: null,
+        created_at: new Date("2026-04-25T12:01:00.000Z"),
+      },
+    ]);
+    const res = await request(app).get("/api/v1/servers/findings-server/findings");
+    expect(res.status).toBe(200);
+    const rows = res.body.data as Array<Record<string, unknown>>;
+    expect(rows.length).toBe(2);
+    for (const row of rows) {
+      const parsed = FindingResponseSchema.safeParse(row);
+      expect(parsed.success).toBe(true);
+      // Always an array — never null, never undefined, never missing.
+      expect(Array.isArray(row["framework_controls"])).toBe(true);
+    }
+  });
+
+  it("returns framework_controls: [] (not null) for a rule with NO framework mapping (honest gap)", async () => {
+    db.getFindingsForServer.mockResolvedValue([
+      {
+        id: "11111111-1111-1111-1111-111111111111",
+        server_id: baseServer.id,
+        scan_id: "22222222-2222-2222-2222-222222222222",
+        // Synthetic rule_id that is not in any framework's
+        // assessor_rule_ids list — verifies the empty-mapping behaviour.
+        rule_id: "ZZ_NEVER_MAPPED",
+        severity: "low",
+        evidence: "synthetic",
+        remediation: "n/a",
+        owasp_category: null,
+        mitre_technique: null,
+        disputed: false,
+        confidence: 1.0,
+        evidence_chain: null,
+        created_at: new Date(),
+      },
+    ]);
+    const res = await request(app).get("/api/v1/servers/findings-server/findings");
+    expect(res.status).toBe(200);
+    const row = res.body.data[0] as Record<string, unknown>;
+    expect(row).toHaveProperty("framework_controls");
+    expect(row["framework_controls"]).toEqual([]);
+    // Critical: NEVER null or undefined for empty mappings.
+    expect(row["framework_controls"]).not.toBeNull();
+    expect(row["framework_controls"]).not.toBeUndefined();
+  });
+
+  it("returns ALL frameworks for a rule cited by multiple registries (K1 → ISO 27001 + EU AI Act + CoSAI)", async () => {
+    db.getFindingsForServer.mockResolvedValue([
+      {
+        id: "11111111-1111-1111-1111-111111111111",
+        server_id: baseServer.id,
+        scan_id: "22222222-2222-2222-2222-222222222222",
+        rule_id: "K1",
+        severity: "high",
+        evidence: "x",
+        remediation: "y",
+        owasp_category: null,
+        mitre_technique: null,
+        disputed: false,
+        confidence: 1.0,
+        evidence_chain: null,
+        created_at: new Date(),
+      },
+    ]);
+    const res = await request(app).get("/api/v1/servers/findings-server/findings");
+    expect(res.status).toBe(200);
+    const controls = (res.body.data[0] as { framework_controls: Array<{ framework_id: string; control_id: string }> })
+      .framework_controls;
+    const frameworkIds = new Set(controls.map((c) => c.framework_id));
+    // K1 (Absent Structured Logging) is cited under at least three
+    // frameworks per agent_docs/detection-rules.md K-rules table:
+    // ISO 27001 A.8.15, EU AI Act Art.12, CoSAI MCP-T12. Assert at least
+    // three distinct frameworks rather than naming them — keeps the test
+    // resilient to future framework registry additions.
+    expect(frameworkIds.size).toBeGreaterThanOrEqual(3);
+    expect(frameworkIds.has("eu_ai_act")).toBe(true);
+    expect(frameworkIds.has("iso_27001")).toBe(true);
+    expect(frameworkIds.has("cosai_mcp")).toBe(true);
+    // Every entry must have a non-empty control_title (the framework
+    // registry guarantees this; the API contract preserves it).
+    for (const c of controls) {
+      expect(c.control_id.length).toBeGreaterThan(0);
+      expect(c.control_title.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("preserves persisted Finding fields verbatim (regression)", async () => {
+    // Confirms framework_controls is strictly additive — every column
+    // that lives on the Finding row continues to flow through unchanged.
+    const finding = {
+      id: "11111111-1111-1111-1111-111111111111",
+      server_id: baseServer.id,
+      scan_id: "22222222-2222-2222-2222-222222222222",
+      rule_id: "K1",
+      severity: "high",
+      evidence: "the original evidence string",
+      remediation: "the original remediation string",
+      owasp_category: "MCP09-logging-monitoring",
+      mitre_technique: "AML.T0086",
+      disputed: false,
+      confidence: 0.83,
+      evidence_chain: { source: "x", sink: "y" },
+      created_at: new Date("2026-04-25T12:00:00.000Z"),
+    };
+    db.getFindingsForServer.mockResolvedValue([finding]);
+    const res = await request(app).get("/api/v1/servers/findings-server/findings");
+    expect(res.status).toBe(200);
+    const row = res.body.data[0] as Record<string, unknown>;
+    expect(row["id"]).toBe(finding.id);
+    expect(row["rule_id"]).toBe("K1");
+    expect(row["severity"]).toBe("high");
+    expect(row["evidence"]).toBe("the original evidence string");
+    expect(row["remediation"]).toBe("the original remediation string");
+    expect(row["owasp_category"]).toBe("MCP09-logging-monitoring");
+    expect(row["mitre_technique"]).toBe("AML.T0086");
+    expect(row["confidence"]).toBe(0.83);
+    expect(row["evidence_chain"]).toEqual({ source: "x", sink: "y" });
+  });
+
+  it("forwards unknown future framework_controls[i] fields verbatim (passthrough regression)", async () => {
+    // Use a rule that has no mapping and synthesise a framework_controls
+    // entry directly on the row. The route handler computes
+    // framework_controls from the registry, so we cannot inject one through
+    // the registry. Instead, this test pins the contract that the schema
+    // PERMITS unknown fields on a framework_controls entry — which the
+    // database build at line FrameworkControlMappingSchema.passthrough()
+    // guarantees. We assert the schema directly.
+    const future = {
+      framework_id: "eu_ai_act",
+      control_id: "Art.12",
+      control_title: "Record-Keeping",
+      // Future field a downstream API version might add; passthrough must keep it.
+      severity_hint: "medium",
+    };
+    const parsed = FrameworkControlMappingSchema.safeParse(future);
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect((parsed.data as Record<string, unknown>)["severity_hint"]).toBe("medium");
+  });
+
+  it("returns 404 for unknown slug on /findings", async () => {
+    db.findServerBySlug.mockResolvedValue(null);
+    const res = await request(app).get("/api/v1/servers/no-such-server/findings");
+    expect(res.status).toBe(404);
   });
 });

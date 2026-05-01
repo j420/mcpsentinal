@@ -19,6 +19,18 @@ import type {
 import { RiskMatrixAnalyzer } from "@mcp-sentinel/risk-matrix";
 import { createBadgeSvg } from "./badge.js";
 import { createComplianceReportRoutes } from "./compliance-report-routes.js";
+import {
+  buildComplianceMatrix,
+  getFrameworkControlsForRule,
+} from "./compliance-matrix.js";
+
+// Sentinel + rules version — mirrors the constants in compliance-report-routes.ts
+// so the Posture Matrix endpoint stamps the same `rules_version` value
+// regulators see in the per-framework signed reports. Kept module-local
+// (rather than imported) so changing one tier does not silently change the
+// other; both default chains live alongside the env vars they read.
+const SENTINEL_VERSION = process.env["MCP_SENTINEL_VERSION"] ?? "0.4.0";
+const RULES_VERSION = process.env["MCP_SENTINEL_RULES_VERSION"] ?? "2026-04-23";
 
 // Lazy red-team manifest load — top-level static import would pull in
 // @mcp-sentinel/analyzer (red-team's transitive dep) at boot, which causes
@@ -289,7 +301,24 @@ app.get("/api/v1/servers/:slug", rateLimitMiddleware(), async (req: Request, res
   }
 });
 
-// GET /api/v1/servers/:slug/findings — Findings for a server
+// GET /api/v1/servers/:slug/findings — Findings for a server.
+//
+// Cluster B invention #8 (per-finding framework cross-walk): every row is
+// augmented with `framework_controls: Array<{framework_id, control_id,
+// control_title}>` so the Findings tab can render the controls a finding
+// violates inline ("EU AI Act Art.12 ☑ · ISO 27001 A.8.15 ☑ · …").
+//
+// Contract notes:
+//   - `framework_controls` is ALWAYS an array, never null/undefined. An
+//     empty array is the honest signal for "no framework alignment yet";
+//     the frontend renders "no framework cross-walk" only on []. Future
+//     framework registry additions automatically light up here without an
+//     API change because the lookup is computed from the registry at
+//     request time (memoised reverse index, so the cost is one map hit
+//     per finding).
+//   - All other persisted Finding fields pass through verbatim — this is
+//     a strictly additive augmentation. Future Finding columns will also
+//     forward through Zod `.passthrough()` on `FindingResponseSchema`.
 app.get(
   "/api/v1/servers/:slug/findings",
   rateLimitMiddleware(),
@@ -306,7 +335,18 @@ app.get(
         return;
       }
       const findings = await db.getFindingsForServer(server.id);
-      res.json({ data: findings });
+      // Augment each row with the framework cross-walk. The reverse index
+      // is memoised at module load (first call), so this loop is O(N) in
+      // the number of findings, with one map hit per row.
+      const augmented = findings.map((row) => {
+        const r = row as Record<string, unknown>;
+        const ruleId = typeof r["rule_id"] === "string" ? (r["rule_id"] as string) : "";
+        return {
+          ...row,
+          framework_controls: ruleId ? getFrameworkControlsForRule(ruleId) : [],
+        };
+      });
+      res.json({ data: augmented });
     } catch (err) {
       logger.error(err, "Findings error");
       res.status(500).json({ error: "Internal server error" });
@@ -355,22 +395,26 @@ function publicComplianceRow(row: ComplianceFindingRecord): {
   };
 }
 
-// GET /api/v1/servers/:slug/compliance — All frameworks, grouped
+// GET /api/v1/servers/:slug/compliance — Framework Posture Matrix (aggregate)
 //
-// Response shape:
-//   { data: {
-//       eu_ai_act:   [ ...publicComplianceRow ],
-//       mitre_atlas: [ ... ],
-//       owasp_mcp:   [ ... ],
-//       owasp_asi:   [ ... ],
-//       cosai:       [ ... ],
-//       maestro:     [ ... ],
-//     },
-//     meta: { total_findings, frameworks_with_findings, last_scan_at }
-//   }
+// Cluster B invention #3. Returns one entry per supported compliance
+// framework (7 total) with control-status counts, overall status,
+// coverage band, and relative download paths into the per-framework
+// signed-pack endpoints. Frontend uses this to render the Posture Matrix
+// without 7 round-trips.
 //
-// Frameworks with zero findings are still included as empty arrays so the
-// UI can distinguish "nothing found" from "not scanned".
+// IMPORTANT — routing precedence: this route is declared BEFORE the
+// `/compliance/:framework.{json,html,pdf}` and `/compliance/:framework/badge.svg`
+// routes below so Express does not try to bind `compliance` as a `:framework`
+// path param value. The bare `/compliance` path has no extra segment, so it
+// cannot collide with the parameterised paths — but keeping the declaration
+// order explicit prevents future refactors from accidentally reordering.
+//
+// NOT signed: this is a navigational summary, not an auditable artifact.
+// The signed, HMAC-attested artifacts continue to live at the per-
+// framework endpoints. `Cache-Control: public, max-age=300` mirrors the
+// existing public endpoints (and absorbs the 7×buildReport cost on
+// repeat hits).
 app.get(
   "/api/v1/servers/:slug/compliance",
   rateLimitMiddleware(),
@@ -386,35 +430,36 @@ app.get(
         res.status(404).json({ error: "Server not found" });
         return;
       }
-      const rows = await db.getComplianceFindingsForServer(server.id);
-      const grouped: Record<ComplianceFrameworkIdType, ReturnType<typeof publicComplianceRow>[]> = {
-        eu_ai_act: [],
-        mitre_atlas: [],
-        owasp_mcp: [],
-        owasp_asi: [],
-        cosai: [],
-        maestro: [],
-      };
-      let lastScanAt: Date | null = null;
-      for (const row of rows) {
-        grouped[row.framework].push(publicComplianceRow(row));
-        if (!lastScanAt || row.created_at > lastScanAt) {
-          lastScanAt = row.created_at;
-        }
-      }
-      const frameworksWithFindings = (
-        Object.keys(grouped) as ComplianceFrameworkIdType[]
-      ).filter((k) => grouped[k].length > 0).length;
-      res.json({
-        data: grouped,
-        meta: {
-          total_findings: rows.length,
-          frameworks_with_findings: frameworksWithFindings,
-          last_scan_at: lastScanAt,
-        },
+      const findings = await db.getFindingsForServer(server.id);
+      // Stable assessed_at: newest finding > server.last_scanned_at > null.
+      // Mirrors the per-framework signed-report assembly so a regulator
+      // who reconciles matrix vs. signed pack sees the same timestamp.
+      const newestFindingTs = findings.reduce<Date | null>((acc, f) => {
+        const ts = (f as Record<string, unknown>)["created_at"];
+        if (!(ts instanceof Date)) return acc;
+        if (!acc) return ts;
+        return ts > acc ? ts : acc;
+      }, null);
+      const assessedAt =
+        newestFindingTs?.toISOString() ??
+        (server.last_scanned_at instanceof Date
+          ? server.last_scanned_at.toISOString()
+          : null);
+
+      const matrix = buildComplianceMatrix(findings, server, {
+        rules_version: RULES_VERSION,
+        sentinel_version: SENTINEL_VERSION,
+        assessed_at: assessedAt,
       });
+
+      // Match the existing public endpoints' cache posture. 5min fresh
+      // cache; the per-framework signed endpoints already use the same
+      // window so a CISO refreshing the Posture Matrix and then drilling
+      // into a signed pack will see consistent staleness.
+      res.setHeader("Cache-Control", "public, max-age=300");
+      res.json({ data: matrix });
     } catch (err) {
-      logger.error(err, "Compliance findings error");
+      logger.error(err, "Compliance matrix error");
       res.status(500).json({ error: "Internal server error" });
     }
   }
