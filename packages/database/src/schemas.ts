@@ -178,6 +178,75 @@ export const ScanSchema = z.object({
 });
 export type Scan = z.infer<typeof ScanSchema>;
 
+/**
+ * Confidence / coverage band — derived from the analyzer's coverage signal.
+ * Stable, regulator-readable string union. Used by the public registry to
+ * label scores honestly: "85/100 (high confidence)" vs "85/100 (low confidence)".
+ *
+ * Authoritative source: `AnalysisCoverageInput.confidence_band` produced by the
+ * scorer. Persisted alongside the score for downstream API consumption.
+ */
+export const CoverageBand = z.enum(["high", "medium", "low", "minimal"]);
+export type CoverageBand = z.infer<typeof CoverageBand>;
+
+/**
+ * The 8 v2 sub-scores. These REPLACE the single `config_score` bucket once
+ * v2 is the default everywhere; until then they coexist with the legacy
+ * 5 sub-scores and are exposed additively on the API.
+ *
+ * Each value is an integer 0..100 clamped at the storage boundary (matches
+ * the scorer's `Math.round` + 0..100 invariant).
+ *
+ * `code_score` is duplicated here (also present on the legacy ScoreSchema)
+ * because the v2 hero renders all 8 buckets in one breakdown — keeping it
+ * inside this object means the UI only has to read one shape, and the
+ * scorer's `ScoreResult` (the source of truth) emits all 8 together.
+ *
+ * `.passthrough()` is intentional: future scorer additions (new bucket,
+ * new metadata) MUST NOT cause `safeParse` in `shapeScoreDetail` to silently
+ * null the whole field. Unknown keys are forwarded to the API consumer.
+ *
+ * Authoritative source: `ScoreResult` in `packages/scorer/src/scorer.ts`.
+ */
+export const V2SubScoresSchema = z
+  .object({
+    schema_score: z.number().int().min(0).max(100),
+    ecosystem_score: z.number().int().min(0).max(100),
+    protocol_score: z.number().int().min(0).max(100),
+    adversarial_score: z.number().int().min(0).max(100),
+    compliance_score: z.number().int().min(0).max(100),
+    supply_chain_score: z.number().int().min(0).max(100),
+    infrastructure_score: z.number().int().min(0).max(100),
+    code_score: z.number().int().min(0).max(100),
+  })
+  .passthrough();
+export type V2SubScores = z.infer<typeof V2SubScoresSchema>;
+
+/**
+ * Analysis coverage — what the analyzer was able to inspect for this scan.
+ * Drives the `coverage_band` label and is exposed verbatim on the API so
+ * regulators can audit the basis of any given score.
+ *
+ * `.passthrough()` for the same reason as V2SubScoresSchema: future scorer
+ * additions to `AnalysisCoverageInput` (new technique tag, new "skipped
+ * because" reason) must not silently null the field at the response seam.
+ *
+ * Authoritative source: `AnalysisCoverageInput` in `packages/scorer/src/scorer.ts`
+ * (minus `confidence_band`, which we surface as `coverage_band` at the API layer).
+ */
+export const AnalysisCoverageSchema = z
+  .object({
+    had_source_code: z.boolean(),
+    had_connection: z.boolean(),
+    had_dependencies: z.boolean(),
+    coverage_ratio: z.number().min(0).max(1),
+    techniques_run: z.array(z.string()),
+    rules_executed: z.number().int().nonnegative(),
+    rules_skipped_no_data: z.number().int().nonnegative(),
+  })
+  .passthrough();
+export type AnalysisCoverage = z.infer<typeof AnalysisCoverageSchema>;
+
 export const ScoreSchema = z.object({
   id: z.string().uuid(),
   server_id: z.string().uuid(),
@@ -197,8 +266,38 @@ export const ScoreSchema = z.object({
   // Technique attribution for the v2 findings that contributed to total_score_v2.
   // Shape: Record<ruleId, AnalysisTechnique> — the analyzer's technique taxonomy.
   techniques_v2: z.record(z.string()).nullable().default(null),
+  // CISO-facing detail-page upgrade — additive, nullable until migration
+  // <NNN>_add_v2_score_fields.sql lands. Populated by the scorer (already produces
+  // these values today; the persistence column is the missing piece). Until the
+  // migration ships, the API surfaces null for older scans, which the web layer
+  // renders as "v2 detail not available for this scan".
+  coverage_band: CoverageBand.nullable().default(null),
+  v2_sub_scores: V2SubScoresSchema.nullable().default(null),
+  analysis_coverage: AnalysisCoverageSchema.nullable().default(null),
 });
 export type Score = z.infer<typeof ScoreSchema>;
+
+/**
+ * Subset of the `scores` row exposed on `GET /api/v1/servers/:slug` under
+ * `data.score_detail`. Keeps the public API contract small and additive.
+ *
+ * NOTE: changes to this shape are a public API change. Bump the API version
+ * before removing or renaming any field. Adding a new nullable field is safe.
+ */
+export const ScoreDetailResponseSchema = z.object({
+  total_score: z.number().int().min(0).max(100),
+  code_score: z.number().int().min(0).max(100),
+  deps_score: z.number().int().min(0).max(100),
+  config_score: z.number().int().min(0).max(100),
+  description_score: z.number().int().min(0).max(100),
+  behavior_score: z.number().int().min(0).max(100),
+  owasp_coverage: z.record(z.boolean()),
+  // Additive fields (nullable by default — unpopulated for pre-migration scans).
+  coverage_band: CoverageBand.nullable(),
+  v2_sub_scores: V2SubScoresSchema.nullable(),
+  analysis_coverage: AnalysisCoverageSchema.nullable(),
+});
+export type ScoreDetailResponse = z.infer<typeof ScoreDetailResponseSchema>;
 
 export const SourceSchema = z.object({
   id: z.string().uuid(),

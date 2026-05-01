@@ -7,11 +7,13 @@ import {
   DatabaseQueries,
   ServerListQuerySchema,
   ComplianceFrameworkId,
+  ScoreDetailResponseSchema,
   migrate,
 } from "@mcp-sentinel/database";
 import type {
   ComplianceFindingRecord,
   ComplianceFrameworkId as ComplianceFrameworkIdType,
+  ScoreDetailResponse,
   Server,
 } from "@mcp-sentinel/database";
 import { RiskMatrixAnalyzer } from "@mcp-sentinel/risk-matrix";
@@ -180,6 +182,46 @@ app.get("/api/v1/servers", rateLimitMiddleware(), async (req: Request, res: Resp
   }
 });
 
+// ─── Score detail shaping helper ─────────────────────────────────────────────
+// Normalises whatever `getLatestScoreForServer` returns (or null) into the
+// public `ScoreDetailResponse` contract. Keeps the route handler thin and
+// guarantees the response shape is identical for every code path:
+//
+//   - server with no score yet      → null (hide the section in the UI)
+//   - legacy score row (pre-v2)     → 7 legacy fields + 3 nullable v2 fields
+//   - v2 score row (post-migration) → 7 legacy fields + 3 populated v2 fields
+//
+// We use `safeParse` rather than `parse` so a malformed DB row degrades to
+// "score detail temporarily unavailable" (null) instead of returning a 500 —
+// the same posture the rest of the route takes for partial data.
+function shapeScoreDetail(
+  raw: Awaited<ReturnType<DatabaseQueries["getLatestScoreForServer"]>> | { [k: string]: unknown } | null,
+): ScoreDetailResponse | null {
+  if (!raw) return null;
+  const r = raw as Record<string, unknown>;
+  const candidate = {
+    total_score: r["total_score"],
+    code_score: r["code_score"],
+    deps_score: r["deps_score"],
+    config_score: r["config_score"],
+    description_score: r["description_score"],
+    behavior_score: r["behavior_score"],
+    owasp_coverage: r["owasp_coverage"] ?? {},
+    coverage_band: r["coverage_band"] ?? null,
+    v2_sub_scores: r["v2_sub_scores"] ?? null,
+    analysis_coverage: r["analysis_coverage"] ?? null,
+  };
+  const parsed = ScoreDetailResponseSchema.safeParse(candidate);
+  if (parsed.success) return parsed.data;
+  // Malformed row — log once, return null so downstream consumers get a
+  // consistent "no score" signal rather than a half-shaped object.
+  logger.warn(
+    { issues: parsed.error.issues },
+    "Discarding malformed score row in shapeScoreDetail",
+  );
+  return null;
+}
+
 // GET /api/v1/servers/:slug — Server detail
 app.get("/api/v1/servers/:slug", rateLimitMiddleware(), async (req: Request, res: Response) => {
   const { slug } = req.params;
@@ -230,7 +272,11 @@ app.get("/api/v1/servers/:slug", rateLimitMiddleware(), async (req: Request, res
         ...server,
         tools,
         findings,
-        score_detail,
+        // Shaped through ScoreDetailResponseSchema so the public contract
+        // always exposes the additive v2 fields (coverage_band, v2_sub_scores,
+        // analysis_coverage) — null for legacy/pre-migration scans, populated
+        // once migration <NNN>_add_v2_score_fields.sql lands and new scans run.
+        score_detail: shapeScoreDetail(score_detail),
         sources,
         scan_stages,
         dependencies_summary,

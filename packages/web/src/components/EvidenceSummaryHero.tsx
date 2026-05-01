@@ -10,6 +10,13 @@
  * Lethal-trifecta detection: rules F1 and I13 force the score color to
  * --critical and surface a small chip, mirroring the scorer cap at 40
  * documented in agent_docs/scoring-algorithm.md.
+ *
+ * v6 coverage upgrade (esh-cov-*): when score_detail carries an
+ * analysis_coverage block AND/OR a v2_sub_scores block we surface honest
+ * confidence bounds beside the score — coverage_band chip, three "what we
+ * analysed" pips (source / live / deps), and an 8-bucket v2 sub-score row.
+ * When both fields are absent the hero renders exactly as before — backwards
+ * compat is non-negotiable.
  */
 
 import React from "react";
@@ -25,8 +32,39 @@ interface Tool {
   capability_tags: string[];
 }
 
+/**
+ * v6 coverage extension — Cluster A part 1 ships this on the API. When both
+ * analysis_coverage and v2_sub_scores are null the hero falls back to the
+ * legacy single-total rendering so older scans still look right.
+ */
+interface ScoreDetailV2SubScores {
+  schema_score: number;
+  ecosystem_score: number;
+  protocol_score: number;
+  adversarial_score: number;
+  compliance_score: number;
+  supply_chain_score: number;
+  infrastructure_score: number;
+  code_score: number;
+}
+
+interface AnalysisCoverage {
+  had_source_code: boolean;
+  had_connection: boolean;
+  had_dependencies: boolean;
+  coverage_ratio: number;
+  techniques_run: string[];
+  rules_executed: number;
+  rules_skipped_no_data: number;
+}
+
+type CoverageBand = "high" | "medium" | "low" | "minimal";
+
 interface ScoreDetail {
   total_score: number;
+  coverage_band?: CoverageBand | null;
+  v2_sub_scores?: ScoreDetailV2SubScores | null;
+  analysis_coverage?: AnalysisCoverage | null;
 }
 
 interface ScanStages {
@@ -112,6 +150,46 @@ function fmtDateTime(iso: string | null): string {
   }
 }
 
+// ── Coverage helpers (v6) ────────────────────────────────────────────────────
+
+/**
+ * Coverage band → CSS color token. Maps to the existing --good/--moderate/
+ * --poor/--critical scale (kept identical to score-band tokens so a CISO
+ * sees confidence-color matching the score-color story without learning a
+ * second palette).
+ */
+function coverageBandColor(band: CoverageBand): string {
+  if (band === "high") return "var(--good)";
+  if (band === "medium") return "var(--moderate)";
+  if (band === "low") return "var(--poor)";
+  return "var(--critical)"; // minimal
+}
+
+function coverageBandLabel(band: CoverageBand): string {
+  return { high: "HIGH", medium: "MEDIUM", low: "LOW", minimal: "MINIMAL" }[band];
+}
+
+/**
+ * 8-bucket v2 sub-score row. Order is fixed and tested. Each row is a
+ * label/value pair rendered in a two-column grid via dl/dt/dd for screen
+ * readers. "code" is intentionally last — it migrates out of the legacy
+ * code_score bucket into the v2 row so all eight risk domains read as
+ * a single coherent set.
+ */
+const V2_SUB_SCORE_BUCKETS: ReadonlyArray<{
+  key: keyof ScoreDetailV2SubScores;
+  label: string;
+}> = [
+  { key: "schema_score", label: "Schema" },
+  { key: "ecosystem_score", label: "Ecosystem" },
+  { key: "protocol_score", label: "Protocol" },
+  { key: "adversarial_score", label: "Adversarial" },
+  { key: "compliance_score", label: "Compliance" },
+  { key: "supply_chain_score", label: "Supply chain" },
+  { key: "infrastructure_score", label: "Infrastructure" },
+  { key: "code_score", label: "Code" },
+];
+
 // ── Verdict generation (deterministic, no LLM per ADR-006) ───────────────────
 
 const DOMAIN_BY_TAG: Record<string, string> = {
@@ -130,7 +208,7 @@ const DOMAIN_PRIORITY = [
   "Filesystem",
 ];
 
-function distinctDomains(tools: Tool[]): string[] {
+export function distinctDomains(tools: Tool[]): string[] {
   const set = new Set<string>();
   for (const t of tools) {
     for (const tag of t.capability_tags ?? []) {
@@ -143,7 +221,7 @@ function distinctDomains(tools: Tool[]): string[] {
   );
 }
 
-function buildVerdict(toolCount: number, tools: Tool[], findings: Finding[]): string {
+export function buildVerdict(toolCount: number, tools: Tool[], findings: Finding[]): string {
   const domains = distinctDomains(tools);
   const c = findings.filter((f) => f.severity === "critical").length;
   const h = findings.filter((f) => f.severity === "high").length;
@@ -167,6 +245,94 @@ function buildVerdict(toolCount: number, tools: Tool[], findings: Finding[]): st
   return `${exposurePart}. ${sevPart}`;
 }
 
+// ── Coverage sub-components ──────────────────────────────────────────────────
+
+function CoverageBandChip({ band }: { band: CoverageBand }) {
+  const label = coverageBandLabel(band);
+  const color = coverageBandColor(band);
+  return (
+    <span
+      className={`esh-cov-chip esh-cov-chip-${band}`}
+      style={{ color, borderColor: color }}
+      role="status"
+      aria-label={`Analysis confidence: ${label.toLowerCase()}`}
+      title={
+        band === "high"
+          ? "High confidence: source code parsed, live initialize+tools/list completed, dependency manifest audited."
+          : band === "medium"
+          ? "Medium confidence: most analyzer techniques ran, but some inputs were missing."
+          : band === "low"
+          ? "Low confidence: core inputs were missing — score is indicative, not definitive."
+          : "Minimal confidence: almost no inputs were available. Treat the score as a placeholder."
+      }
+    >
+      {label} confidence
+    </span>
+  );
+}
+
+function CoveragePips({ coverage }: { coverage: AnalysisCoverage }) {
+  const pips: Array<{ key: string; label: string; present: boolean; title: string }> = [
+    {
+      key: "source",
+      label: "source",
+      present: coverage.had_source_code,
+      title: "Source code fetched and parsed",
+    },
+    {
+      key: "live",
+      label: "live",
+      present: coverage.had_connection,
+      title: "Live MCP initialize+tools/list completed",
+    },
+    {
+      key: "deps",
+      label: "deps",
+      present: coverage.had_dependencies,
+      title: "Dependency manifest audited",
+    },
+  ];
+  return (
+    <ul className="esh-cov-pips" role="list" aria-label="Inputs available to the analyzer">
+      {pips.map((p) => (
+        <li
+          key={p.key}
+          className={`esh-cov-pip esh-cov-pip-${p.present ? "on" : "off"}`}
+          title={`${p.title}${p.present ? "" : " — NOT available for this scan"}`}
+          aria-label={`${p.label}: ${p.present ? "available" : "missing"}`}
+        >
+          <span className="esh-cov-pip-glyph" aria-hidden="true">
+            {p.present ? "✓" : "×"}
+          </span>
+          <span className="esh-cov-pip-label">{p.label}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function V2SubScoreRow({ subs }: { subs: ScoreDetailV2SubScores }) {
+  return (
+    <dl className="esh-cov-subscores" aria-label="Risk-domain sub-scores">
+      {V2_SUB_SCORE_BUCKETS.map(({ key, label }) => {
+        const value = subs[key];
+        const band = scoreBand(value);
+        return (
+          <div key={key} className="esh-cov-subscore" data-bucket={key}>
+            <dt className="esh-cov-subscore-label">{label}</dt>
+            <dd
+              className={`esh-cov-subscore-val esh-cov-subscore-val-${band}`}
+              style={{ color: `var(--${band})` }}
+            >
+              {value}
+            </dd>
+          </div>
+        );
+      })}
+    </dl>
+  );
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function EvidenceSummaryHero(props: Props) {
@@ -182,7 +348,24 @@ export default function EvidenceSummaryHero(props: Props) {
   const verdict = buildVerdict(props.tools.length, props.tools, props.findings);
 
   const findingsCount = props.findings.length;
-  const totalRules = props.total_rules ?? 164;
+  // No fallback — Cluster A reviewer M4: hard-coding the active rule count
+  // here drifts every time the registry changes (177 → 164 already happened).
+  // When the prop is absent, render an honest em-dash; the truth lives in
+  // analysis_coverage's rules_executed + rules_skipped_no_data, surfaced
+  // separately as the "Coverage" meta row below.
+  const totalRules: number | null = props.total_rules ?? null;
+
+  // v6 coverage extensions — both null on legacy scans → fall back to the
+  // existing rendering exactly as before.
+  const coverage = props.score_detail?.analysis_coverage ?? null;
+  const v2Subs = props.score_detail?.v2_sub_scores ?? null;
+  const coverageBand = props.score_detail?.coverage_band ?? null;
+  const hasCoverageExtras = Boolean(coverage || v2Subs || coverageBand);
+
+  // "X of Y rules executed" — only when analysis_coverage is present.
+  const rulesExecutedMeta = coverage
+    ? `${coverage.rules_executed} of ${coverage.rules_executed + coverage.rules_skipped_no_data} rules executed`
+    : null;
 
   return (
     <section className="esh-hero">
@@ -214,6 +397,15 @@ export default function EvidenceSummaryHero(props: Props) {
         >
           {bandLabel(band)}
         </div>
+
+        {/* v6 — confidence chip + coverage pips. Only render when we have
+            actual coverage signal; otherwise the legacy hero looks unchanged. */}
+        {hasCoverageExtras && (
+          <div className="esh-cov-cluster" data-testid="esh-cov-cluster">
+            {coverageBand && <CoverageBandChip band={coverageBand} />}
+            {coverage && <CoveragePips coverage={coverage} />}
+          </div>
+        )}
       </div>
 
       {/* ── Middle column: identity + verdict ─────────────────────────── */}
@@ -262,6 +454,11 @@ export default function EvidenceSummaryHero(props: Props) {
             </a>
           )}
         </div>
+
+        {/* v6 — 8-bucket sub-score row. Sits under the verdict so a CISO
+            scanning the page sees the breakdown right after the prose. When
+            v2_sub_scores is null we keep the legacy single-total story. */}
+        {v2Subs && <V2SubScoreRow subs={v2Subs} />}
       </div>
 
       {/* ── Right column: scan metadata + actions ─────────────────────── */}
@@ -275,13 +472,24 @@ export default function EvidenceSummaryHero(props: Props) {
         <div className="esh-meta-row">
           <span className="esh-meta-label">Engine</span>
           <span className="esh-meta-val esh-meta-mono">
-            rules:{totalRules}
+            rules:{totalRules ?? "—"}
           </span>
         </div>
+        {rulesExecutedMeta && (
+          <div className="esh-meta-row" data-testid="esh-cov-rules-executed">
+            <span className="esh-meta-label">Coverage</span>
+            <span
+              className="esh-meta-val esh-meta-mono"
+              title="Rules whose required inputs were available on this scan"
+            >
+              {rulesExecutedMeta}
+            </span>
+          </div>
+        )}
         <div className="esh-meta-row">
           <span className="esh-meta-label">Findings</span>
           <span className="esh-meta-val esh-meta-mono">
-            {findingsCount} of {totalRules} rules
+            {findingsCount} of {totalRules ?? "—"} rules
           </span>
         </div>
         <div className="esh-meta-row">

@@ -650,7 +650,44 @@ export class DatabaseQueries {
     description_score: number;
     behavior_score: number;
     owasp_coverage: Record<string, boolean>;
+    /**
+     * The 8 v2 sub-scores (schema/ecosystem/protocol/adversarial/compliance/
+     * supply_chain/infrastructure) and `analysis_coverage` are produced by the
+     * scorer (`packages/scorer/src/scorer.ts → ScoreResult`) but are NOT yet
+     * persisted in the `scores` table.
+     *
+     * TODO: data populates after migration <NNN>_add_v2_score_fields.sql lands
+     * (adds: schema_score, ecosystem_score, protocol_score, adversarial_score,
+     * compliance_score, supply_chain_score, infrastructure_score, coverage_band,
+     * analysis_coverage JSONB). Until then we return null and the API surfaces
+     * `score_detail.coverage_band = null`, `score_detail.v2_sub_scores = null`,
+     * `score_detail.analysis_coverage = null` for every existing scan.
+     */
+    coverage_band: "high" | "medium" | "low" | "minimal" | null;
+    v2_sub_scores: {
+      schema_score: number;
+      ecosystem_score: number;
+      protocol_score: number;
+      adversarial_score: number;
+      compliance_score: number;
+      supply_chain_score: number;
+      infrastructure_score: number;
+    } | null;
+    analysis_coverage: {
+      had_source_code: boolean;
+      had_connection: boolean;
+      had_dependencies: boolean;
+      coverage_ratio: number;
+      techniques_run: string[];
+      rules_executed: number;
+      rules_skipped_no_data: number;
+    } | null;
   } | null> {
+    // SELECT only columns that actually exist today. The scenario-B fields
+    // (v2 sub-scores, coverage_band, analysis_coverage) are returned as null
+    // until the additive migration adds the columns. When that migration lands,
+    // extend the SELECT and the row → return mapping below; the API contract
+    // will not need to change because it already accepts null for these fields.
     const result = await this.pool.query(
       `SELECT total_score, code_score, deps_score, config_score, description_score, behavior_score, owasp_coverage
        FROM scores
@@ -659,7 +696,22 @@ export class DatabaseQueries {
        LIMIT 1`,
       [serverId]
     );
-    return result.rows[0] ?? null;
+    const row = result.rows[0];
+    if (!row) return null;
+    return {
+      total_score: row.total_score,
+      code_score: row.code_score,
+      deps_score: row.deps_score,
+      config_score: row.config_score,
+      description_score: row.description_score,
+      behavior_score: row.behavior_score,
+      owasp_coverage: row.owasp_coverage,
+      // Pre-migration: the columns do not yet exist. Return null for older
+      // scans; new scans will populate these once the migration ships.
+      coverage_band: null,
+      v2_sub_scores: null,
+      analysis_coverage: null,
+    };
   }
 
   async getScoreHistory(serverId: string) {

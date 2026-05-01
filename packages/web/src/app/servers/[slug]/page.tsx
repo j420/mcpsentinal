@@ -1,18 +1,18 @@
 import React from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import CategoryDeepDivePanel from "@/components/CategoryDeepDivePanel";
-import type { CddFinding } from "@/components/cdd-data";
 import ServerProfileCard from "@/components/ServerProfileCard";
 import type { ServerProfileData } from "@/components/ServerProfileCard";
 import AttackChainCard from "@/components/AttackChainCard";
 import type { AttackChainItem } from "@/components/AttackChainCard";
 import EvidenceSummaryHero from "@/components/EvidenceSummaryHero";
+import SignedEvidencePack from "@/components/SignedEvidencePack";
 import AttackSurfaceStrip from "@/components/AttackSurfaceStrip";
 import FindingsEvidenceTab from "@/components/FindingsEvidenceTab";
 import GradeBreakdownTab from "@/components/GradeBreakdownTab";
 import VersionHistoryTab from "@/components/VersionHistoryTab";
 import FooterAttestationBar from "@/components/FooterAttestationBar";
+import HonestGaps from "@/components/HonestGaps";
 import ServerTabs, { type ServerTab } from "./ServerTabs";
 import ComplianceTab from "./ComplianceTab";
 
@@ -49,6 +49,42 @@ interface ScoreDetail {
   config_score: number;
   description_score: number;
   behavior_score: number;
+  /**
+   * Coverage band for the score — honest confidence label rendered next to the
+   * total. "minimal" means we had so little to go on (no source code, no live
+   * connection, no deps manifest) that the score is closer to a guess than a
+   * measurement. Absent on pre-coverage scans.
+   */
+  coverage_band?: "high" | "medium" | "low" | "minimal" | null;
+  /**
+   * Phase-2 8-bucket sub-scores (each 0–100). When present, replaces the
+   * legacy 5-bucket display with the v2 risk-domain breakdown. Absent on
+   * pre-Phase-2 scans — the hero falls back to legacy rendering.
+   */
+  v2_sub_scores?: {
+    schema_score: number;
+    ecosystem_score: number;
+    protocol_score: number;
+    adversarial_score: number;
+    compliance_score: number;
+    supply_chain_score: number;
+    infrastructure_score: number;
+    code_score: number;
+  } | null;
+  /**
+   * What the analyzer actually had to work with on this scan — drives the
+   * "what we analysed" pips and the "X of Y rules executed" inline meta.
+   * Absent on pre-coverage scans.
+   */
+  analysis_coverage?: {
+    had_source_code: boolean;
+    had_connection: boolean;
+    had_dependencies: boolean;
+    coverage_ratio: number;
+    techniques_run: string[];
+    rules_executed: number;
+    rules_skipped_no_data: number;
+  } | null;
 }
 
 interface ScanStages {
@@ -90,6 +126,12 @@ interface ServerDetail {
   profile?: ServerProfileData | null;
   /** Attack chains involving this server. Absent until API serves attack chain data. */
   attack_chains?: AttackChainItem[] | null;
+  // NOTE: `analysis_coverage` is nested under `score_detail.analysis_coverage`
+  // (per the API contract in packages/database/src/schemas.ts ::
+  // ScoreDetailResponseSchema). Do not declare it here as a top-level field
+  // — Cluster A reviewer B2 caught the divergence: a top-level reference is
+  // always undefined, which makes HonestGaps lie about coverage on every
+  // page view.
 }
 
 // ── Data Fetching ─────────────────────────────────────────────────────────────
@@ -142,44 +184,13 @@ const OWASP_NAMES: Record<string, string> = {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default async function ServerDetailPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = await params;
-  const server = await getServer(slug);
-
-  if (!server) return notFound();
-
-  const findings = server.findings ?? [];
-  const tools = server.tools ?? [];
-  const cddFindings: CddFinding[] = findings.map((f) => ({
-    rule_id: f.rule_id,
-    severity: f.severity,
-  }));
-
-  // ── Tab panels (rendered as RSC subtrees, passed across the boundary) ─────
-  const findingsPanel = (
-    <FindingsEvidenceTab findings={findings} scanId={null} />
-  );
-
-  const gradeBreakdownPanel = (
-    <GradeBreakdownTab
-      score_detail={server.score_detail ?? null}
-      findings={findings}
-    />
-  );
-
-  const deepDivePanel = (
-    <div id="deep-dive">
-      <CategoryDeepDivePanel findings={cddFindings} fullFindings={findings} />
-    </div>
-  );
-
-  const versionHistoryPanel = <VersionHistoryTab slug={slug} apiUrl={API_URL} />;
-
-  const toolsPanel = (
+// ── Relocated section: Tools.
+// Was a separate "Tools" tab; now lives between AttackSurfaceStrip and
+// the relocated Grade Breakdown so the capability inventory sits with
+// the rest of the surface picture. Markup is the original inline grid
+// — only the location changed.
+function ToolsSection({ tools }: { tools: Tool[] }) {
+  return (
     <section id="tools" className="sd-section">
       <h2 className="sd-section-title">
         Tools
@@ -210,23 +221,77 @@ export default async function ServerDetailPage({
       )}
     </section>
   );
+}
+
+export default async function ServerDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const { slug } = await params;
+  // Next 15 — searchParams is a Promise. Defaulted to an empty object so
+  // routes that didn't pass it (e.g. tests, prerender) don't crash.
+  const sp = (await searchParams) ?? {};
+  const groupRaw = Array.isArray(sp.group) ? sp.group[0] : sp.group;
+  const groupByCategory = groupRaw === "category";
+
+  const server = await getServer(slug);
+
+  if (!server) return notFound();
+
+  const findings = server.findings ?? [];
+  const tools = server.tools ?? [];
+
+  // ── Tab panels (rendered as RSC subtrees, passed across the boundary) ─────
+  // Tab consolidation (audit Invention #5):
+  //   Removed: Grade Breakdown, Deep Dive, Tools
+  //   Relocated: Grade + Tools to dedicated sections above the tabs;
+  //              Deep Dive collapsed into Findings via ?group=category.
+  // Cluster A ships 3 tabs (Findings · Compliance · Version History). The
+  // audit doc's target IA is 4 — "Risk Boundary" (Invention #3) is the
+  // missing tab and is deliberately deferred to Cluster B per the staged
+  // rollout in /root/.claude/plans/have-a-go-through-valiant-lollipop.md.
+  const findingsLabel = groupByCategory
+    ? "Findings & Evidence (grouped)"
+    : "Findings & Evidence";
+
+  const findingsPanel = (
+    <>
+      <div className="sd-findings-toggle" role="group" aria-label="Findings view">
+        <a
+          className={`sd-toggle-link${!groupByCategory ? " sd-toggle-active" : ""}`}
+          href={`?`}
+          aria-current={!groupByCategory ? "page" : undefined}
+        >
+          Flat list
+        </a>
+        <span className="sd-toggle-sep" aria-hidden="true">·</span>
+        <a
+          className={`sd-toggle-link${groupByCategory ? " sd-toggle-active" : ""}`}
+          href={`?group=category`}
+          aria-current={groupByCategory ? "page" : undefined}
+        >
+          Group by OWASP category
+        </a>
+      </div>
+      <FindingsEvidenceTab
+        findings={findings}
+        scanId={null}
+        groupByCategory={groupByCategory}
+      />
+    </>
+  );
+
+  const versionHistoryPanel = <VersionHistoryTab slug={slug} apiUrl={API_URL} />;
 
   const tabs: ServerTab[] = [
     {
       id: "findings",
-      label: "Findings & Evidence",
+      label: findingsLabel,
       count: findings.length,
       content: findingsPanel,
-    },
-    {
-      id: "grade-breakdown",
-      label: "Grade Breakdown",
-      content: gradeBreakdownPanel,
-    },
-    {
-      id: "deep-dive",
-      label: "Deep Dive",
-      content: deepDivePanel,
     },
     {
       id: "compliance",
@@ -237,12 +302,6 @@ export default async function ServerDetailPage({
       id: "version-history",
       label: "Version History",
       content: versionHistoryPanel,
-    },
-    {
-      id: "tools",
-      label: "Tools",
-      count: tools.length,
-      content: toolsPanel,
     },
   ];
 
@@ -275,8 +334,22 @@ export default async function ServerDetailPage({
         tools={tools}
       />
 
+      {/* ── Signed Compliance Pack (Phase 6 invention #1 — top-of-page CTA) ─ */}
+      <SignedEvidencePack slug={slug} apiUrl={API_URL} />
+
       {/* ── Attack Surface Strip (capability domain cards) ─────────────── */}
       <AttackSurfaceStrip tools={tools} findings={findings} />
+
+      {/* ── Tools (relocated from killed tab — audit Invention #5) ─────── */}
+      <ToolsSection tools={tools} />
+
+      {/* ── Grade Breakdown (relocated from killed tab — audit Inv. #5) ── */}
+      <section id="grade-breakdown" className="sd-section">
+        <GradeBreakdownTab
+          score_detail={server.score_detail ?? null}
+          findings={findings}
+        />
+      </section>
 
       {/* ── OWASP Coverage (kept exactly as-is) ────────────────────────── */}
       {server.owasp_coverage && Object.keys(server.owasp_coverage).length > 0 && (
@@ -312,6 +385,12 @@ export default async function ServerDetailPage({
 
       {/* ── Tabbed Detail Sections ─────────────────────────── */}
       <ServerTabs tabs={tabs} />
+
+      {/* ── Honest Gaps (Invention #4) — what we did NOT analyse ─ */}
+      <HonestGaps
+        analysis_coverage={server.score_detail?.analysis_coverage ?? null}
+        findingsCount={findings.length}
+      />
 
       {/* ── Footer attestation bar ─────────────────────────── */}
       <FooterAttestationBar

@@ -10462,3 +10462,438 @@ pre code { background: transparent; padding: 0; }
   transition: background 0.15s, color 0.15s;
 }
 .fab-export-fmt:hover { background: var(--accent-2-sub); color: var(--accent-2-hover); }
+
+/* ── SignedEvidencePack (sep-*) ──────────────────────────────────────── */
+/* Top-of-page CTA promoting the 7-framework signed compliance reports.   */
+/* Reuses --surface / --border-md / --r-lg from the hero so the two cards */
+/* read as a single "buyer header" stack.                                 */
+
+.sep-card {
+  background: var(--surface);
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-lg);
+  padding: var(--s5) var(--s6);
+  margin-bottom: var(--s5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+
+.sep-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s4);
+}
+.sep-head-text { display: flex; flex-direction: column; gap: var(--s1); flex: 1 1 auto; }
+.sep-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.sep-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.2;
+}
+.sep-tagline { margin: 0; color: var(--text-2); font-size: 14px; line-height: 1.5; max-width: 64ch; }
+
+.sep-warn {
+  flex: 0 0 auto;
+  padding: var(--s1) var(--s2);
+  border: 1px solid var(--poor-border);
+  background: var(--poor-sub);
+  color: var(--poor);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+.sep-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  padding: var(--s3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+.sep-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s1) var(--s3);
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  font-size: 12px;
+}
+.sep-chip-k { color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; font-size: 10px; }
+.sep-chip-v { color: var(--text); font-weight: 500; }
+.sep-chip-mono { font-family: var(--font-mono); }
+.sep-chip-sig .sep-chip-v { color: var(--accent-2); }
+
+.sep-grid { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s1); }
+.sep-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+  padding: var(--s3) var(--s4);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  transition: border-color 0.15s, background 0.15s;
+}
+.sep-row:hover { border-color: var(--border-md); background: var(--surface-3); }
+.sep-row-id { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sep-row-name { font-weight: 600; color: var(--text); font-size: 14px; }
+.sep-row-sub { color: var(--text-3); font-size: 12px; }
+
+.sep-row-actions { display: flex; gap: var(--s1); flex: 0 0 auto; }
+.sep-fmt {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  padding: var(--s1) var(--s3);
+  color: var(--text-2);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.sep-fmt:hover { background: var(--accent-2-sub); color: var(--accent-2-hover); border-color: var(--accent-2-ring); }
+.sep-fmt-pdf {
+  background: var(--accent-2-sub);
+  color: var(--accent-2);
+  border-color: var(--accent-2-ring);
+}
+.sep-fmt-pdf:hover { background: var(--accent-2); color: var(--text-inv); border-color: var(--accent-2); }
+.sep-fmt-badge { color: var(--text-3); }
+
+.sep-foot { margin: 0; color: var(--text-3); font-size: 12px; line-height: 1.6; }
+.sep-mono { font-family: var(--font-mono); color: var(--text-2); padding: 1px 6px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-sm); }
+
+@media (max-width: 720px) {
+  .sep-row { flex-direction: column; align-items: flex-start; gap: var(--s2); }
+  .sep-row-actions { flex-wrap: wrap; }
+}
+
+/* ── HonestGaps (hg-*) ─────────────────────────────────────────────────
+   "What we did not analyse — and why" — sits above FooterAttestationBar.
+   Visual intent: a grave, low-key card that reads as the report's own
+   self-disclosure rather than a UI flourish. Reuses --good/moderate/poor/
+   --critical for the coverage band chip so it shares the score hero's
+   visual language without coupling to the score itself.
+   ────────────────────────────────────────────────────────────────────── */
+
+.hg-card {
+  background: var(--surface);
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-lg);
+  padding: var(--s5) var(--s6);
+  margin-top: var(--s6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+
+.hg-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s4);
+}
+.hg-head-text { display: flex; flex-direction: column; gap: var(--s1); flex: 1 1 auto; min-width: 0; }
+.hg-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-2);
+}
+.hg-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.25;
+}
+.hg-tagline {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.55;
+  max-width: 64ch;
+}
+
+/* Coverage band chip — colour keyed off the band (high/medium/low/minimal) */
+.hg-band-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s1) var(--s3);
+  border-radius: var(--r-full);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-2);
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.hg-band-key { color: var(--text-3); text-transform: uppercase; font-size: 10px; }
+.hg-band-value { color: inherit; }
+
+.hg-band-good     { color: var(--good);     background: var(--good-sub);     border-color: var(--good-border); }
+.hg-band-moderate { color: var(--moderate); background: var(--moderate-sub); border-color: var(--moderate-border); }
+.hg-band-poor     { color: var(--poor);     background: var(--poor-sub);     border-color: var(--poor-border); }
+.hg-band-critical { color: var(--critical); background: var(--critical-sub); border-color: var(--critical-border); }
+.hg-band-unknown  { color: var(--text-3);   background: var(--surface-2);    border-color: var(--border); }
+
+/* Rows */
+.hg-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+.hg-row {
+  display: grid;
+  grid-template-columns: 18px minmax(140px, 1fr) 5fr;
+  align-items: baseline;
+  gap: var(--s3);
+  padding: var(--s2) var(--s3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.hg-mark {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  text-align: center;
+  color: var(--text-3);
+}
+.hg-row-label {
+  color: var(--text);
+  font-weight: 500;
+}
+.hg-row-text {
+  color: var(--text-2);
+}
+.hg-row-ok      .hg-mark      { color: var(--good); }
+.hg-row-miss    .hg-mark      { color: var(--text-3); }
+.hg-row-miss    .hg-row-text  { color: var(--text-3); font-style: italic; }
+.hg-row-unknown .hg-mark      { color: var(--text-3); }
+.hg-row-unknown .hg-row-text  { color: var(--text-3); font-style: italic; }
+.hg-row-static  .hg-mark      { color: var(--text-3); opacity: 0.7; }
+
+/* Inline mono code/value */
+.hg-mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+  padding: 0 var(--s1);
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+}
+
+/* Footer line */
+.hg-foot {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  align-items: baseline;
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-3);
+}
+.hg-foot-key {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.hg-foot-sep { color: var(--text-3); opacity: 0.6; }
+.hg-foot-val { color: var(--text-2); }
+
+@media (max-width: 720px) {
+  .hg-head { flex-direction: column; }
+  .hg-band-chip { align-self: flex-start; }
+  .hg-row {
+    grid-template-columns: 18px 1fr;
+    grid-template-rows: auto auto;
+  }
+  .hg-row-text { grid-column: 2 / -1; }
+}
+
+/* ── Findings view toggle (relocated Deep-Dive trigger) ──────────────── */
+.sd-findings-toggle {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s2);
+  margin-bottom: var(--s3);
+  padding: var(--s1) var(--s3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  color: var(--text-3);
+}
+.sd-toggle-link {
+  color: var(--text-3);
+  text-decoration: none;
+  padding: 1px var(--s1);
+  border-radius: var(--r-sm);
+}
+.sd-toggle-link:hover { color: var(--text-2); }
+.sd-toggle-active { color: var(--accent-2); font-weight: 600; }
+.sd-toggle-sep { color: var(--text-3); opacity: 0.5; }
+
+/* ── EvidenceSummaryHero v6 coverage (esh-cov-*) ─ */
+/*
+ * Honest confidence affordances rendered next to the score column when
+ * score_detail.coverage_band / analysis_coverage / v2_sub_scores are present.
+ * Backwards-compat: when all three are null the legacy hero renders unchanged.
+ * All tokens come from the existing :root system in globals.css.
+ */
+.esh-cov-cluster {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  margin-top: var(--s4);
+  width: 100%;
+}
+
+.esh-cov-chip {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  padding: 2px var(--s2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: var(--r-full);
+}
+
+.esh-cov-pips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.esh-cov-pip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px var(--s2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text-3);
+}
+
+.esh-cov-pip-on {
+  color: var(--good);
+  border-color: var(--good);
+  background: var(--surface-3);
+}
+
+.esh-cov-pip-off {
+  color: var(--text-3);
+  border-color: var(--border);
+  background: var(--surface-2);
+  text-decoration: line-through;
+  text-decoration-color: var(--text-3);
+}
+
+.esh-cov-pip-glyph {
+  display: inline-block;
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1;
+  width: 10px;
+  text-align: center;
+}
+
+.esh-cov-pip-on .esh-cov-pip-glyph { color: var(--good); }
+.esh-cov-pip-off .esh-cov-pip-glyph { color: var(--text-3); }
+
+.esh-cov-pip-label {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+/* 8-bucket sub-score row — two columns of four, label/value stacked.
+   Lives at the bottom of the identity column so it reads after the verdict. */
+.esh-cov-subscores {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s2) var(--s4);
+  margin: var(--s4) 0 0;
+  padding: var(--s3) 0 0;
+  border-top: 1px solid var(--border);
+}
+
+.esh-cov-subscore {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+}
+
+.esh-cov-subscore-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin: 0;
+}
+
+.esh-cov-subscore-val {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.1;
+  margin: 0;
+}
+
+@media (max-width: 920px) {
+  .esh-cov-cluster { margin-top: var(--s3); }
+  .esh-cov-subscores {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .esh-cov-subscores { grid-template-columns: 1fr; }
+}
