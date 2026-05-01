@@ -10462,3 +10462,127 @@ pre code { background: transparent; padding: 0; }
   transition: background 0.15s, color 0.15s;
 }
 .fab-export-fmt:hover { background: var(--accent-2-sub); color: var(--accent-2-hover); }
+
+/* ── SignedEvidencePack (sep-*) ──────────────────────────────────────── */
+/* Top-of-page CTA promoting the 7-framework signed compliance reports.   */
+/* Reuses --surface / --border-md / --r-lg from the hero so the two cards */
+/* read as a single "buyer header" stack.                                 */
+
+.sep-card {
+  background: var(--surface);
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-lg);
+  padding: var(--s5) var(--s6);
+  margin-bottom: var(--s5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+
+.sep-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s4);
+}
+.sep-head-text { display: flex; flex-direction: column; gap: var(--s1); flex: 1 1 auto; }
+.sep-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.sep-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.2;
+}
+.sep-tagline { margin: 0; color: var(--text-2); font-size: 14px; line-height: 1.5; max-width: 64ch; }
+
+.sep-warn {
+  flex: 0 0 auto;
+  padding: var(--s1) var(--s2);
+  border: 1px solid var(--poor-border);
+  background: var(--poor-sub);
+  color: var(--poor);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+.sep-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  padding: var(--s3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+.sep-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s1) var(--s3);
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  font-size: 12px;
+}
+.sep-chip-k { color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; font-size: 10px; }
+.sep-chip-v { color: var(--text); font-weight: 500; }
+.sep-chip-mono { font-family: var(--font-mono); }
+.sep-chip-sig .sep-chip-v { color: var(--accent-2); }
+
+.sep-grid { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s1); }
+.sep-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+  padding: var(--s3) var(--s4);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  transition: border-color 0.15s, background 0.15s;
+}
+.sep-row:hover { border-color: var(--border-md); background: var(--surface-3); }
+.sep-row-id { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sep-row-name { font-weight: 600; color: var(--text); font-size: 14px; }
+.sep-row-sub { color: var(--text-3); font-size: 12px; }
+
+.sep-row-actions { display: flex; gap: var(--s1); flex: 0 0 auto; }
+.sep-fmt {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  padding: var(--s1) var(--s3);
+  color: var(--text-2);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.sep-fmt:hover { background: var(--accent-2-sub); color: var(--accent-2-hover); border-color: var(--accent-2-ring); }
+.sep-fmt-pdf {
+  background: var(--accent-2-sub);
+  color: var(--accent-2);
+  border-color: var(--accent-2-ring);
+}
+.sep-fmt-pdf:hover { background: var(--accent-2); color: var(--text-inv); border-color: var(--accent-2); }
+.sep-fmt-badge { color: var(--text-3); }
+
+.sep-foot { margin: 0; color: var(--text-3); font-size: 12px; line-height: 1.6; }
+.sep-mono { font-family: var(--font-mono); color: var(--text-2); padding: 1px 6px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-sm); }
+
+@media (max-width: 720px) {
+  .sep-row { flex-direction: column; align-items: flex-start; gap: var(--s2); }
+  .sep-row-actions { flex-wrap: wrap; }
+}

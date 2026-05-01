@@ -8,6 +8,7 @@ import type { ServerProfileData } from "@/components/ServerProfileCard";
 import AttackChainCard from "@/components/AttackChainCard";
 import type { AttackChainItem } from "@/components/AttackChainCard";
 import EvidenceSummaryHero from "@/components/EvidenceSummaryHero";
+import SignedEvidencePack from "@/components/SignedEvidencePack";
 import AttackSurfaceStrip from "@/components/AttackSurfaceStrip";
 import FindingsEvidenceTab from "@/components/FindingsEvidenceTab";
 import GradeBreakdownTab from "@/components/GradeBreakdownTab";
@@ -274,6 +275,9 @@ export default async function ServerDetailPage({
         findings={findings}
         tools={tools}
       />
+
+      {/* ── Signed Compliance Pack (Phase 6 invention #1 — top-of-page CTA) ─ */}
+      <SignedEvidencePack slug={slug} apiUrl={API_URL} />
 
       {/* ── Attack Surface Strip (capability domain cards) ─────────────── */}
       <AttackSurfaceStrip tools={tools} findings={findings} />
