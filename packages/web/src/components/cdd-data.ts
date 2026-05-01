@@ -21,6 +21,24 @@ export interface FullFinding {
   confidence?: number;
   /** Phase 1: structured evidence chain. Absent on pre-Phase-1 data. */
   evidence_chain?: Record<string, unknown> | null;
+  /**
+   * Cluster B (Invention #8): per-finding framework cross-walk. Shape frozen
+   * by the API ContractFindingResponseSchema; consumed verbatim. Absent on
+   * pre-cross-walk API responses (backwards-compat). When present, an empty
+   * array signals "no current alignment" — render an honest gap, not nothing.
+   */
+  framework_controls?: Array<{
+    framework_id:
+      | "eu_ai_act"
+      | "iso_27001"
+      | "owasp_mcp"
+      | "owasp_asi"
+      | "cosai_mcp"
+      | "maestro"
+      | "mitre_atlas";
+    control_id: string;
+    control_title: string;
+  }>;
 }
 
 // ── Rule names ─────────────────────────────────────────────────────────────

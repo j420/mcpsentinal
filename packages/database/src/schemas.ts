@@ -749,6 +749,165 @@ export const ComplianceTestCacheSchema = z.object({
 });
 export type ComplianceTestCache = z.infer<typeof ComplianceTestCacheSchema>;
 
+// ─── Compliance Posture Matrix (Cluster B) ──────────────────────────────────
+//
+// Aggregate response for `GET /api/v1/servers/:slug/compliance` — a one-shot
+// summary across all 7 compliance frameworks so the public registry can
+// render the Framework Posture Matrix without 7 round-trips to the per-
+// framework signed endpoints.
+//
+// This is a NAVIGATIONAL summary, not an auditable artifact. The signed,
+// HMAC-attested artifacts continue to live at the per-framework
+// `/compliance/:framework.{json,html,pdf}` endpoints.
+//
+// `.passthrough()` on every schema is deliberate (Cluster A B3 lesson):
+//   - future scorer additions, future framework registry additions, and
+//     future control-status fields MUST NOT silently null any field at the
+//     response seam. Unknown keys are forwarded verbatim to consumers.
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * One row of the per-framework matrix entry. The framework_id union is the
+ * exact set produced by `@mcp-sentinel/compliance-reports`'s `FrameworkId`
+ * type — duplicated here as a string-literal union so the database package
+ * does not need to import the compliance-reports package (which would create
+ * a layering violation: database is the lowest tier, compliance-reports
+ * depends on it).
+ */
+export const ComplianceFrameworkMatrixIdSchema = z.enum([
+  "eu_ai_act",
+  "iso_27001",
+  "owasp_mcp",
+  "owasp_asi",
+  "cosai_mcp",
+  "maestro",
+  "mitre_atlas",
+]);
+export type ComplianceFrameworkMatrixId = z.infer<typeof ComplianceFrameworkMatrixIdSchema>;
+
+/**
+ * Per-control status counts within a single framework, shaped for the
+ * Posture Matrix grid cell (met / partial / unmet / not_applicable + total).
+ *
+ * `not_applicable` is rendered explicitly — never hidden — because a
+ * regulator-grade product must surface honest gaps (e.g. ASI10 has no
+ * static-analysis assessor in the current rule set).
+ */
+export const ComplianceControlCountsSchema = z
+  .object({
+    met: z.number().int().nonnegative(),
+    partial: z.number().int().nonnegative(),
+    unmet: z.number().int().nonnegative(),
+    not_applicable: z.number().int().nonnegative(),
+    total: z.number().int().nonnegative(),
+  })
+  .passthrough();
+export type ComplianceControlCounts = z.infer<typeof ComplianceControlCountsSchema>;
+
+/**
+ * Relative paths for the per-framework signed artifacts. Paths are
+ * relative (no host) so the frontend uses its own apiUrl env var rather
+ * than baking the API origin into the response.
+ */
+export const ComplianceFrameworkDownloadPathsSchema = z
+  .object({
+    json: z.string().min(1),
+    html: z.string().min(1),
+    pdf: z.string().min(1),
+    badge_svg: z.string().min(1),
+  })
+  .passthrough();
+export type ComplianceFrameworkDownloadPaths = z.infer<typeof ComplianceFrameworkDownloadPathsSchema>;
+
+/**
+ * One row of the Posture Matrix — one framework's summary plus
+ * navigational links into the signed-pack endpoints.
+ *
+ * `coverage_band` mirrors the same `CoverageBand` enum used by score
+ * detail (ScoreDetailResponseSchema.coverage_band) to keep the public API
+ * vocabulary consistent.
+ */
+export const ComplianceFrameworkMatrixEntrySchema = z
+  .object({
+    framework_id: ComplianceFrameworkMatrixIdSchema,
+    framework_name: z.string().min(1),
+    framework_version: z.string().min(1),
+    controls: ComplianceControlCountsSchema,
+    overall_status: z.enum(["met", "partial", "unmet", "not_applicable"]),
+    coverage_band: CoverageBand,
+    download_paths: ComplianceFrameworkDownloadPathsSchema,
+  })
+  .passthrough();
+export type ComplianceFrameworkMatrixEntry = z.infer<typeof ComplianceFrameworkMatrixEntrySchema>;
+
+/**
+ * Full response body for `GET /api/v1/servers/:slug/compliance`. The
+ * frontend Framework Posture Matrix consumes this directly; per-framework
+ * detail still requires a round-trip to the signed-pack endpoint.
+ */
+export const ComplianceMatrixResponseSchema = z
+  .object({
+    server_slug: z.string().min(1),
+    server_name: z.string().min(1),
+    /** ISO 8601; mirrors the signed report `assessed_at` field. Null when no scan exists. */
+    last_assessed_at: z.string().nullable(),
+    rules_version: z.string().min(1),
+    frameworks: z.array(ComplianceFrameworkMatrixEntrySchema),
+  })
+  .passthrough();
+export type ComplianceMatrixResponse = z.infer<typeof ComplianceMatrixResponseSchema>;
+
+/**
+ * One framework-control mapping cited by a finding. Used inside the
+ * `framework_controls[]` array attached to every row of
+ * `GET /api/v1/servers/:slug/findings`.
+ *
+ * The string-typed `framework_id` allows future framework additions
+ * without forcing a database migration (the matrix endpoint uses the
+ * stricter enum because it is the source of truth for the matrix grid).
+ */
+export const FrameworkControlMappingSchema = z
+  .object({
+    framework_id: z.string().min(1),
+    control_id: z.string().min(1),
+    control_title: z.string().min(1),
+  })
+  .passthrough();
+export type FrameworkControlMapping = z.infer<typeof FrameworkControlMappingSchema>;
+
+/**
+ * Public shape of one finding row returned by
+ * `GET /api/v1/servers/:slug/findings`. Mirrors the persisted Finding
+ * schema and adds the `framework_controls[]` cross-walk computed at the
+ * API layer from `compliance-reports/frameworks/*.ts`.
+ *
+ * The schema is intentionally additive on top of the persistence shape:
+ *   - every existing field on `findings` rows must still pass through
+ *   - `framework_controls` is ALWAYS an array, never null/undefined; an
+ *     empty array means the rule has no framework alignment yet (an
+ *     honest gap — the frontend renders "no framework cross-walk" only
+ *     on empty arrays).
+ */
+export const FindingResponseSchema = z
+  .object({
+    id: z.string().uuid(),
+    server_id: z.string().uuid(),
+    scan_id: z.string().uuid(),
+    rule_id: z.string().min(1).max(50),
+    severity: Severity,
+    evidence: z.string().min(1).max(10000),
+    remediation: z.string().min(1).max(5000),
+    owasp_category: OwaspCategory.nullable(),
+    mitre_technique: z.string().max(100).nullable(),
+    disputed: z.boolean(),
+    confidence: z.number().min(0).max(1),
+    evidence_chain: z.record(z.unknown()).nullable(),
+    created_at: z.coerce.date(),
+    framework_controls: z.array(FrameworkControlMappingSchema),
+  })
+  .passthrough();
+export type FindingResponse = z.infer<typeof FindingResponseSchema>;
+
 // ─── API Response Schemas ────────────────────────────────────────────────────
 
 export const EcosystemStatsSchema = z.object({

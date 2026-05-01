@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from "react";
 import EvidenceChainViz from "@/components/EvidenceChainViz";
 import type { EvidenceChainData } from "@/components/EvidenceChainViz";
+import { FrameworkCrosswalkRow } from "@/components/FindingsEvidenceTab";
 import {
   CddFinding,
   FullFinding,
@@ -166,7 +167,7 @@ export function buildLiveRuleTests(finding: FullFinding, fallback: RuleTest[]): 
   return fallback;
 }
 
-export default function CategoryDeepDivePanel({ findings, fullFindings }: { findings: CddFinding[]; fullFindings?: FullFinding[] }) {
+export default function CategoryDeepDivePanel({ findings, fullFindings, slug }: { findings: CddFinding[]; fullFindings?: FullFinding[]; slug?: string }) {
   const triggered = new Set(findings.map((f) => f.rule_id));
   const [activeView, setActiveView] = useState<ViewTab>("tree");
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
@@ -353,6 +354,17 @@ export default function CategoryDeepDivePanel({ findings, fullFindings }: { find
                           {f.owasp_category && <span className="cdd-finding-owasp">{f.owasp_category}</span>}
                           {f.mitre_technique && <span className="cdd-finding-mitre">{f.mitre_technique}</span>}
                         </div>
+                        {/* Cross-walk row (Cluster B Inv. #8) — renders
+                            identically to the flat-list view so a CISO sees
+                            the same per-finding control alignment regardless
+                            of grouping mode. Slug threads from page.tsx;
+                            absence falls back to no-render (back-compat). */}
+                        {slug && f.framework_controls !== undefined && (
+                          <FrameworkCrosswalkRow
+                            controls={f.framework_controls}
+                            slug={slug}
+                          />
+                        )}
                         <div className="cdd-finding-evidence">{f.evidence}</div>
                         <EvidenceChainViz
                           chain={f.evidence_chain as EvidenceChainData | null | undefined}
