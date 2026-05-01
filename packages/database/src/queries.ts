@@ -714,7 +714,24 @@ export class DatabaseQueries {
     };
   }
 
-  async getScoreHistory(serverId: string) {
+  /**
+   * Score-history rows for a server.
+   *
+   * Optional `sinceISO`: when provided, only rows with `recorded_at >= sinceISO`
+   * are returned. Used by the drift endpoint (Cluster C invention #8) to
+   * trim the result to the requested window without paging all-history.
+   * Backwards-compatible: passing no second argument returns all rows
+   * (existing /history route behaviour).
+   */
+  async getScoreHistory(serverId: string, sinceISO?: string) {
+    if (sinceISO) {
+      return (
+        await this.pool.query(
+          "SELECT * FROM score_history WHERE server_id = $1 AND recorded_at >= $2 ORDER BY recorded_at DESC",
+          [serverId, sinceISO]
+        )
+      ).rows;
+    }
     return (
       await this.pool.query(
         "SELECT * FROM score_history WHERE server_id = $1 ORDER BY recorded_at DESC",

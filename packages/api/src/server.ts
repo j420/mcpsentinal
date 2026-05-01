@@ -23,6 +23,16 @@ import {
   buildComplianceMatrix,
   getFrameworkControlsForRule,
 } from "./compliance-matrix.js";
+import {
+  buildRiskBoundary,
+  type PersistedAttackChainRow,
+  type PersistedRiskEdgeRow,
+} from "./risk-boundary.js";
+import { buildDriftResponse } from "./drift.js";
+import {
+  getDetectionQualityForRule,
+  primeDetectionQualityIndex,
+} from "./detection-quality.js";
 
 // Sentinel + rules version — mirrors the constants in compliance-report-routes.ts
 // so the Posture Matrix endpoint stamps the same `rules_version` value
@@ -287,12 +297,20 @@ app.get("/api/v1/servers/:slug", rateLimitMiddleware(), async (req: Request, res
     // absent (treated as backwards-compat for older API). Apply the same
     // memoised reverse-index lookup here so both endpoints expose the same
     // shape.
+    //
+    // Cluster C invention #4 — same multi-endpoint guarantee for the
+    // per-finding `detection_quality` footer. Page reads `server.findings`
+    // from /servers/:slug; without the augmentation here the detection-
+    // quality footer ships dark in production (the exact failure mode
+    // Cluster B reviewer B1 caught for framework_controls).
+    await primeDetectionQualityIndex();
     const findingsAugmented = findings.map((row) => {
       const r = row as Record<string, unknown>;
       const ruleId = typeof r["rule_id"] === "string" ? (r["rule_id"] as string) : "";
       return {
         ...row,
         framework_controls: ruleId ? getFrameworkControlsForRule(ruleId) : [],
+        detection_quality: ruleId ? getDetectionQualityForRule(ruleId) : null,
       };
     });
 
@@ -352,15 +370,22 @@ app.get(
         return;
       }
       const findings = await db.getFindingsForServer(server.id);
-      // Augment each row with the framework cross-walk. The reverse index
-      // is memoised at module load (first call), so this loop is O(N) in
-      // the number of findings, with one map hit per row.
+      // Augment each row with the framework cross-walk + the per-finding
+      // detection-quality footer. Both reverse indexes are memoised at
+      // module scope (first call), so this loop is O(N) in the number of
+      // findings with one map hit per row per index.
+      //
+      // Cluster C invention #4 — `detection_quality` MUST also be applied
+      // on `/servers/:slug` (the page reads server.findings from there,
+      // not from /findings). See the augmentation block in that route.
+      await primeDetectionQualityIndex();
       const augmented = findings.map((row) => {
         const r = row as Record<string, unknown>;
         const ruleId = typeof r["rule_id"] === "string" ? (r["rule_id"] as string) : "";
         return {
           ...row,
           framework_controls: ruleId ? getFrameworkControlsForRule(ruleId) : [],
+          detection_quality: ruleId ? getDetectionQualityForRule(ruleId) : null,
         };
       });
       res.json({ data: augmented });
@@ -628,6 +653,141 @@ app.get(
       res.json({ data: history });
     } catch (err) {
       logger.error(err, "History error");
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+// GET /api/v1/servers/:slug/risk-boundary — Cluster C invention #3
+//
+// Aggregate of cross-server risk patterns (P01-P12) and kill chains
+// (KC01-KC07) involving this server. Powers the "Risk Boundary" tab on
+// the server detail page. Empty arrays are honest gaps — frontend
+// renders "no cross-config exposure on file" rather than hiding.
+//
+// Declared BEFORE /risk-edges and BEFORE the badge.svg fallback so the
+// bare `/risk-boundary` segment never gets bound as a value of a more
+// permissive route. The bare path has no extra segment so collisions
+// are impossible, but explicit ordering protects against future
+// refactors.
+app.get(
+  "/api/v1/servers/:slug/risk-boundary",
+  rateLimitMiddleware(),
+  async (req: Request, res: Response) => {
+    const { slug } = req.params;
+    if (!slug || !isValidSlug(slug)) {
+      res.status(400).json({ error: "Invalid server slug" });
+      return;
+    }
+    try {
+      const server = await db.findServerBySlug(slug);
+      if (!server) {
+        res.status(404).json({ error: "Server not found" });
+        return;
+      }
+      const [riskEdges, attackChains] = await Promise.all([
+        db.getRiskEdgesForServer(server.id),
+        db.getAttackChainsForServer(server.id),
+      ]);
+      const body = buildRiskBoundary({
+        server: { id: server.id, slug: server.slug, name: server.name },
+        riskEdges: riskEdges as PersistedRiskEdgeRow[],
+        attackChains: attackChains as PersistedAttackChainRow[],
+      });
+      // Match the rest of the public surface — 5min fresh, 60s SWR.
+      res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=60");
+      res.json({ data: body });
+    } catch (err) {
+      logger.error(err, "Risk boundary error");
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+// GET /api/v1/servers/:slug/drift — Cluster C invention #8
+//
+// Surfaces G6 (rug-pull) + I14 (rolling capability drift) signals as a
+// regulator-grade headline list, plus a compact score history. Default
+// window is 90 days. Validates `?days=N` as an integer in [1, 365] —
+// anything else returns 400 with a structured error.
+//
+// Honest gap on tool fingerprints: persistence isn't wired yet (no
+// `tool_fingerprint` column on the `scans` table). Until the migration
+// `NNN_add_tool_fingerprints.sql` ships, fingerprintHeadlines is `[]`
+// and the response carries score-change headlines only. The contract
+// permits this — frontend treats empty headlines + populated
+// score_history as "wired but no fingerprint signals on file".
+const DriftQuerySchema = z.object({
+  // Coerce because Express query-params arrive as strings. Reject NaN,
+  // floats, negatives, and out-of-range values with a structured 400.
+  days: z
+    .preprocess((val) => {
+      if (val === undefined || val === null || val === "") return undefined;
+      const n = Number(val);
+      return Number.isFinite(n) ? n : NaN;
+    }, z.number().int().min(1).max(365))
+    .optional(),
+});
+
+app.get(
+  "/api/v1/servers/:slug/drift",
+  rateLimitMiddleware(),
+  async (req: Request, res: Response) => {
+    const { slug } = req.params;
+    if (!slug || !isValidSlug(slug)) {
+      res.status(400).json({ error: "Invalid server slug" });
+      return;
+    }
+    const parsedQuery = DriftQuerySchema.safeParse(req.query);
+    if (!parsedQuery.success) {
+      res
+        .status(400)
+        .json({ error: "Invalid query parameters", issues: parsedQuery.error.issues });
+      return;
+    }
+    const windowDays = parsedQuery.data.days ?? 90;
+    try {
+      const server = await db.findServerBySlug(slug);
+      if (!server) {
+        res.status(404).json({ error: "Server not found" });
+        return;
+      }
+      const sinceISO = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000).toISOString();
+      const historyRows = await db.getScoreHistory(server.id, sinceISO);
+      // Persisted shape: { id, server_id, score, findings_count,
+      // rules_version, recorded_at }. We project to the contract's
+      // `{ scanned_at, score }` so the response is byte-stable across
+      // schema changes.
+      const scoreHistory = historyRows
+        .map((row) => {
+          const r = row as Record<string, unknown>;
+          const score = Number(r["score"]);
+          const recorded = r["recorded_at"];
+          const scannedAt =
+            recorded instanceof Date
+              ? recorded.toISOString()
+              : typeof recorded === "string"
+                ? recorded
+                : null;
+          if (!scannedAt || !Number.isFinite(score)) return null;
+          return { scanned_at: scannedAt, score };
+        })
+        .filter((p): p is { scanned_at: string; score: number } => p !== null);
+
+      // TODO: backfill fingerprint headlines once migration
+      // NNN_add_tool_fingerprints.sql lands and the scanner persists
+      // ServerToolPin JSON onto each scan row. Until then, headlines
+      // come exclusively from score_history.
+      const body = buildDriftResponse({
+        serverSlug: server.slug,
+        windowDays,
+        scoreHistory,
+        fingerprintHeadlines: [],
+      });
+      res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=60");
+      res.json({ data: body });
+    } catch (err) {
+      logger.error(err, "Drift error");
       res.status(500).json({ error: "Internal server error" });
     }
   }
