@@ -12,6 +12,8 @@ import FrameworkPostureMatrix from "@/components/FrameworkPostureMatrix";
 import FindingsEvidenceTab from "@/components/FindingsEvidenceTab";
 import GradeBreakdownTab from "@/components/GradeBreakdownTab";
 import VersionHistoryTab from "@/components/VersionHistoryTab";
+import RiskBoundaryTab from "@/components/RiskBoundaryTab";
+import DriftAndHistoryTab from "@/components/DriftAndHistoryTab";
 import FooterAttestationBar from "@/components/FooterAttestationBar";
 import HonestGaps from "@/components/HonestGaps";
 import ServerTabs, { type ServerTab } from "./ServerTabs";
@@ -278,7 +280,21 @@ export default async function ServerDetailPage({
     </>
   );
 
-  const versionHistoryPanel = <VersionHistoryTab slug={slug} apiUrl={API_URL} />;
+  // Drift window — `?days=` from searchParams. Snapped to 30 / 90 / 365 by the
+  // component itself; we just pull the numeric here so the tab construction
+  // stays declarative. Cluster C audit doc target IA: 4 tabs.
+  const daysRaw = Array.isArray(sp.days) ? sp.days[0] : sp.days;
+  const driftDays = (() => {
+    const n = daysRaw == null ? NaN : Number(daysRaw);
+    return n === 30 || n === 90 || n === 365 ? n : 90;
+  })();
+
+  const driftAndHistoryPanel = (
+    <DriftAndHistoryTab slug={slug} apiUrl={API_URL} days={driftDays} />
+  );
+  // Reference kept so the orchestrator's cleanup commit (which deletes
+  // VersionHistoryTab.tsx and this import) has a single mechanical edit.
+  void VersionHistoryTab;
 
   const tabs: ServerTab[] = [
     {
@@ -293,9 +309,14 @@ export default async function ServerDetailPage({
       content: <ComplianceTab slug={slug} />,
     },
     {
-      id: "version-history",
-      label: "Version History",
-      content: versionHistoryPanel,
+      id: "risk-boundary",
+      label: "Risk Boundary",
+      content: <RiskBoundaryTab slug={slug} apiUrl={API_URL} />,
+    },
+    {
+      id: "drift-history",
+      label: "Drift & History",
+      content: driftAndHistoryPanel,
     },
   ];
 
