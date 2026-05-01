@@ -171,7 +171,12 @@ async function getFrameworkPosture(
 ): Promise<FrameworkPostureData | null> {
   try {
     const res = await fetch(
-      `${apiUrl}/api/v1/servers/${encodeURIComponent(slug)}/compliance`,
+      // Hotfix PR #218 — the aggregate moved from `/compliance` (which
+      // collided with the Phase-5 ComplianceTab consumer) to
+      // `/compliance-summary`. The signed per-framework endpoints
+      // (`/compliance/<framework>.{json,html,pdf}` etc.) and the
+      // judge-confirmed-findings tab are unaffected.
+      `${apiUrl}/api/v1/servers/${encodeURIComponent(slug)}/compliance-summary`,
       {
         next: { revalidate: 300 },
         signal: AbortSignal.timeout(4000),
