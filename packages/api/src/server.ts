@@ -33,6 +33,12 @@ import {
   getDetectionQualityForRule,
   primeDetectionQualityIndex,
 } from "./detection-quality.js";
+import {
+  buildDeepDive,
+  loadRuleMethodology,
+  loadTaxonomy,
+  type AnalysisCoverageInput as DeepDiveAnalysisCoverageInput,
+} from "./deep-dive.js";
 
 // Sentinel + rules version — mirrors the constants in compliance-report-routes.ts
 // so the Posture Matrix endpoint stamps the same `rules_version` value
@@ -391,6 +397,110 @@ app.get(
       res.json({ data: augmented });
     } catch (err) {
       logger.error(err, "Findings error");
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+// GET /api/v1/servers/:slug/deep-dive — Cluster D aggregate
+//
+// One round-trip bundle for the Deep Dive page (Cluster D agents 3/4/5).
+// Combines: taxonomy (categories + sub-categories) + per-rule methodology
+// (CHARTER edge cases + technique + confidence cap) + per-server findings
+// + framework cross-walk + detection-quality footer.
+//
+// Route-collision audit (PR #218 lesson — extends the audit doctrine):
+//   Verified by `grep -rn 'deep-dive\|deep_dive' packages/web/src/`:
+//   no existing fetch site uses this path. The path has 4 segments
+//   (servers / :slug / deep-dive); no existing route is shaped
+//   `:slug/:something/deep-dive` and there is no `/deep-dive/:framework`,
+//   so route collisions are structurally impossible against the current
+//   surface. Declared AFTER /findings (line 358) and BEFORE /compliance
+//   (line ~466) — same declaration-order discipline that resolves the
+//   `/compliance` vs `/compliance-summary` regression in PR #218.
+//
+// Multi-endpoint augmentation: this is a NEW endpoint, not an existing
+// one with new fields, so the multi-endpoint discipline (Cluster B B1
+// lesson) does not apply here — there is no other endpoint surfacing the
+// same `coverage` / `methodology` / per-category-status data, so no
+// other route needs the same augmentation. The framework cross-walk and
+// detection-quality footer are reused from existing helpers
+// (`compliance-matrix.ts` + `detection-quality.ts`) so the contract
+// nesting stays consistent with /findings + /servers/:slug.
+//
+// Response contract pinned in DeepDiveResponseSchema (passthrough on
+// every node — future scorer / taxonomy / methodology additions land
+// without an API version bump).
+//
+// Honest-gap rules (every rule, evidence-first):
+//   - findings.length > 0  → status: "findings"
+//   - findings.length == 0 + rule had its required inputs → "passed"
+//   - findings.length == 0 + a required input was missing → "skipped"
+//   - taxonomy not on file → categories: [] (frontend renders an explicit
+//     "taxonomy unavailable" state). coverage still populates from
+//     findings + analysis_coverage so the hero panel still works.
+app.get(
+  "/api/v1/servers/:slug/deep-dive",
+  rateLimitMiddleware(),
+  async (req: Request, res: Response) => {
+    const { slug } = req.params;
+    if (!slug || !isValidSlug(slug)) {
+      res.status(400).json({ error: "Invalid server slug" });
+      return;
+    }
+    try {
+      const server = await db.findServerBySlug(slug);
+      if (!server) {
+        res.status(404).json({ error: "Server not found" });
+        return;
+      }
+      // Prime the existing reverse indexes BEFORE we map over rules so the
+      // synchronous lookups inside `buildDeepDive()` are O(1) per rule.
+      // Mirrors the multi-endpoint augmentation discipline used by
+      // /findings + /servers/:slug for framework_controls / detection_quality.
+      const [findings, score, _qualityIndex, taxonomy, methodology] =
+        await Promise.all([
+          db.getFindingsForServer(server.id),
+          db.getLatestScoreForServer(server.id),
+          primeDetectionQualityIndex(),
+          loadTaxonomy(),
+          loadRuleMethodology(),
+        ]);
+
+      // Project the persisted analysis_coverage into the helper's contract.
+      // Pre-migration: getLatestScoreForServer returns analysis_coverage =
+      // null, in which case buildDeepDive falls back to honest-pessimism
+      // (every rule with no findings → "passed"). Once migration
+      // <NNN>_add_v2_score_fields.sql lands and analysis_coverage is on
+      // the row, the "skipped" status starts firing for rules whose
+      // required inputs were missing.
+      const ac = score?.analysis_coverage ?? null;
+      const coverage: DeepDiveAnalysisCoverageInput | null = ac
+        ? {
+            had_source_code: ac.had_source_code,
+            had_connection: ac.had_connection,
+            had_dependencies: ac.had_dependencies,
+            rules_executed: ac.rules_executed,
+            rules_skipped_no_data: ac.rules_skipped_no_data,
+            coverage_band: score?.coverage_band ?? null,
+          }
+        : null;
+
+      const body = buildDeepDive({
+        server: { slug: server.slug, name: server.name },
+        findings,
+        taxonomy,
+        methodology,
+        coverage,
+        getFrameworkControls: (ruleId) => getFrameworkControlsForRule(ruleId),
+        getDetectionQuality: (ruleId) => getDetectionQualityForRule(ruleId),
+      });
+
+      // Match the rest of the public surface — 5min fresh, 60s SWR.
+      res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=60");
+      res.json({ data: body });
+    } catch (err) {
+      logger.error(err, "Deep dive error");
       res.status(500).json({ error: "Internal server error" });
     }
   }
