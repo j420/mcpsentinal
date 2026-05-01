@@ -10897,3 +10897,226 @@ pre code { background: transparent; padding: 0; }
 @media (max-width: 520px) {
   .esh-cov-subscores { grid-template-columns: 1fr; }
 }
+/* ── FrameworkPostureMatrix (fpm-*) ─────────────────────────────────────── */
+/* Replaces the legacy single-framework OWASP MCP Top 10 grid with a 7-row
+   multi-framework control coverage matrix. Honest gaps render visibly. */
+.fpm-section { margin-bottom: var(--s5); }
+.fpm-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+  text-transform: uppercase;
+  margin-bottom: var(--s2);
+}
+.fpm-summary {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-2);
+  margin-bottom: var(--s4);
+}
+.fpm-matrix {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  margin-bottom: var(--s3);
+}
+.fpm-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(160px, 2fr) auto auto auto;
+  align-items: center;
+  gap: var(--s4);
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  transition: background var(--t-fast, 0.15s) var(--ease, ease),
+              border-color var(--t-fast, 0.15s) var(--ease, ease);
+  font-family: var(--font-body);
+}
+.fpm-row:hover { background: var(--surface-2); border-color: var(--border-md); }
+
+/* Left column — framework identity */
+.fpm-row-label { display: flex; flex-direction: column; gap: var(--s1); min-width: 0; }
+.fpm-row-name { font-size: 13px; font-weight: 600; color: var(--text-1); line-height: 1.3; }
+.fpm-row-version {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-3);
+  letter-spacing: 0.02em;
+}
+
+/* Status bar (proportional segments — image with aria-label) */
+.fpm-bar {
+  display: flex;
+  height: 10px;
+  width: 100%;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+}
+.fpm-bar-segment {
+  display: block;
+  height: 100%;
+  min-width: 2px; /* honest gaps remain visible at small counts */
+  transition: opacity var(--t-fast, 0.15s) var(--ease, ease);
+}
+.fpm-bar-met { background: var(--good); }
+.fpm-bar-partial { background: var(--moderate); }
+.fpm-bar-unmet { background: var(--critical); }
+.fpm-bar-not_applicable { background: var(--text-3); }
+
+/* Counts column */
+.fpm-row-counts {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s1);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.fpm-count { font-weight: 700; padding: 0 2px; }
+.fpm-count-met { color: var(--good); }
+.fpm-count-partial { color: var(--moderate); }
+.fpm-count-unmet { color: var(--critical); }
+.fpm-count-na { color: var(--text-3); }
+.fpm-count-sep { color: var(--text-3); font-weight: 400; }
+.fpm-count-total {
+  margin-left: var(--s2);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-3);
+}
+
+/* Status pill + coverage band */
+.fpm-row-meta { display: inline-flex; align-items: center; gap: var(--s2); }
+.fpm-status-pill {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px var(--s2);
+  border-radius: var(--r-full);
+  border: 1px solid transparent;
+}
+.fpm-status-met {
+  background: var(--good-sub);
+  color: var(--good);
+  border-color: var(--good-border);
+}
+.fpm-status-partial {
+  background: var(--moderate-sub);
+  color: var(--moderate);
+  border-color: var(--moderate-border);
+}
+.fpm-status-unmet {
+  background: var(--critical-sub);
+  color: var(--critical);
+  border-color: var(--critical-border);
+}
+.fpm-status-not_applicable {
+  background: var(--surface-2);
+  color: var(--text-3);
+  border-color: var(--border);
+}
+.fpm-coverage-band {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--text-3);
+  text-transform: uppercase;
+}
+.fpm-coverage-high { color: var(--good); }
+.fpm-coverage-medium { color: var(--moderate); }
+.fpm-coverage-low { color: var(--poor); }
+.fpm-coverage-minimal { color: var(--critical); }
+
+/* Downloads cluster */
+.fpm-row-downloads {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+.fpm-row-downloads-label { font-size: 11px; font-weight: 500; }
+.fpm-row-downloads-arrow { color: var(--text-3); margin-right: var(--s1); }
+.fpm-dl {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent, var(--text-2));
+  text-decoration: none;
+  padding: 2px 5px;
+  border-radius: var(--r-sm);
+}
+.fpm-dl:hover {
+  background: var(--accent-sub, var(--surface-2));
+  color: var(--accent-hover, var(--text-1));
+  text-decoration: underline;
+}
+.fpm-dl-sep { color: var(--text-3); }
+
+/* Legend */
+.fpm-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s4);
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--text-3);
+  padding-top: var(--s2);
+  border-top: 1px dashed var(--border);
+}
+.fpm-legend-item { display: inline-flex; align-items: center; gap: var(--s1); }
+.fpm-legend-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 8px;
+  border-radius: 2px;
+  border: 1px solid var(--border);
+}
+
+/* Empty / unavailable state */
+.fpm-empty {
+  padding: var(--s5) var(--s4);
+  border: 1px dashed var(--border-md);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  text-align: left;
+}
+.fpm-empty-title {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-2);
+  margin-bottom: var(--s1);
+}
+.fpm-empty-sub {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-3);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Responsive — collapse the matrix to vertical stacks under 900px */
+@media (max-width: 900px) {
+  .fpm-row {
+    grid-template-columns: 1fr;
+    gap: var(--s2);
+  }
+  .fpm-row-counts,
+  .fpm-row-meta,
+  .fpm-row-downloads { flex-wrap: wrap; }
+}

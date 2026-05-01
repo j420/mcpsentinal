@@ -8,6 +8,7 @@ import type { AttackChainItem } from "@/components/AttackChainCard";
 import EvidenceSummaryHero from "@/components/EvidenceSummaryHero";
 import SignedEvidencePack from "@/components/SignedEvidencePack";
 import AttackSurfaceStrip from "@/components/AttackSurfaceStrip";
+import FrameworkPostureMatrix from "@/components/FrameworkPostureMatrix";
 import FindingsEvidenceTab from "@/components/FindingsEvidenceTab";
 import GradeBreakdownTab from "@/components/GradeBreakdownTab";
 import VersionHistoryTab from "@/components/VersionHistoryTab";
@@ -166,21 +167,6 @@ export async function generateMetadata({
     description: `Security analysis of ${server.name} MCP server. ${findCount} finding${findCount !== 1 ? "s" : ""} detected across 164 active detection rules.`,
   };
 }
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-const OWASP_NAMES: Record<string, string> = {
-  MCP01: "Prompt Injection",
-  MCP02: "Tool Poisoning",
-  MCP03: "Command Injection",
-  MCP04: "Data Exfiltration",
-  MCP05: "Privilege Escalation",
-  MCP06: "Excessive Permissions",
-  MCP07: "Insecure Configuration",
-  MCP08: "Dependency Vulnerabilities",
-  MCP09: "Logging & Monitoring",
-  MCP10: "Supply Chain",
-};
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -351,28 +337,18 @@ export default async function ServerDetailPage({
         />
       </section>
 
-      {/* ── OWASP Coverage (kept exactly as-is) ────────────────────────── */}
-      {server.owasp_coverage && Object.keys(server.owasp_coverage).length > 0 && (
-        <section id="owasp" className="sd-section">
-          <h2 className="sd-section-title">
-            OWASP MCP Top 10 Coverage
-          </h2>
-          <p className="sd-section-sub">Pass = no findings in this category. Fail = issues detected.</p>
-          <div className="sd-owasp-grid">
-            {Object.entries(server.owasp_coverage).map(([id, clean]) => (
-              <div
-                key={id}
-                className={`sd-owasp-item ${clean ? "sd-owasp-clean" : "sd-owasp-dirty"}`}
-              >
-                <span className="sd-owasp-indicator" />
-                <span className="sd-owasp-id">{id}</span>
-                <span className="sd-owasp-name">{OWASP_NAMES[id] ?? id}</span>
-                <span className="sd-owasp-status">{clean ? "Pass" : "Fail"}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      {/* ── Framework Posture Matrix (Cluster B Invention #3) ─────────────
+          Replaces the legacy OWASP MCP Top 10 grid with a 7-framework ×
+          control-status matrix. The component owns its own fetch against
+          the new aggregate /compliance endpoint; on 404 / network error it
+          falls back to rendering the OWASP grid via the
+          `owasp_coverage_fallback` prop, so older API deployments stay
+          functional. */}
+      <FrameworkPostureMatrix
+        slug={slug}
+        apiUrl={API_URL}
+        owasp_coverage_fallback={server.owasp_coverage ?? null}
+      />
 
       {/* ── Server Profile (Phase 1 — renders nothing if profile absent) ── */}
       <ServerProfileCard profile={server.profile ?? null} />
