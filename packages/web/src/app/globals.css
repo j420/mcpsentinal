@@ -11927,3 +11927,333 @@ pre code { background: transparent; padding: 0; }
 .dah-spark-dot:hover {
   r: 3;
 }
+
+/* ── Deep Dive sidebar (dds-* / ddf-* / ddt-*) ───────────────────────── */
+/*
+ * Sticky left rail. Tokens only — declared CSS variables (--text, not
+ * --text-1; --surface-2/3, --border-md, --accent, --sev-*).
+ *
+ * Container queries on .dds-rail's parent: when narrower than 720px the
+ * desktop layout hides and the <details> accordion appears.
+ */
+
+.dds-rail {
+  display: block;
+  position: sticky;
+  top: var(--s4);
+  align-self: flex-start;
+  max-height: calc(100vh - var(--s8));
+  overflow: hidden auto;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.dds-desktop { display: block; }
+.dds-mobile  { display: none; }
+
+@media (max-width: 720px) {
+  .dds-rail {
+    position: static;
+    max-height: none;
+  }
+  .dds-desktop { display: none; }
+  .dds-mobile  { display: block; }
+}
+
+.dds-mobile {
+  background: var(--surface-2);
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-md);
+  padding: 0;
+}
+
+.dds-mobile-summary {
+  padding: var(--s3) var(--s4);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.dds-mobile-summary::marker,
+.dds-mobile-summary::-webkit-details-marker { display: none; }
+
+.dds-mobile-summary::after {
+  content: "▾";
+  margin-left: var(--s2);
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.dds-mobile[open] .dds-mobile-summary::after { content: "▴"; }
+
+.dds-mobile[open] .dds-body {
+  padding: 0 var(--s4) var(--s4);
+}
+
+.dds-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+/* ── Search box ─────────────────────────────────────────────────────── */
+
+.dds-search-row { display: block; }
+
+.dds-search {
+  width: 100%;
+  padding: var(--s2) var(--s3);
+  background: var(--surface-2);
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-md);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  transition: border-color var(--t-fast) var(--ease);
+}
+
+.dds-search:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--shadow-focus);
+}
+
+.dds-search::placeholder { color: var(--text-3); }
+
+/* ── Filter chip rows ───────────────────────────────────────────────── */
+
+.ddf-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1);
+}
+
+.ddf-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  padding: 2px var(--s2);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  color: var(--text-2);
+  font-size: 11px;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease);
+}
+
+.ddf-chip:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.ddf-chip:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.ddf-chip-active {
+  background: var(--accent-sub);
+  border-color: var(--accent-ring);
+  color: var(--text);
+}
+
+.ddf-chip-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-full);
+}
+
+/* Toggles — same shape as chips, distinct row */
+
+.ddf-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  border-top: 1px solid var(--border);
+  padding-top: var(--s3);
+}
+
+.ddf-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s1) var(--s2);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  font-size: 12px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease);
+}
+
+.ddf-toggle:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.ddf-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.ddf-toggle-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-sm);
+  font-size: 10px;
+  color: var(--accent);
+}
+
+.ddf-toggle-active {
+  color: var(--text);
+}
+
+.ddf-toggle-active .ddf-toggle-mark {
+  border-color: var(--accent);
+  background: var(--accent-sub);
+}
+
+/* ── TOC tree ───────────────────────────────────────────────────────── */
+
+.ddt-wrap {
+  border-top: 1px solid var(--border);
+  padding-top: var(--s2);
+}
+
+.ddt-tree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+
+.ddt-cat {
+  display: block;
+}
+
+.ddt-cat-link,
+.ddt-sub-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  padding: var(--s1) var(--s2);
+  border-radius: var(--r-sm);
+  text-decoration: none;
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1.4;
+  transition:
+    background var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease);
+}
+
+.ddt-cat-link {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ddt-cat-link:hover,
+.ddt-sub-link:hover {
+  background: var(--surface-2);
+}
+
+.ddt-cat-link:focus-visible,
+.ddt-sub-link:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.ddt-cat-active > .ddt-cat-link,
+.ddt-sub-active > .ddt-sub-link {
+  background: var(--accent-sub);
+  color: var(--text);
+  border-left: 2px solid var(--accent);
+  padding-left: calc(var(--s2) - 2px);
+}
+
+.ddt-cat-muted > .ddt-cat-link,
+.ddt-sub-muted > .ddt-sub-link {
+  color: var(--text-3);
+  opacity: 0.55;
+}
+
+.ddt-cat-title,
+.ddt-sub-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ddt-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.ddt-count-findings {
+  color: var(--text-2);
+}
+
+.ddt-count-rules {
+  color: var(--text-3);
+}
+
+.ddt-sub-list {
+  list-style: none;
+  margin: var(--s1) 0 0 var(--s4);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border-left: 1px solid var(--border);
+  padding-left: var(--s2);
+}
+
+.ddt-sub {
+  display: block;
+}
+
+/* Severity dot — single most-severe finding marker per sub-category. */
+
+.ddt-sev-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-full);
+  margin-left: var(--s1);
+}
+
+.ddt-sev-critical { background: var(--sev-critical); }
+.ddt-sev-high     { background: var(--sev-high); }
+.ddt-sev-medium   { background: var(--sev-medium); }
+.ddt-sev-low      { background: var(--sev-low); }
+.ddt-sev-info     { background: var(--sev-info); }
+
