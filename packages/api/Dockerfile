@@ -89,5 +89,18 @@ COPY --from=builder /app/packages/api/node_modules  ./packages/api/node_modules
 
 COPY --from=builder /app/node_modules ./node_modules
 
+# ─── Runtime data files read by deep-dive helper ─────────────────────────
+# `loadTaxonomy()` resolves to `/app/rules/taxonomy/attack-vectors.yaml`
+# and `loadRuleMethodology()` resolves to `/app/data/rule-methodology.json`
+# (paths derived from `import.meta.url` going three levels up — see
+# packages/api/src/deep-dive.ts `defaultTaxonomyPath`/`defaultMethodologyPath`).
+# Without these files in the image, the /api/v1/servers/:slug/deep-dive
+# endpoint serves `categories: []` for every server and the web page
+# renders the empty-state panel "Deep-dive evidence not yet on file".
+# Copy them into the runner so the deep-dive aggregate has its data
+# sources at runtime.
+COPY rules/taxonomy/                ./rules/taxonomy/
+COPY data/rule-methodology.json     ./data/rule-methodology.json
+
 EXPOSE 3100
 CMD ["node", "packages/api/dist/server.js"]
