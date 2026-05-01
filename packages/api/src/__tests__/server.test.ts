@@ -16,6 +16,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import request from "supertest";
+import { z } from "zod";
 
 // ─── Mock the database module before server.ts is imported ───────────────────
 // All calls to DatabaseQueries, ServerListQuerySchema, and migrate are replaced
@@ -35,11 +36,47 @@ vi.mock("@mcp-sentinel/database", () => {
     getDependenciesForServer: vi.fn().mockResolvedValue([]),
   };
 
+  // Real Zod schema for ScoreDetailResponse — kept in sync with
+  // packages/database/src/schemas.ts. We re-declare it here (rather than
+  // importing) so this test file remains hermetic w.r.t. compiled dist
+  // artefacts and the build order of @mcp-sentinel/database.
+  const V2SubScoresSchema = z.object({
+    schema_score: z.number().int().min(0).max(100),
+    ecosystem_score: z.number().int().min(0).max(100),
+    protocol_score: z.number().int().min(0).max(100),
+    adversarial_score: z.number().int().min(0).max(100),
+    compliance_score: z.number().int().min(0).max(100),
+    supply_chain_score: z.number().int().min(0).max(100),
+    infrastructure_score: z.number().int().min(0).max(100),
+  });
+  const AnalysisCoverageSchema = z.object({
+    had_source_code: z.boolean(),
+    had_connection: z.boolean(),
+    had_dependencies: z.boolean(),
+    coverage_ratio: z.number().min(0).max(1),
+    techniques_run: z.array(z.string()),
+    rules_executed: z.number().int().nonnegative(),
+    rules_skipped_no_data: z.number().int().nonnegative(),
+  });
+  const ScoreDetailResponseSchema = z.object({
+    total_score: z.number().int().min(0).max(100),
+    code_score: z.number().int().min(0).max(100),
+    deps_score: z.number().int().min(0).max(100),
+    config_score: z.number().int().min(0).max(100),
+    description_score: z.number().int().min(0).max(100),
+    behavior_score: z.number().int().min(0).max(100),
+    owasp_coverage: z.record(z.boolean()),
+    coverage_band: z.enum(["high", "medium", "low", "minimal"]).nullable(),
+    v2_sub_scores: V2SubScoresSchema.nullable(),
+    analysis_coverage: AnalysisCoverageSchema.nullable(),
+  });
+
   return {
     DatabaseQueries: vi.fn(() => mockDb),
     ServerListQuerySchema: {
       safeParse: vi.fn((input) => ({ success: true, data: input })),
     },
+    ScoreDetailResponseSchema,
     migrate: vi.fn().mockResolvedValue(undefined),
     // Re-export the mock db so tests can configure return values
     _mockDb: mockDb,
@@ -415,5 +452,256 @@ describe("Server detail", () => {
     const res = await request(app).get("/api/v1/servers/my-server");
     expect(res.status).toBe(200);
     expect(res.body.data.slug).toBe("my-server");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Server detail — score_detail v2 contract (CISO detail-page upgrade)
+//
+// Cluster A part 1 of 3: extends data.score_detail with three additive,
+// nullable fields:
+//   - coverage_band:    "high" | "medium" | "low" | "minimal" | null
+//   - v2_sub_scores:    { schema/ecosystem/protocol/adversarial/compliance/
+//                         supply_chain/infrastructure } | null
+//   - analysis_coverage: { had_*, coverage_ratio, techniques_run, … } | null
+//
+// Contract invariants under test:
+//   1. Existing legacy sub-scores MUST keep their shape (regression).
+//   2. Servers with full v2 data → all three fields present, coverage_band
+//      is one of the four literal values.
+//   3. Servers with only legacy data → all three fields = null, no crash.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("Server detail score_detail (v2 contract)", () => {
+  const baseServer = {
+    id: "00000000-0000-0000-0000-000000000001",
+    slug: "test-server",
+    name: "Test Server",
+    latest_score: 72,
+  };
+
+  beforeEach(() => {
+    db.findServerBySlug.mockResolvedValue(baseServer);
+  });
+
+  // ── fixture-A: server with full v2 data ────────────────────────────────────
+  it("fixture-A: exposes all three v2 fields when the score row is fully populated", async () => {
+    db.getLatestScoreForServer.mockResolvedValue({
+      total_score: 72,
+      code_score: 85,
+      deps_score: 90,
+      config_score: 60,
+      description_score: 95,
+      behavior_score: 100,
+      owasp_coverage: { "MCP01-prompt-injection": false, "MCP05-privilege-escalation": true },
+      coverage_band: "high",
+      v2_sub_scores: {
+        schema_score: 88,
+        ecosystem_score: 70,
+        protocol_score: 95,
+        adversarial_score: 60,
+        compliance_score: 75,
+        supply_chain_score: 80,
+        infrastructure_score: 100,
+      },
+      analysis_coverage: {
+        had_source_code: true,
+        had_connection: true,
+        had_dependencies: true,
+        coverage_ratio: 0.92,
+        techniques_run: ["ast-taint", "capability-graph", "entropy", "linguistic-scoring"],
+        rules_executed: 151,
+        rules_skipped_no_data: 13,
+      },
+    });
+
+    const res = await request(app).get("/api/v1/servers/test-server");
+    expect(res.status).toBe(200);
+    const detail = res.body.data.score_detail;
+    expect(detail).not.toBeNull();
+
+    // Legacy sub-scores still present + correct
+    expect(detail.total_score).toBe(72);
+    expect(detail.code_score).toBe(85);
+    expect(detail.deps_score).toBe(90);
+    expect(detail.config_score).toBe(60);
+    expect(detail.description_score).toBe(95);
+    expect(detail.behavior_score).toBe(100);
+    expect(detail.owasp_coverage).toEqual({
+      "MCP01-prompt-injection": false,
+      "MCP05-privilege-escalation": true,
+    });
+
+    // New additive fields
+    expect(detail.coverage_band).toBe("high");
+    expect(["high", "medium", "low", "minimal"]).toContain(detail.coverage_band);
+    expect(detail.v2_sub_scores).toEqual({
+      schema_score: 88,
+      ecosystem_score: 70,
+      protocol_score: 95,
+      adversarial_score: 60,
+      compliance_score: 75,
+      supply_chain_score: 80,
+      infrastructure_score: 100,
+    });
+    expect(detail.analysis_coverage).toEqual({
+      had_source_code: true,
+      had_connection: true,
+      had_dependencies: true,
+      coverage_ratio: 0.92,
+      techniques_run: ["ast-taint", "capability-graph", "entropy", "linguistic-scoring"],
+      rules_executed: 151,
+      rules_skipped_no_data: 13,
+    });
+  });
+
+  // ── fixture-B: server with only legacy scores ──────────────────────────────
+  it("fixture-B: returns null for all three v2 fields on legacy/pre-migration scans", async () => {
+    db.getLatestScoreForServer.mockResolvedValue({
+      total_score: 65,
+      code_score: 80,
+      deps_score: 85,
+      config_score: 50,
+      description_score: 90,
+      behavior_score: 95,
+      owasp_coverage: {},
+      // No coverage_band, no v2_sub_scores, no analysis_coverage —
+      // exactly what the database returns today (Scenario B).
+      coverage_band: null,
+      v2_sub_scores: null,
+      analysis_coverage: null,
+    });
+
+    const res = await request(app).get("/api/v1/servers/test-server");
+    expect(res.status).toBe(200);
+    const detail = res.body.data.score_detail;
+    expect(detail).not.toBeNull();
+
+    // Legacy fields still present
+    expect(detail.total_score).toBe(65);
+    expect(detail.code_score).toBe(80);
+    expect(detail.deps_score).toBe(85);
+    expect(detail.config_score).toBe(50);
+    expect(detail.description_score).toBe(90);
+    expect(detail.behavior_score).toBe(95);
+
+    // All three additive fields explicitly null — never undefined, never absent
+    expect(detail.coverage_band).toBeNull();
+    expect(detail.v2_sub_scores).toBeNull();
+    expect(detail.analysis_coverage).toBeNull();
+    // Keys must be present even when null (so consumers can rely on the shape)
+    expect(Object.prototype.hasOwnProperty.call(detail, "coverage_band")).toBe(true);
+    expect(Object.prototype.hasOwnProperty.call(detail, "v2_sub_scores")).toBe(true);
+    expect(Object.prototype.hasOwnProperty.call(detail, "analysis_coverage")).toBe(true);
+  });
+
+  // ── regression: existing fields shape unchanged ────────────────────────────
+  it("regression: existing legacy score_detail shape is unchanged (additive only)", async () => {
+    db.getLatestScoreForServer.mockResolvedValue({
+      total_score: 78,
+      code_score: 88,
+      deps_score: 92,
+      config_score: 55,
+      description_score: 89,
+      behavior_score: 100,
+      owasp_coverage: { "MCP03-command-injection": true },
+      coverage_band: null,
+      v2_sub_scores: null,
+      analysis_coverage: null,
+    });
+
+    const res = await request(app).get("/api/v1/servers/test-server");
+    expect(res.status).toBe(200);
+    const detail = res.body.data.score_detail;
+
+    // Shape is exactly the legacy 7 keys + 3 additive keys, nothing else.
+    // Sorted for stable comparison across JSON serialisations.
+    expect(Object.keys(detail).sort()).toEqual(
+      [
+        "analysis_coverage",
+        "behavior_score",
+        "code_score",
+        "config_score",
+        "coverage_band",
+        "deps_score",
+        "description_score",
+        "owasp_coverage",
+        "total_score",
+        "v2_sub_scores",
+      ].sort(),
+    );
+
+    // Legacy fields are integers in [0, 100] (not strings, not floats)
+    for (const key of [
+      "total_score",
+      "code_score",
+      "deps_score",
+      "config_score",
+      "description_score",
+      "behavior_score",
+    ]) {
+      expect(typeof detail[key]).toBe("number");
+      expect(Number.isInteger(detail[key])).toBe(true);
+      expect(detail[key]).toBeGreaterThanOrEqual(0);
+      expect(detail[key]).toBeLessThanOrEqual(100);
+    }
+    expect(typeof detail.owasp_coverage).toBe("object");
+    expect(detail.owasp_coverage).not.toBeNull();
+  });
+
+  // ── boundary: server with no score yet returns null ────────────────────────
+  it("returns score_detail = null when the server has never been scored", async () => {
+    db.getLatestScoreForServer.mockResolvedValue(null);
+    const res = await request(app).get("/api/v1/servers/test-server");
+    expect(res.status).toBe(200);
+    expect(res.body.data.score_detail).toBeNull();
+  });
+
+  // ── boundary: malformed coverage_band must be rejected by the contract ─────
+  it("rejects an invalid coverage_band literal at the response boundary", async () => {
+    db.getLatestScoreForServer.mockResolvedValue({
+      total_score: 50,
+      code_score: 50,
+      deps_score: 50,
+      config_score: 50,
+      description_score: 50,
+      behavior_score: 50,
+      owasp_coverage: {},
+      coverage_band: "extreme", // invalid — not in the union
+      v2_sub_scores: null,
+      analysis_coverage: null,
+    });
+    const res = await request(app).get("/api/v1/servers/test-server");
+    expect(res.status).toBe(200);
+    // Malformed row → score_detail collapses to null rather than leaking
+    // an invalid literal to public consumers.
+    expect(res.body.data.score_detail).toBeNull();
+  });
+
+  // ── boundary: v2_sub_scores must clamp to 0..100 ───────────────────────────
+  it("rejects v2_sub_scores values outside 0..100 at the response boundary", async () => {
+    db.getLatestScoreForServer.mockResolvedValue({
+      total_score: 50,
+      code_score: 50,
+      deps_score: 50,
+      config_score: 50,
+      description_score: 50,
+      behavior_score: 50,
+      owasp_coverage: {},
+      coverage_band: "medium",
+      v2_sub_scores: {
+        schema_score: 150, // out of range — must be discarded
+        ecosystem_score: 50,
+        protocol_score: 50,
+        adversarial_score: 50,
+        compliance_score: 50,
+        supply_chain_score: 50,
+        infrastructure_score: 50,
+      },
+      analysis_coverage: null,
+    });
+    const res = await request(app).get("/api/v1/servers/test-server");
+    expect(res.status).toBe(200);
+    expect(res.body.data.score_detail).toBeNull();
   });
 });
