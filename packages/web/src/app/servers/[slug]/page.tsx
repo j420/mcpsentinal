@@ -49,6 +49,42 @@ interface ScoreDetail {
   config_score: number;
   description_score: number;
   behavior_score: number;
+  /**
+   * Coverage band for the score — honest confidence label rendered next to the
+   * total. "minimal" means we had so little to go on (no source code, no live
+   * connection, no deps manifest) that the score is closer to a guess than a
+   * measurement. Absent on pre-coverage scans.
+   */
+  coverage_band?: "high" | "medium" | "low" | "minimal" | null;
+  /**
+   * Phase-2 8-bucket sub-scores (each 0–100). When present, replaces the
+   * legacy 5-bucket display with the v2 risk-domain breakdown. Absent on
+   * pre-Phase-2 scans — the hero falls back to legacy rendering.
+   */
+  v2_sub_scores?: {
+    schema_score: number;
+    ecosystem_score: number;
+    protocol_score: number;
+    adversarial_score: number;
+    compliance_score: number;
+    supply_chain_score: number;
+    infrastructure_score: number;
+    code_score: number;
+  } | null;
+  /**
+   * What the analyzer actually had to work with on this scan — drives the
+   * "what we analysed" pips and the "X of Y rules executed" inline meta.
+   * Absent on pre-coverage scans.
+   */
+  analysis_coverage?: {
+    had_source_code: boolean;
+    had_connection: boolean;
+    had_dependencies: boolean;
+    coverage_ratio: number;
+    techniques_run: string[];
+    rules_executed: number;
+    rules_skipped_no_data: number;
+  } | null;
 }
 
 interface ScanStages {

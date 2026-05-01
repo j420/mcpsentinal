@@ -10767,3 +10767,133 @@ pre code { background: transparent; padding: 0; }
 .sd-toggle-link:hover { color: var(--text-2); }
 .sd-toggle-active { color: var(--accent-2); font-weight: 600; }
 .sd-toggle-sep { color: var(--text-3); opacity: 0.5; }
+
+/* ── EvidenceSummaryHero v6 coverage (esh-cov-*) ─ */
+/*
+ * Honest confidence affordances rendered next to the score column when
+ * score_detail.coverage_band / analysis_coverage / v2_sub_scores are present.
+ * Backwards-compat: when all three are null the legacy hero renders unchanged.
+ * All tokens come from the existing :root system in globals.css.
+ */
+.esh-cov-cluster {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  margin-top: var(--s4);
+  width: 100%;
+}
+
+.esh-cov-chip {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  padding: 2px var(--s2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: var(--r-full);
+}
+
+.esh-cov-pips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.esh-cov-pip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px var(--s2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text-3);
+}
+
+.esh-cov-pip-on {
+  color: var(--good);
+  border-color: var(--good);
+  background: var(--surface-3);
+}
+
+.esh-cov-pip-off {
+  color: var(--text-3);
+  border-color: var(--border);
+  background: var(--surface-2);
+  text-decoration: line-through;
+  text-decoration-color: var(--text-3);
+}
+
+.esh-cov-pip-glyph {
+  display: inline-block;
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1;
+  width: 10px;
+  text-align: center;
+}
+
+.esh-cov-pip-on .esh-cov-pip-glyph { color: var(--good); }
+.esh-cov-pip-off .esh-cov-pip-glyph { color: var(--text-3); }
+
+.esh-cov-pip-label {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+/* 8-bucket sub-score row — two columns of four, label/value stacked.
+   Lives at the bottom of the identity column so it reads after the verdict. */
+.esh-cov-subscores {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s2) var(--s4);
+  margin: var(--s4) 0 0;
+  padding: var(--s3) 0 0;
+  border-top: 1px solid var(--border);
+}
+
+.esh-cov-subscore {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+}
+
+.esh-cov-subscore-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin: 0;
+}
+
+.esh-cov-subscore-val {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.1;
+  margin: 0;
+}
+
+@media (max-width: 920px) {
+  .esh-cov-cluster { margin-top: var(--s3); }
+  .esh-cov-subscores {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .esh-cov-subscores { grid-template-columns: 1fr; }
+}
