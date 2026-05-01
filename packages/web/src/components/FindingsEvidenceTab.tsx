@@ -23,11 +23,13 @@
 import React, { useMemo, useState } from "react";
 import EvidenceChainViz, { type EvidenceChainData } from "@/components/EvidenceChainViz";
 import CategoryDeepDivePanel from "@/components/CategoryDeepDivePanel";
+import DetectionQualityFooter from "@/components/DetectionQualityFooter";
 import { RULE_NAMES, type CddFinding } from "@/components/cdd-data";
 import {
   FRAMEWORK_SHORT_LABELS,
   type FrameworkId,
 } from "@/lib/framework-labels";
+import type { DetectionQuality } from "@/lib/detection-quality";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3100";
 
@@ -60,6 +62,11 @@ interface Finding {
    *   - absent (older API)  → render nothing (backwards-compat)
    */
   framework_controls?: FrameworkControlRef[];
+  /**
+   * Cluster C part 3 (Invention #4): per-finding detection-quality envelope.
+   * Three render states + one backwards-compat path; see DetectionQualityFooter.
+   */
+  detection_quality?: DetectionQuality | null;
 }
 
 interface Props {
@@ -298,6 +305,17 @@ function FlatFindingsList({
                   slug={slug}
                 />
               )}
+
+              {/* Detection-quality footer (Cluster C Inv. #4) — renders below
+                  the cross-walk row in both collapsed and expanded states.
+                  Three visible render states + one silent backwards-compat
+                  path; see DetectionQualityFooter for the full policy. */}
+              <DetectionQualityFooter
+                detection_quality={f.detection_quality}
+                slug={slug}
+                apiUrl={API_URL}
+                ruleId={f.rule_id}
+              />
 
               {isExp && (
                 <div id={`fet-body-${f.id}`} className="fet-card-body">
