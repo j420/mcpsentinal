@@ -11,7 +11,6 @@ import AttackSurfaceStrip from "@/components/AttackSurfaceStrip";
 import FrameworkPostureMatrix from "@/components/FrameworkPostureMatrix";
 import FindingsEvidenceTab from "@/components/FindingsEvidenceTab";
 import GradeBreakdownTab from "@/components/GradeBreakdownTab";
-import VersionHistoryTab from "@/components/VersionHistoryTab";
 import RiskBoundaryTab from "@/components/RiskBoundaryTab";
 import DriftAndHistoryTab from "@/components/DriftAndHistoryTab";
 import FooterAttestationBar from "@/components/FooterAttestationBar";
@@ -292,9 +291,6 @@ export default async function ServerDetailPage({
   const driftAndHistoryPanel = (
     <DriftAndHistoryTab slug={slug} apiUrl={API_URL} days={driftDays} />
   );
-  // Reference kept so the orchestrator's cleanup commit (which deletes
-  // VersionHistoryTab.tsx and this import) has a single mechanical edit.
-  void VersionHistoryTab;
 
   const tabs: ServerTab[] = [
     {
