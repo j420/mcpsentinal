@@ -13489,3 +13489,43 @@ pre code { background: transparent; padding: 0; }
 .rec-xref-link:hover {
   text-decoration: underline;
 }
+
+/* ── Stripped Deep Dive page (.dd-page-stripped) ─────────────────────────
+ * Per user product call: "remove everything from the servers page, i just
+ * need to see the deep dive". The page itself is already chrome-free
+ * (`/servers/[slug]/page.tsx` strip-down). This rule additionally hides
+ * the GLOBAL site header + footer (rendered by `app/layout.tsx`) when the
+ * stripped page is the active route, and relaxes the constrained
+ * `.site-main` padding so the long-scroll Deep Dive uses the full
+ * viewport width.
+ *
+ * Scoped via `body:has(.dd-page-stripped)` — every other route on the
+ * site (home, about, dashboard, etc.) keeps its global chrome unchanged.
+ * `:has()` is the right primitive here: it lets a page mark itself
+ * "bare" without restructuring the App Router into Route Groups, which
+ * would cascade file moves across every existing route.
+ *
+ * Reversibility: removing this block restores the global chrome on the
+ * Deep Dive page in one revert.
+ */
+body:has(.dd-page-stripped) .site-header,
+body:has(.dd-page-stripped) .site-footer {
+  display: none !important;
+}
+body:has(.dd-page-stripped) .site-main {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+.dd-page-stripped {
+  /* The Deep Dive page now owns the full viewport width — give it a
+   * comfortable inner gutter that scales with screen size. */
+  padding: var(--s4) var(--s6) var(--s12);
+  max-width: 1600px;
+  margin: 0 auto;
+}
+@media (max-width: 720px) {
+  .dd-page-stripped {
+    padding: var(--s3) var(--s4) var(--s8);
+  }
+}
