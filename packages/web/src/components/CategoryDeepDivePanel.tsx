@@ -3,6 +3,11 @@ import React, { useState, useMemo } from "react";
 import EvidenceChainViz from "@/components/EvidenceChainViz";
 import type { EvidenceChainData } from "@/components/EvidenceChainViz";
 import { FrameworkCrosswalkRow } from "@/components/FindingsEvidenceTab";
+import DetectionQualityFooter from "@/components/DetectionQualityFooter";
+
+// Mirror FindingsEvidenceTab: read API base from the same env source so the
+// per-rule signed-PDF deep-link is identical across flat and grouped views.
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3100";
 import {
   CddFinding,
   FullFinding,
@@ -346,7 +351,16 @@ export default function CategoryDeepDivePanel({ findings, fullFindings, slug }: 
                   </div>
                   <div className="cdd-findings-list">
                     {catFullFindings.map((f) => (
-                      <div key={f.id} className={`cdd-finding-card cdd-finding-${f.severity}`}>
+                      <div
+                        key={f.id}
+                        // Cluster C reviewer n3 — kill-chain rule_id
+                        // deep-link target. Same rationale as
+                        // FindingsEvidenceTab.tsx; both views render
+                        // an anchor for the same `#finding-<rule_id>`
+                        // fragment so the link works in either view.
+                        id={`finding-${f.rule_id}`}
+                        className={`cdd-finding-card cdd-finding-${f.severity}`}
+                      >
                         <div className="cdd-finding-hdr">
                           <span className={`sev-badge sev-${f.severity}`}>{f.severity}</span>
                           <span className="cdd-finding-rule-id">{f.rule_id}</span>
@@ -363,6 +377,19 @@ export default function CategoryDeepDivePanel({ findings, fullFindings, slug }: 
                           <FrameworkCrosswalkRow
                             controls={f.framework_controls}
                             slug={slug}
+                          />
+                        )}
+                        {/* Detection-quality footer (Cluster C Inv. #4) —
+                            same shared primitive as the flat list, so the
+                            three-state policy (full / wired-but-empty /
+                            not-wired) renders identically here. Suppressed
+                            entirely when slug is absent (no link target). */}
+                        {slug && (
+                          <DetectionQualityFooter
+                            detection_quality={f.detection_quality}
+                            slug={slug}
+                            apiUrl={API_URL}
+                            ruleId={f.rule_id}
                           />
                         )}
                         <div className="cdd-finding-evidence">{f.evidence}</div>

@@ -14,7 +14,7 @@
  *   - Health endpoint (no internals exposed)
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from "vitest";
 import request from "supertest";
 import { z } from "zod";
 
@@ -131,6 +131,9 @@ type MockDb = {
   getScoreHistory: ReturnType<typeof vi.fn>;
   getLatestScoreForServer: ReturnType<typeof vi.fn>;
   getToolsForServer: ReturnType<typeof vi.fn>;
+  // Cluster C — risk-boundary + drift endpoints
+  getRiskEdgesForServer: ReturnType<typeof vi.fn>;
+  getAttackChainsForServer: ReturnType<typeof vi.fn>;
 };
 const { _mockDb: db } = (await import("@mcp-sentinel/database")) as unknown as {
   _mockDb: MockDb;
@@ -1309,5 +1312,671 @@ describe("Findings — per-finding framework_controls[]", () => {
       expect(typeof fc.control_id).toBe("string");
       expect(typeof fc.control_title).toBe("string");
     }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Cluster C — Risk Boundary endpoint
+// GET /api/v1/servers/:slug/risk-boundary
+//
+// Aggregate of cross-server risk patterns (P01-P12) and kill chains
+// (KC01-KC07) involving this server. Contract:
+//   {
+//     data: {
+//       server_slug, server_name,
+//       same_config_patterns: Array<{
+//         pattern_id, pattern_name, pattern_summary, severity,
+//         paired_with_count, sample_pairings: Array<{slug, name}> // ≤5
+//       }>,
+//       kill_chains: Array<{
+//         kc_id, name, severity_score, narrative,
+//         contributing_rule_ids, cve_evidence_ids, mitigations
+//       }>
+//     }
+//   }
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("Risk Boundary endpoint (GET /api/v1/servers/:slug/risk-boundary)", () => {
+  // Hermetic schemas — re-declared here so the tests are independent of
+  // compiled @mcp-sentinel/database dist artefacts.
+  const RiskBoundaryPatternPairingSchema = z
+    .object({ slug: z.string().min(1), name: z.string().min(1) })
+    .passthrough();
+  const RiskBoundaryPatternSchema = z
+    .object({
+      pattern_id: z.string().min(1),
+      pattern_name: z.string().min(1),
+      pattern_summary: z.string().min(1),
+      severity: z.enum(["critical", "high", "medium", "low"]),
+      paired_with_count: z.number().int().nonnegative(),
+      sample_pairings: z.array(RiskBoundaryPatternPairingSchema).max(5),
+    })
+    .passthrough();
+  const RiskBoundaryKillChainSchema = z
+    .object({
+      kc_id: z.string().min(1),
+      name: z.string().min(1),
+      severity_score: z.number().min(0).max(100),
+      narrative: z.string().min(1),
+      contributing_rule_ids: z.array(z.string().min(1)),
+      cve_evidence_ids: z.array(z.string().min(1)),
+      mitigations: z.array(z.string().min(1)),
+    })
+    .passthrough();
+  const RiskBoundaryResponseSchema = z
+    .object({
+      server_slug: z.string().min(1),
+      server_name: z.string().min(1),
+      same_config_patterns: z.array(RiskBoundaryPatternSchema),
+      kill_chains: z.array(RiskBoundaryKillChainSchema),
+    })
+    .passthrough();
+
+  const baseServer = {
+    id: "00000000-0000-0000-0000-000000000007",
+    slug: "rb-server",
+    name: "RB Server",
+    github_url: null,
+    last_scanned_at: null,
+    latest_score: 50,
+  };
+
+  // Synthesise a persisted risk_edges row matching db.getRiskEdgesForServer.
+  function persistedEdge(overrides: Partial<Record<string, unknown>> = {}): Record<string, unknown> {
+    return {
+      id: "edge-" + Math.random().toString(16).slice(2, 8),
+      config_id: "config-A",
+      from_server_id: baseServer.id,
+      from_server_name: baseServer.name,
+      from_server_slug: baseServer.slug,
+      to_server_id: "00000000-0000-0000-0000-000000000099",
+      to_server_name: "Other Server",
+      to_server_slug: "other-server",
+      edge_type: "injection_path",
+      pattern_id: "P01",
+      severity: "critical",
+      description: "edge desc",
+      owasp_category: null,
+      mitre_technique: null,
+      detected_at: new Date().toISOString(),
+      ...overrides,
+    };
+  }
+
+  // Synthesise a persisted attack_chains row matching db.getAttackChainsForServer.
+  function persistedChain(overrides: Partial<Record<string, unknown>> = {}): Record<string, unknown> {
+    return {
+      id: "chain-" + Math.random().toString(16).slice(2, 8),
+      chain_id: "chain-abc",
+      config_id: "config-A",
+      kill_chain_id: "KC01",
+      kill_chain_name: "Indirect Injection → Data Exfiltration",
+      steps: [],
+      exploitability_overall: 0.82,
+      exploitability_rating: "critical",
+      narrative:
+        "Objective: data exfiltration.\nPrecedent: CVE-2025-54135 attacker writes config; also CVE-2025-6514.",
+      mitigations: [
+        { description: "Remove the gateway server from the config.", action: "remove_server" },
+        { description: "Add confirmation on destructive ops.", action: "add_confirmation" },
+      ],
+      owasp_refs: ["MCP01", "MCP04"],
+      mitre_refs: ["AML.T0054.001"],
+      created_at: new Date(),
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    db.findServerBySlug.mockResolvedValue(baseServer);
+    db.getRiskEdgesForServer.mockResolvedValue([]);
+    db.getAttackChainsForServer.mockResolvedValue([]);
+  });
+
+  it("returns 200 with empty arrays when no edges and no chains exist (honest gap)", async () => {
+    const res = await request(app).get("/api/v1/servers/rb-server/risk-boundary");
+    expect(res.status).toBe(200);
+    const parsed = RiskBoundaryResponseSchema.safeParse(res.body.data);
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect(parsed.data.server_slug).toBe(baseServer.slug);
+    expect(parsed.data.server_name).toBe(baseServer.name);
+    expect(parsed.data.same_config_patterns).toEqual([]);
+    expect(parsed.data.kill_chains).toEqual([]);
+  });
+
+  it("returns happy-path patterns + chains with regulator-grade fields", async () => {
+    db.getRiskEdgesForServer.mockResolvedValue([
+      persistedEdge({ pattern_id: "P01" }),
+      persistedEdge({
+        pattern_id: "P02",
+        to_server_slug: "creds-server",
+        to_server_name: "Creds Server",
+      }),
+    ]);
+    db.getAttackChainsForServer.mockResolvedValue([persistedChain()]);
+    const res = await request(app).get("/api/v1/servers/rb-server/risk-boundary");
+    expect(res.status).toBe(200);
+    const parsed = RiskBoundaryResponseSchema.safeParse(res.body.data);
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+
+    // Patterns: at least P01 and P02 surface, each with a non-empty
+    // pattern_name + pattern_summary populated from ALL_PATTERNS.
+    const patternIds = parsed.data.same_config_patterns.map((p) => p.pattern_id).sort();
+    expect(patternIds).toEqual(["P01", "P02"]);
+    for (const p of parsed.data.same_config_patterns) {
+      expect(p.pattern_name.length).toBeGreaterThan(0);
+      expect(p.pattern_summary.length).toBeGreaterThan(0);
+      expect(["critical", "high", "medium", "low"]).toContain(p.severity);
+      expect(p.paired_with_count).toBeGreaterThan(0);
+      // sample_pairings shape
+      for (const sp of p.sample_pairings) {
+        expect(typeof sp.slug).toBe("string");
+        expect(typeof sp.name).toBe("string");
+      }
+    }
+
+    // Kill chains: severity_score is 0..100, CVE IDs were extracted from
+    // the narrative text, mitigations were flattened to descriptions.
+    expect(parsed.data.kill_chains.length).toBe(1);
+    const kc = parsed.data.kill_chains[0]!;
+    expect(kc.kc_id).toBe("KC01");
+    expect(kc.severity_score).toBe(82);
+    expect(kc.cve_evidence_ids).toEqual(
+      expect.arrayContaining(["CVE-2025-54135", "CVE-2025-6514"]),
+    );
+    expect(kc.mitigations).toEqual([
+      "Remove the gateway server from the config.",
+      "Add confirmation on destructive ops.",
+    ]);
+    // contributing_rule_ids is an empty array (honest gap until persisted
+    // attack_chains rows carry evidence.supporting_findings).
+    expect(kc.contributing_rule_ids).toEqual([]);
+  });
+
+  it("caps sample_pairings at 5 distinct slugs even when many edges exist", async () => {
+    // Emit 8 distinct paired servers under a single pattern_id; helper
+    // must dedupe by slug and cap the sample at 5 while still reporting
+    // paired_with_count = 8. Use a uuid prefix that cannot collide with
+    // baseServer.id (= ...000007) — otherwise the helper's defensive
+    // self-edge skip would silently drop the colliding pair.
+    const edges: Array<Record<string, unknown>> = [];
+    for (let i = 0; i < 8; i++) {
+      edges.push(
+        persistedEdge({
+          pattern_id: "P03",
+          to_server_id: `aaaaaaaa-aaaa-aaaa-aaaa-${String(i).padStart(12, "0")}`,
+          to_server_slug: `pair-${i}`,
+          to_server_name: `Pair ${i}`,
+        }),
+      );
+    }
+    // Plus a duplicate slug to verify dedup
+    edges.push(
+      persistedEdge({
+        pattern_id: "P03",
+        to_server_slug: "pair-0",
+        to_server_name: "Pair 0",
+      }),
+    );
+    db.getRiskEdgesForServer.mockResolvedValue(edges);
+    const res = await request(app).get("/api/v1/servers/rb-server/risk-boundary");
+    expect(res.status).toBe(200);
+    const data = res.body.data as { same_config_patterns: Array<{ pattern_id: string; sample_pairings: Array<{ slug: string }>; paired_with_count: number }> };
+    const p03 = data.same_config_patterns.find((p) => p.pattern_id === "P03");
+    expect(p03).toBeDefined();
+    expect(p03!.paired_with_count).toBe(8);
+    expect(p03!.sample_pairings.length).toBe(5);
+    // All sample slugs must be distinct
+    const slugs = p03!.sample_pairings.map((s) => s.slug);
+    expect(new Set(slugs).size).toBe(slugs.length);
+  });
+
+  it("returns 404 for unknown slug", async () => {
+    db.findServerBySlug.mockResolvedValue(null);
+    const res = await request(app).get("/api/v1/servers/no-such/risk-boundary");
+    expect(res.status).toBe(404);
+    expect(res.body).toHaveProperty("error");
+  });
+
+  it("returns 400 for invalid slug (path traversal)", async () => {
+    const res = await request(app).get("/api/v1/servers/..%2fevil/risk-boundary");
+    expect(res.status).toBe(400);
+  });
+
+  it("does not shadow any existing /servers/:slug/... route (routing precedence)", async () => {
+    // /risk-edges, /history, /findings, /compliance, /badge.svg must
+    // continue to bind their own handlers — none of them get bound as
+    // the value of `:slug` for `/risk-boundary`.
+    db.findServerBySlug.mockResolvedValue(baseServer);
+    db.getScoreHistory.mockResolvedValue([]);
+    const history = await request(app).get("/api/v1/servers/rb-server/history");
+    expect(history.status).toBe(200);
+    expect(history.body).toHaveProperty("data");
+    // /risk-edges must still expose the legacy edges array (not the matrix).
+    db.getRiskEdgesForServer.mockResolvedValue([]);
+    const edges = await request(app).get("/api/v1/servers/rb-server/risk-edges");
+    expect(edges.status).toBe(200);
+    expect(Array.isArray(edges.body.data)).toBe(true);
+  });
+
+  it("sets Cache-Control: public, max-age=300, stale-while-revalidate=60", async () => {
+    const res = await request(app).get("/api/v1/servers/rb-server/risk-boundary");
+    expect(res.status).toBe(200);
+    expect(res.headers["cache-control"]).toBe(
+      "public, max-age=300, stale-while-revalidate=60",
+    );
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Cluster C — Drift endpoint
+// GET /api/v1/servers/:slug/drift?days=N
+//
+// Surfaces G6 (rug-pull) + I14 (rolling capability drift) as headlines +
+// score history. Default days=90; valid range [1, 365].
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("Drift endpoint (GET /api/v1/servers/:slug/drift)", () => {
+  const DriftHeadlineSchema = z
+    .object({
+      kind: z.enum([
+        "tool_added",
+        "tool_removed",
+        "tool_description_changed",
+        "capability_added",
+        "dangerous_capability_introduced",
+        "score_changed",
+      ]),
+      severity_hint: z.enum(["neutral", "elevated", "degrading", "improving"]),
+      occurred_at: z.string().min(1),
+      summary: z.string().min(1).max(200),
+      ref: z
+        .object({
+          tool_name: z.string().nullable().optional(),
+          from: z.string().nullable().optional(),
+          to: z.string().nullable().optional(),
+        })
+        .passthrough()
+        .optional(),
+    })
+    .passthrough();
+  const DriftResponseSchema = z
+    .object({
+      server_slug: z.string().min(1),
+      window_days: z.number().int().min(1).max(365),
+      headlines: z.array(DriftHeadlineSchema),
+      score_history: z.array(
+        z.object({
+          scanned_at: z.string().min(1),
+          score: z.number().int().min(0).max(100),
+        }).passthrough(),
+      ),
+      trend: z.enum(["neutral", "improving", "degrading", "insufficient_data"]),
+    })
+    .passthrough();
+
+  const baseServer = {
+    id: "00000000-0000-0000-0000-000000000008",
+    slug: "drift-server",
+    name: "Drift Server",
+    github_url: null,
+    last_scanned_at: null,
+    latest_score: 70,
+  };
+
+  // Build a score-history row matching the persisted shape that
+  // db.getScoreHistory returns. The handler projects this to
+  // { scanned_at, score } in the response.
+  function historyRow(score: number, recordedAt: Date): Record<string, unknown> {
+    return {
+      id: "00000000-0000-0000-0000-000000000000",
+      server_id: baseServer.id,
+      score,
+      findings_count: 0,
+      rules_version: "test",
+      recorded_at: recordedAt,
+    };
+  }
+
+  beforeEach(() => {
+    db.findServerBySlug.mockResolvedValue(baseServer);
+    db.getScoreHistory.mockResolvedValue([]);
+  });
+
+  it("returns happy-path with multiple scans and a degrading trend", async () => {
+    const earliest = new Date("2026-04-01T00:00:00.000Z");
+    const middle = new Date("2026-04-15T00:00:00.000Z");
+    const latest = new Date("2026-04-29T00:00:00.000Z");
+    db.getScoreHistory.mockResolvedValue([
+      historyRow(60, latest),    // newest
+      historyRow(75, middle),
+      historyRow(85, earliest),  // oldest
+    ]);
+    const res = await request(app).get("/api/v1/servers/drift-server/drift");
+    expect(res.status).toBe(200);
+    const parsed = DriftResponseSchema.safeParse(res.body.data);
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect(parsed.data.window_days).toBe(90);
+    expect(parsed.data.score_history.length).toBe(3);
+    // sorted ascending so [0] is earliest
+    expect(parsed.data.score_history[0]!.score).toBe(85);
+    expect(parsed.data.score_history[2]!.score).toBe(60);
+    // 85 → 60 is a 25-point drop → degrading
+    expect(parsed.data.trend).toBe("degrading");
+    // Score-change headlines fire (each consecutive pair has |delta| >= 5).
+    expect(parsed.data.headlines.length).toBeGreaterThanOrEqual(1);
+    for (const h of parsed.data.headlines) {
+      expect(h.kind).toBe("score_changed");
+    }
+  });
+
+  it("returns 400 for ?days=0", async () => {
+    const res = await request(app).get("/api/v1/servers/drift-server/drift?days=0");
+    expect(res.status).toBe(400);
+    expect(res.body).toHaveProperty("error");
+  });
+
+  it("returns 400 for ?days=400 (above 365 cap)", async () => {
+    const res = await request(app).get("/api/v1/servers/drift-server/drift?days=400");
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 for ?days=abc (non-integer)", async () => {
+    const res = await request(app).get("/api/v1/servers/drift-server/drift?days=abc");
+    expect(res.status).toBe(400);
+  });
+
+  it("trend = insufficient_data with 1 scan; headlines forced to []", async () => {
+    db.getScoreHistory.mockResolvedValue([historyRow(70, new Date())]);
+    const res = await request(app).get("/api/v1/servers/drift-server/drift");
+    expect(res.status).toBe(200);
+    expect(res.body.data.trend).toBe("insufficient_data");
+    expect(res.body.data.score_history.length).toBe(1);
+    expect(res.body.data.headlines).toEqual([]);
+  });
+
+  it("trend = insufficient_data with 0 scans; headlines = [] and score_history = []", async () => {
+    db.getScoreHistory.mockResolvedValue([]);
+    const res = await request(app).get("/api/v1/servers/drift-server/drift");
+    expect(res.status).toBe(200);
+    expect(res.body.data.trend).toBe("insufficient_data");
+    expect(res.body.data.score_history).toEqual([]);
+    expect(res.body.data.headlines).toEqual([]);
+  });
+
+  it("when tool fingerprints absent, headlines: [] from fingerprint diff but score_history populates", async () => {
+    // Two scans with delta < threshold → no score_changed headlines
+    // either; the fingerprint-headline path is currently unimplemented.
+    db.getScoreHistory.mockResolvedValue([
+      historyRow(72, new Date("2026-04-29T00:00:00.000Z")),
+      historyRow(70, new Date("2026-04-01T00:00:00.000Z")),
+    ]);
+    const res = await request(app).get("/api/v1/servers/drift-server/drift");
+    expect(res.status).toBe(200);
+    expect(res.body.data.score_history.length).toBe(2);
+    // |72 - 70| = 2 < threshold (5) → no score_changed; no fingerprint
+    // headlines (not yet wired) → headlines is []
+    expect(res.body.data.headlines).toEqual([]);
+    expect(res.body.data.trend).toBe("neutral");
+  });
+
+  it("returns 404 for unknown slug", async () => {
+    db.findServerBySlug.mockResolvedValue(null);
+    const res = await request(app).get("/api/v1/servers/no-such/drift");
+    expect(res.status).toBe(404);
+  });
+
+  it("forwards unknown future DriftHeadline fields verbatim (passthrough regression)", async () => {
+    // Pin the contract: future API versions can add fields to a
+    // DriftHeadline (e.g. `severity_score`, `tool_id`) without breaking
+    // older clients. The schema is `.passthrough()` exactly to permit
+    // this. We assert the schema directly because the route handler
+    // doesn't currently emit unknown fields.
+    const future = {
+      kind: "score_changed" as const,
+      severity_hint: "degrading" as const,
+      occurred_at: "2026-04-29T00:00:00.000Z",
+      summary: "Score moved.",
+      ref: { from: "85", to: "60", future_field: "ok" },
+      // Future field a downstream API version might add; passthrough must keep it.
+      severity_score: 12,
+    };
+    const parsed = DriftHeadlineSchema.safeParse(future);
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect((parsed.data as Record<string, unknown>)["severity_score"]).toBe(12);
+  });
+
+  // Cluster C reviewer m1 — symmetry with the /risk-boundary precedence
+  // test above. The /drift route is also a 4-segment path under
+  // /servers/:slug/...; if it were ever moved before /history or
+  // /risk-edges in declaration order, those handlers would shadow as
+  // `:slug = "history"`. Express literal-segment matching means it
+  // can't happen today, but the absence of a regression test was
+  // exactly Cluster B's m4 shape.
+  it("does not shadow any existing /servers/:slug/... route (routing precedence)", async () => {
+    db.findServerBySlug.mockResolvedValue(baseServer);
+    db.getScoreHistory.mockResolvedValue([]);
+    const history = await request(app).get("/api/v1/servers/drift-server/history");
+    expect(history.status).toBe(200);
+    expect(history.body).toHaveProperty("data");
+    db.getRiskEdgesForServer.mockResolvedValue([]);
+    const edges = await request(app).get("/api/v1/servers/drift-server/risk-edges");
+    expect(edges.status).toBe(200);
+    expect(Array.isArray(edges.body.data)).toBe(true);
+    // /drift itself must continue to resolve.
+    const drift = await request(app).get("/api/v1/servers/drift-server/drift");
+    expect(drift.status).toBe(200);
+    expect(drift.body.data).toHaveProperty("trend");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Cluster C — Per-finding detection_quality footer (Invention #4)
+//
+// Every finding row on BOTH /servers/:slug AND /servers/:slug/findings
+// carries a `detection_quality: DetectionQuality | null` field.
+//
+//   - null         → rule not yet wired into red-team or CVE replay
+//   - non-null     → rule is wired; precision/recall/etc may still be null
+//                    if no validation data is on file yet (distinct
+//                    UI state from "not yet wired").
+//
+// B1 lesson: this augmentation MUST appear on BOTH endpoints — the page
+// reads `server.findings` from /servers/:slug, never from /findings.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("Per-finding detection_quality (Cluster C invention #4)", () => {
+  const DetectionQualitySchema = z
+    .object({
+      precision: z.number().min(0).max(1).nullable(),
+      recall: z.number().min(0).max(1).nullable(),
+      fixture_count: z.number().int().nonnegative(),
+      cve_replay_ids: z.array(z.string().min(1)),
+      last_validated_at: z.string().nullable(),
+    })
+    .passthrough();
+
+  const baseServer = {
+    id: "00000000-0000-0000-0000-000000000077",
+    slug: "dq-server",
+    name: "DQ Server",
+    github_url: null,
+    latest_score: 60,
+  };
+
+  // Bring in the test-only helpers that pin the index. Imported at the
+  // top of the describe block (rather than at module scope) because
+  // server.ts imports them too, and the module load is what builds the
+  // empty default index. Re-importing here gives us the same singleton.
+  let setIndexForTests: (m: Map<string, unknown>) => void;
+  let resetIndexForTests: () => void;
+  beforeAll(async () => {
+    const dq = await import("../detection-quality.js");
+    setIndexForTests = dq._setDetectionQualityIndexForTests as unknown as (
+      m: Map<string, unknown>,
+    ) => void;
+    resetIndexForTests = dq._resetDetectionQualityIndexForTests;
+  });
+
+  beforeEach(() => {
+    db.findServerBySlug.mockResolvedValue(baseServer);
+    // Default: empty index → every detection_quality lookup returns null.
+    setIndexForTests(new Map());
+  });
+
+  afterAll(() => {
+    if (resetIndexForTests) resetIndexForTests();
+  });
+
+  // Build a synthetic finding row matching db.getFindingsForServer().
+  function row(ruleId: string, id = "11111111-1111-1111-1111-111111111111"): Record<string, unknown> {
+    return {
+      id,
+      server_id: baseServer.id,
+      scan_id: "22222222-2222-2222-2222-222222222222",
+      rule_id: ruleId,
+      severity: "high",
+      evidence: "ev",
+      remediation: "rem",
+      owasp_category: null,
+      mitre_technique: null,
+      disputed: false,
+      confidence: 0.9,
+      evidence_chain: null,
+      created_at: new Date("2026-04-25T12:00:00.000Z"),
+    };
+  }
+
+  it("returns null when the rule is NOT wired into red-team or CVE replay", async () => {
+    setIndexForTests(new Map());
+    db.getFindingsForServer.mockResolvedValue([row("ZZ_NEVER_WIRED")]);
+    const res = await request(app).get("/api/v1/servers/dq-server/findings");
+    expect(res.status).toBe(200);
+    expect(res.body.data[0].detection_quality).toBeNull();
+  });
+
+  it("returns the full populated shape when precision + recall + cve replays are on file", async () => {
+    setIndexForTests(
+      new Map<string, unknown>([
+        [
+          "K1",
+          {
+            precision: 0.95,
+            recall: 0.8,
+            fixture_count: 6,
+            cve_replay_ids: ["CVE-2025-6515", "EMBRACE-RED-2025"],
+            last_validated_at: "2026-04-22T19:48:24.945Z",
+          },
+        ],
+      ]),
+    );
+    db.getFindingsForServer.mockResolvedValue([row("K1")]);
+    const res = await request(app).get("/api/v1/servers/dq-server/findings");
+    expect(res.status).toBe(200);
+    const dq = res.body.data[0].detection_quality;
+    expect(dq).not.toBeNull();
+    const parsed = DetectionQualitySchema.safeParse(dq);
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect(parsed.data.precision).toBe(0.95);
+    expect(parsed.data.recall).toBe(0.8);
+    expect(parsed.data.fixture_count).toBe(6);
+    expect(parsed.data.cve_replay_ids).toEqual([
+      "CVE-2025-6515",
+      "EMBRACE-RED-2025",
+    ]);
+    expect(parsed.data.last_validated_at).toBe("2026-04-22T19:48:24.945Z");
+  });
+
+  // B1 LESSON — augmentation must be present on BOTH endpoints. The page
+  // reads server.findings from /servers/:slug; without this the footer
+  // ships dark in production exactly the way framework_controls did
+  // before the Cluster B fix.
+  it("attaches detection_quality on /findings AND /servers/:slug (B1 multi-endpoint guard)", async () => {
+    setIndexForTests(
+      new Map<string, unknown>([
+        [
+          "K1",
+          {
+            precision: 1.0,
+            recall: 0.5,
+            fixture_count: 2,
+            cve_replay_ids: [],
+            last_validated_at: "2026-04-22T19:48:24.945Z",
+          },
+        ],
+      ]),
+    );
+    db.getFindingsForServer.mockResolvedValue([row("K1")]);
+    db.getLatestScoreForServer.mockResolvedValue(null);
+    db.getToolsForServer.mockResolvedValue([]);
+
+    const findingsRes = await request(app).get("/api/v1/servers/dq-server/findings");
+    expect(findingsRes.status).toBe(200);
+    expect(findingsRes.body.data[0].detection_quality).toMatchObject({
+      precision: 1.0,
+      recall: 0.5,
+      fixture_count: 2,
+    });
+
+    const detailRes = await request(app).get("/api/v1/servers/dq-server");
+    expect(detailRes.status).toBe(200);
+    expect(detailRes.body.data.findings[0].detection_quality).toMatchObject({
+      precision: 1.0,
+      recall: 0.5,
+      fixture_count: 2,
+    });
+  });
+
+  it("forwards unknown future detection_quality fields verbatim (passthrough regression)", async () => {
+    // The schema is `.passthrough()` so future fields like
+    // `auc_score`, `false_positive_rate`, etc. survive validation.
+    const future = {
+      precision: 0.9,
+      recall: 0.8,
+      fixture_count: 5,
+      cve_replay_ids: [] as string[],
+      last_validated_at: "2026-04-22T19:48:24.945Z",
+      auc_score: 0.91,
+      future_metric: "ok",
+    };
+    const parsed = DetectionQualitySchema.safeParse(future);
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect((parsed.data as Record<string, unknown>)["auc_score"]).toBe(0.91);
+    expect((parsed.data as Record<string, unknown>)["future_metric"]).toBe("ok");
+  });
+
+  it("returns the wired-but-no-validations shape (precision/recall null but fixture_count > 0)", async () => {
+    // Distinct UI state from "not yet wired" (whole field null).
+    // Frontend renders "no validations on file yet" rather than hiding.
+    setIndexForTests(
+      new Map<string, unknown>([
+        [
+          "X1",
+          {
+            precision: null,
+            recall: null,
+            fixture_count: 3,
+            cve_replay_ids: ["CVE-2025-6514"],
+            last_validated_at: null,
+          },
+        ],
+      ]),
+    );
+    db.getFindingsForServer.mockResolvedValue([row("X1")]);
+    const res = await request(app).get("/api/v1/servers/dq-server/findings");
+    expect(res.status).toBe(200);
+    const dq = res.body.data[0].detection_quality;
+    expect(dq).not.toBeNull();
+    expect(dq.precision).toBeNull();
+    expect(dq.recall).toBeNull();
+    expect(dq.fixture_count).toBe(3);
+    expect(dq.cve_replay_ids).toEqual(["CVE-2025-6514"]);
+    expect(dq.last_validated_at).toBeNull();
   });
 });
