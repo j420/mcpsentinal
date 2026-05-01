@@ -3,6 +3,11 @@ import React, { useState, useMemo } from "react";
 import EvidenceChainViz from "@/components/EvidenceChainViz";
 import type { EvidenceChainData } from "@/components/EvidenceChainViz";
 import { FrameworkCrosswalkRow } from "@/components/FindingsEvidenceTab";
+import DetectionQualityFooter from "@/components/DetectionQualityFooter";
+
+// Mirror FindingsEvidenceTab: read API base from the same env source so the
+// per-rule signed-PDF deep-link is identical across flat and grouped views.
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3100";
 import {
   CddFinding,
   FullFinding,
@@ -363,6 +368,19 @@ export default function CategoryDeepDivePanel({ findings, fullFindings, slug }: 
                           <FrameworkCrosswalkRow
                             controls={f.framework_controls}
                             slug={slug}
+                          />
+                        )}
+                        {/* Detection-quality footer (Cluster C Inv. #4) —
+                            same shared primitive as the flat list, so the
+                            three-state policy (full / wired-but-empty /
+                            not-wired) renders identically here. Suppressed
+                            entirely when slug is absent (no link target). */}
+                        {slug && (
+                          <DetectionQualityFooter
+                            detection_quality={f.detection_quality}
+                            slug={slug}
+                            apiUrl={API_URL}
+                            ruleId={f.rule_id}
                           />
                         )}
                         <div className="cdd-finding-evidence">{f.evidence}</div>

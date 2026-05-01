@@ -11226,3 +11226,175 @@ pre code { background: transparent; padding: 0; }
   cursor: help;
   white-space: nowrap;
 }
+
+/* ── DetectionQualityFooter (dqf-*) ─
+   Per-finding validation receipt rendered BELOW the framework cross-walk row.
+   Visually quieter than ffc-* (it's a footer, not the headline) but uses the
+   same surface/border tokens so the audit-evidence stack reads as one unit.
+   Three render states + a backwards-compat silent path:
+     .dqf-row-full      → Validated · N fixtures · CVE-XXX · p 0.95 · r 0.88 · 4d ago
+     .dqf-row-empty     → "Validation framework wired — no fixtures or CVE replays yet"
+     .dqf-row-unwired   → "Detection quality not yet wired for this rule"
+   The whole row is an <a> opening the OWASP MCP signed PDF in a new tab. */
+
+.dqf-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s1) var(--s2);
+  padding: var(--s2) var(--s4);
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 11px;
+  line-height: 1.4;
+  text-decoration: none;
+  transition: background 0.12s, border-color 0.12s;
+}
+.dqf-row:hover,
+.dqf-row:focus-visible {
+  background: var(--surface-3);
+  outline: none;
+}
+
+.dqf-row-empty,
+.dqf-row-unwired {
+  color: var(--text-3);
+  font-style: italic;
+  background: var(--bg);
+}
+
+.dqf-status {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  flex-shrink: 0;
+  width: 14px;
+  text-align: center;
+}
+.dqf-status-validated { color: var(--good);   font-style: normal; }
+.dqf-status-empty     { color: var(--text-3); font-style: normal; }
+.dqf-status-unwired   { color: var(--text-3); font-style: normal; }
+
+.dqf-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+
+.dqf-empty-text,
+.dqf-unwired-text {
+  color: var(--text-3);
+}
+
+.dqf-sep {
+  color: var(--text-3);
+  user-select: none;
+}
+
+.dqf-fixtures {
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.dqf-cve-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.dqf-cve {
+  display: inline-block;
+  padding: 1px var(--s2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: var(--surface-3);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.dqf-cve:hover,
+.dqf-cve:focus-visible {
+  background: var(--bg);
+  border-color: var(--accent);
+  color: var(--text);
+  outline: none;
+}
+
+.dqf-cve-more {
+  display: inline-block;
+  padding: 1px var(--s2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: transparent;
+  color: var(--text-3);
+  border: 1px dashed var(--border);
+  border-radius: var(--r-sm);
+  cursor: help;
+  white-space: nowrap;
+}
+
+/* Precision / recall numeric chips. Color is bound at the React level via
+   inline `style={{ color: var(--good|moderate|poor|text-3) }}` so the band
+   remains a single source of truth (lib/detection-quality.ts). The class
+   modifiers below provide the box treatment only. */
+.dqf-metric {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  padding: 1px var(--s2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  white-space: nowrap;
+}
+
+.dqf-metric-k {
+  color: var(--text-3);
+  font-weight: 600;
+}
+
+.dqf-metric-v {
+  font-weight: 500;
+}
+
+.dqf-validated-at {
+  color: var(--text-2);
+  font-size: 10px;
+  font-family: var(--font-mono);
+}
+
+/* Trailing call-to-action link inside dqf-row. The row container is a <div>
+   (because state A nests CVE anchors that would create invalid nested-anchor
+   markup), so this CTA is the actual click target carrying the OWASP MCP
+   signed-PDF deep link. Pushed to the row's right via margin-left: auto. */
+.dqf-cta {
+  margin-left: auto;
+  padding: 1px var(--s2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-2);
+  text-decoration: none;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface-3);
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.dqf-cta:hover,
+.dqf-cta:focus-visible {
+  background: var(--bg);
+  color: var(--text);
+  border-color: var(--accent);
+  outline: none;
+}

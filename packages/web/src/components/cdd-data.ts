@@ -39,6 +39,20 @@ export interface FullFinding {
     control_id: string;
     control_title: string;
   }>;
+  /**
+   * Cluster C part 3 (Invention #4): per-finding detection-quality envelope.
+   * Shape frozen by the API `DetectionQualitySchema`; consumed verbatim.
+   *   - object  → render full or wired-but-empty footer
+   *   - null    → render "not yet wired" footer (honest gap)
+   *   - absent  → render NOTHING (backwards-compat with pre-Cluster-C API)
+   */
+  detection_quality?: {
+    precision: number | null;
+    recall: number | null;
+    fixture_count: number;
+    cve_replay_ids: string[];
+    last_validated_at: string | null;
+  } | null;
 }
 
 // ── Rule names ─────────────────────────────────────────────────────────────
