@@ -23,7 +23,8 @@
     "compliance-scan": "pnpm --filter=@mcp-sentinel/compliance-agents run compliance-scan",
     "validate:evidence": "tsx tools/scripts/validate-evidence-chains.ts",
     "rule:census": "pnpm --filter=@mcp-sentinel/analyzer exec tsx ../../tools/scripts/rule-census.ts",
-    "rule:baseline": "pnpm --filter=@mcp-sentinel/analyzer exec tsx ../../tools/scripts/rule-baseline-update.ts"
+    "rule:baseline": "pnpm --filter=@mcp-sentinel/analyzer exec tsx ../../tools/scripts/rule-baseline-update.ts",
+    "build:methodology": "pnpm --filter=@mcp-sentinel/analyzer exec tsx ../../tools/scripts/build-rule-methodology.ts"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",

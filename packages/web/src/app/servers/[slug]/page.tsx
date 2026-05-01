@@ -15,8 +15,12 @@ import RiskBoundaryTab from "@/components/RiskBoundaryTab";
 import DriftAndHistoryTab from "@/components/DriftAndHistoryTab";
 import FooterAttestationBar from "@/components/FooterAttestationBar";
 import HonestGaps from "@/components/HonestGaps";
-import ServerTabs, { type ServerTab } from "./ServerTabs";
+import DeepDiveHeroChrome from "@/components/DeepDiveHeroChrome";
+import DeepDiveLayout from "@/components/DeepDiveLayout";
+import CategorySection from "@/components/CategorySection";
+import DeepDiveSidebar from "@/components/DeepDiveSidebar";
 import ComplianceTab from "./ComplianceTab";
+import type { DeepDiveResponse, DeepDiveData } from "@/lib/deep-dive";
 
 // Cluster B reviewer M1 — `force-dynamic` was disabling RSC fetch caching
 // across the entire page tree, silently making `<SignedEvidencePack/>`'s
@@ -170,6 +174,30 @@ async function getServer(slug: string): Promise<ServerDetail | null> {
   }
 }
 
+/**
+ * Fetch the deep-dive payload (long-scroll content). Absent until Agent 2's
+ * endpoint lands; the page falls back to the legacy Cluster-A/B/C-shape view
+ * (`<EvidenceSummaryHero/>` + `<FrameworkPostureMatrix/>`) when this returns
+ * null. Mirrors `<SignedEvidencePack/>` resilience pattern: 4-second timeout,
+ * 5-minute revalidate, never throws.
+ */
+async function getDeepDive(slug: string): Promise<DeepDiveData | null> {
+  try {
+    const res = await fetch(
+      `${API_URL}/api/v1/servers/${encodeURIComponent(slug)}/deep-dive`,
+      {
+        signal: AbortSignal.timeout(4000),
+        next: { revalidate: 300 },
+      },
+    );
+    if (!res.ok) return null;
+    const body = (await res.json()) as DeepDiveResponse;
+    return body?.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // ── SEO Metadata ──────────────────────────────────────────────────────────────
 
 export async function generateMetadata({
@@ -190,10 +218,10 @@ export async function generateMetadata({
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 // ── Relocated section: Tools.
-// Was a separate "Tools" tab; now lives between AttackSurfaceStrip and
-// the relocated Grade Breakdown so the capability inventory sits with
-// the rest of the surface picture. Markup is the original inline grid
-// — only the location changed.
+// Was a separate "Tools" tab; demoted in this page to a collapsed
+// `<details>` accordion below the deep-dive long-scroll content. The
+// existing component has no separate re-export, so the markup stays
+// inline here.
 function ToolsSection({ tools }: { tools: Tool[] }) {
   return (
     <section id="tools" className="sd-section">
@@ -228,6 +256,47 @@ function ToolsSection({ tools }: { tools: Tool[] }) {
   );
 }
 
+/**
+ * Render a chrome subsection wrapped in a closed-by-default `<details>`
+ * accordion. The Cluster-A/B/C tab content survives — it just lives one
+ * click away from the deep-dive scroll instead of competing with it.
+ */
+function DemotedSection({
+  id,
+  title,
+  count,
+  children,
+}: {
+  id: string;
+  title: string;
+  count?: number;
+  children: React.ReactNode;
+}) {
+  return (
+    <details id={id} className="dd-demote" data-section={id}>
+      <summary className="dd-demote-summary">
+        <span className="dd-demote-title">{title}</span>
+        {typeof count === "number" && (
+          <span className="dd-demote-count">{count}</span>
+        )}
+        <span className="dd-demote-chev" aria-hidden="true">
+          ▼
+        </span>
+      </summary>
+      <div className="dd-demote-body">{children}</div>
+    </details>
+  );
+}
+
+// ── DEEP DIVE main column placeholder ────────────────────────────────────
+//
+// Cluster D reviewer B1 fix — the placeholder DeepDiveMainPlaceholder /
+// DeepDiveSidebarPlaceholder helpers that lived here were the bug: they
+// rendered category titles + counts only, never the per-rule evidence.
+// They have been replaced by the canonical `<CategorySection/>` and
+// `<DeepDiveSidebar/>` mounts in the page body. Do NOT re-introduce
+// placeholder helpers without explicit product approval.
+
 export default async function ServerDetailPage({
   params,
   searchParams,
@@ -242,22 +311,27 @@ export default async function ServerDetailPage({
   const groupRaw = Array.isArray(sp.group) ? sp.group[0] : sp.group;
   const groupByCategory = groupRaw === "category";
 
-  const server = await getServer(slug);
+  // Drift window — `?days=` from searchParams. Snapped to 30 / 90 / 365 by the
+  // component itself; we just pull the numeric here so the demoted accordion
+  // construction stays declarative.
+  const daysRaw = Array.isArray(sp.days) ? sp.days[0] : sp.days;
+  const driftDays = (() => {
+    const n = daysRaw == null ? NaN : Number(daysRaw);
+    return n === 30 || n === 90 || n === 365 ? n : 90;
+  })();
+
+  // Two parallel fetches: server stays the source of truth for hero +
+  // demoted chrome; deep-dive provides the new long-scroll payload.
+  const [server, deepDive] = await Promise.all([
+    getServer(slug),
+    getDeepDive(slug),
+  ]);
 
   if (!server) return notFound();
 
   const findings = server.findings ?? [];
   const tools = server.tools ?? [];
 
-  // ── Tab panels (rendered as RSC subtrees, passed across the boundary) ─────
-  // Tab consolidation (audit Invention #5):
-  //   Removed: Grade Breakdown, Deep Dive, Tools
-  //   Relocated: Grade + Tools to dedicated sections above the tabs;
-  //              Deep Dive collapsed into Findings via ?group=category.
-  // Cluster A ships 3 tabs (Findings · Compliance · Version History). The
-  // audit doc's target IA is 4 — "Risk Boundary" (Invention #3) is the
-  // missing tab and is deliberately deferred to Cluster B per the staged
-  // rollout in /root/.claude/plans/have-a-go-through-valiant-lollipop.md.
   const findingsLabel = groupByCategory
     ? "Findings & Evidence (grouped)"
     : "Findings & Evidence";
@@ -290,45 +364,147 @@ export default async function ServerDetailPage({
     </>
   );
 
-  // Drift window — `?days=` from searchParams. Snapped to 30 / 90 / 365 by the
-  // component itself; we just pull the numeric here so the tab construction
-  // stays declarative. Cluster C audit doc target IA: 4 tabs.
-  const daysRaw = Array.isArray(sp.days) ? sp.days[0] : sp.days;
-  const driftDays = (() => {
-    const n = daysRaw == null ? NaN : Number(daysRaw);
-    return n === 30 || n === 90 || n === 365 ? n : 90;
-  })();
+  // Lethal-trifecta — F1/I13 cap. Computed from findings on the legacy slug
+  // payload; identical to the analyzer's `score_detail.coverage_band` cap.
+  const lethal = findings.some((f) => f.rule_id === "F1" || f.rule_id === "I13");
 
-  const driftAndHistoryPanel = (
-    <DriftAndHistoryTab slug={slug} apiUrl={API_URL} days={driftDays} />
+  // ──────────────────────────────────────────────────────────────────
+  // Mode A: deep-dive endpoint succeeded → long-scroll layout
+  // Mode B: deep-dive endpoint failed   → legacy Cluster-A/B/C view
+  //
+  // Both modes render the same demoted-chrome accordions below so the
+  // user never loses access to Phase-5 content even if the new endpoint
+  // is missing. The difference is the hero + main scroll.
+  // ──────────────────────────────────────────────────────────────────
+  // Cluster D reviewer M4 — `categories: []` (taxonomy missing in prod
+  // image, yaml dep unresolvable, etc.) used to enter Mode A and render
+  // a thin chrome strip with no content. Now: Mode A only when we have
+  // real deep-dive content (categories non-empty). Empty categories
+  // degrade to Mode B (legacy hero) so the user always sees something
+  // useful.
+  const hasDeepDiveContent =
+    deepDive != null && deepDive.categories.length > 0;
+  const heroSlot =
+    hasDeepDiveContent ? (
+      <DeepDiveHeroChrome
+        slug={slug}
+        apiUrl={API_URL}
+        name={server.name}
+        server_version={server.server_version}
+        author={server.author}
+        total_score={server.score_detail?.total_score ?? null}
+        lethal={lethal}
+        coverage_band={
+          deepDive.coverage.coverage_band ??
+          server.score_detail?.coverage_band ??
+          null
+        }
+        had_source_code={
+          server.score_detail?.analysis_coverage?.had_source_code ?? false
+        }
+        had_connection={
+          server.score_detail?.analysis_coverage?.had_connection ?? false
+        }
+        had_dependencies={
+          server.score_detail?.analysis_coverage?.had_dependencies ?? false
+        }
+      />
+    ) : (
+      // Degraded fallback — keep the original 3-column hero so the page
+      // never 500s when `/deep-dive` is absent. SignedEvidencePack ships
+      // its own card; we keep it so the legacy fallback view is no worse
+      // than what shipped before this PR.
+      <>
+        <EvidenceSummaryHero
+          name={server.name}
+          description={server.description}
+          author={server.author}
+          license={server.license}
+          server_version={server.server_version}
+          endpoint_url={server.endpoint_url}
+          github_url={server.github_url}
+          npm_package={server.npm_package}
+          pypi_package={server.pypi_package}
+          last_scanned_at={server.last_scanned_at}
+          score_detail={server.score_detail ?? null}
+          scan_stages={server.scan_stages ?? null}
+          findings={findings}
+          tools={tools}
+        />
+        <SignedEvidencePack slug={slug} apiUrl={API_URL} />
+      </>
+    );
+
+  // The demoted-chrome accordions — present in BOTH modes, closed by
+  // default. Demotion-not-deletion: every Cluster A/B/C component still
+  // renders at one click of a `<details>` summary.
+  const demotedChrome = (
+    <div className="dd-demote-stack" aria-label="Supporting sections">
+      <DemotedSection id="posture-matrix" title="Framework Posture Matrix">
+        <FrameworkPostureMatrix
+          slug={slug}
+          apiUrl={API_URL}
+          owasp_coverage_fallback={server.owasp_coverage ?? null}
+        />
+      </DemotedSection>
+
+      <DemotedSection
+        id="findings-evidence"
+        title={findingsLabel}
+        count={findings.length}
+      >
+        {findingsPanel}
+      </DemotedSection>
+
+      <DemotedSection id="compliance" title="Compliance">
+        <ComplianceTab slug={slug} />
+      </DemotedSection>
+
+      <DemotedSection id="risk-boundary" title="Risk Boundary">
+        <RiskBoundaryTab slug={slug} apiUrl={API_URL} />
+      </DemotedSection>
+
+      <DemotedSection id="drift-history" title="Drift & History">
+        <DriftAndHistoryTab slug={slug} apiUrl={API_URL} days={driftDays} />
+      </DemotedSection>
+
+      <DemotedSection id="attack-surface" title="Attack Surface">
+        <AttackSurfaceStrip tools={tools} findings={findings} />
+      </DemotedSection>
+
+      <DemotedSection id="tools" title="Tools" count={tools.length}>
+        <ToolsSection tools={tools} />
+      </DemotedSection>
+
+      <DemotedSection id="grade-breakdown" title="Grade Breakdown">
+        <GradeBreakdownTab
+          score_detail={server.score_detail ?? null}
+          findings={findings}
+        />
+      </DemotedSection>
+
+      <DemotedSection id="server-profile" title="Server Capability Profile">
+        <ServerProfileCard profile={server.profile ?? null} />
+      </DemotedSection>
+
+      <DemotedSection id="attack-chains" title="Attack Chains">
+        <AttackChainCard
+          chains={server.attack_chains ?? null}
+          currentServerId={server.id}
+        />
+      </DemotedSection>
+
+      <DemotedSection id="honest-gaps" title="Honest Gaps">
+        <HonestGaps
+          analysis_coverage={server.score_detail?.analysis_coverage ?? null}
+          findingsCount={findings.length}
+        />
+      </DemotedSection>
+    </div>
   );
 
-  const tabs: ServerTab[] = [
-    {
-      id: "findings",
-      label: findingsLabel,
-      count: findings.length,
-      content: findingsPanel,
-    },
-    {
-      id: "compliance",
-      label: "Compliance",
-      content: <ComplianceTab slug={slug} />,
-    },
-    {
-      id: "risk-boundary",
-      label: "Risk Boundary",
-      content: <RiskBoundaryTab slug={slug} apiUrl={API_URL} />,
-    },
-    {
-      id: "drift-history",
-      label: "Drift & History",
-      content: driftAndHistoryPanel,
-    },
-  ];
-
   return (
-    <div className="sd-page">
+    <div className="dd-page">
       {/* Breadcrumb */}
       <nav className="sd-breadcrumb">
         <a href="/">Home</a>
@@ -338,73 +514,37 @@ export default async function ServerDetailPage({
         <span className="sd-bread-current">{server.name}</span>
       </nav>
 
-      {/* ── Evidence Summary Hero (replaces previous identity hero) ────── */}
-      <EvidenceSummaryHero
-        name={server.name}
-        description={server.description}
-        author={server.author}
-        license={server.license}
-        server_version={server.server_version}
-        endpoint_url={server.endpoint_url}
-        github_url={server.github_url}
-        npm_package={server.npm_package}
-        pypi_package={server.pypi_package}
-        last_scanned_at={server.last_scanned_at}
-        score_detail={server.score_detail ?? null}
-        scan_stages={server.scan_stages ?? null}
-        findings={findings}
-        tools={tools}
-      />
+      {/* ── Hero chrome: thin strip OR legacy 3-column degraded fallback ── */}
+      {heroSlot}
 
-      {/* ── Signed Compliance Pack (Phase 6 invention #1 — top-of-page CTA) ─ */}
-      <SignedEvidencePack slug={slug} apiUrl={API_URL} />
-
-      {/* ── Attack Surface Strip (capability domain cards) ─────────────── */}
-      <AttackSurfaceStrip tools={tools} findings={findings} />
-
-      {/* ── Tools (relocated from killed tab — audit Invention #5) ─────── */}
-      <ToolsSection tools={tools} />
-
-      {/* ── Grade Breakdown (relocated from killed tab — audit Inv. #5) ── */}
-      <section id="grade-breakdown" className="sd-section">
-        <GradeBreakdownTab
-          score_detail={server.score_detail ?? null}
-          findings={findings}
+      {/* ── Deep dive long scroll OR nothing in degraded mode ─────────────
+          Cluster D reviewer B1 — wire the real components in. Cluster D
+          shipped <CategorySection/> (Agent 4) + <DeepDiveSidebar/>
+          (Agent 5) + the per-rule <RuleEvidenceCard/> chain underneath;
+          before this fix the page mounted local placeholders that
+          rendered category titles only. The user's product call ("make
+          Deep Dive section the hero on the server page") is delivered
+          here.
+          Reviewer M4 — only enter Mode A (Deep Dive) when categories
+          actually exist. With empty categories the legacy hero in
+          `heroSlot` already renders fully. */}
+      {deepDive != null && deepDive.categories.length > 0 && (
+        <DeepDiveLayout
+          sidebar={<DeepDiveSidebar categories={deepDive.categories} />}
+          main={
+            <div className="dd-main">
+              {deepDive.categories.map((cat) => (
+                <CategorySection key={cat.id} cat={cat} />
+              ))}
+            </div>
+          }
         />
-      </section>
+      )}
 
-      {/* ── Framework Posture Matrix (Cluster B Invention #3) ─────────────
-          Replaces the legacy OWASP MCP Top 10 grid with a 7-framework ×
-          control-status matrix. The component owns its own fetch against
-          the new aggregate /compliance endpoint; on 404 / network error it
-          falls back to rendering the OWASP grid via the
-          `owasp_coverage_fallback` prop, so older API deployments stay
-          functional. */}
-      <FrameworkPostureMatrix
-        slug={slug}
-        apiUrl={API_URL}
-        owasp_coverage_fallback={server.owasp_coverage ?? null}
-      />
+      {/* ── Demoted chrome accordions (Cluster A/B/C) ───────────────────── */}
+      {demotedChrome}
 
-      {/* ── Server Profile (Phase 1 — renders nothing if profile absent) ── */}
-      <ServerProfileCard profile={server.profile ?? null} />
-
-      {/* ── Attack Chains (renders nothing if no chains) ──── */}
-      <AttackChainCard
-        chains={server.attack_chains ?? null}
-        currentServerId={server.id}
-      />
-
-      {/* ── Tabbed Detail Sections ─────────────────────────── */}
-      <ServerTabs tabs={tabs} />
-
-      {/* ── Honest Gaps (Invention #4) — what we did NOT analyse ─ */}
-      <HonestGaps
-        analysis_coverage={server.score_detail?.analysis_coverage ?? null}
-        findingsCount={findings.length}
-      />
-
-      {/* ── Footer attestation bar ─────────────────────────── */}
+      {/* ── Footer attestation bar ──────────────────────────────────────── */}
       <FooterAttestationBar
         slug={slug}
         apiUrl={API_URL}

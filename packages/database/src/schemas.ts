@@ -1090,6 +1090,204 @@ export const DriftResponseSchema = z
   .passthrough();
 export type DriftResponse = z.infer<typeof DriftResponseSchema>;
 
+// ─── Deep Dive aggregate (Cluster D) ────────────────────────────────────────
+//
+// Single-round-trip bundle for the Deep Dive page (Cluster D agents 3/4/5).
+// Combines: taxonomy (categories + sub-categories), per-rule methodology
+// (CHARTER edge cases + technique + confidence cap), per-server findings,
+// framework cross-walk (reuses FrameworkControlMappingSchema), and
+// detection-quality footer (reuses DetectionQualitySchema).
+//
+// `.passthrough()` on every schema in this graph is non-negotiable
+// (Cluster A B3 + Cluster B B1 lessons): future taxonomy edits, future
+// methodology additions, and future evidence-chain shape changes MUST NOT
+// silently null any field at the response seam. Unknown keys are forwarded
+// to the page verbatim.
+//
+// Honest-gap rules baked into the contract:
+//   - status: "passed"   → rule is in the registry, had its required
+//                          inputs, and produced no findings for this server
+//   - status: "findings" → rule produced ≥1 finding for this server
+//   - status: "skipped"  → rule needed data we did not have for this server
+//                          (e.g. C-rules without source code). Distinct from
+//                          "passed" so the page can render an honest-gap
+//                          state rather than implying clean.
+//
+// `coverage` derives from analysis_coverage where available; when missing,
+// total_findings + the served rule list still populate from findings.
+// ────────────────────────────────────────────────────────────────────────────
+
+/** Mirrors the per-status counts already used by ComplianceControlCounts but
+ *  scoped to the deep-dive's own rule taxonomy. Kept as its own schema so
+ *  changes to the matrix' shape can never accidentally drift the deep-dive
+ *  contract — they are different surfaces with different lifecycles. */
+export const DeepDiveSeverityBreakdownSchema = z
+  .object({
+    critical: z.number().int().nonnegative(),
+    high: z.number().int().nonnegative(),
+    medium: z.number().int().nonnegative(),
+    low: z.number().int().nonnegative(),
+    informational: z.number().int().nonnegative(),
+  })
+  .passthrough();
+export type DeepDiveSeverityBreakdown = z.infer<typeof DeepDiveSeverityBreakdownSchema>;
+
+/** Per-server scan coverage panel — drives the hero "85/100 (HIGH confidence
+ *  · 142/164 rules executed)" line on the Deep Dive page. `coverage_band` is
+ *  optional because pre-v2 scans don't carry it; the frontend renders a
+ *  neutral pill when null. */
+export const DeepDiveCoverageSchema = z
+  .object({
+    coverage_band: CoverageBand.nullable(),
+    total_rules: z.number().int().nonnegative(),
+    rules_executed: z.number().int().nonnegative(),
+    rules_skipped_no_data: z.number().int().nonnegative(),
+    rules_with_findings: z.number().int().nonnegative(),
+    total_findings: z.number().int().nonnegative(),
+    severity_breakdown: DeepDiveSeverityBreakdownSchema,
+  })
+  .passthrough();
+export type DeepDiveCoverage = z.infer<typeof DeepDiveCoverageSchema>;
+
+/** CHARTER-derived methodology block. Every rule on the deep-dive page
+ *  carries this so the regulator can read "what does this rule actually
+ *  test?" without leaving the page. `confidence_cap` is nullable because
+ *  not every rule declares a cap (some inherit the engine default of 1.0). */
+export const DeepDiveMethodologySchema = z
+  .object({
+    technique: z.string().min(1),
+    verified_edge_cases: z.array(z.string().min(1)),
+    edge_case_strategies: z.array(z.string().min(1)),
+    confidence_cap: z.number().min(0).max(1).nullable(),
+  })
+  .passthrough();
+export type DeepDiveMethodology = z.infer<typeof DeepDiveMethodologySchema>;
+
+/** One per-finding row inside a rule. A subset of FindingResponseSchema —
+ *  we deliberately don't reuse that schema verbatim because the deep-dive
+ *  groups findings by rule, so framework_controls + detection_quality
+ *  belong on the parent rule (not duplicated on each finding). */
+export const DeepDiveFindingSchema = z
+  .object({
+    id: z.string().min(1),
+    severity: Severity,
+    confidence: z.number().min(0).max(1),
+    evidence: z.string().min(1),
+    /** Existing EvidenceChain shape from packages/analyzer/src/evidence.ts —
+     *  serialized as JSON in the DB, so typed as `Record<string, unknown>`
+     *  here to avoid creating a circular layering dep on the analyzer. */
+    evidence_chain: z.record(z.unknown()).nullable(),
+    remediation: z.string().min(1),
+  })
+  .passthrough();
+export type DeepDiveFinding = z.infer<typeof DeepDiveFindingSchema>;
+
+/** Status of a rule for this specific server. `findings` ≠ "fail" because
+ *  not every finding-rule is a failure; the regulator-grade view is "this
+ *  rule produced N findings". The frontend renders the colour. */
+export const DeepDiveRuleStatusSchema = z.enum(["passed", "findings", "skipped"]);
+export type DeepDiveRuleStatus = z.infer<typeof DeepDiveRuleStatusSchema>;
+
+/** One rule, with all its per-server context. Reuses FrameworkControlMapping
+ *  + DetectionQuality so the Deep Dive page consumes the SAME shapes as
+ *  the Findings tab — keeps the frontend renderers single-source. */
+export const DeepDiveRuleSchema = z
+  .object({
+    rule_id: z.string().min(1),
+    name: z.string().min(1),
+    severity: Severity,
+    /** Legacy letter category (e.g. "C", "K") — useful for filters. */
+    category: z.string().min(1),
+    owasp: z.string().nullable(),
+    mitre: z.string().nullable(),
+    summary: z.string(),
+    framework_controls: z.array(FrameworkControlMappingSchema),
+    methodology: DeepDiveMethodologySchema,
+    backing: DetectionQualitySchema.nullable(),
+    remediation: z.string().min(1),
+    status: DeepDiveRuleStatusSchema,
+    findings: z.array(DeepDiveFindingSchema),
+    /** Optional: when a rule appears in MORE THAN ONE category (e.g. F1 in
+     *  both Lethal Trifecta and Cross-Server). Frontend uses this to
+     *  render a "also tested in" badge so the user understands why the
+     *  same rule appears twice in the IA. Empty/absent in the common case. */
+    cross_referenced_in: z
+      .array(
+        z
+          .object({
+            category_id: z.string().min(1),
+            sub_category_id: z.string().min(1),
+          })
+          .passthrough(),
+      )
+      .optional(),
+  })
+  .passthrough();
+export type DeepDiveRule = z.infer<typeof DeepDiveRuleSchema>;
+
+/** One sub-category — the leaf node of the taxonomy IA. Carries its own
+ *  counts so the page can render per-section severity bars without
+ *  client-side aggregation. */
+export const DeepDiveSubCategorySchema = z
+  .object({
+    id: z.string().min(1),
+    title: z.string().min(1),
+    summary: z.string(),
+    counts: z
+      .object({
+        rules_total: z.number().int().nonnegative(),
+        rules_passed: z.number().int().nonnegative(),
+        rules_with_findings: z.number().int().nonnegative(),
+        rules_skipped: z.number().int().nonnegative(),
+        finding_count: z.number().int().nonnegative(),
+        severity_breakdown: DeepDiveSeverityBreakdownSchema,
+      })
+      .passthrough(),
+    rules: z.array(DeepDiveRuleSchema),
+  })
+  .passthrough();
+export type DeepDiveSubCategory = z.infer<typeof DeepDiveSubCategorySchema>;
+
+/** One top-level taxonomy category. `frameworks[]` is a list of framework
+ *  control IDs (e.g. "MCP01", "ASI01") taken verbatim from the taxonomy
+ *  YAML — the frontend renders these as pills. */
+export const DeepDiveCategorySchema = z
+  .object({
+    id: z.string().min(1),
+    title: z.string().min(1),
+    summary: z.string(),
+    frameworks: z.array(z.string().min(1)),
+    counts: z
+      .object({
+        rules_total: z.number().int().nonnegative(),
+        rules_passed: z.number().int().nonnegative(),
+        rules_with_findings: z.number().int().nonnegative(),
+        rules_skipped: z.number().int().nonnegative(),
+        finding_count: z.number().int().nonnegative(),
+        severity_breakdown: DeepDiveSeverityBreakdownSchema,
+      })
+      .passthrough(),
+    sub_categories: z.array(DeepDiveSubCategorySchema),
+  })
+  .passthrough();
+export type DeepDiveCategory = z.infer<typeof DeepDiveCategorySchema>;
+
+/** The whole Deep Dive payload. Frontend issues exactly one fetch and
+ *  renders the entire page from this. */
+export const DeepDiveResponseSchema = z
+  .object({
+    server: z
+      .object({
+        slug: z.string().min(1),
+        name: z.string().min(1),
+      })
+      .passthrough(),
+    coverage: DeepDiveCoverageSchema,
+    categories: z.array(DeepDiveCategorySchema),
+  })
+  .passthrough();
+export type DeepDiveResponse = z.infer<typeof DeepDiveResponseSchema>;
+
 // ─── API Response Schemas ────────────────────────────────────────────────────
 
 export const EcosystemStatsSchema = z.object({
