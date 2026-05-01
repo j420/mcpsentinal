@@ -134,6 +134,8 @@ type MockDb = {
   // Cluster C — risk-boundary + drift endpoints
   getRiskEdgesForServer: ReturnType<typeof vi.fn>;
   getAttackChainsForServer: ReturnType<typeof vi.fn>;
+  // PR #218 — Phase-5 compliance findings tab (restored after route collision)
+  getComplianceFindingsForServer: ReturnType<typeof vi.fn>;
 };
 const { _mockDb: db } = (await import("@mcp-sentinel/database")) as unknown as {
   _mockDb: MockDb;
@@ -858,7 +860,7 @@ describe("Compliance posture matrix (GET /api/v1/servers/:slug/compliance)", () 
 
   it("returns 200 with all 7 frameworks for a valid slug, even when the server has zero findings", async () => {
     db.getFindingsForServer.mockResolvedValue([]);
-    const res = await request(app).get("/api/v1/servers/matrix-server/compliance");
+    const res = await request(app).get("/api/v1/servers/matrix-server/compliance-summary");
     expect(res.status).toBe(200);
     const parsed = ComplianceMatrixResponseSchema.safeParse(res.body.data);
     expect(parsed.success).toBe(true);
@@ -879,7 +881,7 @@ describe("Compliance posture matrix (GET /api/v1/servers/:slug/compliance)", () 
 
   it("returns counts matching real framework registry (62+ controls across 7 frameworks)", async () => {
     db.getFindingsForServer.mockResolvedValue([]);
-    const res = await request(app).get("/api/v1/servers/matrix-server/compliance");
+    const res = await request(app).get("/api/v1/servers/matrix-server/compliance-summary");
     expect(res.status).toBe(200);
     const data = res.body.data as { frameworks: Array<{ controls: { total: number } }> };
     const totalControls = data.frameworks.reduce((acc, f) => acc + f.controls.total, 0);
@@ -908,7 +910,7 @@ describe("Compliance posture matrix (GET /api/v1/servers/:slug/compliance)", () 
         created_at: new Date("2026-04-25T12:00:00.000Z"),
       },
     ]);
-    const res = await request(app).get("/api/v1/servers/matrix-server/compliance");
+    const res = await request(app).get("/api/v1/servers/matrix-server/compliance-summary");
     expect(res.status).toBe(200);
     const data = res.body.data as { frameworks: Array<{ framework_id: string; overall_status: string; controls: { unmet: number } }> };
     const eu = data.frameworks.find((f) => f.framework_id === "eu_ai_act");
@@ -919,7 +921,7 @@ describe("Compliance posture matrix (GET /api/v1/servers/:slug/compliance)", () 
 
   it("download_paths are RELATIVE (no host) and target the per-framework signed-pack endpoints", async () => {
     db.getFindingsForServer.mockResolvedValue([]);
-    const res = await request(app).get("/api/v1/servers/matrix-server/compliance");
+    const res = await request(app).get("/api/v1/servers/matrix-server/compliance-summary");
     expect(res.status).toBe(200);
     const data = res.body.data as {
       frameworks: Array<{
@@ -941,20 +943,20 @@ describe("Compliance posture matrix (GET /api/v1/servers/:slug/compliance)", () 
 
   it("sets Cache-Control: public, max-age=300 on the matrix response", async () => {
     db.getFindingsForServer.mockResolvedValue([]);
-    const res = await request(app).get("/api/v1/servers/matrix-server/compliance");
+    const res = await request(app).get("/api/v1/servers/matrix-server/compliance-summary");
     expect(res.status).toBe(200);
     expect(res.headers["cache-control"]).toBe("public, max-age=300");
   });
 
   it("returns 404 for unknown slug", async () => {
     db.findServerBySlug.mockResolvedValue(null);
-    const res = await request(app).get("/api/v1/servers/no-such-server/compliance");
+    const res = await request(app).get("/api/v1/servers/no-such-server/compliance-summary");
     expect(res.status).toBe(404);
     expect(res.body).toHaveProperty("error");
   });
 
   it("returns 400 for invalid slug (path traversal)", async () => {
-    const res = await request(app).get("/api/v1/servers/..%2fevil/compliance");
+    const res = await request(app).get("/api/v1/servers/..%2fevil/compliance-summary");
     expect(res.status).toBe(400);
   });
 
@@ -992,7 +994,7 @@ describe("Compliance posture matrix (GET /api/v1/servers/:slug/compliance)", () 
         created_at: newest,
       },
     ]);
-    const res = await request(app).get("/api/v1/servers/matrix-server/compliance");
+    const res = await request(app).get("/api/v1/servers/matrix-server/compliance-summary");
     expect(res.status).toBe(200);
     expect(res.body.data.last_assessed_at).toBe(newest.toISOString());
   });
@@ -1000,23 +1002,22 @@ describe("Compliance posture matrix (GET /api/v1/servers/:slug/compliance)", () 
   it("last_assessed_at is null when no findings AND no last_scanned_at", async () => {
     db.findServerBySlug.mockResolvedValue({ ...baseServer, last_scanned_at: null });
     db.getFindingsForServer.mockResolvedValue([]);
-    const res = await request(app).get("/api/v1/servers/matrix-server/compliance");
+    const res = await request(app).get("/api/v1/servers/matrix-server/compliance-summary");
     expect(res.status).toBe(200);
     expect(res.body.data.last_assessed_at).toBeNull();
   });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Routing precedence — /compliance vs /compliance/:framework.json
+// Routing precedence — /compliance vs /compliance-summary vs /compliance/:framework.json
 //
-// Express matches routes in declaration order. The bare /compliance path
-// has no trailing segment so it cannot collide with /compliance/:framework
-// — but a regression in declaration order could shadow either route.
-// This test pins the contract: BOTH must resolve as their respective
-// handlers.
+// PR #218 hotfix: the Posture Matrix moved from `/compliance` (which
+// collided with the Phase-5 ComplianceTab) to `/compliance-summary`.
+// All three paths must resolve as their distinct handlers; this test
+// pins the contract.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe("Routing precedence: /compliance vs /compliance/:framework.json", () => {
+describe("Routing precedence: /compliance vs /compliance-summary vs /compliance/:framework.json", () => {
   beforeEach(() => {
     db.findServerBySlug.mockResolvedValue({
       id: "00000000-0000-0000-0000-000000000001",
@@ -1027,14 +1028,27 @@ describe("Routing precedence: /compliance vs /compliance/:framework.json", () =>
       latest_score: 70,
     });
     db.getFindingsForServer.mockResolvedValue([]);
+    db.getComplianceFindingsForServer.mockResolvedValue([]);
   });
 
-  it("GET /compliance returns the matrix shape (data.frameworks[])", async () => {
+  it("GET /compliance returns the Phase-5 grouped shape (data.{eu_ai_act,…} + meta.total_findings)", async () => {
     const res = await request(app).get("/api/v1/servers/demo-server/compliance");
+    expect(res.status).toBe(200);
+    // Restored Phase-5 shape — the existing <ComplianceTab/> consumer needs
+    // `meta.total_findings` to be present + framework-keyed `data` buckets.
+    expect(res.body.meta).toHaveProperty("total_findings");
+    expect(res.body.data).toHaveProperty("eu_ai_act");
+    expect(res.body.data).toHaveProperty("mitre_atlas");
+    // Negative: must NOT be the new aggregate matrix shape.
+    expect(res.body.data).not.toHaveProperty("frameworks");
+  });
+
+  it("GET /compliance-summary returns the Posture Matrix shape (data.frameworks[])", async () => {
+    const res = await request(app).get("/api/v1/servers/demo-server/compliance-summary");
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.data?.frameworks)).toBe(true);
     expect(res.body.data.frameworks.length).toBe(7);
-    // Negative: must NOT be the per-framework signed-report shape
+    // Negative: must NOT be the per-framework signed-report shape.
     expect(res.body).not.toHaveProperty("attestation");
     expect(res.body.data).not.toHaveProperty("report");
   });

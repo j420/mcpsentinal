@@ -3,7 +3,9 @@
  * FrameworkPostureMatrix Test Suite
  *
  * The component is an async Server Component that consumes the frozen contract
- * `GET /api/v1/servers/:slug/compliance`. These tests stub `fetch` directly
+ * `GET /api/v1/servers/:slug/compliance-summary` (PR #218 — moved from
+ * `/compliance` to resolve a route collision with the Phase-5 ComplianceTab).
+ * These tests stub `fetch` directly
  * (the same pattern AttackChainCard / EvidenceChainViz tests cannot use because
  * they are pure components — here we are testing data-driven RSC behavior).
  *

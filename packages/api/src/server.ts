@@ -437,20 +437,88 @@ function publicComplianceRow(row: ComplianceFindingRecord): {
   };
 }
 
-// GET /api/v1/servers/:slug/compliance — Framework Posture Matrix (aggregate)
+// GET /api/v1/servers/:slug/compliance — All frameworks, grouped
 //
-// Cluster B invention #3. Returns one entry per supported compliance
-// framework (7 total) with control-status counts, overall status,
-// coverage band, and relative download paths into the per-framework
-// signed-pack endpoints. Frontend uses this to render the Posture Matrix
-// without 7 round-trips.
+// Phase 5 endpoint. Powers the existing <ComplianceTab/> on the detail
+// page (judge-confirmed compliance findings grouped by framework). Only
+// judge-confirmed rows reach here; LLM-only fields (`judge_rationale`,
+// prompts, response text) are stripped server-side via publicComplianceRow().
 //
-// IMPORTANT — routing precedence: this route is declared BEFORE the
-// `/compliance/:framework.{json,html,pdf}` and `/compliance/:framework/badge.svg`
-// routes below so Express does not try to bind `compliance` as a `:framework`
-// path param value. The bare `/compliance` path has no extra segment, so it
-// cannot collide with the parameterised paths — but keeping the declaration
-// order explicit prevents future refactors from accidentally reordering.
+// Response shape:
+//   { data: {
+//       eu_ai_act:   [ ...publicComplianceRow ],
+//       mitre_atlas: [ ... ],
+//       owasp_mcp:   [ ... ],
+//       owasp_asi:   [ ... ],
+//       cosai:       [ ... ],
+//       maestro:     [ ... ],
+//     },
+//     meta: { total_findings, frameworks_with_findings, last_scan_at }
+//   }
+//
+// HISTORY: Cluster B (PR #216) accidentally clobbered this route by mounting
+// the new Framework Posture Matrix endpoint at the same path. The old
+// <ComplianceTab/> kept consuming the path but received the new shape →
+// `meta.total_findings` was undefined → page crashed. Hotfix: the matrix
+// moved to `/compliance-summary`; this route is restored to its Phase-5
+// behaviour. See PR #218 for the full diagnosis.
+app.get(
+  "/api/v1/servers/:slug/compliance",
+  rateLimitMiddleware(),
+  async (req: Request, res: Response) => {
+    const { slug } = req.params;
+    if (!slug || !isValidSlug(slug)) {
+      res.status(400).json({ error: "Invalid server slug" });
+      return;
+    }
+    try {
+      const server = await db.findServerBySlug(slug);
+      if (!server) {
+        res.status(404).json({ error: "Server not found" });
+        return;
+      }
+      const rows = await db.getComplianceFindingsForServer(server.id);
+      const grouped: Record<ComplianceFrameworkIdType, ReturnType<typeof publicComplianceRow>[]> = {
+        eu_ai_act: [],
+        mitre_atlas: [],
+        owasp_mcp: [],
+        owasp_asi: [],
+        cosai: [],
+        maestro: [],
+      };
+      let lastScanAt: Date | null = null;
+      for (const row of rows) {
+        grouped[row.framework].push(publicComplianceRow(row));
+        if (!lastScanAt || row.created_at > lastScanAt) {
+          lastScanAt = row.created_at;
+        }
+      }
+      const frameworksWithFindings = (
+        Object.keys(grouped) as ComplianceFrameworkIdType[]
+      ).filter((k) => grouped[k].length > 0).length;
+      res.json({
+        data: grouped,
+        meta: {
+          total_findings: rows.length,
+          frameworks_with_findings: frameworksWithFindings,
+          last_scan_at: lastScanAt,
+        },
+      });
+    } catch (err) {
+      logger.error(err, "Compliance findings error");
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+// GET /api/v1/servers/:slug/compliance-summary — Framework Posture Matrix (aggregate)
+//
+// Cluster B invention #3 (originally mounted at `/compliance`; moved here
+// in PR #218 to resolve the route collision with the Phase-5 Compliance
+// tab). Returns one entry per supported compliance framework (7 total)
+// with control-status counts, overall status, coverage band, and relative
+// download paths into the per-framework signed-pack endpoints. Frontend
+// uses this to render the Posture Matrix without 7 round-trips.
 //
 // NOT signed: this is a navigational summary, not an auditable artifact.
 // The signed, HMAC-attested artifacts continue to live at the per-
@@ -458,7 +526,7 @@ function publicComplianceRow(row: ComplianceFindingRecord): {
 // existing public endpoints (and absorbs the 7×buildReport cost on
 // repeat hits).
 app.get(
-  "/api/v1/servers/:slug/compliance",
+  "/api/v1/servers/:slug/compliance-summary",
   rateLimitMiddleware(),
   async (req: Request, res: Response) => {
     const { slug } = req.params;
