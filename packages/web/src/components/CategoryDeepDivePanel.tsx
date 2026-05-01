@@ -351,7 +351,16 @@ export default function CategoryDeepDivePanel({ findings, fullFindings, slug }: 
                   </div>
                   <div className="cdd-findings-list">
                     {catFullFindings.map((f) => (
-                      <div key={f.id} className={`cdd-finding-card cdd-finding-${f.severity}`}>
+                      <div
+                        key={f.id}
+                        // Cluster C reviewer n3 — kill-chain rule_id
+                        // deep-link target. Same rationale as
+                        // FindingsEvidenceTab.tsx; both views render
+                        // an anchor for the same `#finding-<rule_id>`
+                        // fragment so the link works in either view.
+                        id={`finding-${f.rule_id}`}
+                        className={`cdd-finding-card cdd-finding-${f.severity}`}
+                      >
                         <div className="cdd-finding-hdr">
                           <span className={`sev-badge sev-${f.severity}`}>{f.severity}</span>
                           <span className="cdd-finding-rule-id">{f.rule_id}</span>

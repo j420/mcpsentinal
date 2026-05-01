@@ -31,6 +31,17 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3100";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+// NOTE: at runtime, every finding row also carries `framework_controls[]`
+// (Cluster B — populated by getFrameworkControlsForRule()) and
+// `detection_quality` (Cluster C — populated by getDetectionQualityForRule()).
+// They are NOT declared on this page-level type because:
+//   (a) the page only forwards findings into <FindingsEvidenceTab/>, which
+//       has its own richer Finding type that DOES declare them, and TS's
+//       structural subtyping accepts the wider runtime shape;
+//   (b) co-locating the canonical shape with the consuming component
+//       (FindingsEvidenceTab) keeps the source-of-truth in one place.
+// Cluster C reviewer m2 lesson — surface this explicitly so a future
+// contributor reading this file does not conclude the fields don't exist.
 interface Finding {
   id: string;
   rule_id: string;

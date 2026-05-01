@@ -1749,6 +1749,29 @@ describe("Drift endpoint (GET /api/v1/servers/:slug/drift)", () => {
     if (!parsed.success) return;
     expect((parsed.data as Record<string, unknown>)["severity_score"]).toBe(12);
   });
+
+  // Cluster C reviewer m1 — symmetry with the /risk-boundary precedence
+  // test above. The /drift route is also a 4-segment path under
+  // /servers/:slug/...; if it were ever moved before /history or
+  // /risk-edges in declaration order, those handlers would shadow as
+  // `:slug = "history"`. Express literal-segment matching means it
+  // can't happen today, but the absence of a regression test was
+  // exactly Cluster B's m4 shape.
+  it("does not shadow any existing /servers/:slug/... route (routing precedence)", async () => {
+    db.findServerBySlug.mockResolvedValue(baseServer);
+    db.getScoreHistory.mockResolvedValue([]);
+    const history = await request(app).get("/api/v1/servers/drift-server/history");
+    expect(history.status).toBe(200);
+    expect(history.body).toHaveProperty("data");
+    db.getRiskEdgesForServer.mockResolvedValue([]);
+    const edges = await request(app).get("/api/v1/servers/drift-server/risk-edges");
+    expect(edges.status).toBe(200);
+    expect(Array.isArray(edges.body.data)).toBe(true);
+    // /drift itself must continue to resolve.
+    const drift = await request(app).get("/api/v1/servers/drift-server/drift");
+    expect(drift.status).toBe(200);
+    expect(drift.body.data).toHaveProperty("trend");
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

@@ -264,6 +264,13 @@ function FlatFindingsList({
           return (
             <li
               key={f.id}
+              // Cluster C reviewer n3 — RiskBoundaryTab kill-chain
+              // contributing_rule_ids deep-link to #finding-<rule_id>;
+              // this is the anchor target. Note: when a server has
+              // multiple findings for the same rule_id, only the first
+              // wins the anchor by virtue of DOM order — a separate
+              // /findings#finding-<rule_id> permalink is acceptable.
+              id={`finding-${f.rule_id}`}
               className={`fet-card fet-card-${f.severity}`}
             >
               <button

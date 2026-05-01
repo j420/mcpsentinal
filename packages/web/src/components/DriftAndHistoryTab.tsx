@@ -242,9 +242,16 @@ async function getDriftAndHistory(
 
 // ── Sub-components ─────────────────────────────────────────────────────────
 
+// Cluster C reviewer m4 — `kind` is a string literal union duplicated here
+// from packages/database/src/schemas.ts (web cannot import from database
+// per packages/web/CLAUDE.md). If the API one day ships a 7th kind, the
+// dictionary lookup returns `undefined` and the row would render an
+// empty glyph + empty label silently. The `?? "•"` / `?? <kind>` falls
+// back to a visible placeholder so the row still renders + the unknown
+// kind is at least readable for an operator triaging the drift feed.
 function HeadlineRow({ headline }: { headline: DriftHeadline }): React.ReactElement {
-  const glyph = KIND_GLYPH[headline.kind];
-  const label = KIND_LABEL[headline.kind];
+  const glyph = KIND_GLYPH[headline.kind] ?? "•";
+  const label = KIND_LABEL[headline.kind] ?? headline.kind;
   return (
     <li
       className={`dah-headline dah-headline-${headline.severity_hint}`}
