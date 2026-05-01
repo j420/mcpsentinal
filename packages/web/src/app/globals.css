@@ -10586,3 +10586,184 @@ pre code { background: transparent; padding: 0; }
   .sep-row { flex-direction: column; align-items: flex-start; gap: var(--s2); }
   .sep-row-actions { flex-wrap: wrap; }
 }
+
+/* ── HonestGaps (hg-*) ─────────────────────────────────────────────────
+   "What we did not analyse — and why" — sits above FooterAttestationBar.
+   Visual intent: a grave, low-key card that reads as the report's own
+   self-disclosure rather than a UI flourish. Reuses --good/moderate/poor/
+   --critical for the coverage band chip so it shares the score hero's
+   visual language without coupling to the score itself.
+   ────────────────────────────────────────────────────────────────────── */
+
+.hg-card {
+  background: var(--surface);
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-lg);
+  padding: var(--s5) var(--s6);
+  margin-top: var(--s6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+
+.hg-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s4);
+}
+.hg-head-text { display: flex; flex-direction: column; gap: var(--s1); flex: 1 1 auto; min-width: 0; }
+.hg-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-2);
+}
+.hg-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.25;
+}
+.hg-tagline {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.55;
+  max-width: 64ch;
+}
+
+/* Coverage band chip — colour keyed off the band (high/medium/low/minimal) */
+.hg-band-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s1) var(--s3);
+  border-radius: var(--r-full);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-2);
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.hg-band-key { color: var(--text-3); text-transform: uppercase; font-size: 10px; }
+.hg-band-value { color: inherit; }
+
+.hg-band-good     { color: var(--good);     background: var(--good-sub);     border-color: var(--good-border); }
+.hg-band-moderate { color: var(--moderate); background: var(--moderate-sub); border-color: var(--moderate-border); }
+.hg-band-poor     { color: var(--poor);     background: var(--poor-sub);     border-color: var(--poor-border); }
+.hg-band-critical { color: var(--critical); background: var(--critical-sub); border-color: var(--critical-border); }
+.hg-band-unknown  { color: var(--text-3);   background: var(--surface-2);    border-color: var(--border); }
+
+/* Rows */
+.hg-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+.hg-row {
+  display: grid;
+  grid-template-columns: 18px minmax(140px, 1fr) 5fr;
+  align-items: baseline;
+  gap: var(--s3);
+  padding: var(--s2) var(--s3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.hg-mark {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  text-align: center;
+  color: var(--text-3);
+}
+.hg-row-label {
+  color: var(--text);
+  font-weight: 500;
+}
+.hg-row-text {
+  color: var(--text-2);
+}
+.hg-row-ok      .hg-mark      { color: var(--good); }
+.hg-row-miss    .hg-mark      { color: var(--text-3); }
+.hg-row-miss    .hg-row-text  { color: var(--text-3); font-style: italic; }
+.hg-row-unknown .hg-mark      { color: var(--text-3); }
+.hg-row-unknown .hg-row-text  { color: var(--text-3); font-style: italic; }
+.hg-row-static  .hg-mark      { color: var(--text-3); opacity: 0.7; }
+
+/* Inline mono code/value */
+.hg-mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+  padding: 0 var(--s1);
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+}
+
+/* Footer line */
+.hg-foot {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  align-items: baseline;
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-3);
+}
+.hg-foot-key {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.hg-foot-sep { color: var(--text-3); opacity: 0.6; }
+.hg-foot-val { color: var(--text-2); }
+
+@media (max-width: 720px) {
+  .hg-head { flex-direction: column; }
+  .hg-band-chip { align-self: flex-start; }
+  .hg-row {
+    grid-template-columns: 18px 1fr;
+    grid-template-rows: auto auto;
+  }
+  .hg-row-text { grid-column: 2 / -1; }
+}
+
+/* ── Findings view toggle (relocated Deep-Dive trigger) ──────────────── */
+.sd-findings-toggle {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s2);
+  margin-bottom: var(--s3);
+  padding: var(--s1) var(--s3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  color: var(--text-3);
+}
+.sd-toggle-link {
+  color: var(--text-3);
+  text-decoration: none;
+  padding: 1px var(--s1);
+  border-radius: var(--r-sm);
+}
+.sd-toggle-link:hover { color: var(--text-2); }
+.sd-toggle-active { color: var(--accent-2); font-weight: 600; }
+.sd-toggle-sep { color: var(--text-3); opacity: 0.5; }

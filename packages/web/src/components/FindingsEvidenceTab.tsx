@@ -14,7 +14,8 @@
 
 import React, { useMemo, useState } from "react";
 import EvidenceChainViz, { type EvidenceChainData } from "@/components/EvidenceChainViz";
-import { RULE_NAMES } from "@/components/cdd-data";
+import CategoryDeepDivePanel from "@/components/CategoryDeepDivePanel";
+import { RULE_NAMES, type CddFinding } from "@/components/cdd-data";
 
 type Severity = "critical" | "high" | "medium" | "low" | "informational";
 
@@ -33,6 +34,14 @@ interface Finding {
 interface Props {
   findings: Finding[];
   scanId?: string | null;
+  /**
+   * When true, the tab renders the full category-grouped Deep-Dive view
+   * (CategoryDeepDivePanel) instead of the flat severity-sorted list.
+   * Default is false: the flat list. The toggle is driven from the
+   * server-detail page via `?group=category` and is the user-facing
+   * replacement for the old separate "Deep Dive" tab.
+   */
+  groupByCategory?: boolean;
 }
 
 const SEVERITY_RANK: Record<Severity, number> = {
@@ -58,7 +67,7 @@ function confLevel(c: number): "good" | "moderate" | "poor" {
   return "poor";
 }
 
-export default function FindingsEvidenceTab({ findings, scanId }: Props) {
+function FlatFindingsList({ findings, scanId }: { findings: Finding[]; scanId?: string | null }) {
   const sorted = useMemo(
     () => [...findings].sort((a, b) =>
       SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity]
@@ -206,4 +215,27 @@ export default function FindingsEvidenceTab({ findings, scanId }: Props) {
       </ul>
     </section>
   );
+}
+
+// ── Default export: thin dispatcher between flat list and category view.
+// Hooks live inside FlatFindingsList so the conditional render is safe
+// (the deep-dive panel manages its own state and is not subject to the
+// flat list's expand/filter hooks).
+export default function FindingsEvidenceTab({
+  findings,
+  scanId,
+  groupByCategory = false,
+}: Props) {
+  if (groupByCategory) {
+    const cdd: CddFinding[] = findings.map((f) => ({
+      rule_id: f.rule_id,
+      severity: f.severity,
+    }));
+    return (
+      <div id="findings-by-category">
+        <CategoryDeepDivePanel findings={cdd} fullFindings={findings} />
+      </div>
+    );
+  }
+  return <FlatFindingsList findings={findings} scanId={scanId} />;
 }
