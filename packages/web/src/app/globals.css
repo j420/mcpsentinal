@@ -10897,6 +10897,7 @@ pre code { background: transparent; padding: 0; }
 @media (max-width: 520px) {
   .esh-cov-subscores { grid-template-columns: 1fr; }
 }
+
 /* ── FrameworkPostureMatrix (fpm-*) ─────────────────────────────────────── */
 /* Replaces the legacy single-framework OWASP MCP Top 10 grid with a 7-row
    multi-framework control coverage matrix. Honest gaps render visibly. */
@@ -11119,4 +11120,109 @@ pre code { background: transparent; padding: 0; }
   .fpm-row-counts,
   .fpm-row-meta,
   .fpm-row-downloads { flex-wrap: wrap; }
+}
+
+/* ── FindingFrameworkCrosswalk (ffc-*) ─
+   Per-finding framework cross-walk row. Renders below the severity row in
+   each finding card (both flat list and grouped/CDD views). Each badge is
+   an <a> deep-link to the per-framework signed compliance pack PDF. The
+   visual language echoes the SignedEvidencePack chips (--surface-2 bg,
+   --border ring, accent text) so the row reads as part of the same
+   audit-evidence stack. */
+
+.ffc-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s1) var(--s2);
+  padding: var(--s2) var(--s4);
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.ffc-row-empty {
+  color: var(--text-3);
+}
+
+.ffc-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+
+.ffc-empty-text {
+  font-style: italic;
+  color: var(--text-3);
+}
+
+.ffc-sep {
+  color: var(--text-3);
+  user-select: none;
+}
+
+.ffc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px var(--s2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.ffc-badge:hover,
+.ffc-badge:focus-visible {
+  background: var(--bg);
+  color: var(--text);
+  border-color: var(--accent);
+  outline: none;
+}
+
+.ffc-fw {
+  font-weight: 600;
+}
+
+.ffc-ctrl {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.ffc-mark {
+  color: var(--good);
+  font-size: 10px;
+  margin-left: 2px;
+}
+
+/* Per-framework accent strips — keep the row scannable when many
+   frameworks coexist on one finding. Mirrors framework-labels.ts. */
+.ffc-badge-eu_ai_act   { border-left: 2px solid var(--accent);   }
+.ffc-badge-iso_27001   { border-left: 2px solid var(--accent-2); }
+.ffc-badge-owasp_mcp   { border-left: 2px solid var(--moderate); }
+.ffc-badge-owasp_asi   { border-left: 2px solid var(--moderate); }
+.ffc-badge-cosai_mcp   { border-left: 2px solid var(--good);     }
+.ffc-badge-maestro     { border-left: 2px solid var(--poor);     }
+.ffc-badge-mitre_atlas { border-left: 2px solid var(--critical); }
+
+.ffc-more {
+  display: inline-block;
+  padding: 2px var(--s2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: transparent;
+  color: var(--text-3);
+  border: 1px dashed var(--border);
+  border-radius: var(--r-full);
+  cursor: help;
+  white-space: nowrap;
 }

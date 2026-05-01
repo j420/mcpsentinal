@@ -265,6 +265,7 @@ export default async function ServerDetailPage({
       <FindingsEvidenceTab
         findings={findings}
         scanId={null}
+        slug={slug}
         groupByCategory={groupByCategory}
       />
     </>
