@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { resolveLensDensity } from "@/components/LensDensityControls";
+// Imported from lib/ (server-callable). Previously imported from the
+// "use client" controls module — moved during the digest-1244316665 fix
+// because Next 15 forbids server components from invoking functions
+// exported from a "use client" module.
+import { resolveLensDensity } from "@/lib/lens-density";
 
 describe("resolveLensDensity (server-side parser)", () => {
   it("returns story+briefing defaults when searchParams is undefined", () => {

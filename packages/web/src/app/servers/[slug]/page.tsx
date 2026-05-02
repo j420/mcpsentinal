@@ -32,9 +32,14 @@ import ProvenanceFooter from "@/components/ProvenanceFooter";
 import VerdictBar from "@/components/VerdictBar";
 import HeroBlock from "@/components/HeroBlock";
 import CoverageLedger from "@/components/CoverageLedger";
-import LensDensityControls, {
-  resolveLensDensity,
-} from "@/components/LensDensityControls";
+import LensDensityControls from "@/components/LensDensityControls";
+// `resolveLensDensity` lives in lib/ (server-callable). Importing it from
+// the "use client" controls module — as the original code did — produces
+// a Next-15 boundary-violation crash:
+//   "Attempted to call resolveLensDensity() from the server but
+//    resolveLensDensity is on the client." (digest 1244316665)
+// The error is framework-level and bypasses every <SectionBoundary/>.
+import { resolveLensDensity } from "@/lib/lens-density";
 import SectionBoundary from "@/components/SectionBoundary";
 import HoverTraceController from "@/components/HoverTraceController";
 import ForensicDrawer from "@/components/ForensicDrawer";
