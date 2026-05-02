@@ -1,6 +1,14 @@
+"use client";
 /**
  * EvidenceChainViz — Regulator-grade evidence presentation.
  *
+ * Marked `"use client"` so any render exception (a chain shape we
+ * didn't anticipate, a non-array confidence_factors[], etc.) is caught
+ * by the surrounding <SectionBoundary/> instead of crashing SSR. Pure
+ * presentation — no fetch / no DOM-only APIs — so the directive is
+ * a no-op for functionality.
+ *
+
  * Renders structured evidence chains in a 5-question format designed for
  * compliance officers, enterprise security teams, and regulators:
  *
@@ -410,17 +418,31 @@ function ConfidenceSection({ confidence, factors }: { confidence: number; factor
               Positive adjustments indicate corroborating evidence; negative adjustments indicate uncertainty or partial mitigation.
             </p>
             <div className="ec5-factors-list">
-              {factors.map((f, i) => (
-                <div key={i} className="ec5-factor-item">
-                  <span className={`ec5-factor-adj ${f.adjustment >= 0 ? "ec5-factor-pos" : "ec5-factor-neg"}`}>
-                    {f.adjustment >= 0 ? "+" : ""}{f.adjustment.toFixed(2)}
-                  </span>
-                  <div className="ec5-factor-detail">
-                    <strong>{f.factor.replace(/_/g, " ")}</strong>
-                    <p>{f.rationale}</p>
+              {factors.map((f, i) => {
+                // Defensive against malformed factor entries — production
+                // chains may have missing adjustment/rationale fields.
+                if (!f || typeof f !== "object") return null;
+                const adjustment =
+                  typeof f.adjustment === "number" && Number.isFinite(f.adjustment)
+                    ? f.adjustment
+                    : 0;
+                const factorName =
+                  typeof f.factor === "string" ? f.factor : "—";
+                const rationale =
+                  typeof f.rationale === "string" ? f.rationale : "";
+                return (
+                  <div key={i} className="ec5-factor-item">
+                    <span className={`ec5-factor-adj ${adjustment >= 0 ? "ec5-factor-pos" : "ec5-factor-neg"}`}>
+                      {adjustment >= 0 ? "+" : ""}
+                      {adjustment.toFixed(2)}
+                    </span>
+                    <div className="ec5-factor-detail">
+                      <strong>{factorName.replace(/_/g, " ")}</strong>
+                      {rationale && <p>{rationale}</p>}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -448,25 +470,45 @@ function VerifySection({ steps }: { steps: VerificationStep[] }) {
           remediation has been applied.
         </p>
         <div className="ec5-verify-steps">
-          {steps.map((step, i) => (
-            <div key={i} className="ec5-verify-step">
-              <div className="ec5-verify-step-header">
-                <span className="ec5-verify-step-num">Step {i + 1}</span>
-                <span className="ec5-verify-step-type">{STEP_TYPE_LABELS[step.step_type] ?? step.step_type}</span>
-              </div>
-              <div className="ec5-verify-step-target">
-                <span className="ec5-verify-target-label">Target:</span>
-                <code className="ec5-verify-target-val">{step.target}</code>
-              </div>
-              <p className="ec5-verify-instruction">{step.instruction}</p>
-              {step.expected_observation && (
-                <div className="ec5-verify-expected">
-                  <span className="ec5-verify-expected-label">Expected observation:</span>
-                  <p className="ec5-verify-expected-text">{step.expected_observation}</p>
+          {steps.map((step, i) => {
+            if (!step || typeof step !== "object") return null;
+            const stepType =
+              typeof step.step_type === "string" ? step.step_type : null;
+            const target = typeof step.target === "string" ? step.target : null;
+            const instruction =
+              typeof step.instruction === "string" ? step.instruction : "";
+            const expected =
+              typeof step.expected_observation === "string"
+                ? step.expected_observation
+                : null;
+            return (
+              <div key={i} className="ec5-verify-step">
+                <div className="ec5-verify-step-header">
+                  <span className="ec5-verify-step-num">Step {i + 1}</span>
+                  {stepType && (
+                    <span className="ec5-verify-step-type">
+                      {STEP_TYPE_LABELS[stepType] ?? stepType}
+                    </span>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
+                {target && (
+                  <div className="ec5-verify-step-target">
+                    <span className="ec5-verify-target-label">Target:</span>
+                    <code className="ec5-verify-target-val">{target}</code>
+                  </div>
+                )}
+                {instruction && (
+                  <p className="ec5-verify-instruction">{instruction}</p>
+                )}
+                {expected && (
+                  <div className="ec5-verify-expected">
+                    <span className="ec5-verify-expected-label">Expected observation:</span>
+                    <p className="ec5-verify-expected-text">{expected}</p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -488,8 +530,12 @@ export default function EvidenceChainViz({
 
   // If there's only confidence (no chain), render a minimal confidence indicator
   if (!chain && confidence != null) {
-    const level = confLevel(confidence);
-    const pct = Math.round(confidence * 100);
+    const safe =
+      typeof confidence === "number" && Number.isFinite(confidence)
+        ? confidence
+        : 0;
+    const level = confLevel(safe);
+    const pct = Math.round(safe * 100);
     return (
       <div className="ec5-confidence-only">
         <span className="ec5-conf-only-label">Confidence</span>
@@ -503,27 +549,39 @@ export default function EvidenceChainViz({
 
   if (!chain) return null;
 
-  // Categorize links
-  const sources = chain.links.filter((l): l is SourceLink => l.type === "source");
-  const propagations = chain.links.filter((l): l is PropagationLink => l.type === "propagation");
-  const sinks = chain.links.filter((l): l is SinkLink => l.type === "sink");
-  const mitigations = chain.links.filter((l): l is MitigationLink => l.type === "mitigation");
-  const impacts = chain.links.filter((l): l is ImpactLink => l.type === "impact");
-  const steps = chain.verification_steps ?? [];
+  // Categorize links — defensive against partial chain shapes.
+  // The TS type says chain.links is required, but at runtime an older
+  // analyzer / api may emit a chain without it. Coerce once.
+  const links = Array.isArray(chain.links) ? chain.links : [];
+  const sources = links.filter((l): l is SourceLink => l && l.type === "source");
+  const propagations = links.filter((l): l is PropagationLink => l && l.type === "propagation");
+  const sinks = links.filter((l): l is SinkLink => l && l.type === "sink");
+  const mitigations = links.filter((l): l is MitigationLink => l && l.type === "mitigation");
+  const impacts = links.filter((l): l is ImpactLink => l && l.type === "impact");
+  const steps = Array.isArray(chain.verification_steps)
+    ? chain.verification_steps
+    : [];
+  const factors = Array.isArray(chain.confidence_factors)
+    ? chain.confidence_factors
+    : [];
+  const safeConfidence =
+    typeof chain.confidence === "number" && Number.isFinite(chain.confidence)
+      ? chain.confidence
+      : 0;
 
   return (
     <div className="ec5-report">
       <div className="ec5-report-header">
         <span className="ec5-report-title">Evidence Report</span>
-        <span className={`ec5-report-conf ec5-conf-${confLevel(chain.confidence)}`}>
-          {Math.round(chain.confidence * 100)}% confidence
+        <span className={`ec5-report-conf ec5-conf-${confLevel(safeConfidence)}`}>
+          {Math.round(safeConfidence * 100)}% confidence
         </span>
       </div>
 
       <WhatSection sources={sources} sinks={sinks} impacts={impacts} />
       <WhereSection sources={sources} propagations={propagations} sinks={sinks} />
       <WhySection impacts={impacts} mitigations={mitigations} reference={chain.threat_reference} />
-      <ConfidenceSection confidence={chain.confidence} factors={chain.confidence_factors} />
+      <ConfidenceSection confidence={safeConfidence} factors={factors} />
       <VerifySection steps={steps} />
     </div>
   );

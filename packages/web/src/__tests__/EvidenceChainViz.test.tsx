@@ -129,10 +129,16 @@ describe("confidence display", () => {
     expect(container.textContent).toContain("-30%");
   });
 
-  it("confidence=NaN → 'NaN%'", () => {
+  it("confidence=NaN → '0%' (defensive coercion to 0 — NaN is not a finite number)", () => {
+    // Previously rendered "NaN%". After Phase 5 hardening (defensive
+    // guard via Number.isFinite), non-finite confidence values coerce
+    // to 0 so the Evidence Report header always shows a legitimate
+    // percentage. The render is honest about absence-of-confidence
+    // rather than emitting "NaN%" which is opaque to a regulator.
     const chain = makeChain({ confidence: NaN });
     const { container } = render(<EvidenceChainViz chain={chain} />);
-    expect(container.textContent).toContain("NaN%");
+    expect(container.textContent).toContain("0%");
+    expect(container.textContent).not.toContain("NaN");
   });
 });
 
