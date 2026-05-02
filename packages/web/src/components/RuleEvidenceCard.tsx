@@ -49,7 +49,7 @@
  * `--sev-${severity}-sub`, `--sev-${severity}-border`. No raw colours.
  */
 
-import React from "react";
+import React, { Suspense } from "react";
 import EvidenceChainViz, {
   type EvidenceChainData,
 } from "@/components/EvidenceChainViz";
@@ -670,7 +670,24 @@ function FindingPanel({
 
         <div className="rec-finding-action-row">
           <FindingReceiptLink findingId={finding.id} />
-          <ForensicTrigger findingId={finding.id} />
+          {/* ForensicTrigger reads `useSearchParams()` to preserve other
+              query params when it writes `?finding=<id>`. Next 15 requires
+              every `useSearchParams` consumer to live under a Suspense
+              boundary; without one the prerender bails with
+              MISSING_SUSPENSE_WITH_CSR_BAILOUT, which bypasses the page's
+              <SectionBoundary/> error boundaries and surfaces as HTTP 500
+              from the route-level error.tsx. The four other useSearchParams
+              consumers (LensDensityControls, DeepDiveSidebar, ForensicDrawer,
+              MobileNavigateFAB) are wrapped at their mount sites in
+              page.tsx; this is the matching wrap for ForensicTrigger, which
+              is mounted indirectly inside this card and therefore can't be
+              wrapped at the page level. Fallback is `null` so the action
+              row stays balanced (the receipt link is still visible) and
+              SSR HTML for the rest of the card is unaffected — only this
+              one button bails to client-side hydration. */}
+          <Suspense fallback={null}>
+            <ForensicTrigger findingId={finding.id} />
+          </Suspense>
         </div>
       </div>
     </details>
