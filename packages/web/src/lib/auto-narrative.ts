@@ -59,18 +59,32 @@ const MAX_BULLETS = 5;
  *  the offender; we inspect category metadata for the canonical
  *  "lethal-trifecta" / "cross-server-trifecta" sub-categories or any
  *  category whose summary mentions the trifecta. Conservative — we only
- *  fire when the data clearly supports it. */
+ *  fire when the data clearly supports it.
+ *
+ *  Defensive: every field is checked at runtime because production data
+ *  may be served by an older api that emits slightly different shapes
+ *  (missing counts, missing sub_categories, etc.). The page must never
+ *  crash on a partial response. */
 function looksLikeLethalTrifecta(
   categories: ReadonlyArray<DeepDiveCategory>,
 ): boolean {
   for (const cat of categories) {
-    // Direct id matches (canonical taxonomy ids — stable wire strings).
-    if (cat.id === "lethal-trifecta") {
-      if (cat.counts.rules_with_findings > 0) return true;
+    if (!cat || typeof cat !== "object") continue;
+    if (
+      cat.id === "lethal-trifecta" &&
+      cat.counts &&
+      typeof cat.counts.rules_with_findings === "number" &&
+      cat.counts.rules_with_findings > 0
+    ) {
+      return true;
     }
-    for (const sub of cat.sub_categories) {
+    const subs = Array.isArray(cat.sub_categories) ? cat.sub_categories : [];
+    for (const sub of subs) {
+      if (!sub || typeof sub !== "object") continue;
       if (
         (sub.id === "lethal-trifecta" || sub.id === "cross-config-trifecta") &&
+        sub.counts &&
+        typeof sub.counts.rules_with_findings === "number" &&
         sub.counts.rules_with_findings > 0
       ) {
         return true;
@@ -81,13 +95,23 @@ function looksLikeLethalTrifecta(
 }
 
 /** Pick the highest-exploitability chain. Stable tie-break: lexicographic
- *  on `chain_id` so the same input always yields the same headline. */
+ *  on `chain_id` so the same input always yields the same headline.
+ *  Defensive: skips entries with non-numeric exploitability or missing
+ *  required strings. */
 function worstChain(
   chains: ReadonlyArray<DeepDiveAttackChain>,
 ): DeepDiveAttackChain | null {
-  if (chains.length === 0) return null;
-  let best = chains[0]!;
-  for (const c of chains) {
+  const valid = chains.filter(
+    (c) =>
+      c &&
+      typeof c.exploitability_overall === "number" &&
+      typeof c.chain_id === "string" &&
+      typeof c.kill_chain_id === "string" &&
+      typeof c.kill_chain_name === "string",
+  );
+  if (valid.length === 0) return null;
+  let best = valid[0]!;
+  for (const c of valid) {
     if (
       c.exploitability_overall > best.exploitability_overall ||
       (c.exploitability_overall === best.exploitability_overall &&
@@ -137,24 +161,26 @@ export function buildAutoNarrative(input: AutoNarrativeInput): NarrativeBullet[]
     });
   }
 
-  // (3) Critical / high finding density.
-  if (cov) {
-    const c = cov.severity_breakdown.critical;
-    const h = cov.severity_breakdown.high;
+  // (3) Critical / high finding density. Defensive against missing
+  // severity_breakdown — older api responses may omit it.
+  if (cov && cov.severity_breakdown && typeof cov.severity_breakdown === "object") {
+    const c = Number(cov.severity_breakdown.critical) || 0;
+    const h = Number(cov.severity_breakdown.high) || 0;
+    const rwf = Number(cov.rules_with_findings) || 0;
     if (c > 0) {
       out.push({
         id: "critical-findings",
         tone: "critical",
         text: `${pluralise(c, "critical finding")}${
           h > 0 ? ` and ${pluralise(h, "high-severity finding")}` : ""
-        } across ${pluralise(cov.rules_with_findings, "rule")}.`,
+        } across ${pluralise(rwf, "rule")}.`,
       });
     } else if (h > 0) {
       out.push({
         id: "high-findings",
         tone: "high",
         text: `${pluralise(h, "high-severity finding")} across ${pluralise(
-          cov.rules_with_findings,
+          rwf,
           "rule",
         )} — no criticals on file.`,
       });
@@ -196,22 +222,25 @@ export function buildAutoNarrative(input: AutoNarrativeInput): NarrativeBullet[]
     const cleanCat = cats
       .filter(
         (c) =>
+          c &&
+          c.counts &&
           c.counts.rules_with_findings === 0 &&
-          c.counts.rules_passed >= 3 &&
+          (c.counts.rules_passed ?? 0) >= 3 &&
           c.counts.rules_skipped === 0,
       )
       .sort((a, b) => {
-        if (a.counts.rules_passed !== b.counts.rules_passed) {
-          return b.counts.rules_passed - a.counts.rules_passed;
-        }
-        return a.id.localeCompare(b.id);
+        const ap = a.counts?.rules_passed ?? 0;
+        const bp = b.counts?.rules_passed ?? 0;
+        if (ap !== bp) return bp - ap;
+        return (a.id ?? "").localeCompare(b.id ?? "");
       })[0];
     if (cleanCat) {
+      const passed = cleanCat.counts?.rules_passed ?? 0;
       out.push({
         id: "clean-category",
         tone: "good",
-        text: `Strong posture in ${cleanCat.title} — 0 findings across ${pluralise(
-          cleanCat.counts.rules_passed,
+        text: `Strong posture in ${cleanCat.title ?? cleanCat.id} — 0 findings across ${pluralise(
+          passed,
           "rule",
         )}.`,
       });
@@ -246,9 +275,9 @@ export function buildVerdictHeadline(input: AutoNarrativeInput): {
       tone: "critical",
     };
   }
-  if (cov) {
-    const c = cov.severity_breakdown.critical;
-    const h = cov.severity_breakdown.high;
+  if (cov && cov.severity_breakdown && typeof cov.severity_breakdown === "object") {
+    const c = Number(cov.severity_breakdown.critical) || 0;
+    const h = Number(cov.severity_breakdown.high) || 0;
     if (c > 0) {
       return {
         text: `Critical — ${pluralise(c, "critical finding")}${

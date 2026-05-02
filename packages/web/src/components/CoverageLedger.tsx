@@ -63,12 +63,16 @@ export default function CoverageLedger({
   if (!categories || categories.length === 0) return null;
 
   // Walk every rule once, dropping the skipped ones into the right bucket.
+  // Defensive: every nested array is checked at runtime — production
+  // responses from older api versions may omit sub_categories or rules.
   const buckets = new Map<string, SkipBucket>();
   const allRules: DeepDiveRule[] = [];
   for (const cat of categories) {
+    if (!cat || !Array.isArray(cat.sub_categories)) continue;
     for (const sub of cat.sub_categories) {
+      if (!sub || !Array.isArray(sub.rules)) continue;
       for (const rule of sub.rules) {
-        if (rule.status !== "skipped") continue;
+        if (!rule || rule.status !== "skipped") continue;
         // Avoid double-counting a rule when it appears in multiple
         // sub-categories via cross-referencing.
         if (allRules.some((r) => r.rule_id === rule.rule_id)) continue;

@@ -90,38 +90,62 @@ export default function KillChainReel({
       </header>
 
       <div className="kcr-reel-grid">
-        {chains.map((chain) => {
+        {chains.map((chain, idx) => {
+          if (!chain || typeof chain !== "object") return null;
           const sev = RATING_TO_SEV[chain.exploitability_rating] ?? "medium";
-          const steps = (chain.steps ?? []).filter(isKillChainStep);
-          const mitigations = (chain.mitigations ?? []).filter(
-            isKillChainMitigation,
+          const steps = (Array.isArray(chain.steps) ? chain.steps : []).filter(
+            isKillChainStep,
           );
-          const refs = [...chain.owasp_refs, ...chain.mitre_refs].filter(
-            (s) => s.length > 0,
+          const mitigations = (
+            Array.isArray(chain.mitigations) ? chain.mitigations : []
+          ).filter(isKillChainMitigation);
+          const owaspRefs = Array.isArray(chain.owasp_refs)
+            ? chain.owasp_refs
+            : [];
+          const mitreRefs = Array.isArray(chain.mitre_refs)
+            ? chain.mitre_refs
+            : [];
+          const refs = [...owaspRefs, ...mitreRefs].filter(
+            (s): s is string => typeof s === "string" && s.length > 0,
           );
+          const score =
+            typeof chain.exploitability_overall === "number"
+              ? (chain.exploitability_overall * 100).toFixed(0)
+              : null;
 
           return (
             <article
-              key={chain.chain_id}
+              key={chain.chain_id ?? `kcr-${idx}`}
               className="kcr-card"
               data-sev={sev}
               style={{ borderLeftColor: `var(--sev-${sev})` }}
             >
               <header className="kcr-card-head">
                 <div className="kcr-card-title-row">
-                  <span className="kcr-card-kc">{chain.kill_chain_id}</span>
-                  <span className="kcr-card-kc-name">
-                    {chain.kill_chain_name}
-                  </span>
-                  <span
-                    className={`sev-badge sev-${sev}`}
-                    aria-label={`Exploitability: ${chain.exploitability_rating}`}
-                  >
-                    {chain.exploitability_rating}
-                  </span>
-                  <span className="kcr-card-score" aria-label="Exploitability score">
-                    {(chain.exploitability_overall * 100).toFixed(0)}/100
-                  </span>
+                  {chain.kill_chain_id && (
+                    <span className="kcr-card-kc">{chain.kill_chain_id}</span>
+                  )}
+                  {chain.kill_chain_name && (
+                    <span className="kcr-card-kc-name">
+                      {chain.kill_chain_name}
+                    </span>
+                  )}
+                  {chain.exploitability_rating && (
+                    <span
+                      className={`sev-badge sev-${sev}`}
+                      aria-label={`Exploitability: ${chain.exploitability_rating}`}
+                    >
+                      {chain.exploitability_rating}
+                    </span>
+                  )}
+                  {score !== null && (
+                    <span
+                      className="kcr-card-score"
+                      aria-label="Exploitability score"
+                    >
+                      {score}/100
+                    </span>
+                  )}
                 </div>
                 {refs.length > 0 && (
                   <div className="kcr-card-refs">{refs.join(" · ")}</div>
