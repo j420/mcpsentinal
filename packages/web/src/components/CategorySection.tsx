@@ -1,8 +1,17 @@
+"use client";
 /**
  * CategorySection
  * ───────────────
  * One top-level category of the deep-dive long-scroll.
  *
+ * Marked `"use client"` so the page-level <SectionBoundary/> (a class-
+ * based React error boundary, which by definition is client-side) can
+ * actually catch a render exception in this subtree. Server-component
+ * SSR throws bypass all client error boundaries and propagate to the
+ * route-level error.tsx — i.e. HTTP 500. Pure render component (props
+ * in, JSX out), so the directive is a no-op for functionality.
+ *
+
  * Anatomy:
  *   • Anchor: `id={`cat-${cat.id}`}` (with `scroll-margin-top: 96px` so
  *     deep-link jumps clear the chrome strip Agent 3 mounts above).

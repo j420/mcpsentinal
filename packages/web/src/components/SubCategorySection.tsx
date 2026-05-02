@@ -1,8 +1,15 @@
+"use client";
 /**
  * SubCategorySection
  * ──────────────────
  * Renders one sub-category of the deep-dive long-scroll.
  *
+ * Marked `"use client"` so the page-level <SectionBoundary/> can catch
+ * any render exception in this subtree (server-component SSR throws
+ * bypass client error boundaries — same fix discipline as
+ * CategorySection / RuleEvidenceCard / EvidenceChainViz).
+ *
+
  * Anatomy:
  *   • Anchor: `id={`sub-${sub.id}`}` (with `scroll-margin-top: 96px` so
  *     deep-link jumps clear the chrome strip Agent 3 mounts above).

@@ -1,8 +1,16 @@
+"use client";
 /**
  * RuleEvidenceCard
  * ────────────────
  * The atomic unit of the Deep Dive — ONE rule, three honest-rendered states.
  *
+ * Marked `"use client"` so the page-level <SectionBoundary/> wrapping
+ * each category can catch any render exception in this subtree —
+ * server-component SSR throws otherwise propagate to the route-level
+ * error.tsx (HTTP 500) without giving the per-section graceful-
+ * degradation a chance to fire.
+ *
+
  * The page leads with what was tested and what was found. Every state
  * surfaces the methodology + backing visibly so a regulator sees the
  * testing was done; the auditor never has to guess at silent absence.

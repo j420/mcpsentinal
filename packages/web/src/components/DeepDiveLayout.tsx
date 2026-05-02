@@ -1,6 +1,11 @@
+"use client";
 /**
  * DeepDiveLayout — two-column long-scroll frame for the deep-dive page.
  *
+ * Marked `"use client"` so per-section error boundaries can actually
+ * catch any render exception inside the layout subtree.
+ *
+
  * Left rail (sticky): `<DeepDiveSidebar/>` — owned by Cluster D part 5.
  * Right column (long scroll): `<CategorySection/>` × n — owned by Cluster D
  * part 4.
