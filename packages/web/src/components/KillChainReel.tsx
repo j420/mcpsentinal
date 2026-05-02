@@ -1,3 +1,4 @@
+"use client";
 /**
  * KillChainReel — Story-lens headline for the Deep Dive page.
  *

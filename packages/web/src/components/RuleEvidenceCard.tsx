@@ -294,11 +294,22 @@ function publicApiOrigin(): string {
  * in a new tab. The link target is the api origin (NEXT_PUBLIC_API_URL),
  * not the web origin, so verifiers see the canonical JSON envelope
  * straight from the api package without a same-origin reverse proxy.
+ *
+ * Defensive: encodeURIComponent throws on non-string input. We guard
+ * against the (theoretically impossible but observed in production)
+ * case of a missing finding.id by rendering nothing — the receipt is
+ * an enhancement, not a critical UI element.
  */
 function FindingReceiptLink({ findingId }: { findingId: string }) {
-  const href = `${publicApiOrigin()}/api/v1/findings/${encodeURIComponent(
-    findingId,
-  )}/receipt`;
+  if (!findingId || typeof findingId !== "string") return null;
+  let href: string;
+  try {
+    href = `${publicApiOrigin()}/api/v1/findings/${encodeURIComponent(
+      findingId,
+    )}/receipt`;
+  } catch {
+    return null;
+  }
   return (
     <div className="rec-finding-receipt">
       <a
@@ -322,34 +333,49 @@ function FindingReceiptLink({ findingId }: { findingId: string }) {
  * replay corpus cases that exercise this rule. Honest "validated against
  * real attacks" signal: every entry links to NVD (or research source)
  * and shows the CVSS where present.
+ *
+ * Defensive: every field of the validation entry is checked at runtime
+ * because production data may have shapes TS does not yet know about.
  */
 function CveValidationStrip({
   validations,
 }: {
   validations: NonNullable<DeepDiveRule["validated_by_cve"]>;
 }) {
+  const valid = validations.filter(
+    (v) => v && typeof v.id === "string" && typeof v.source_url === "string",
+  );
+  if (valid.length === 0) return null;
   return (
     <div className="rec-cve-strip" role="group" aria-label="CVE replay validation">
       <span className="rec-cve-strip-label">
-        Validated against {validations.length} replay
-        {validations.length === 1 ? "" : "s"}
+        Validated against {valid.length} replay
+        {valid.length === 1 ? "" : "s"}
       </span>
       <ul className="rec-cve-strip-list">
-        {validations.map((v) => (
-          <li key={v.id} className="rec-cve-strip-item">
-            <a
-              href={v.source_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rec-cve-strip-link"
-              title={`${v.title} · disclosed ${v.disclosed}${
-                v.cvss_v3 != null ? ` · CVSS ${v.cvss_v3.toFixed(1)}` : ""
-              }`}
-            >
-              {v.id}
-            </a>
-          </li>
-        ))}
+        {valid.map((v) => {
+          const titleParts: string[] = [];
+          if (typeof v.title === "string") titleParts.push(v.title);
+          if (typeof v.disclosed === "string") {
+            titleParts.push(`disclosed ${v.disclosed}`);
+          }
+          if (typeof v.cvss_v3 === "number" && Number.isFinite(v.cvss_v3)) {
+            titleParts.push(`CVSS ${v.cvss_v3.toFixed(1)}`);
+          }
+          return (
+            <li key={v.id} className="rec-cve-strip-item">
+              <a
+                href={v.source_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rec-cve-strip-link"
+                title={titleParts.join(" · ")}
+              >
+                {v.id}
+              </a>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

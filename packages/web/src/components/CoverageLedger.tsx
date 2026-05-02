@@ -1,3 +1,4 @@
+"use client";
 /**
  * CoverageLedger — first-class section listing every rule we couldn't
  * test, grouped by structured reason.

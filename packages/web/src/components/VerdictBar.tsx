@@ -1,3 +1,4 @@
+"use client";
 /**
  * VerdictBar — sticky one-line verdict at the very top of the Deep Dive.
  *

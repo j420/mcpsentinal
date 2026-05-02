@@ -1,3 +1,4 @@
+"use client";
 /**
  * ProvenanceFooter — every claim on the page traces back to here.
  *
