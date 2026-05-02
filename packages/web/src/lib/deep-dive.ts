@@ -233,3 +233,129 @@ export interface DeepDiveResponse {
  * @deprecated Use `DetectionQuality` instead.
  */
 export type DeepDiveRuleBacking = DetectionQuality;
+
+// ── Story-lens augmentations (Phase 2 of the redesign) ─────────────────────
+// Every field below is optional on the response — present when the backend
+// has the data, absent otherwise. Components MUST treat absence as "no data
+// on file" (honest gap, render an empty state) rather than guessing.
+//
+// The shapes mirror packages/api/src/deep-dive.ts verbatim. Web cannot
+// import from the api package directly (boundary rule, see CLAUDE.md), so
+// the types are duplicated here as the single web-side source of truth.
+
+/** One synthesized multi-step kill chain involving this server. Mirrors
+ *  `DeepDiveAttackChain` in `packages/api/src/deep-dive.ts`. Populated from
+ *  `DatabaseQueries.getAttackChainsForServer()`. */
+export interface DeepDiveAttackChain {
+  chain_id: string;
+  /** KC01–KC07 stable id. */
+  kill_chain_id: string;
+  kill_chain_name: string;
+  /** Ordered attack steps. Shape stable: each entry is
+   *  `{ ordinal, server_id, server_name, role, capabilities_used,
+   *  tools_involved, edge_to_next?, narrative }`. We accept `unknown[]`
+   *  here so the contract here doesn't drift if the engine adds fields. */
+  steps: unknown[];
+  /** [0..1]. */
+  exploitability_overall: number;
+  /** "critical" | "high" | "medium" | "low". */
+  exploitability_rating: string;
+  narrative: string;
+  /** Pre-computed mitigations — each entry shape:
+   *  `{ action, target_server_name?, description, breaks_steps: number[],
+   *  effect }`. Pass-through. */
+  mitigations: unknown[];
+  owasp_refs: string[];
+  mitre_refs: string[];
+}
+
+/** A cross-server risk edge involving this server. Mirrors
+ *  `DeepDiveRiskEdge` in the api package. */
+export interface DeepDiveRiskEdge {
+  config_id: string;
+  from_server: { id: string; name: string; slug: string };
+  to_server: { id: string; name: string; slug: string };
+  /** "data_flow" | "credential_chain" | "injection_path" |
+   *  "config_poisoning" | "memory_pollution" | "privilege_escalation" |
+   *  "exfiltration_chain". Stable wire string. */
+  edge_type: string;
+  /** P01–P12 stable id. */
+  pattern_id: string;
+  /** "critical" | "high" | "medium" | "low". */
+  severity: string;
+  description: string;
+  owasp_category: string | null;
+  mitre_technique: string | null;
+}
+
+/** Risk-matrix capability classification of this server's tools.
+ *  Mirrors `CapabilityNode` from `@mcp-sentinel/risk-matrix`. */
+export interface DeepDiveCapabilityNode {
+  server_id: string;
+  server_name: string;
+  server_slug: string;
+  latest_score: number | null;
+  /** Capability tags from the 14-element vocabulary in risk-matrix. */
+  capabilities: string[];
+  is_injection_gateway: boolean;
+  is_shared_writer: boolean;
+  category: string | null;
+}
+
+/** Provenance triple stamped on every deep-dive response. */
+export interface DeepDiveProvenance {
+  /** Last completed scan id whose findings populate this view. */
+  scan_id: string | null;
+  /** ISO 8601 of `scans.completed_at`. */
+  scan_completed_at: string | null;
+  /** rules-package version the scan ran against. */
+  rules_version: string | null;
+  /** Sentinel build version. */
+  sentinel_version: string;
+  /** Public HMAC key id for verifying per-finding signed receipts. The
+   *  raw secret is NEVER on the wire. */
+  signing_key_id: string;
+}
+
+/** One Phase-4 CVE corpus replay validating a rule. Mirrors
+ *  `CveReplayValidation` from `@mcp-sentinel/red-team`. */
+export interface DeepDiveCveValidation {
+  /** "CVE-YYYY-NNNN" or "research-kebab-id". */
+  id: string;
+  /** "cve" | "research". */
+  kind: string;
+  title: string;
+  source_url: string;
+  /** ISO 8601 (YYYY-MM-DD). */
+  disclosed: string;
+  cvss_v3: number | null;
+  /** "critical" | "high" | "medium" | "low" | "informational". */
+  min_severity: string;
+}
+
+/* ── Module-augmentation: attach optional augmentations to existing
+ *    DeepDiveData and DeepDiveRule shapes. We extend the interfaces in
+ *    place rather than declaring new ones because the backend layers the
+ *    fields on the SAME object via passthrough — same JSON, same TS
+ *    shape. Components only access these fields after a presence check. */
+
+declare module "./deep-dive" {
+  interface DeepDiveData {
+    /** Kill chains synthesized by `packages/attack-graph` for this server.
+     *  Absent / empty when no chains involve this server. */
+    attack_chains?: DeepDiveAttackChain[];
+    /** Cross-server P-pattern edges. Absent / empty when this server has
+     *  not participated in a risk-matrix run. */
+    risk_edges?: DeepDiveRiskEdge[];
+    /** Risk-matrix capability surface for this server. */
+    capability_node?: DeepDiveCapabilityNode;
+    /** Provenance triple — every claim on the page traces back to this. */
+    provenance?: DeepDiveProvenance;
+  }
+
+  interface DeepDiveRule {
+    /** Phase-4 CVE replay corpus coverage for this rule. Absent when the
+     *  rule has no replay coverage on file. */
+    validated_by_cve?: DeepDiveCveValidation[];
+  }
+}

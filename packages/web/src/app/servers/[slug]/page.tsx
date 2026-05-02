@@ -26,6 +26,9 @@ import { notFound } from "next/navigation";
 import DeepDiveLayout from "@/components/DeepDiveLayout";
 import CategorySection from "@/components/CategorySection";
 import DeepDiveSidebar from "@/components/DeepDiveSidebar";
+import KillChainReel from "@/components/KillChainReel";
+import CapabilitySurface from "@/components/CapabilitySurface";
+import ProvenanceFooter from "@/components/ProvenanceFooter";
 import type { DeepDiveResponse, DeepDiveData } from "@/lib/deep-dive";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3100";
@@ -112,6 +115,22 @@ export default async function ServerDetailPage({
         <span className="sd-bread-current">{dd.server.name}</span>
       </nav>
 
+      {/* Story-lens augmentations (Phase 2 redesign). Each component
+          renders nothing when its data is absent — honest gaps, no
+          synthetic placeholders. The reel and surface mount BEFORE the
+          taxonomy stack so a regulator's eye lands on the synthesised
+          attack stories first, then drills into the per-rule evidence. */}
+      <div className="dd-story-lens">
+        <KillChainReel
+          chains={dd.attack_chains}
+          currentServerSlug={dd.server.slug}
+        />
+        <CapabilitySurface
+          node={dd.capability_node}
+          edges={dd.risk_edges}
+        />
+      </div>
+
       {hasContent ? (
         <DeepDiveLayout
           sidebar={<DeepDiveSidebar categories={dd.categories} />}
@@ -137,6 +156,8 @@ export default async function ServerDetailPage({
           </p>
         </section>
       )}
+
+      <ProvenanceFooter provenance={dd.provenance} />
     </div>
   );
 }

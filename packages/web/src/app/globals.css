@@ -13529,3 +13529,490 @@ body:has(.dd-page-stripped) .site-main {
     padding: var(--s3) var(--s4) var(--s8);
   }
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Phase 2 — Server detail Story-lens augmentations
+ * KillChainReel + CapabilitySurface + Provenance footer +
+ * RuleEvidenceCard CVE-validation pill row + signed-receipt link.
+ * Built entirely on existing tokens — no new colours, no new fonts.
+ * ──────────────────────────────────────────────────────────────────── */
+
+.dd-story-lens {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s5);
+  margin: var(--s5) 0 var(--s6);
+}
+
+/* ── KillChainReel ──────────────────────────────────────────────────── */
+
+.kcr-reel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s5) var(--s5) var(--s4);
+}
+.kcr-reel-head {
+  margin-bottom: var(--s4);
+}
+.kcr-reel-title {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-family: var(--font-display, var(--font-body));
+  font-size: 1.4rem;
+  font-weight: 500;
+  color: var(--text);
+  margin: 0 0 var(--s1);
+}
+.kcr-reel-count {
+  display: inline-block;
+  padding: 2px 8px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  background: var(--surface-2);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+}
+.kcr-reel-sub {
+  color: var(--text-3);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin: 0;
+  max-width: 70ch;
+}
+.kcr-reel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: var(--s4);
+}
+.kcr-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--sev-medium);
+  border-radius: var(--r-md);
+  padding: var(--s4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+.kcr-card-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.kcr-card-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+.kcr-card-kc {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--accent);
+  background: var(--accent-sub);
+  border: 1px solid var(--accent-ring);
+  padding: 2px 8px;
+  border-radius: var(--r-sm);
+}
+.kcr-card-kc-name {
+  font-weight: 500;
+  color: var(--text);
+}
+.kcr-card-score {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-2);
+}
+.kcr-card-refs {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-3);
+}
+.kcr-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  border-left: 1px dashed var(--border);
+  padding-left: var(--s3);
+}
+.kcr-step {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  position: relative;
+}
+.kcr-step[data-current="true"] {
+  background: var(--accent-2-sub);
+  border-radius: var(--r-sm);
+  padding: 4px 8px;
+  margin-left: -8px;
+}
+.kcr-step-ord {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-3);
+  color: var(--text-2);
+  border-radius: 50%;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+.kcr-step-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.kcr-step-server {
+  font-weight: 500;
+  color: var(--text);
+  font-size: 0.875rem;
+}
+.kcr-step-role {
+  font-size: 0.75rem;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.kcr-step-tools {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-3);
+}
+.kcr-narrative {
+  font-size: 0.875rem;
+  color: var(--text-2);
+  line-height: 1.5;
+  margin: 0;
+  border-top: 1px solid var(--border);
+  padding-top: var(--s3);
+}
+.kcr-mit {
+  border-top: 1px solid var(--border);
+  padding-top: var(--s3);
+}
+.kcr-mit-summary {
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--accent);
+  list-style: none;
+}
+.kcr-mit-summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 6px;
+  transition: transform var(--t-fast, 120ms);
+}
+.kcr-mit[open] .kcr-mit-summary::before {
+  transform: rotate(90deg);
+}
+.kcr-mit-list {
+  list-style: none;
+  margin: var(--s2) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.kcr-mit-item {
+  font-size: 0.8rem;
+  color: var(--text-2);
+  padding-left: var(--s3);
+  border-left: 2px solid var(--sev-low);
+}
+.kcr-mit-target {
+  font-family: var(--font-mono);
+  color: var(--text);
+  margin-right: 6px;
+}
+.kcr-mit-steps {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+
+/* ── CapabilitySurface ──────────────────────────────────────────────── */
+
+.csurf {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s5);
+}
+.csurf-head {
+  margin-bottom: var(--s4);
+}
+.csurf-title {
+  font-family: var(--font-display, var(--font-body));
+  font-size: 1.25rem;
+  font-weight: 500;
+  margin: 0 0 var(--s1);
+  color: var(--text);
+}
+.csurf-sub {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 0.875rem;
+  max-width: 70ch;
+}
+.csurf-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-bottom: var(--s4);
+}
+.csurf-flag {
+  font-size: 0.85rem;
+  padding: 6px 12px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+}
+.csurf-flag-gateway {
+  border-color: var(--sev-high);
+  color: var(--text);
+}
+.csurf-flag-writer {
+  border-color: var(--sev-medium);
+  color: var(--text);
+}
+.csurf-caps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  margin-bottom: var(--s4);
+}
+.csurf-cap-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  flex-wrap: wrap;
+}
+.csurf-cap-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  flex: 0 0 80px;
+  padding-top: 4px;
+}
+.csurf-cap-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1 1 auto;
+}
+.csurf-chip {
+  font-size: 0.78rem;
+  padding: 3px 10px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+}
+.csurf-chip-high {
+  background: rgba(255, 92, 87, 0.08);
+  border-color: rgba(255, 92, 87, 0.32);
+  color: var(--text);
+}
+.csurf-chip-neutral {
+  background: var(--surface-2);
+  color: var(--text-2);
+}
+.csurf-patterns {
+  border-top: 1px solid var(--border);
+  padding-top: var(--s4);
+}
+.csurf-patterns-title {
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin: 0 0 var(--s3);
+  color: var(--text);
+}
+.csurf-pattern-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.csurf-pattern-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  align-items: center;
+  padding: var(--s2) var(--s3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--sev-medium);
+  border-radius: var(--r-sm);
+}
+.csurf-pattern-id {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--accent);
+  flex: 0 0 auto;
+}
+.csurf-pattern-desc {
+  flex: 1 1 auto;
+  font-size: 0.85rem;
+  color: var(--text-2);
+}
+.csurf-pattern-peers {
+  font-size: 0.75rem;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+}
+
+/* ── ProvenanceFooter ───────────────────────────────────────────────── */
+
+.prov-footer {
+  margin-top: var(--s8);
+  padding: var(--s5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  color: var(--text-2);
+}
+.prov-footer-title {
+  font-family: var(--font-display, var(--font-body));
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin: 0 0 var(--s3);
+  color: var(--text);
+}
+.prov-footer-dl {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  row-gap: var(--s2);
+  margin: 0 0 var(--s3);
+}
+.prov-footer-row {
+  display: contents;
+}
+.prov-footer-k {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  padding-top: 2px;
+}
+.prov-footer-v {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-2);
+}
+.prov-mono {
+  font-family: var(--font-mono);
+  background: var(--surface-2);
+  padding: 1px 6px;
+  border-radius: var(--r-sm);
+  color: var(--text);
+}
+.prov-footer-when {
+  color: var(--text-3);
+  font-size: 0.8rem;
+}
+.prov-footer-gap {
+  font-style: italic;
+  color: var(--text-3);
+  margin-left: var(--s2);
+}
+.prov-footer-note {
+  margin: var(--s3) 0 0;
+  border-top: 1px solid var(--border);
+  padding-top: var(--s3);
+  font-size: 0.8rem;
+  color: var(--text-3);
+  line-height: 1.5;
+  max-width: 80ch;
+}
+
+/* ── CVE validation strip on rule cards ─────────────────────────────── */
+
+.rec-cve-strip {
+  margin-top: var(--s2);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  font-size: 0.8rem;
+}
+.rec-cve-strip-label {
+  color: var(--sev-low);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+.rec-cve-strip-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.rec-cve-strip-item {
+  display: inline-block;
+}
+.rec-cve-strip-link {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: var(--r-sm);
+  background: rgba(91, 214, 138, 0.10);
+  border: 1px solid rgba(91, 214, 138, 0.32);
+  color: var(--sev-low);
+  text-decoration: none;
+  transition: background var(--t-fast, 120ms);
+}
+.rec-cve-strip-link:hover {
+  background: rgba(91, 214, 138, 0.20);
+}
+
+/* ── Per-finding signed receipt link ────────────────────────────────── */
+
+.rec-finding-receipt {
+  margin-top: var(--s3);
+  padding-top: var(--s2);
+  border-top: 1px dashed var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+  font-size: 0.78rem;
+}
+.rec-finding-receipt-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  color: var(--accent-2);
+  text-decoration: none;
+  padding: 2px 8px;
+  border-radius: var(--r-sm);
+  background: var(--accent-2-sub);
+  border: 1px solid var(--accent-2-ring);
+  transition: background var(--t-fast, 120ms);
+}
+.rec-finding-receipt-link:hover {
+  background: rgba(95, 174, 255, 0.16);
+}
+.rec-finding-receipt-help {
+  color: var(--text-3);
+  font-size: 0.72rem;
+}
