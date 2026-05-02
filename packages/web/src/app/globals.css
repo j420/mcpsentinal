@@ -14997,3 +14997,432 @@ body[data-trace-active]
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Phase 5 — Forensic Drawer + ForensicTrigger
+ * URL-state-driven slide-over panel for one-finding audit packs.
+ * ──────────────────────────────────────────────────────────────────── */
+
+/* ── ForensicTrigger button on each finding panel ───────────────────── */
+
+.rec-finding-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+  margin-top: var(--s3);
+  padding-top: var(--s2);
+  border-top: 1px dashed var(--border);
+}
+/* The receipt link's own border-top now collides with the action-row's
+ * — strip it so we don't get a double divider. */
+.rec-finding-action-row .rec-finding-receipt {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+.rec-finding-forensic {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+  color: var(--accent);
+  background: var(--accent-sub);
+  border: 1px solid var(--accent-ring);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: all var(--t-fast, 120ms);
+}
+.rec-finding-forensic:hover {
+  background: var(--accent-sub);
+  background-color: rgba(232, 178, 92, 0.16);
+  color: var(--accent-hover);
+}
+.rec-finding-forensic:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ── Backdrop + slide-over container ────────────────────────────────── */
+
+.fdrawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(8, 10, 16, 0.55);
+  display: flex;
+  justify-content: flex-end;
+  animation: fdrawerFadeIn 160ms ease-out;
+}
+@keyframes fdrawerFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.fdrawer {
+  position: relative;
+  width: min(640px, 92vw);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: -16px 0 40px -12px rgba(0, 0, 0, 0.55);
+  animation: fdrawerSlideIn 200ms cubic-bezier(0.23, 1, 0.32, 1);
+  overflow: hidden;
+}
+@keyframes fdrawerSlideIn {
+  from { transform: translateX(40px); opacity: 0.6; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fdrawer-backdrop, .fdrawer { animation: none; }
+}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+
+.fdrawer-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  padding: var(--s4) var(--s5);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.fdrawer-head-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.fdrawer-title {
+  margin: 0 0 4px;
+  font-family: var(--font-display, var(--font-body));
+  font-size: 1.15rem;
+  font-weight: 500;
+  color: var(--text);
+}
+.fdrawer-sub {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fdrawer-mono {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  background: var(--surface-3);
+  padding: 1px 5px;
+  border-radius: var(--r-sm);
+  color: var(--text);
+}
+.fdrawer-close {
+  appearance: none;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: all var(--t-fast, 120ms);
+}
+.fdrawer-close:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+.fdrawer-close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ── Tabs ───────────────────────────────────────────────────────────── */
+
+.fdrawer-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 6px var(--s5) 0;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+.fdrawer-tab {
+  appearance: none;
+  background: transparent;
+  color: var(--text-3);
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 8px 12px;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all var(--t-fast, 120ms);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.fdrawer-tab:hover {
+  color: var(--text-2);
+}
+.fdrawer-tab-active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+.fdrawer-tab-count {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  background: var(--surface-3);
+  color: var(--text-2);
+  padding: 1px 6px;
+  border-radius: var(--r-full);
+}
+.fdrawer-tab-active .fdrawer-tab-count {
+  background: var(--accent-sub);
+  color: var(--accent);
+}
+
+/* ── Body ───────────────────────────────────────────────────────────── */
+
+.fdrawer-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: var(--s5);
+  color: var(--text-2);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+.fdrawer-body section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+.fdrawer-h3 {
+  margin: 0;
+  font-family: var(--font-display, var(--font-body));
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text);
+}
+.fdrawer-empty,
+.fdrawer-empty-msg {
+  color: var(--text-3);
+  font-size: 0.88rem;
+}
+.fdrawer-evidence-prose {
+  margin: 0;
+  padding: var(--s3);
+  background: var(--surface-2);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text);
+}
+.fdrawer-remediation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+/* ── Verify checklist ───────────────────────────────────────────────── */
+
+.fdrawer-checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  counter-reset: fdrawer-step;
+}
+.fdrawer-checklist-item {
+  display: flex;
+  gap: var(--s2);
+  align-items: flex-start;
+  padding: var(--s3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+}
+.fdrawer-checklist-cb {
+  flex: 0 0 auto;
+  margin-top: 4px;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+.fdrawer-checklist-body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.fdrawer-checklist-instr {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.88rem;
+}
+.fdrawer-checklist-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+.fdrawer-checklist-tag {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  background: var(--surface-3);
+  color: var(--text-2);
+  padding: 1px 6px;
+  border-radius: var(--r-sm);
+}
+
+/* ── Receipt tab ────────────────────────────────────────────────────── */
+
+.fdrawer-receipt-row {
+  display: flex;
+  gap: var(--s2);
+  align-items: center;
+  flex-wrap: wrap;
+  padding: var(--s3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+}
+.fdrawer-receipt-url {
+  flex: 1 1 280px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--accent-2);
+  word-break: break-all;
+  background: transparent;
+  padding: 0;
+}
+.fdrawer-mini-btn {
+  appearance: none;
+  flex: 0 0 auto;
+  background: var(--surface-3);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  transition: all var(--t-fast, 120ms);
+}
+.fdrawer-mini-btn:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+.fdrawer-mini-btn-link {
+  color: var(--accent);
+}
+.fdrawer-provenance {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  row-gap: var(--s2);
+  margin: 0;
+  padding: var(--s3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+}
+.fdrawer-prov-row {
+  display: contents;
+}
+.fdrawer-prov-row dt {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  padding-top: 2px;
+}
+.fdrawer-prov-row dd {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.fdrawer-prov-aux {
+  color: var(--text-3);
+  font-size: 0.78rem;
+}
+
+/* ── Footer action row ──────────────────────────────────────────────── */
+
+.fdrawer-foot {
+  display: flex;
+  gap: var(--s3);
+  padding: var(--s4) var(--s5);
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.fdrawer-action-primary {
+  appearance: none;
+  flex: 1 1 auto;
+  padding: 10px 16px;
+  background: var(--accent);
+  color: #1a1a1a;
+  border: 1px solid var(--accent);
+  border-radius: var(--r-md);
+  font-size: 0.92rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--t-fast, 120ms);
+}
+.fdrawer-action-primary:hover {
+  background: var(--accent-hover);
+}
+.fdrawer-action-primary[data-state="copied"] {
+  background: var(--sev-low);
+  border-color: var(--sev-low);
+  color: #0a1a0e;
+}
+.fdrawer-action-primary[data-state="error"] {
+  background: var(--sev-high);
+  border-color: var(--sev-high);
+  color: #1a1a1a;
+}
+.fdrawer-action-secondary {
+  appearance: none;
+  flex: 0 0 auto;
+  padding: 10px 16px;
+  background: transparent;
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+.fdrawer-action-secondary:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+/* Mobile — drawer takes full viewport. */
+@media (max-width: 640px) {
+  .fdrawer {
+    width: 100vw;
+  }
+  .fdrawer-head, .fdrawer-tabs, .fdrawer-foot {
+    padding-left: var(--s4);
+    padding-right: var(--s4);
+  }
+  .fdrawer-body {
+    padding: var(--s4);
+  }
+}

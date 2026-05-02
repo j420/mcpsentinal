@@ -37,7 +37,13 @@ import LensDensityControls, {
 } from "@/components/LensDensityControls";
 import SectionBoundary from "@/components/SectionBoundary";
 import HoverTraceController from "@/components/HoverTraceController";
+import ForensicDrawer from "@/components/ForensicDrawer";
 import type { DeepDiveResponse, DeepDiveData } from "@/lib/deep-dive";
+
+// Public api origin for receipt-URL construction. NEXT_PUBLIC_API_URL
+// is read at build / SSR time and embedded for the client drawer to use.
+const PUBLIC_API_ORIGIN =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3100";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3100";
 
@@ -246,6 +252,22 @@ export default async function ServerDetailPage({
 
       <SectionBoundary section="provenance" label="Provenance footer">
         <ProvenanceFooter provenance={dd.provenance} />
+      </SectionBoundary>
+
+      {/* Phase 5 — Forensic drawer. Mounts once at the page root; opens
+          when the URL carries `?finding=<id>`. Renders nothing when the
+          param is absent. Inside its own SectionBoundary so a render
+          exception doesn't cascade. */}
+      <SectionBoundary section="forensic-drawer" label="Forensic view">
+        <Suspense fallback={null}>
+          <ForensicDrawer
+            serverSlug={dd.server?.slug ?? slug}
+            serverName={dd.server?.name ?? slug}
+            categories={dd.categories ?? []}
+            provenance={dd.provenance}
+            apiOrigin={PUBLIC_API_ORIGIN}
+          />
+        </Suspense>
       </SectionBoundary>
     </div>
   );

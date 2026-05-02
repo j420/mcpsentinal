@@ -45,6 +45,7 @@ import React from "react";
 import EvidenceChainViz, {
   type EvidenceChainData,
 } from "@/components/EvidenceChainViz";
+import ForensicTrigger from "@/components/ForensicTrigger";
 import type {
   DeepDiveRule,
   DeepDiveRuleBacking,
@@ -659,7 +660,10 @@ function FindingPanel({
           </div>
         )}
 
-        <FindingReceiptLink findingId={finding.id} />
+        <div className="rec-finding-action-row">
+          <FindingReceiptLink findingId={finding.id} />
+          <ForensicTrigger findingId={finding.id} />
+        </div>
       </div>
     </details>
   );

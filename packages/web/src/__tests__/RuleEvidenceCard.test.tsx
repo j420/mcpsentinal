@@ -29,6 +29,25 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import React from "react";
 import { render, cleanup } from "@testing-library/react";
+
+// next/navigation is consumed by the in-card <ForensicTrigger/> client
+// component (added Phase 5). It throws "invariant: app router not mounted"
+// when run outside Next's runtime, so stub the three hooks we use to
+// satisfy the runtime check. The trigger isn't exercised by these tests
+// but its hooks are evaluated whenever a finding panel renders.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    refresh: vi.fn(),
+    prefetch: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+  }),
+  usePathname: () => "/servers/demo",
+  useSearchParams: () => new URLSearchParams(""),
+}));
+
 import RuleEvidenceCard from "../components/RuleEvidenceCard";
 import type {
   DeepDiveRule,
