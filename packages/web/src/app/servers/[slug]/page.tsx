@@ -205,6 +205,26 @@ export default async function ServerDetailPage({
           /
         </span>
         <span className="sd-bread-current">{dd.server?.name ?? slug}</span>
+        {/* Forensic chip on the right — tiny mono pill anchoring the page
+            to the underlying scan. Reads like a case-file reference at
+            the top of a regulator's document. Gracefully absent when
+            provenance has no completed scan on file. */}
+        {dd.provenance?.scan_id && (
+          <span
+            className="sd-bread-scan"
+            title={
+              dd.provenance.scan_completed_at
+                ? `Scan ${dd.provenance.scan_id} · completed ${dd.provenance.scan_completed_at}`
+                : `Scan ${dd.provenance.scan_id}`
+            }
+            aria-label="Scan reference"
+          >
+            <span className="sd-bread-scan-eyebrow">Scan</span>
+            <code className="sd-bread-scan-id">
+              {dd.provenance.scan_id.slice(0, 8)}
+            </code>
+          </span>
+        )}
       </nav>
 
       <SectionBoundary section="hero" label="Hero">
@@ -213,6 +233,7 @@ export default async function ServerDetailPage({
           coverage={dd.coverage}
           categories={safeCategories}
           attackChains={safeAttackChains}
+          provenance={dd.provenance}
         />
       </SectionBoundary>
 

@@ -6153,6 +6153,42 @@ code, pre, kbd {
 .sd-bread-sep { color: var(--border-strong); font-size: 11px; }
 .sd-bread-current { color: var(--text-2); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* Forensic scan-reference chip on the right of the breadcrumb. Reads
+   like a case-file id at the top of a regulator's document. Pushed to
+   the trailing edge with margin-left:auto so the rest of the breadcrumb
+   keeps its natural left alignment. Hidden below the smallest viewport
+   so the breadcrumb stays one line. */
+.sd-bread-scan {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px 3px 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent-2);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  user-select: all;
+}
+.sd-bread-scan-eyebrow {
+  color: var(--text-3);
+  opacity: 0.7;
+}
+.sd-bread-scan-id {
+  color: var(--accent-2);
+  font-family: var(--font-mono);
+  background: transparent;
+  letter-spacing: 0.04em;
+}
+@media (max-width: 540px) {
+  .sd-bread-scan { display: none; }
+}
+
 .sd-hero { display: flex; align-items: flex-start; gap: var(--s6); padding-bottom: var(--s4); border-bottom: 1px solid var(--border); margin-bottom: var(--s4); }
 .sd-hero-left { flex: 1; min-width: 0; }
 .sd-hero-title-row { display: flex; align-items: center; gap: var(--s3); margin-bottom: var(--s2); }
@@ -14080,25 +14116,148 @@ body:has(.dd-page-stripped) .site-main {
 .vbar-headline {
   flex: 1 1 auto;
   font-weight: 500;
+  font-size: 0.98rem;
+  letter-spacing: -0.005em;
+  line-height: 1.4;
 }
+.vbar-verdict-word {
+  /* Verdict word ("Critical", "High", etc.) carries the visual weight.
+     Tone-coloured text + mono so the verdict reads at a glance the way
+     a court ruling reads — verdict first, prose second. */
+  font-family: var(--font-mono);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.84rem;
+  margin-right: 2px;
+}
+.vbar-verdict-word[data-tone="critical"] { color: var(--sev-critical); }
+.vbar-verdict-word[data-tone="high"]     { color: var(--sev-high); }
+.vbar-verdict-word[data-tone="info"]     { color: var(--text-2); }
+.vbar-verdict-word[data-tone="good"]     { color: var(--sev-low); }
+.vbar-em-dash {
+  color: var(--text-3);
+  margin: 0 4px 0 2px;
+}
+.vbar-verdict-rest {
+  color: var(--text);
+}
+
+/* Attestation chip on the right of the bar. Pinned to the trailing edge
+   with margin-left:auto. Matches the hero attestation treatment so the
+   trust language stays consistent across the page chrome. Hidden on
+   narrow viewports — the hero attestation already conveys the cue. */
+.vbar-attest {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px 3px 6px;
+  background: var(--accent-2-sub);
+  border: 1px solid var(--accent-2-ring);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--accent-2);
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  font-weight: 500;
+}
+.vbar-attest-glyph { font-size: 9px; line-height: 1; }
+.vbar-attest-text { font-weight: 600; }
 @media (max-width: 720px) {
   .vbar {
     margin: 0 calc(-1 * var(--s4)) var(--s3);
     font-size: 0.85rem;
   }
+  .vbar-attest { display: none; }
+  .vbar-verdict-word { font-size: 0.78rem; }
 }
 
 /* ── HeroBlock ──────────────────────────────────────────────────────── */
 
 .dd-hero2 {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
   gap: var(--s6);
   margin: var(--s4) 0 var(--s5);
-  padding: var(--s6);
+  padding: var(--s8) var(--s6) var(--s6);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
+  /* Subtle vertical lift — the hero is the first surface a CISO sees,
+     so it should read as a discrete document panel, not a div. The
+     shadow stays well below the corner brackets so they remain crisp. */
+  box-shadow: var(--shadow-md);
+}
+
+/* "The Frame" — corner-bracket marks per Design System v5.1. Four
+   spans positioned at the inset corners of the hero panel. Steel-blue
+   (--accent-2) so they read as a "data / receipt" treatment rather
+   than the editorial gold. 14px L-shape via two backgrounds; size and
+   inset chosen so the brackets sit just inside the panel border, never
+   overlapping the rounded corners. */
+.dd-hero2-frame {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--accent-2), var(--accent-2)) 0 0 / 100% 1.5px no-repeat,
+    linear-gradient(var(--accent-2), var(--accent-2)) 0 0 / 1.5px 100% no-repeat;
+  opacity: 0.85;
+}
+.dd-hero2-frame-tl { top: 8px; left: 8px; }
+.dd-hero2-frame-tr {
+  top: 8px;
+  right: 8px;
+  transform: scaleX(-1);
+}
+.dd-hero2-frame-bl {
+  bottom: 8px;
+  left: 8px;
+  transform: scaleY(-1);
+}
+.dd-hero2-frame-br {
+  bottom: 8px;
+  right: 8px;
+  transform: scale(-1, -1);
+}
+@media (max-width: 720px) {
+  /* Slightly less inset on narrow viewports so brackets don't crowd
+     the contained content. */
+  .dd-hero2-frame-tl, .dd-hero2-frame-tr { top: 6px; }
+  .dd-hero2-frame-bl, .dd-hero2-frame-br { bottom: 6px; }
+  .dd-hero2-frame-tl, .dd-hero2-frame-bl { left: 6px; }
+  .dd-hero2-frame-tr, .dd-hero2-frame-br { right: 6px; }
+}
+
+/* Attestation line under the coverage line. A quiet, mono-typed receipt
+   built from the threaded provenance triple. Steel-blue ◆ glyph keeps
+   the trust language consistent with the corner brackets and the
+   sidebar/footer attestation treatments. */
+.dd-hero2-attest {
+  margin: 2px 0 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 8px;
+  width: fit-content;
+  background: var(--accent-2-sub);
+  border: 1px solid var(--accent-2-ring);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: help;
+}
+.dd-hero2-attest-glyph {
+  color: var(--accent-2);
+  font-size: 10px;
+  line-height: 1;
 }
 @media (max-width: 960px) {
   .dd-hero2 {
