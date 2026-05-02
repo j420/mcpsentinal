@@ -32,6 +32,9 @@ import ProvenanceFooter from "@/components/ProvenanceFooter";
 import VerdictBar from "@/components/VerdictBar";
 import HeroBlock from "@/components/HeroBlock";
 import CoverageLedger from "@/components/CoverageLedger";
+import LensDensityControls, {
+  resolveLensDensity,
+} from "@/components/LensDensityControls";
 import type { DeepDiveResponse, DeepDiveData } from "@/lib/deep-dive";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3100";
@@ -89,17 +92,30 @@ export async function generateMetadata({
 
 export default async function ServerDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { slug } = await params;
+  const sp = await searchParams;
   const dd = await getDeepDive(slug);
   if (!dd) return notFound();
 
   const hasContent = dd.categories.length > 0;
 
+  // Phase 4 lens + density. Resolved server-side from the URL so SSR and
+  // first paint match the client's eventual hydration — no flash. The
+  // client-side controls component re-syncs from localStorage on mount
+  // when the URL omits the params and the user has a stored preference.
+  const { lens, density } = resolveLensDensity(sp);
+
   return (
-    <div className="dd-page dd-page-stripped">
+    <div
+      className="dd-page dd-page-stripped"
+      data-lens={lens}
+      data-density={density}
+    >
       {/* Phase 3 verdict bar — sticky one-line verdict at the very top.
           Always present (never honest-gapped); falls back to "Awaiting
           scan data" when sparse. */}
@@ -109,6 +125,11 @@ export default async function ServerDetailPage({
         categories={dd.categories}
         attackChains={dd.attack_chains}
       />
+
+      {/* Phase 4 lens + density controls — twin pill rows. Sticky-aligned
+          with the verdict bar so the controls stay in view while the
+          page scrolls. Writes ?lens= / ?view= and localStorage. */}
+      <LensDensityControls lens={lens} density={density} />
 
       {/* Breadcrumb — kept as the only navigation context. The rest of
           the page chrome (hero, signed pack, posture matrix, risk

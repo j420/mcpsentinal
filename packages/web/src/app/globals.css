@@ -14398,3 +14398,160 @@ body:has(.dd-page-stripped) .site-main {
   white-space: nowrap;
   max-width: 250px;
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Phase 4 — Lens + Density controls
+ *
+ * The page wrapper carries data-lens="story|evidence|audit" and
+ * data-density="briefing|dossier|forensic". All visibility / ordering
+ * decisions are CSS — the DOM is identical regardless of view, so toggling
+ * is instant and reversible without a re-fetch.
+ * ──────────────────────────────────────────────────────────────────── */
+
+/* ── LensDensityControls (twin pill rows) ───────────────────────────── */
+
+.lds-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s4);
+  margin: 0 0 var(--s4);
+  padding: 10px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+.lds-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.lds-group-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+  margin-right: 4px;
+}
+.lds-pill {
+  appearance: none;
+  background: var(--surface-3);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  padding: 5px 14px;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all var(--t-fast, 120ms);
+}
+.lds-pill:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+.lds-pill-active,
+.lds-pill[data-active="true"] {
+  background: var(--accent);
+  color: #1a1a1a;
+  border-color: var(--accent);
+  font-weight: 500;
+}
+.lds-pill-active:hover {
+  background: var(--accent-hover);
+  color: #1a1a1a;
+}
+@media (max-width: 640px) {
+  .lds-controls {
+    gap: var(--s2);
+    padding: 8px;
+  }
+  .lds-pill {
+    padding: 4px 10px;
+    font-size: 0.78rem;
+  }
+}
+
+/* ── Lens: STORY (default) ──────────────────────────────────────────── */
+/* Default order — no overrides needed. Hero + reel + surface + ledger +
+ * taxonomy + provenance, top-to-bottom. */
+
+/* ── Lens: EVIDENCE — direct to per-rule taxonomy ───────────────────── */
+.dd-page[data-lens="evidence"] .dd-hero2-narrative,
+.dd-page[data-lens="evidence"] .kcr-reel,
+.dd-page[data-lens="evidence"] .csurf,
+.dd-page[data-lens="evidence"] .cov-ledger {
+  display: none;
+}
+/* Evidence lens keeps the hero name + coverage line + severity bar but
+ * drops the narrative panel — the regulator wants the dossier, not the
+ * story. */
+
+/* ── Lens: AUDIT — provenance-first, every claim footnoted ──────────── */
+.dd-page[data-lens="audit"] .dd-story-lens {
+  /* Story-lens augmentations (kill chains, capability surface) move
+   * BELOW the taxonomy in audit lens so the page reads as a regulator-
+   * grade audit log: hero → controls → taxonomy → augmentations →
+   * provenance. */
+  order: 5;
+}
+.dd-page[data-lens="audit"] .prov-footer {
+  /* Audit lens promotes the provenance block to right under the hero so
+   * the chain of custody lands first. We keep the original footer in
+   * place too — the duplication is intentional (audit reads top AND
+   * bottom). */
+  margin-top: var(--s4);
+}
+.dd-page[data-lens="audit"] .dd-page-stripped {
+  /* enables the ordering above */
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Density: BRIEFING — one row per rule ───────────────────────────── */
+/* Hide the methodology block on every rule and the per-finding bodies
+ * (the summary line stays visible so a glance still reveals the
+ * evidence one-liner). The user clicks "Dossier" or "Forensic" to drill
+ * deeper. */
+.dd-page[data-density="briefing"] .rec-method,
+.dd-page[data-density="briefing"] .rec-finding-body {
+  display: none;
+}
+/* Compact the rule head so each rule is a tight strip. */
+.dd-page[data-density="briefing"] .rec-card {
+  padding-top: var(--s2);
+  padding-bottom: var(--s2);
+}
+.dd-page[data-density="briefing"] .rec-summary {
+  display: none;
+}
+/* Findings collapse to single-line strips — keep the eyebrow + sev
+ * badge + one-line evidence, drop the chevron expansion body. */
+.dd-page[data-density="briefing"] .rec-finding {
+  margin-top: var(--s1);
+}
+.dd-page[data-density="briefing"] .rec-finding-chev {
+  opacity: 0.4;
+}
+
+/* ── Density: DOSSIER — current default behaviour ───────────────────── */
+/* No overrides — components render exactly as they were before the lens
+ * + density rework. */
+
+/* ── Density: FORENSIC — everything expanded ────────────────────────── */
+/* Force methodology + finding bodies open regardless of native <details>
+ * state. The <summary> chevron stays in its DOM-driven state but the
+ * body becomes visible. */
+.dd-page[data-density="forensic"] .rec-method[role="region"],
+.dd-page[data-density="forensic"] details.rec-method > .rec-method-body,
+.dd-page[data-density="forensic"] details.rec-finding > .rec-finding-body {
+  display: block !important;
+}
+.dd-page[data-density="forensic"] details > summary::after {
+  content: " · forensic mode (always open)";
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-3);
+  margin-left: 6px;
+}
