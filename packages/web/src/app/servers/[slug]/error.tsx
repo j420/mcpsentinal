@@ -36,15 +36,20 @@ export default function ServerDetailError({ error, reset }: ErrorPageProps) {
     <div className="dd-error">
       <h1 className="dd-error-title">We hit a snag rendering this server</h1>
       <p className="dd-error-msg">
-        The Deep Dive could not be assembled for this server. The most
-        likely cause is partial data — a recent api change rolled out
-        ahead of (or behind) the page. The data is intact; only this
-        view failed.
+        The Deep Dive could not be assembled. Per-section error boundaries
+        catch most rendering issues and degrade just the failing block,
+        but something at the page level threw before any of those caught
+        it — most likely the data fetch returned something the page can't
+        recover from. The underlying scan data is intact; only this view
+        is affected.
       </p>
       {error.digest && (
         <p className="dd-error-digest">
           Reference: <code>{error.digest}</code>
         </p>
+      )}
+      {error.message && process.env.NODE_ENV !== "production" && (
+        <pre className="dd-error-stack">{error.message}</pre>
       )}
       <div className="dd-error-actions">
         <button
@@ -58,6 +63,12 @@ export default function ServerDetailError({ error, reset }: ErrorPageProps) {
           Back to all servers
         </a>
       </div>
+      <p className="dd-error-help">
+        This is not because the server hasn't been scanned — newly
+        scanned data is not required. The page is meant to render any
+        scan data on file; an exception here is a code-level issue we
+        need to chase, not a data gap.
+      </p>
     </div>
   );
 }

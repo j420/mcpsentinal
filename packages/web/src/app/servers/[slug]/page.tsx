@@ -35,6 +35,7 @@ import CoverageLedger from "@/components/CoverageLedger";
 import LensDensityControls, {
   resolveLensDensity,
 } from "@/components/LensDensityControls";
+import SectionBoundary from "@/components/SectionBoundary";
 import type { DeepDiveResponse, DeepDiveData } from "@/lib/deep-dive";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3100";
@@ -75,17 +76,27 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params;
-  const dd = await getDeepDive(slug);
-  if (!dd) return { title: "Server Not Found" };
-  const total = dd.coverage.total_findings;
-  return {
-    title: `${dd.server.name} Security Deep Dive`,
-    description:
-      `Deep dive into ${dd.server.name}: ${total} finding${total === 1 ? "" : "s"} ` +
-      `across ${dd.coverage.total_rules} detection rules. Sub-categories, rules, ` +
-      `methodology, and evidence per rule.`,
-  };
+  try {
+    const { slug } = await params;
+    const dd = await getDeepDive(slug);
+    if (!dd) return { title: "Server Not Found" };
+    // Defensive — production data may have a null / partial coverage
+    // object. We never want metadata generation to throw, since that
+    // would block the page from rendering even though the page itself
+    // is fully resilient.
+    const name = dd.server?.name ?? slug;
+    const total = Number(dd.coverage?.total_findings) || 0;
+    const totalRules = Number(dd.coverage?.total_rules) || 0;
+    return {
+      title: `${name} Security Deep Dive`,
+      description:
+        `Deep dive into ${name}: ${total} finding${total === 1 ? "" : "s"} ` +
+        `across ${totalRules} detection rules. Sub-categories, rules, ` +
+        `methodology, and evidence per rule.`,
+    };
+  } catch {
+    return { title: "Security Deep Dive" };
+  }
 }
 
 // ── Page ────────────────────────────────────────────────────────────────
@@ -116,31 +127,31 @@ export default async function ServerDetailPage({
       data-lens={lens}
       data-density={density}
     >
-      {/* Phase 3 verdict bar — sticky one-line verdict at the very top.
-          Always present (never honest-gapped); falls back to "Awaiting
-          scan data" when sparse. */}
-      <VerdictBar
-        serverName={dd.server.name}
-        coverage={dd.coverage}
-        categories={dd.categories}
-        attackChains={dd.attack_chains}
-      />
+      {/* Each major section is wrapped in its own SectionBoundary so a
+          single render exception degrades to a quiet skeleton instead of
+          taking down the whole page via the route-level error.tsx. The
+          `section` prop lands in a hidden data attribute on the fallback
+          so an operator can pinpoint which block failed without server
+          logs. */}
 
-      {/* Phase 4 lens + density controls — twin pill rows. Sticky-aligned
-          with the verdict bar so the controls stay in view while the
-          page scrolls. Writes ?lens= / ?view= and localStorage.
-          Suspense boundary required by Next 15 because the client
-          component reads useSearchParams. */}
-      <Suspense fallback={<div className="lds-controls-skeleton" aria-hidden="true" />}>
-        <LensDensityControls lens={lens} density={density} />
-      </Suspense>
+      <SectionBoundary section="verdict-bar" label="Verdict bar">
+        <VerdictBar
+          serverName={dd.server?.name ?? slug}
+          coverage={dd.coverage}
+          categories={dd.categories}
+          attackChains={dd.attack_chains}
+        />
+      </SectionBoundary>
 
-      {/* Breadcrumb — kept as the only navigation context. The rest of
-          the page chrome (hero, signed pack, posture matrix, risk
-          boundary, drift, compliance, footer attestation, honest gaps,
-          tools, profile card, attack chains, attack surface strip,
-          grade breakdown, evidence summary hero) is intentionally not
-          mounted on this route per the user's strip-down call. */}
+      {/* Suspense boundary required by Next 15 because the client
+          component reads useSearchParams. SectionBoundary catches any
+          render exception inside the controls. */}
+      <SectionBoundary section="lens-density-controls" label="View controls">
+        <Suspense fallback={<div className="lds-controls-skeleton" aria-hidden="true" />}>
+          <LensDensityControls lens={lens} density={density} />
+        </Suspense>
+      </SectionBoundary>
+
       <nav className="sd-breadcrumb" aria-label="Breadcrumb">
         <a href="/">Home</a>
         <span className="sd-bread-sep" aria-hidden="true">
@@ -150,71 +161,83 @@ export default async function ServerDetailPage({
         <span className="sd-bread-sep" aria-hidden="true">
           /
         </span>
-        <span className="sd-bread-current">{dd.server.name}</span>
+        <span className="sd-bread-current">{dd.server?.name ?? slug}</span>
       </nav>
 
-      {/* Phase 3 hero — server name + coverage line + auto-narrative
-          bullets + severity proportional bar. Always renders the name +
-          coverage line; bullets and severity bar render only when their
-          inputs support them (honest gap). */}
-      <HeroBlock
-        serverName={dd.server.name}
-        coverage={dd.coverage}
-        categories={dd.categories}
-        attackChains={dd.attack_chains}
-      />
+      <SectionBoundary section="hero" label="Hero">
+        <HeroBlock
+          serverName={dd.server?.name ?? slug}
+          coverage={dd.coverage}
+          categories={dd.categories}
+          attackChains={dd.attack_chains}
+        />
+      </SectionBoundary>
 
-      {/* Story-lens augmentations (Phase 2 redesign). Each component
-          renders nothing when its data is absent — honest gaps, no
-          synthetic placeholders. The reel and surface mount BEFORE the
-          taxonomy stack so a regulator's eye lands on the synthesised
-          attack stories first, then drills into the per-rule evidence. */}
       <div className="dd-story-lens">
-        <KillChainReel
-          chains={dd.attack_chains}
-          currentServerSlug={dd.server.slug}
-        />
-        <CapabilitySurface
-          node={dd.capability_node}
-          edges={dd.risk_edges}
-        />
+        <SectionBoundary section="kill-chain-reel" label="Attack stories">
+          <KillChainReel
+            chains={dd.attack_chains}
+            currentServerSlug={dd.server?.slug ?? slug}
+          />
+        </SectionBoundary>
+        <SectionBoundary section="capability-surface" label="Capability surface">
+          <CapabilitySurface
+            node={dd.capability_node}
+            edges={dd.risk_edges}
+          />
+        </SectionBoundary>
       </div>
 
-      {/* Phase 3 coverage ledger — a first-class section listing every
-          rule we couldn't test this scan, grouped by structured reason.
-          Renders nothing when no rules are skipped. */}
-      <CoverageLedger
-        coverage={dd.coverage}
-        categories={dd.categories}
-      />
-
-      {hasContent ? (
-        <DeepDiveLayout
-          sidebar={<DeepDiveSidebar categories={dd.categories} />}
-          main={
-            <div className="dd-main">
-              {dd.categories.map((cat) => (
-                <CategorySection key={cat.id} cat={cat} />
-              ))}
-            </div>
-          }
+      <SectionBoundary section="coverage-ledger" label="Coverage ledger">
+        <CoverageLedger
+          coverage={dd.coverage}
+          categories={dd.categories}
         />
-      ) : (
-        <section className="dd-empty" aria-labelledby="dd-empty-title">
-          <h1 id="dd-empty-title" className="dd-empty-title">
-            {dd.server.name}
-          </h1>
-          <p className="dd-empty-msg">
-            Deep-dive evidence is not yet on file for this server. The
-            attack-vector taxonomy and rule-methodology manifest data
-            sources may not have been wired for this scan. Check back
-            after the next scheduled scan, or contact the registry
-            maintainers.
-          </p>
-        </section>
-      )}
+      </SectionBoundary>
 
-      <ProvenanceFooter provenance={dd.provenance} />
+      <SectionBoundary section="taxonomy" label="Per-rule taxonomy">
+        {hasContent ? (
+          <DeepDiveLayout
+            sidebar={
+              <SectionBoundary section="taxonomy-sidebar" label="Sidebar">
+                <Suspense fallback={null}>
+                  <DeepDiveSidebar categories={dd.categories} />
+                </Suspense>
+              </SectionBoundary>
+            }
+            main={
+              <div className="dd-main">
+                {dd.categories.map((cat) => (
+                  <SectionBoundary
+                    key={cat.id}
+                    section={`category-${cat.id ?? "unknown"}`}
+                    label={cat.title ?? cat.id ?? "Category"}
+                  >
+                    <CategorySection cat={cat} />
+                  </SectionBoundary>
+                ))}
+              </div>
+            }
+          />
+        ) : (
+          <section className="dd-empty" aria-labelledby="dd-empty-title">
+            <h1 id="dd-empty-title" className="dd-empty-title">
+              {dd.server?.name ?? slug}
+            </h1>
+            <p className="dd-empty-msg">
+              Deep-dive evidence is not yet on file for this server. The
+              attack-vector taxonomy and rule-methodology manifest data
+              sources may not have been wired for this scan. Check back
+              after the next scheduled scan, or contact the registry
+              maintainers.
+            </p>
+          </section>
+        )}
+      </SectionBoundary>
+
+      <SectionBoundary section="provenance" label="Provenance footer">
+        <ProvenanceFooter provenance={dd.provenance} />
+      </SectionBoundary>
     </div>
   );
 }

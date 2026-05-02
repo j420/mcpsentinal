@@ -14633,3 +14633,60 @@ body:has(.dd-page-stripped) .site-main {
   background: var(--surface-2);
   color: var(--text);
 }
+
+/* ── SectionBoundary fallback (per-section graceful degradation) ────── */
+.section-boundary-fallback {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: var(--s2) 0;
+  padding: 10px 14px;
+  background: var(--surface-2);
+  border: 1px dashed var(--border);
+  border-radius: var(--r-md);
+  color: var(--text-3);
+  font-size: 0.82rem;
+}
+.section-boundary-glyph {
+  color: var(--sev-medium);
+  font-size: 0.95rem;
+}
+.section-boundary-text strong {
+  color: var(--text-2);
+  margin-right: 4px;
+}
+.section-boundary-msg {
+  flex-basis: 100%;
+  margin-top: 6px;
+  padding: 4px 8px;
+  background: var(--surface-3);
+  color: var(--text-3);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+
+/* error.tsx help row + stack */
+.dd-error-stack {
+  margin: var(--s2) 0 var(--s3);
+  padding: var(--s2) var(--s3);
+  background: var(--surface-3);
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  border-radius: var(--r-sm);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 240px;
+  overflow: auto;
+}
+.dd-error-help {
+  margin: var(--s4) 0 0;
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border);
+  font-size: 0.82rem;
+  color: var(--text-3);
+  line-height: 1.55;
+}
