@@ -28,6 +28,7 @@ import type {
   DeepDiveAttackChain,
   DeepDiveCategory,
   DeepDiveCoverageSummary,
+  DeepDiveProvenance,
 } from "@/lib/deep-dive";
 import { buildAutoNarrative } from "@/lib/auto-narrative";
 
@@ -36,6 +37,11 @@ interface HeroBlockProps {
   coverage: DeepDiveCoverageSummary | undefined;
   categories: ReadonlyArray<DeepDiveCategory> | undefined;
   attackChains: ReadonlyArray<DeepDiveAttackChain> | undefined;
+  /** Optional — when present, drives a small attestation footnote under
+   *  the coverage line ("Scanned 2h ago · rules v164.2 · HMAC-SHA256
+   *  signed"). The full provenance still renders in `<ProvenanceFooter/>`
+   *  at the bottom; this is the trust cue at first glance. */
+  provenance?: DeepDiveProvenance | undefined;
 }
 
 const SEV_ORDER: Array<{
@@ -63,11 +69,35 @@ const TONE_GLYPH: Record<string, string> = {
   good: "✓",
 };
 
+/**
+ * Compact relative-time formatter. Mirrors the helper in RuleEvidenceCard
+ * (same display contract) — kept inline rather than shared because moving
+ * it would create a third call site for what's intentionally a one-shot
+ * formatter, and Cluster C policy is to duplicate until the third use.
+ */
+function relativeFromNow(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const ms = Date.now() - d.getTime();
+  if (!Number.isFinite(ms) || ms < 0) return null;
+  if (ms < 60_000) return "just now";
+  if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ago`;
+  if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h ago`;
+  if (ms < 7 * 86_400_000) return `${Math.floor(ms / 86_400_000)}d ago`;
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 export default function HeroBlock({
   serverName,
   coverage,
   categories,
   attackChains,
+  provenance,
 }: HeroBlockProps) {
   const bullets = buildAutoNarrative({
     coverage,
@@ -108,8 +138,32 @@ export default function HeroBlock({
         }).filter((s) => s.count > 0)
       : [];
 
+  // Attestation line — a quiet, mono-typed trust cue under the coverage
+  // line. Built from the threaded `provenance` triple. Honest gap: when
+  // a field is missing we omit it rather than render a placeholder. The
+  // full provenance (key id, scan id, RFC 8785 reference) lives in the
+  // ProvenanceFooter at page-bottom — this is the at-a-glance receipt.
+  const scanRelative = relativeFromNow(provenance?.scan_completed_at);
+  const attestationParts: string[] = [];
+  if (scanRelative) attestationParts.push(`Scanned ${scanRelative}`);
+  if (provenance?.rules_version) {
+    attestationParts.push(`rules ${provenance.rules_version}`);
+  }
+  if (provenance) attestationParts.push("HMAC-SHA256 signed");
+  const attestationLine =
+    attestationParts.length > 0 ? attestationParts.join(" · ") : null;
+
   return (
     <section id="dd-section-hero" className="dd-hero2" aria-labelledby="dd-hero2-name">
+      {/* "The Frame" — corner-bracket marks per Design System v5.1. Pure
+          presentational pseudo-elements would be cleaner, but spans give
+          us four distinct anchors so the brackets stay crisp on every
+          screen size and survive the surface's border-radius. */}
+      <span className="dd-hero2-frame dd-hero2-frame-tl" aria-hidden="true" />
+      <span className="dd-hero2-frame dd-hero2-frame-tr" aria-hidden="true" />
+      <span className="dd-hero2-frame dd-hero2-frame-bl" aria-hidden="true" />
+      <span className="dd-hero2-frame dd-hero2-frame-br" aria-hidden="true" />
+
       <div className="dd-hero2-left">
         <h1 id="dd-hero2-name" className="dd-hero2-name">
           {serverName}
@@ -117,13 +171,29 @@ export default function HeroBlock({
         <p className="dd-hero2-coverage" aria-label="Scan coverage">
           {coverageLine}
         </p>
+        {attestationLine && (
+          <p
+            className="dd-hero2-attest"
+            aria-label="Attestation"
+            title={
+              provenance?.signing_key_id
+                ? `Signing key id: ${provenance.signing_key_id}`
+                : undefined
+            }
+          >
+            <span className="dd-hero2-attest-glyph" aria-hidden="true">
+              ◆
+            </span>
+            {attestationLine}
+          </p>
+        )}
 
         {bullets.length > 0 && (
           <div
             className="dd-hero2-narrative"
-            aria-label="What you should know"
+            aria-label="Findings summary"
           >
-            <h2 className="dd-hero2-narrative-title">What you should know</h2>
+            <h2 className="dd-hero2-narrative-title">Findings</h2>
             <ul className="dd-hero2-bullets">
               {bullets.map((b) => (
                 <li

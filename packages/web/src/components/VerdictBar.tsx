@@ -49,6 +49,16 @@ export default function VerdictBar({
     attackChains,
   });
   const sev = TONE_TO_SEV[headline.tone] ?? "info";
+
+  // Pull the verdict word ("Critical", "High", "Moderate", etc.) off the
+  // front of the headline if one is present. The auto-narrative emits
+  // strings like "Critical — N findings…" — splitting on the en-dash
+  // lets us typeset the verdict word in a heavier weight while the rest
+  // of the sentence stays book-weight, the way a court ruling reads.
+  const dashSplit = headline.text.split(/\s+—\s+/);
+  const verdictWord = dashSplit.length > 1 ? dashSplit[0] : null;
+  const verdictRest = dashSplit.length > 1 ? dashSplit.slice(1).join(" — ") : headline.text;
+
   return (
     <div
       id="dd-section-verdict"
@@ -64,7 +74,29 @@ export default function VerdictBar({
       <span className="vbar-sep" aria-hidden="true">
         ·
       </span>
-      <span className="vbar-headline">{headline.text}</span>
+      <span className="vbar-headline">
+        {verdictWord && (
+          <>
+            <span className="vbar-verdict-word" data-tone={headline.tone}>
+              {verdictWord}
+            </span>
+            <span className="vbar-em-dash" aria-hidden="true">
+              {" — "}
+            </span>
+          </>
+        )}
+        <span className="vbar-verdict-rest">{verdictRest}</span>
+      </span>
+      {/* Tiny attestation chip at the right edge — a one-glance receipt
+          that this page's claims are signed and reproducible. Hidden on
+          narrow viewports; the full attestation lives in the hero
+          attestation line and the provenance footer. */}
+      <span className="vbar-attest" aria-label="Signed page">
+        <span className="vbar-attest-glyph" aria-hidden="true">
+          ◆
+        </span>
+        <span className="vbar-attest-text">SIGNED</span>
+      </span>
     </div>
   );
 }
