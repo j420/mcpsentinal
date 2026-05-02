@@ -109,7 +109,7 @@ export default function HeroBlock({
       : [];
 
   return (
-    <section className="dd-hero2" aria-labelledby="dd-hero2-name">
+    <section id="dd-section-hero" className="dd-hero2" aria-labelledby="dd-hero2-name">
       <div className="dd-hero2-left">
         <h1 id="dd-hero2-name" className="dd-hero2-name">
           {serverName}

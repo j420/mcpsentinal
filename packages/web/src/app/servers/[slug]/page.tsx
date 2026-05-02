@@ -36,7 +36,17 @@ import LensDensityControls, {
   resolveLensDensity,
 } from "@/components/LensDensityControls";
 import SectionBoundary from "@/components/SectionBoundary";
+import HoverTraceController from "@/components/HoverTraceController";
+import ForensicDrawer from "@/components/ForensicDrawer";
+import ComplianceLensView from "@/components/ComplianceLensView";
+import MobileViewportStripe from "@/components/MobileViewportStripe";
+import MobileNavigateFAB from "@/components/MobileNavigateFAB";
 import type { DeepDiveResponse, DeepDiveData } from "@/lib/deep-dive";
+
+// Public api origin for receipt-URL construction. NEXT_PUBLIC_API_URL
+// is read at build / SSR time and embedded for the client drawer to use.
+const PUBLIC_API_ORIGIN =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3100";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3100";
 
@@ -127,6 +137,22 @@ export default async function ServerDetailPage({
       data-lens={lens}
       data-density={density}
     >
+      {/* Phase 5 — mobile viewport stripe (4-px severity-coloured strip
+          pinned to the very top of the viewport). Hidden via CSS on
+          desktop. Always-visible status the user can never miss while
+          scrolling on a phone. */}
+      <SectionBoundary section="mobile-stripe" label="Mobile severity strip">
+        <MobileViewportStripe coverage={dd.coverage} />
+      </SectionBoundary>
+
+      {/* Phase 5 — page-wide hover-to-trace controller. Mounts once per
+          page; emits no markup. Delegated mouseover/focusin listener
+          wires every [data-trace] element into the same highlight cluster
+          so a buyer/CISO can hover a tool, capability, server, rule, cve,
+          kill-chain id, pattern, or framework control and see every
+          reference light up across the page. */}
+      <HoverTraceController />
+
       {/* Each major section is wrapped in its own SectionBoundary so a
           single render exception degrades to a quiet skeleton instead of
           taking down the whole page via the route-level error.tsx. The
@@ -195,48 +221,95 @@ export default async function ServerDetailPage({
         />
       </SectionBoundary>
 
-      <SectionBoundary section="taxonomy" label="Per-rule taxonomy">
-        {hasContent ? (
-          <DeepDiveLayout
-            sidebar={
-              <SectionBoundary section="taxonomy-sidebar" label="Sidebar">
-                <Suspense fallback={null}>
-                  <DeepDiveSidebar categories={dd.categories} />
-                </Suspense>
-              </SectionBoundary>
-            }
-            main={
-              <div className="dd-main">
-                {dd.categories.map((cat) => (
-                  <SectionBoundary
-                    key={cat.id}
-                    section={`category-${cat.id ?? "unknown"}`}
-                    label={cat.title ?? cat.id ?? "Category"}
-                  >
-                    <CategorySection cat={cat} />
-                  </SectionBoundary>
-                ))}
-              </div>
-            }
+      {/* Phase 5 — Compliance lens. When ?lens=compliance, the per-rule
+          taxonomy is replaced by a framework-control restructure. The
+          other sections (verdict, controls, hero, story-lens block,
+          coverage ledger, provenance) stay rendered; CSS rules below
+          hide whichever ones aren't useful in this lens. */}
+      {lens === "compliance" ? (
+        <SectionBoundary section="compliance-view" label="Compliance posture">
+          <ComplianceLensView
+            serverSlug={dd.server?.slug ?? slug}
+            categories={dd.categories ?? []}
+            apiOrigin={PUBLIC_API_ORIGIN}
           />
-        ) : (
-          <section className="dd-empty" aria-labelledby="dd-empty-title">
-            <h1 id="dd-empty-title" className="dd-empty-title">
-              {dd.server?.name ?? slug}
-            </h1>
-            <p className="dd-empty-msg">
-              Deep-dive evidence is not yet on file for this server. The
-              attack-vector taxonomy and rule-methodology manifest data
-              sources may not have been wired for this scan. Check back
-              after the next scheduled scan, or contact the registry
-              maintainers.
-            </p>
-          </section>
-        )}
-      </SectionBoundary>
+        </SectionBoundary>
+      ) : (
+        <SectionBoundary section="taxonomy" label="Per-rule taxonomy">
+          {hasContent ? (
+            <DeepDiveLayout
+              sidebar={
+                <SectionBoundary section="taxonomy-sidebar" label="Sidebar">
+                  <Suspense fallback={null}>
+                    <DeepDiveSidebar categories={dd.categories} />
+                  </Suspense>
+                </SectionBoundary>
+              }
+              main={
+                <div className="dd-main">
+                  {dd.categories.map((cat) => (
+                    <SectionBoundary
+                      key={cat.id}
+                      section={`category-${cat.id ?? "unknown"}`}
+                      label={cat.title ?? cat.id ?? "Category"}
+                    >
+                      <CategorySection cat={cat} />
+                    </SectionBoundary>
+                  ))}
+                </div>
+              }
+            />
+          ) : (
+            <section className="dd-empty" aria-labelledby="dd-empty-title">
+              <h1 id="dd-empty-title" className="dd-empty-title">
+                {dd.server?.name ?? slug}
+              </h1>
+              <p className="dd-empty-msg">
+                Deep-dive evidence is not yet on file for this server. The
+                attack-vector taxonomy and rule-methodology manifest data
+                sources may not have been wired for this scan. Check back
+                after the next scheduled scan, or contact the registry
+                maintainers.
+              </p>
+            </section>
+          )}
+        </SectionBoundary>
+      )}
 
       <SectionBoundary section="provenance" label="Provenance footer">
         <ProvenanceFooter provenance={dd.provenance} />
+      </SectionBoundary>
+
+      {/* Phase 5 — Forensic drawer. Mounts once at the page root; opens
+          when the URL carries `?finding=<id>`. Renders nothing when the
+          param is absent. Inside its own SectionBoundary so a render
+          exception doesn't cascade. */}
+      <SectionBoundary section="forensic-drawer" label="Forensic view">
+        <Suspense fallback={null}>
+          <ForensicDrawer
+            serverSlug={dd.server?.slug ?? slug}
+            serverName={dd.server?.name ?? slug}
+            categories={dd.categories ?? []}
+            provenance={dd.provenance}
+            apiOrigin={PUBLIC_API_ORIGIN}
+          />
+        </Suspense>
+      </SectionBoundary>
+
+      {/* Phase 5 — mobile navigate FAB. Hidden via CSS above 720px;
+          appears once the user scrolls past the verdict bar. Opens a
+          bottom-sheet TOC anchored to each section's stable id. Uses
+          useSearchParams so wrapped in Suspense per Next 15. */}
+      <SectionBoundary section="mobile-navigate-fab" label="Mobile navigate">
+        <Suspense fallback={null}>
+          <MobileNavigateFAB
+            categories={dd.categories ?? []}
+            lens={lens}
+            hasChains={Array.isArray(dd.attack_chains) && dd.attack_chains.length > 0}
+            hasSurface={Boolean(dd.capability_node)}
+            hasCoverageLedger={(dd.coverage?.rules_skipped_no_data ?? 0) > 0}
+          />
+        </Suspense>
       </SectionBoundary>
     </div>
   );

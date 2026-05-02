@@ -51,6 +51,7 @@ export default function VerdictBar({
   const sev = TONE_TO_SEV[headline.tone] ?? "info";
   return (
     <div
+      id="dd-section-verdict"
       className="vbar"
       data-tone={headline.tone}
       style={{ borderLeftColor: `var(--sev-${sev})` }}

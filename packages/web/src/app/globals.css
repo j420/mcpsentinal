@@ -14690,3 +14690,1262 @@ body:has(.dd-page-stripped) .site-main {
   color: var(--text-3);
   line-height: 1.55;
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Phase 5 — Mitigation Simulator (KillChainReel)
+ * ──────────────────────────────────────────────────────────────────── */
+
+.kcr-reel-sim-hint {
+  display: inline-block;
+  margin-left: 6px;
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.kcr-sim-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin: 0 0 var(--s4);
+  padding: 10px 14px;
+  background: var(--accent-sub);
+  border: 1px solid var(--accent-ring);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--r-md);
+  font-size: 0.88rem;
+  color: var(--text);
+}
+.kcr-sim-bar[data-sim-state="all-broken"] {
+  background: rgba(91, 214, 138, 0.10);
+  border-color: rgba(91, 214, 138, 0.32);
+  border-left-color: var(--sev-low);
+}
+.kcr-sim-bar-glyph {
+  font-size: 1.1rem;
+}
+.kcr-sim-bar-text {
+  flex: 1 1 auto;
+}
+.kcr-sim-bar-reset {
+  appearance: none;
+  background: var(--surface-3);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  transition: all var(--t-fast, 120ms);
+}
+.kcr-sim-bar-reset:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* "✓ BROKEN" pill on the chain card header when an applied mitigation
+ * neutralises the chain. Visual rhyme with the sim-bar's good-state. */
+.kcr-card-broken {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 9px;
+  background: rgba(91, 214, 138, 0.12);
+  color: var(--sev-low);
+  border: 1px solid rgba(91, 214, 138, 0.40);
+  border-radius: var(--r-full);
+}
+
+/* When the chain is broken, the whole card is desaturated to signal
+ * "no longer a live attack story". The sim-bar above carries the
+ * positive state. */
+.kcr-card[data-chain-broken="true"] {
+  opacity: 0.78;
+}
+
+/* Per-step "broken" state — strikethrough + greyed body. The numeric
+ * ordinal stays full-opacity so a regulator can still scan the chain
+ * shape; the body greys to signal the step is no longer reachable. */
+.kcr-step[data-broken="true"] .kcr-step-body {
+  opacity: 0.45;
+  text-decoration: line-through;
+  text-decoration-color: var(--text-3);
+}
+.kcr-step[data-broken="true"] .kcr-step-ord {
+  background: rgba(91, 214, 138, 0.12);
+  color: var(--sev-low);
+}
+
+/* Mitigation pills (replaces the old <details> accordion).
+ * Each pill is a button — click toggles applied. Applied state uses
+ * the accent colour to make the toggle obvious. */
+.kcr-mit-sim {
+  margin-top: var(--s3);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border);
+}
+.kcr-mit-sim-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  margin-bottom: var(--s2);
+}
+.kcr-mit-sim-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.kcr-mit-sim-item {
+  display: block;
+}
+.kcr-mit-sim-pill {
+  appearance: none;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  background: var(--surface-3);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 8px 12px;
+  font-family: var(--font-body);
+  font-size: 0.84rem;
+  cursor: pointer;
+  transition: all var(--t-fast, 120ms);
+}
+.kcr-mit-sim-pill:hover {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--accent-ring);
+}
+.kcr-mit-sim-pill-applied {
+  background: rgba(91, 214, 138, 0.10);
+  color: var(--text);
+  border-color: rgba(91, 214, 138, 0.40);
+}
+.kcr-mit-sim-pill-applied:hover {
+  background: rgba(91, 214, 138, 0.18);
+  border-color: rgba(91, 214, 138, 0.55);
+}
+.kcr-mit-sim-pill-glyph {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  width: 18px;
+  text-align: center;
+  color: var(--text-3);
+}
+.kcr-mit-sim-pill-applied .kcr-mit-sim-pill-glyph {
+  color: var(--sev-low);
+}
+.kcr-mit-sim-pill-target {
+  font-family: var(--font-mono);
+  color: var(--text);
+  flex: 0 0 auto;
+}
+.kcr-mit-sim-pill-desc {
+  flex: 1 1 auto;
+  color: inherit;
+}
+.kcr-mit-sim-pill-steps {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+.kcr-mit-sim-pill-applied .kcr-mit-sim-pill-steps {
+  color: var(--sev-low);
+}
+.kcr-mit-sim-status {
+  margin: var(--s3) 0 0;
+  padding: 8px 12px;
+  background: rgba(91, 214, 138, 0.06);
+  border: 1px solid rgba(91, 214, 138, 0.32);
+  border-radius: var(--r-sm);
+  color: var(--sev-low);
+  font-size: 0.82rem;
+  font-family: var(--font-mono);
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Phase 5 — Hover-to-Trace
+ *
+ * Page-wide spatial reasoning: hover any [data-trace] element, every
+ * other element with the same trace key lights up across the page.
+ * The controller (HoverTraceController.tsx) sets:
+ *   body[data-trace-active="<key>"]
+ *   [data-trace="<key>"][data-trace-match="true"]   (on every match)
+ * The CSS below gives the visual layer.
+ *
+ * Design choices:
+ *   - Non-matching [data-trace] elements dim to ~55% so the eye lands
+ *     on matches without losing context (vs aggressive 0% which
+ *     destroys spatial reasoning).
+ *   - Matching elements get a thin accent outline + accent tint —
+ *     legible on every existing background.
+ *   - Transitions are 120ms — fast enough to feel live, slow enough
+ *     not to flicker on cursor jitter.
+ *   - data-trace elements get a default `cursor: help` so the
+ *     interaction is discoverable.
+ * ──────────────────────────────────────────────────────────────────── */
+
+[data-trace] {
+  cursor: help;
+  transition:
+    opacity var(--t-fast, 120ms),
+    outline-color var(--t-fast, 120ms),
+    background-color var(--t-fast, 120ms);
+  border-radius: 3px;
+}
+
+/* Subtle hint that the element is interactive — only shows when no
+ * trace is active (so the underline doesn't fight the highlight). */
+body:not([data-trace-active]) [data-trace]:hover {
+  outline: 1px dashed var(--accent-ring);
+  outline-offset: 2px;
+}
+
+/* Once a trace key is active, dim non-matching cousins. */
+body[data-trace-active] [data-trace]:not([data-trace-match]) {
+  opacity: 0.55;
+}
+
+/* Match the active key — accent ring + accent tint. */
+body[data-trace-active] [data-trace-match] {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+  background-color: var(--accent-sub);
+  position: relative;
+  z-index: 1;
+}
+
+/* Special-case the kill-chain step server name + tool — they sit
+ * inside a flexbox row, so a margin-driven outline would re-flow
+ * neighbours. Use box-shadow instead for those (no layout shift). */
+body[data-trace-active]
+  .kcr-step-server[data-trace-match],
+body[data-trace-active]
+  .kcr-step-tool[data-trace-match],
+body[data-trace-active]
+  .csurf-pattern-peer[data-trace-match] {
+  outline: none;
+  box-shadow:
+    0 0 0 1px var(--accent),
+    0 0 0 4px var(--accent-sub);
+}
+
+/* For the rule pill in the coverage ledger, the link itself carries
+ * data-trace; keep the highlight inset so it doesn't bleed into
+ * neighbouring pills. */
+body[data-trace-active]
+  a.cov-bucket-rule-link[data-trace-match] {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* CVE pill highlight — it lives on a dotted strip; keep the highlight
+ * crisp. */
+body[data-trace-active]
+  a.rec-cve-strip-link[data-trace-match] {
+  outline: 1px solid var(--sev-low);
+  outline-offset: 1px;
+  background-color: rgba(91, 214, 138, 0.18);
+}
+
+/* Don't dim the body chrome itself when a trace is active — only the
+ * other [data-trace] elements need to fade. The hero, verdict bar, and
+ * non-trace text stay full opacity. */
+
+/* Print styles: no highlight in print. */
+@media print {
+  [data-trace] {
+    cursor: auto;
+    transition: none;
+  }
+  body[data-trace-active] [data-trace] {
+    opacity: 1 !important;
+    outline: none !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+  }
+}
+
+/* Reduced-motion: keep the colour change but skip the transition. */
+@media (prefers-reduced-motion: reduce) {
+  [data-trace] {
+    transition: none;
+  }
+}
+
+/* Touch / no-hover: trace works via tap on focusable elements. */
+[data-trace][tabindex] {
+  outline: none; /* visual outline lives on data-trace-match instead */
+}
+[data-trace][tabindex]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Phase 5 — Forensic Drawer + ForensicTrigger
+ * URL-state-driven slide-over panel for one-finding audit packs.
+ * ──────────────────────────────────────────────────────────────────── */
+
+/* ── ForensicTrigger button on each finding panel ───────────────────── */
+
+.rec-finding-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+  margin-top: var(--s3);
+  padding-top: var(--s2);
+  border-top: 1px dashed var(--border);
+}
+/* The receipt link's own border-top now collides with the action-row's
+ * — strip it so we don't get a double divider. */
+.rec-finding-action-row .rec-finding-receipt {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+.rec-finding-forensic {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+  color: var(--accent);
+  background: var(--accent-sub);
+  border: 1px solid var(--accent-ring);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: all var(--t-fast, 120ms);
+}
+.rec-finding-forensic:hover {
+  background: var(--accent-sub);
+  background-color: rgba(232, 178, 92, 0.16);
+  color: var(--accent-hover);
+}
+.rec-finding-forensic:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ── Backdrop + slide-over container ────────────────────────────────── */
+
+.fdrawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(8, 10, 16, 0.55);
+  display: flex;
+  justify-content: flex-end;
+  animation: fdrawerFadeIn 160ms ease-out;
+}
+@keyframes fdrawerFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.fdrawer {
+  position: relative;
+  width: min(640px, 92vw);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: -16px 0 40px -12px rgba(0, 0, 0, 0.55);
+  animation: fdrawerSlideIn 200ms cubic-bezier(0.23, 1, 0.32, 1);
+  overflow: hidden;
+}
+@keyframes fdrawerSlideIn {
+  from { transform: translateX(40px); opacity: 0.6; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fdrawer-backdrop, .fdrawer { animation: none; }
+}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+
+.fdrawer-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  padding: var(--s4) var(--s5);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.fdrawer-head-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.fdrawer-title {
+  margin: 0 0 4px;
+  font-family: var(--font-display, var(--font-body));
+  font-size: 1.15rem;
+  font-weight: 500;
+  color: var(--text);
+}
+.fdrawer-sub {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fdrawer-mono {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  background: var(--surface-3);
+  padding: 1px 5px;
+  border-radius: var(--r-sm);
+  color: var(--text);
+}
+.fdrawer-close {
+  appearance: none;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: all var(--t-fast, 120ms);
+}
+.fdrawer-close:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+.fdrawer-close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ── Tabs ───────────────────────────────────────────────────────────── */
+
+.fdrawer-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 6px var(--s5) 0;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+.fdrawer-tab {
+  appearance: none;
+  background: transparent;
+  color: var(--text-3);
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 8px 12px;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all var(--t-fast, 120ms);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.fdrawer-tab:hover {
+  color: var(--text-2);
+}
+.fdrawer-tab-active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+.fdrawer-tab-count {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  background: var(--surface-3);
+  color: var(--text-2);
+  padding: 1px 6px;
+  border-radius: var(--r-full);
+}
+.fdrawer-tab-active .fdrawer-tab-count {
+  background: var(--accent-sub);
+  color: var(--accent);
+}
+
+/* ── Body ───────────────────────────────────────────────────────────── */
+
+.fdrawer-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: var(--s5);
+  color: var(--text-2);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+.fdrawer-body section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+.fdrawer-h3 {
+  margin: 0;
+  font-family: var(--font-display, var(--font-body));
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text);
+}
+.fdrawer-empty,
+.fdrawer-empty-msg {
+  color: var(--text-3);
+  font-size: 0.88rem;
+}
+.fdrawer-evidence-prose {
+  margin: 0;
+  padding: var(--s3);
+  background: var(--surface-2);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text);
+}
+.fdrawer-remediation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+/* ── Verify checklist ───────────────────────────────────────────────── */
+
+.fdrawer-checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  counter-reset: fdrawer-step;
+}
+.fdrawer-checklist-item {
+  display: flex;
+  gap: var(--s2);
+  align-items: flex-start;
+  padding: var(--s3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+}
+.fdrawer-checklist-cb {
+  flex: 0 0 auto;
+  margin-top: 4px;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+.fdrawer-checklist-body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.fdrawer-checklist-instr {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.88rem;
+}
+.fdrawer-checklist-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+.fdrawer-checklist-tag {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  background: var(--surface-3);
+  color: var(--text-2);
+  padding: 1px 6px;
+  border-radius: var(--r-sm);
+}
+
+/* ── Receipt tab ────────────────────────────────────────────────────── */
+
+.fdrawer-receipt-row {
+  display: flex;
+  gap: var(--s2);
+  align-items: center;
+  flex-wrap: wrap;
+  padding: var(--s3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+}
+.fdrawer-receipt-url {
+  flex: 1 1 280px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--accent-2);
+  word-break: break-all;
+  background: transparent;
+  padding: 0;
+}
+.fdrawer-mini-btn {
+  appearance: none;
+  flex: 0 0 auto;
+  background: var(--surface-3);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  transition: all var(--t-fast, 120ms);
+}
+.fdrawer-mini-btn:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+.fdrawer-mini-btn-link {
+  color: var(--accent);
+}
+.fdrawer-provenance {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  row-gap: var(--s2);
+  margin: 0;
+  padding: var(--s3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+}
+.fdrawer-prov-row {
+  display: contents;
+}
+.fdrawer-prov-row dt {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  padding-top: 2px;
+}
+.fdrawer-prov-row dd {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.fdrawer-prov-aux {
+  color: var(--text-3);
+  font-size: 0.78rem;
+}
+
+/* ── Footer action row ──────────────────────────────────────────────── */
+
+.fdrawer-foot {
+  display: flex;
+  gap: var(--s3);
+  padding: var(--s4) var(--s5);
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.fdrawer-action-primary {
+  appearance: none;
+  flex: 1 1 auto;
+  padding: 10px 16px;
+  background: var(--accent);
+  color: #1a1a1a;
+  border: 1px solid var(--accent);
+  border-radius: var(--r-md);
+  font-size: 0.92rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--t-fast, 120ms);
+}
+.fdrawer-action-primary:hover {
+  background: var(--accent-hover);
+}
+.fdrawer-action-primary[data-state="copied"] {
+  background: var(--sev-low);
+  border-color: var(--sev-low);
+  color: #0a1a0e;
+}
+.fdrawer-action-primary[data-state="error"] {
+  background: var(--sev-high);
+  border-color: var(--sev-high);
+  color: #1a1a1a;
+}
+.fdrawer-action-secondary {
+  appearance: none;
+  flex: 0 0 auto;
+  padding: 10px 16px;
+  background: transparent;
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+.fdrawer-action-secondary:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+/* Mobile — drawer takes full viewport. */
+@media (max-width: 640px) {
+  .fdrawer {
+    width: 100vw;
+  }
+  .fdrawer-head, .fdrawer-tabs, .fdrawer-foot {
+    padding-left: var(--s4);
+    padding-right: var(--s4);
+  }
+  .fdrawer-body {
+    padding: var(--s4);
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Phase 5 — Compliance lens
+ * Restructures the page by framework controls instead of by category.
+ * The transformer (lib/compliance-shape.ts) emits frameworks[]; the
+ * view (ComplianceLensView.tsx) renders one card per framework with
+ * each control as a row.
+ * ──────────────────────────────────────────────────────────────────── */
+
+/* When ?lens=compliance, hide the rule-centric augmentations — they
+ * tell the wrong story for a compliance officer. Keep the verdict bar,
+ * lens controls, breadcrumb, hero name + coverage line, and provenance. */
+.dd-page[data-lens="compliance"] .dd-hero2-narrative,
+.dd-page[data-lens="compliance"] .dd-hero2-right,
+.dd-page[data-lens="compliance"] .kcr-reel,
+.dd-page[data-lens="compliance"] .csurf,
+.dd-page[data-lens="compliance"] .cov-ledger {
+  display: none;
+}
+/* Compliance lens hero collapses to one column (just the name + coverage
+ * line) since the right side (severity bar) is hidden. */
+.dd-page[data-lens="compliance"] .dd-hero2 {
+  grid-template-columns: 1fr;
+}
+
+/* ── ComplianceLensView ─────────────────────────────────────────────── */
+
+.cl-view {
+  margin: var(--s5) 0;
+}
+.cl-view-head {
+  margin-bottom: var(--s5);
+}
+.cl-view-title {
+  font-family: var(--font-display, var(--font-body));
+  font-size: 1.5rem;
+  font-weight: 500;
+  margin: 0 0 var(--s2);
+  color: var(--text);
+}
+.cl-view-sub {
+  color: var(--text-3);
+  font-size: 0.9rem;
+  line-height: 1.55;
+  max-width: 80ch;
+  margin: 0;
+}
+.cl-fw-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: var(--s5);
+}
+
+/* ── Framework card ─────────────────────────────────────────────────── */
+
+.cl-fw-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+.cl-fw-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  padding-bottom: var(--s3);
+  border-bottom: 1px solid var(--border);
+}
+.cl-fw-head-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.cl-fw-title {
+  font-family: var(--font-display, var(--font-body));
+  font-size: 1.15rem;
+  font-weight: 500;
+  margin: 0 0 4px;
+  color: var(--text);
+}
+.cl-fw-counts {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-3);
+}
+.cl-fw-counts-met {
+  color: var(--sev-low);
+}
+.cl-fw-counts-unmet {
+  color: var(--sev-critical);
+}
+.cl-fw-counts-partial {
+  color: var(--sev-high);
+}
+.cl-fw-counts-na {
+  color: var(--text-3);
+}
+.cl-fw-actions {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.cl-fw-action {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--accent-2);
+  background: var(--accent-2-sub);
+  text-decoration: none;
+  transition: all var(--t-fast, 120ms);
+}
+.cl-fw-action:hover {
+  background: rgba(95, 174, 255, 0.16);
+  color: var(--accent-2-hover);
+  border-color: var(--accent-2-ring);
+}
+
+/* ── Control list ───────────────────────────────────────────────────── */
+
+.cl-control-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cl-control {
+  padding: var(--s3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--text-3);
+  border-radius: var(--r-sm);
+}
+.cl-control[data-tone="good"]   { border-left-color: var(--sev-low); }
+.cl-control[data-tone="bad"]    { border-left-color: var(--sev-critical); }
+.cl-control[data-tone="warn"]   { border-left-color: var(--sev-high); }
+.cl-control[data-tone="muted"]  { border-left-color: var(--text-3); }
+
+.cl-control-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.cl-control-id {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--accent);
+  flex: 0 0 auto;
+}
+.cl-control-title {
+  flex: 1 1 auto;
+  font-size: 0.92rem;
+  color: var(--text);
+}
+.cl-status {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 9px;
+  border-radius: var(--r-full);
+  flex: 0 0 auto;
+}
+.cl-status-good {
+  background: rgba(91, 214, 138, 0.12);
+  color: var(--sev-low);
+  border: 1px solid rgba(91, 214, 138, 0.40);
+}
+.cl-status-bad {
+  background: rgba(255, 92, 87, 0.12);
+  color: var(--sev-critical);
+  border: 1px solid rgba(255, 92, 87, 0.40);
+}
+.cl-status-warn {
+  background: rgba(255, 157, 77, 0.12);
+  color: var(--sev-high);
+  border: 1px solid rgba(255, 157, 77, 0.40);
+}
+.cl-status-muted {
+  background: var(--surface-3);
+  color: var(--text-3);
+  border: 1px solid var(--border);
+}
+.cl-control-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cl-control-counts {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-3);
+}
+.cl-control-rules {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.cl-control-rule {
+  display: inline-block;
+}
+.cl-control-rule-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface-3);
+  color: var(--text-2);
+  text-decoration: none;
+  transition: all var(--t-fast, 120ms);
+}
+.cl-control-rule-link:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+.cl-control-rule-findings {
+  border-color: rgba(255, 92, 87, 0.40);
+  color: var(--sev-critical);
+  background: rgba(255, 92, 87, 0.08);
+}
+.cl-control-rule-passed {
+  border-color: rgba(91, 214, 138, 0.32);
+  color: var(--sev-low);
+  background: rgba(91, 214, 138, 0.06);
+}
+.cl-control-rule-skipped {
+  opacity: 0.65;
+  font-style: italic;
+}
+.cl-control-rule-id {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+}
+.cl-control-rule-count {
+  display: inline-block;
+  background: var(--sev-critical);
+  color: #1a0a0a;
+  padding: 0 5px;
+  border-radius: var(--r-full);
+  font-size: 0.65rem;
+  font-weight: 500;
+}
+
+/* Empty state for the compliance view (no framework_controls on file) */
+.cl-empty {
+  margin: var(--s8) 0;
+  padding: var(--s6);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--text-3);
+  border-radius: var(--r-lg);
+}
+.cl-empty-title {
+  font-family: var(--font-display, var(--font-body));
+  font-size: 1.2rem;
+  font-weight: 500;
+  margin: 0 0 var(--s3);
+  color: var(--text);
+}
+.cl-empty-msg {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  max-width: 70ch;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Phase 5 — Mobile pass
+ *
+ * Three deliverables:
+ *   1. .dd-mobile-stripe   — 4-px severity-coloured strip pinned to
+ *                            viewport top, always visible while scrolling
+ *                            on a phone
+ *   2. .mobile-nav-fab     — floating "Navigate" pill bottom-right that
+ *                            opens a bottom-sheet TOC
+ *   3. tighter mobile rules across the existing components
+ *
+ * Breakpoint discipline: anything mobile-only is hidden above 720px.
+ * Anything desktop-relevant degrades gracefully on mobile (no display:
+ * none on data-bearing sections — only on chrome).
+ * ──────────────────────────────────────────────────────────────────── */
+
+/* Section anchor offsets — every dd-section-* heading should clear the
+ * sticky verdict bar + lens controls when the user jumps to it. */
+[id^="dd-section-"] {
+  scroll-margin-top: 96px;
+}
+
+/* ── 1. MobileViewportStripe ────────────────────────────────────────── */
+.dd-mobile-stripe {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  z-index: 100; /* above sticky verdict bar (z-index: 30) */
+  pointer-events: none;
+  display: none;
+}
+@media (max-width: 720px) {
+  .dd-mobile-stripe {
+    display: block;
+  }
+  /* Bump the verdict bar down by 4px so the stripe doesn't overlap. */
+  .vbar {
+    top: 4px;
+  }
+}
+
+/* ── 2. MobileNavigateFAB ───────────────────────────────────────────── */
+.mobile-nav-fab {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 90;
+  display: none; /* shown via media query + visible-class */
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: var(--accent);
+  color: #1a1a1a;
+  border: 1px solid var(--accent);
+  border-radius: 9999px;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 0.92rem;
+  cursor: pointer;
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  transform: translateY(20px);
+  transition:
+    opacity 200ms ease-out,
+    transform 200ms ease-out,
+    background 120ms;
+  /* Touch target: 44x44 minimum per WCAG mobile guidance — the padding
+   * + content already exceeds that on every screen. */
+}
+.mobile-nav-fab span[aria-hidden] {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+@media (max-width: 720px) {
+  .mobile-nav-fab {
+    display: inline-flex;
+  }
+}
+.mobile-nav-fab.mobile-nav-fab-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.mobile-nav-fab:hover {
+  background: var(--accent-hover);
+}
+.mobile-nav-fab:focus-visible {
+  outline: 3px solid var(--accent-2);
+  outline-offset: 3px;
+}
+
+/* Bottom-sheet container (rendered when open) */
+.mobile-nav-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 10, 16, 0.6);
+  z-index: 1100; /* above forensic drawer's 1000 so a tap on the FAB
+                  * inside the drawer (shouldn't happen — we hide the
+                  * FAB when ?finding= is present — but defensive) lands
+                  * cleanly on top */
+  display: flex;
+  align-items: flex-end;
+  animation: mobileNavFadeIn 160ms ease-out;
+}
+@keyframes mobileNavFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.mobile-nav-sheet {
+  width: 100%;
+  max-height: 70vh;
+  background: var(--surface);
+  border-top-left-radius: var(--r-lg);
+  border-top-right-radius: var(--r-lg);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -16px 40px -12px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  animation: mobileNavSlideUp 220ms cubic-bezier(0.23, 1, 0.32, 1);
+  overflow: hidden;
+}
+@keyframes mobileNavSlideUp {
+  from { transform: translateY(40px); opacity: 0.6; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mobile-nav-backdrop, .mobile-nav-sheet { animation: none; }
+}
+
+.mobile-nav-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--s4) var(--s4) var(--s3);
+  border-bottom: 1px solid var(--border);
+}
+.mobile-nav-sheet-title {
+  margin: 0;
+  font-family: var(--font-display, var(--font-body));
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--text);
+}
+.mobile-nav-sheet-close {
+  appearance: none;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.mobile-nav-sheet-close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.mobile-nav-sheet-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+.mobile-nav-sheet-item {
+  display: block;
+  border-bottom: 1px solid var(--border);
+}
+.mobile-nav-sheet-item:last-child {
+  border-bottom: none;
+}
+.mobile-nav-sheet-link {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px var(--s4);
+  background: transparent;
+  border: none;
+  color: var(--text);
+  text-align: left;
+  font-size: 1rem;
+  cursor: pointer;
+  /* 44px minimum touch height — padding above + line-height delivers it. */
+}
+.mobile-nav-sheet-link:hover,
+.mobile-nav-sheet-link:focus-visible {
+  background: var(--surface-2);
+  outline: none;
+}
+.mobile-nav-sheet-chev {
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+}
+
+/* ── 3. Mobile-tightening across existing components ────────────────── */
+
+/* Kill-chain reel: single-column on narrow screens (default `auto-fill`
+ * with min 360px lands at 1 column on phones, but force the gap down). */
+@media (max-width: 640px) {
+  .kcr-reel-grid { gap: var(--s3); }
+  .kcr-card { padding: var(--s3); }
+  .kcr-card-title-row { gap: 6px; }
+  .kcr-card-score { margin-left: 0; }
+}
+
+/* Compliance lens: framework grid collapses to one column at 720px. */
+@media (max-width: 720px) {
+  .cl-fw-grid { grid-template-columns: 1fr; }
+  .cl-fw-card { padding: var(--s4); }
+  .cl-fw-head { flex-direction: column; gap: var(--s2); }
+  .cl-fw-actions { width: 100%; }
+}
+
+/* Hero block on mobile: extra room for the narrative bullets, severity
+ * bar list switches to compact spacing. */
+@media (max-width: 640px) {
+  .dd-hero2 { padding: var(--s4); gap: var(--s3); }
+  .dd-hero2-name { font-size: 1.5rem; }
+  .dd-hero2-right { padding: var(--s3); }
+}
+
+/* Coverage ledger: bucket rules wrap snugly. */
+@media (max-width: 640px) {
+  .cov-bucket-rule-link { max-width: 100%; }
+  .cov-bucket-rule-name { max-width: 50vw; }
+}
+
+/* Section boundary fallbacks shrink down on mobile — they shouldn't
+ * dominate the viewport. */
+@media (max-width: 640px) {
+  .section-boundary-fallback { font-size: 0.75rem; padding: 8px 10px; }
+}

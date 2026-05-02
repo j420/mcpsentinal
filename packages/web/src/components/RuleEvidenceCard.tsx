@@ -45,6 +45,7 @@ import React from "react";
 import EvidenceChainViz, {
   type EvidenceChainData,
 } from "@/components/EvidenceChainViz";
+import ForensicTrigger from "@/components/ForensicTrigger";
 import type {
   DeepDiveRule,
   DeepDiveRuleBacking,
@@ -242,7 +243,13 @@ function CardEyebrow({
         <span className={`rec-eyebrow ${eyebrowClass}`} aria-hidden="true">
           {eyebrowGlyph}
         </span>
-        <span className="rec-rule-id">{rule.rule_id}</span>
+        <span
+          className="rec-rule-id"
+          data-trace={`rule:${rule.rule_id}`}
+          tabIndex={0}
+        >
+          {rule.rule_id}
+        </span>
         <span className="rec-head-sep" aria-hidden="true">
           ·
         </span>
@@ -370,6 +377,7 @@ function CveValidationStrip({
                 rel="noopener noreferrer"
                 className="rec-cve-strip-link"
                 title={titleParts.join(" · ")}
+                data-trace={`cve:${v.id}`}
               >
                 {v.id}
               </a>
@@ -505,7 +513,11 @@ function MethodologyBlock({
               <ul className="rec-fw-list" aria-label="Framework cross-walk">
                 {rule.framework_controls.map((fc, i) => (
                   <li key={`${fc.framework_id}-${fc.control_id}-${i}`}>
-                    <span className="rec-fw-pill">
+                    <span
+                      className="rec-fw-pill"
+                      data-trace={`control:${fc.framework_id}:${fc.control_id}`}
+                      tabIndex={0}
+                    >
                       <span className="rec-fw-id">{controlLabel(fc)}</span>
                       {fc.control_title && (
                         <span className="rec-fw-title" title={fc.control_title}>
@@ -648,7 +660,10 @@ function FindingPanel({
           </div>
         )}
 
-        <FindingReceiptLink findingId={finding.id} />
+        <div className="rec-finding-action-row">
+          <FindingReceiptLink findingId={finding.id} />
+          <ForensicTrigger findingId={finding.id} />
+        </div>
       </div>
     </details>
   );
