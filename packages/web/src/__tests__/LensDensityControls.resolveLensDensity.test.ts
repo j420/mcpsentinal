@@ -19,6 +19,7 @@ describe("resolveLensDensity (server-side parser)", () => {
   it("parses each valid lens value", () => {
     expect(resolveLensDensity({ lens: "story" }).lens).toBe("story");
     expect(resolveLensDensity({ lens: "evidence" }).lens).toBe("evidence");
+    expect(resolveLensDensity({ lens: "compliance" }).lens).toBe("compliance");
     expect(resolveLensDensity({ lens: "audit" }).lens).toBe("audit");
   });
 
@@ -29,7 +30,10 @@ describe("resolveLensDensity (server-side parser)", () => {
   });
 
   it("falls back to story when lens is unknown / malformed", () => {
-    expect(resolveLensDensity({ lens: "compliance" }).lens).toBe("story");
+    // (Note: `compliance` USED to be invalid; promoted to a valid lens
+    // in commit adding the Compliance lens. The validation here covers
+    // truly bad inputs only.)
+    expect(resolveLensDensity({ lens: "future_lens_v9" }).lens).toBe("story");
     expect(resolveLensDensity({ lens: "" }).lens).toBe("story");
     expect(resolveLensDensity({ lens: "STORY" }).lens).toBe("story"); // case-sensitive
     expect(resolveLensDensity({ lens: "../etc/passwd" }).lens).toBe("story");

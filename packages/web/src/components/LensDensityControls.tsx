@@ -29,10 +29,15 @@
 import React, { useCallback, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-export type LensId = "story" | "evidence" | "audit";
+export type LensId = "story" | "evidence" | "compliance" | "audit";
 export type DensityId = "briefing" | "dossier" | "forensic";
 
-const VALID_LENSES: ReadonlyArray<LensId> = ["story", "evidence", "audit"];
+const VALID_LENSES: ReadonlyArray<LensId> = [
+  "story",
+  "evidence",
+  "compliance",
+  "audit",
+];
 const VALID_DENSITIES: ReadonlyArray<DensityId> = [
   "briefing",
   "dossier",
@@ -45,11 +50,13 @@ const VIEW_STORAGE_KEY = "dd-view";
 const LENS_LABELS: Record<LensId, string> = {
   story: "Story",
   evidence: "Evidence",
+  compliance: "Compliance",
   audit: "Audit",
 };
 const LENS_HINTS: Record<LensId, string> = {
   story: "Attack stories first — kill chains, capability surface, then evidence",
   evidence: "Direct to per-rule evidence — no hero, no chains",
+  compliance: "Restructured by framework controls (EU AI Act, ISO, OWASP, …)",
   audit: "Provenance-first — every claim footnoted with scan + rules version",
 };
 

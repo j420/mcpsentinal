@@ -15426,3 +15426,286 @@ body[data-trace-active]
     padding: var(--s4);
   }
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Phase 5 — Compliance lens
+ * Restructures the page by framework controls instead of by category.
+ * The transformer (lib/compliance-shape.ts) emits frameworks[]; the
+ * view (ComplianceLensView.tsx) renders one card per framework with
+ * each control as a row.
+ * ──────────────────────────────────────────────────────────────────── */
+
+/* When ?lens=compliance, hide the rule-centric augmentations — they
+ * tell the wrong story for a compliance officer. Keep the verdict bar,
+ * lens controls, breadcrumb, hero name + coverage line, and provenance. */
+.dd-page[data-lens="compliance"] .dd-hero2-narrative,
+.dd-page[data-lens="compliance"] .dd-hero2-right,
+.dd-page[data-lens="compliance"] .kcr-reel,
+.dd-page[data-lens="compliance"] .csurf,
+.dd-page[data-lens="compliance"] .cov-ledger {
+  display: none;
+}
+/* Compliance lens hero collapses to one column (just the name + coverage
+ * line) since the right side (severity bar) is hidden. */
+.dd-page[data-lens="compliance"] .dd-hero2 {
+  grid-template-columns: 1fr;
+}
+
+/* ── ComplianceLensView ─────────────────────────────────────────────── */
+
+.cl-view {
+  margin: var(--s5) 0;
+}
+.cl-view-head {
+  margin-bottom: var(--s5);
+}
+.cl-view-title {
+  font-family: var(--font-display, var(--font-body));
+  font-size: 1.5rem;
+  font-weight: 500;
+  margin: 0 0 var(--s2);
+  color: var(--text);
+}
+.cl-view-sub {
+  color: var(--text-3);
+  font-size: 0.9rem;
+  line-height: 1.55;
+  max-width: 80ch;
+  margin: 0;
+}
+.cl-fw-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: var(--s5);
+}
+
+/* ── Framework card ─────────────────────────────────────────────────── */
+
+.cl-fw-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+.cl-fw-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  padding-bottom: var(--s3);
+  border-bottom: 1px solid var(--border);
+}
+.cl-fw-head-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.cl-fw-title {
+  font-family: var(--font-display, var(--font-body));
+  font-size: 1.15rem;
+  font-weight: 500;
+  margin: 0 0 4px;
+  color: var(--text);
+}
+.cl-fw-counts {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-3);
+}
+.cl-fw-counts-met {
+  color: var(--sev-low);
+}
+.cl-fw-counts-unmet {
+  color: var(--sev-critical);
+}
+.cl-fw-counts-partial {
+  color: var(--sev-high);
+}
+.cl-fw-counts-na {
+  color: var(--text-3);
+}
+.cl-fw-actions {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.cl-fw-action {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--accent-2);
+  background: var(--accent-2-sub);
+  text-decoration: none;
+  transition: all var(--t-fast, 120ms);
+}
+.cl-fw-action:hover {
+  background: rgba(95, 174, 255, 0.16);
+  color: var(--accent-2-hover);
+  border-color: var(--accent-2-ring);
+}
+
+/* ── Control list ───────────────────────────────────────────────────── */
+
+.cl-control-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cl-control {
+  padding: var(--s3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--text-3);
+  border-radius: var(--r-sm);
+}
+.cl-control[data-tone="good"]   { border-left-color: var(--sev-low); }
+.cl-control[data-tone="bad"]    { border-left-color: var(--sev-critical); }
+.cl-control[data-tone="warn"]   { border-left-color: var(--sev-high); }
+.cl-control[data-tone="muted"]  { border-left-color: var(--text-3); }
+
+.cl-control-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.cl-control-id {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--accent);
+  flex: 0 0 auto;
+}
+.cl-control-title {
+  flex: 1 1 auto;
+  font-size: 0.92rem;
+  color: var(--text);
+}
+.cl-status {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 9px;
+  border-radius: var(--r-full);
+  flex: 0 0 auto;
+}
+.cl-status-good {
+  background: rgba(91, 214, 138, 0.12);
+  color: var(--sev-low);
+  border: 1px solid rgba(91, 214, 138, 0.40);
+}
+.cl-status-bad {
+  background: rgba(255, 92, 87, 0.12);
+  color: var(--sev-critical);
+  border: 1px solid rgba(255, 92, 87, 0.40);
+}
+.cl-status-warn {
+  background: rgba(255, 157, 77, 0.12);
+  color: var(--sev-high);
+  border: 1px solid rgba(255, 157, 77, 0.40);
+}
+.cl-status-muted {
+  background: var(--surface-3);
+  color: var(--text-3);
+  border: 1px solid var(--border);
+}
+.cl-control-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cl-control-counts {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-3);
+}
+.cl-control-rules {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.cl-control-rule {
+  display: inline-block;
+}
+.cl-control-rule-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface-3);
+  color: var(--text-2);
+  text-decoration: none;
+  transition: all var(--t-fast, 120ms);
+}
+.cl-control-rule-link:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+.cl-control-rule-findings {
+  border-color: rgba(255, 92, 87, 0.40);
+  color: var(--sev-critical);
+  background: rgba(255, 92, 87, 0.08);
+}
+.cl-control-rule-passed {
+  border-color: rgba(91, 214, 138, 0.32);
+  color: var(--sev-low);
+  background: rgba(91, 214, 138, 0.06);
+}
+.cl-control-rule-skipped {
+  opacity: 0.65;
+  font-style: italic;
+}
+.cl-control-rule-id {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+}
+.cl-control-rule-count {
+  display: inline-block;
+  background: var(--sev-critical);
+  color: #1a0a0a;
+  padding: 0 5px;
+  border-radius: var(--r-full);
+  font-size: 0.65rem;
+  font-weight: 500;
+}
+
+/* Empty state for the compliance view (no framework_controls on file) */
+.cl-empty {
+  margin: var(--s8) 0;
+  padding: var(--s6);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--text-3);
+  border-radius: var(--r-lg);
+}
+.cl-empty-title {
+  font-family: var(--font-display, var(--font-body));
+  font-size: 1.2rem;
+  font-weight: 500;
+  margin: 0 0 var(--s3);
+  color: var(--text);
+}
+.cl-empty-msg {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  max-width: 70ch;
+}

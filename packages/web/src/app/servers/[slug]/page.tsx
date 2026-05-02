@@ -38,6 +38,7 @@ import LensDensityControls, {
 import SectionBoundary from "@/components/SectionBoundary";
 import HoverTraceController from "@/components/HoverTraceController";
 import ForensicDrawer from "@/components/ForensicDrawer";
+import ComplianceLensView from "@/components/ComplianceLensView";
 import type { DeepDiveResponse, DeepDiveData } from "@/lib/deep-dive";
 
 // Public api origin for receipt-URL construction. NEXT_PUBLIC_API_URL
@@ -210,45 +211,60 @@ export default async function ServerDetailPage({
         />
       </SectionBoundary>
 
-      <SectionBoundary section="taxonomy" label="Per-rule taxonomy">
-        {hasContent ? (
-          <DeepDiveLayout
-            sidebar={
-              <SectionBoundary section="taxonomy-sidebar" label="Sidebar">
-                <Suspense fallback={null}>
-                  <DeepDiveSidebar categories={dd.categories} />
-                </Suspense>
-              </SectionBoundary>
-            }
-            main={
-              <div className="dd-main">
-                {dd.categories.map((cat) => (
-                  <SectionBoundary
-                    key={cat.id}
-                    section={`category-${cat.id ?? "unknown"}`}
-                    label={cat.title ?? cat.id ?? "Category"}
-                  >
-                    <CategorySection cat={cat} />
-                  </SectionBoundary>
-                ))}
-              </div>
-            }
+      {/* Phase 5 — Compliance lens. When ?lens=compliance, the per-rule
+          taxonomy is replaced by a framework-control restructure. The
+          other sections (verdict, controls, hero, story-lens block,
+          coverage ledger, provenance) stay rendered; CSS rules below
+          hide whichever ones aren't useful in this lens. */}
+      {lens === "compliance" ? (
+        <SectionBoundary section="compliance-view" label="Compliance posture">
+          <ComplianceLensView
+            serverSlug={dd.server?.slug ?? slug}
+            categories={dd.categories ?? []}
+            apiOrigin={PUBLIC_API_ORIGIN}
           />
-        ) : (
-          <section className="dd-empty" aria-labelledby="dd-empty-title">
-            <h1 id="dd-empty-title" className="dd-empty-title">
-              {dd.server?.name ?? slug}
-            </h1>
-            <p className="dd-empty-msg">
-              Deep-dive evidence is not yet on file for this server. The
-              attack-vector taxonomy and rule-methodology manifest data
-              sources may not have been wired for this scan. Check back
-              after the next scheduled scan, or contact the registry
-              maintainers.
-            </p>
-          </section>
-        )}
-      </SectionBoundary>
+        </SectionBoundary>
+      ) : (
+        <SectionBoundary section="taxonomy" label="Per-rule taxonomy">
+          {hasContent ? (
+            <DeepDiveLayout
+              sidebar={
+                <SectionBoundary section="taxonomy-sidebar" label="Sidebar">
+                  <Suspense fallback={null}>
+                    <DeepDiveSidebar categories={dd.categories} />
+                  </Suspense>
+                </SectionBoundary>
+              }
+              main={
+                <div className="dd-main">
+                  {dd.categories.map((cat) => (
+                    <SectionBoundary
+                      key={cat.id}
+                      section={`category-${cat.id ?? "unknown"}`}
+                      label={cat.title ?? cat.id ?? "Category"}
+                    >
+                      <CategorySection cat={cat} />
+                    </SectionBoundary>
+                  ))}
+                </div>
+              }
+            />
+          ) : (
+            <section className="dd-empty" aria-labelledby="dd-empty-title">
+              <h1 id="dd-empty-title" className="dd-empty-title">
+                {dd.server?.name ?? slug}
+              </h1>
+              <p className="dd-empty-msg">
+                Deep-dive evidence is not yet on file for this server. The
+                attack-vector taxonomy and rule-methodology manifest data
+                sources may not have been wired for this scan. Check back
+                after the next scheduled scan, or contact the registry
+                maintainers.
+              </p>
+            </section>
+          )}
+        </SectionBoundary>
+      )}
 
       <SectionBoundary section="provenance" label="Provenance footer">
         <ProvenanceFooter provenance={dd.provenance} />
