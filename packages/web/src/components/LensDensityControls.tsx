@@ -28,21 +28,19 @@
 
 import React, { useCallback, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+  parseDensity,
+  parseLens,
+  VALID_DENSITIES,
+  VALID_LENSES,
+  type DensityId,
+  type LensId,
+} from "@/lib/lens-density";
 
-export type LensId = "story" | "evidence" | "compliance" | "audit";
-export type DensityId = "briefing" | "dossier" | "forensic";
-
-const VALID_LENSES: ReadonlyArray<LensId> = [
-  "story",
-  "evidence",
-  "compliance",
-  "audit",
-];
-const VALID_DENSITIES: ReadonlyArray<DensityId> = [
-  "briefing",
-  "dossier",
-  "forensic",
-];
+// Re-export the shared types for callers that previously imported them
+// from this module (kept as a courtesy alias — new code should import
+// directly from @/lib/lens-density).
+export type { DensityId, LensId };
 
 const LENS_STORAGE_KEY = "dd-lens";
 const VIEW_STORAGE_KEY = "dd-view";
@@ -70,19 +68,6 @@ const DENSITY_HINTS: Record<DensityId, string> = {
   dossier: "Methodology open by default. Findings open on demand.",
   forensic: "Everything expanded — evidence chains, verification steps, references.",
 };
-
-function parseLens(raw: string | null | undefined): LensId {
-  if (!raw) return "story";
-  return (VALID_LENSES as ReadonlyArray<string>).includes(raw)
-    ? (raw as LensId)
-    : "story";
-}
-function parseDensity(raw: string | null | undefined): DensityId {
-  if (!raw) return "briefing";
-  return (VALID_DENSITIES as ReadonlyArray<string>).includes(raw)
-    ? (raw as DensityId)
-    : "briefing";
-}
 
 export interface LensDensityControlsProps {
   /** Current values from the URL — resolved server-side and passed in
@@ -218,15 +203,9 @@ export default function LensDensityControls({
   );
 }
 
-/** Server-side helper — parse + normalise URL params so the page wrapper
- *  can set data-lens / data-density before first paint. Exported so
- *  the page reuses the same parser as the client (single source of
- *  truth for default values + value validation). */
-export function resolveLensDensity(
-  raw: { lens?: string | string[]; view?: string | string[] } | undefined,
-): { lens: LensId; density: DensityId } {
-  if (!raw) return { lens: "story", density: "briefing" };
-  const lensRaw = Array.isArray(raw.lens) ? raw.lens[0] : raw.lens;
-  const viewRaw = Array.isArray(raw.view) ? raw.view[0] : raw.view;
-  return { lens: parseLens(lensRaw), density: parseDensity(viewRaw) };
-}
+// Note: `resolveLensDensity` used to live here. It moved to
+// `packages/web/src/lib/lens-density.ts` because Next 15 forbids server
+// components from invoking functions exported from a "use client"
+// module — `app/servers/[slug]/page.tsx` calls the helper during SSR.
+// The function has no client-only deps (no hooks, no DOM), so it's now
+// a server-callable lib export. See the docstring on that file.
