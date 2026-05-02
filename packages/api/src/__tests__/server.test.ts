@@ -2440,6 +2440,31 @@ describe("Deep Dive endpoint (GET /api/v1/servers/:slug/deep-dive)", () => {
     expect(ruleC1!.status).toBe("skipped"); // missing source_code
     expect(ruleC12!.status).toBe("skipped");
 
+    // Phase 3 — skip_reason is populated on every "skipped" rule with a
+    // structured `missing_inputs[]` and a one-line summary. The
+    // CoverageLedger consumes this verbatim.
+    type WithSkip = typeof ruleC1 & {
+      skip_reason?: { missing_inputs: string[]; summary: string };
+    };
+    expect((ruleC1 as WithSkip).skip_reason).toBeDefined();
+    expect((ruleC1 as WithSkip).skip_reason!.missing_inputs).toEqual([
+      "source_code",
+    ]);
+    expect((ruleC1 as WithSkip).skip_reason!.summary).toContain("source code");
+    // Findings rules NEVER carry skip_reason — keep the contract crisp.
+    expect((ruleA1 as WithSkip).skip_reason).toBeUndefined();
+
+    // Phase 3 — coverage carries the per-input flags so the CoverageLedger
+    // can render "give us source code, we'd test N more rules" copy.
+    type CovWithFlags = typeof body.coverage & {
+      had_source_code?: boolean;
+      had_connection?: boolean;
+      had_dependencies?: boolean;
+    };
+    expect((body.coverage as CovWithFlags).had_source_code).toBe(false);
+    expect((body.coverage as CovWithFlags).had_connection).toBe(true);
+    expect((body.coverage as CovWithFlags).had_dependencies).toBe(true);
+
     // Findings nesting: A1 carries 3 findings.
     expect(ruleA1!.findings.length).toBe(3);
     expect(ruleB5!.findings.length).toBe(1);
@@ -2685,6 +2710,16 @@ describe("Deep Dive endpoint (GET /api/v1/servers/:slug/deep-dive)", () => {
     for (const r of allRules) {
       expect(r.status).toBe("passed");
     }
+    // Phase 3 — when analysis_coverage is null, the per-input flags are
+    // absent from the response (honest gap; never invented).
+    type CovWithFlags = typeof body.coverage & {
+      had_source_code?: boolean;
+      had_connection?: boolean;
+      had_dependencies?: boolean;
+    };
+    expect((body.coverage as CovWithFlags).had_source_code).toBeUndefined();
+    expect((body.coverage as CovWithFlags).had_connection).toBeUndefined();
+    expect((body.coverage as CovWithFlags).had_dependencies).toBeUndefined();
   });
 });
 

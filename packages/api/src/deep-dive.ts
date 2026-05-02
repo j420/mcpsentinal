@@ -766,6 +766,16 @@ function assembleRule(input: AssembleRuleInput): DeepDiveRule {
     input.coverage,
   );
 
+  // When the rule is "skipped", compute a structured reason so the
+  // CoverageLedger on the page can group skipped rules by what input was
+  // missing ("source code unavailable", "no live MCP connection", etc.).
+  // The reason is the SAME computation deriveStatus() uses; we just expose
+  // the WHY alongside the WHAT.
+  const skipReason: DeepDiveSkipReason | null =
+    status === "skipped"
+      ? deriveSkipReason(methodologyEntry, input.coverage)
+      : null;
+
   // Cross-references: only emit when the rule appears in MORE THAN one
   // (category, sub_category) pair AND the OTHER pairs (i.e. not the one
   // we're currently building under).
@@ -832,7 +842,84 @@ function assembleRule(input: AssembleRuleInput): DeepDiveRule {
         .validated_by_cve = validations;
     }
   }
+  // Coverage Ledger support: surface the structured "why skipped" reason on
+  // each skipped rule. The DeepDiveRuleSchema is .passthrough() so the
+  // additive field rides out without a Zod refactor.
+  if (skipReason) {
+    (rule as DeepDiveRule & { skip_reason?: DeepDiveSkipReason }).skip_reason =
+      skipReason;
+  }
   return rule;
+}
+
+// ─── Skip-reason derivation (Coverage Ledger) ──────────────────────────────
+//
+// The Coverage Ledger groups skipped rules by structured reason so the
+// frontend can render "give us source code, we'll test these 18 rules"
+// guidance. The reason is computed from the SAME inputs deriveStatus() uses
+// — methodology.requires_inputs vs the analyzer's coverage flags — so the
+// status and the reason can never disagree.
+//
+// Wire shape (stable):
+//   {
+//     missing_inputs: string[]        ordered, lowercase
+//     summary:        string          one-line human-readable reason
+//   }
+//
+// `missing_inputs[]` is the structured driver — the page groups rules by
+// the SET of missing inputs (e.g. all rules missing "source_code" land in
+// one bucket). `summary` is the prose label rendered in that bucket's
+// header. Both are emitted so the page doesn't have to re-stringify.
+
+export interface DeepDiveSkipReason {
+  missing_inputs: ReadonlyArray<"source_code" | "connection" | "dependencies">;
+  summary: string;
+}
+
+function deriveSkipReason(
+  methodologyEntry: MethodologyEntry | undefined,
+  coverage: AnalysisCoverageInput | null,
+): DeepDiveSkipReason | null {
+  if (!coverage) return null;
+  const required = methodologyEntry?.rule_meta.requires_inputs ?? [];
+  const missing: Array<"source_code" | "connection" | "dependencies"> = [];
+  for (const need of required) {
+    if (need === "source_code" && !coverage.had_source_code) missing.push(need);
+    else if (need === "connection" && !coverage.had_connection) missing.push(need);
+    else if (need === "dependencies" && !coverage.had_dependencies)
+      missing.push(need);
+  }
+  if (missing.length === 0) return null;
+  return { missing_inputs: missing, summary: skipSummary(missing) };
+}
+
+function skipSummary(
+  missing: ReadonlyArray<"source_code" | "connection" | "dependencies">,
+): string {
+  // Pre-canonicalised one-line summaries keyed by the SET of missing
+  // inputs. Ordering is alphabetical so the same set always produces the
+  // same summary regardless of source order.
+  const sorted = [...missing].sort();
+  const key = sorted.join("+");
+  switch (key) {
+    case "source_code":
+      return "source code not available for this server";
+    case "connection":
+      return "no live MCP connection during scan";
+    case "dependencies":
+      return "package manifest not available";
+    case "connection+source_code":
+      return "neither source code nor a live MCP connection were available";
+    case "dependencies+source_code":
+      return "neither source code nor a package manifest were available";
+    case "connection+dependencies":
+      return "neither a live MCP connection nor a package manifest were available";
+    case "connection+dependencies+source_code":
+      return "no source code, no live MCP connection, and no package manifest";
+    default:
+      // Defensive fallback for any future input keys.
+      return `inputs not available: ${sorted.join(", ")}`;
+  }
 }
 
 // ─── Status derivation ──────────────────────────────────────────────────────
@@ -943,15 +1030,31 @@ interface AssembleCoverageInput {
 function assembleCoverage(input: AssembleCoverageInput): DeepDiveCoverage {
   const sev = emptySeverityBreakdown();
   for (const f of input.findings) bumpSeverity(sev, f.severity);
-  return {
-    coverage_band: input.coverage?.coverage_band ?? null,
+  // Coverage Ledger needs the per-input flags so the page can render
+  // "give us source code, we'll test 18 more rules" guidance. The
+  // DeepDiveCoverageSchema is .passthrough() so these additive fields
+  // ride out without a Zod refactor. Null when the analyzer didn't
+  // emit a coverage report at all.
+  const ac = input.coverage;
+  const augmented: DeepDiveCoverage & {
+    had_source_code?: boolean;
+    had_connection?: boolean;
+    had_dependencies?: boolean;
+  } = {
+    coverage_band: ac?.coverage_band ?? null,
     total_rules: input.totalRulesInTaxonomy,
-    rules_executed: input.coverage?.rules_executed ?? 0,
-    rules_skipped_no_data: input.coverage?.rules_skipped_no_data ?? 0,
+    rules_executed: ac?.rules_executed ?? 0,
+    rules_skipped_no_data: ac?.rules_skipped_no_data ?? 0,
     rules_with_findings: input.rulesWithFindings,
     total_findings: input.findings.length,
     severity_breakdown: sev,
   };
+  if (ac) {
+    augmented.had_source_code = ac.had_source_code;
+    augmented.had_connection = ac.had_connection;
+    augmented.had_dependencies = ac.had_dependencies;
+  }
+  return augmented;
 }
 
 // ─── Last-resort fallbacks ──────────────────────────────────────────────────

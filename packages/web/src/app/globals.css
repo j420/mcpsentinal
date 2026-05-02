@@ -14016,3 +14016,385 @@ body:has(.dd-page-stripped) .site-main {
   color: var(--text-3);
   font-size: 0.72rem;
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Phase 3 — Verdict bar + Hero + Coverage Ledger
+ * Built entirely on existing tokens.
+ * ──────────────────────────────────────────────────────────────────── */
+
+/* ── VerdictBar (sticky one-liner at the very top) ──────────────────── */
+
+.vbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  padding: 10px 16px 10px 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  border-left: 4px solid var(--sev-info);
+  font-size: 0.9rem;
+  color: var(--text);
+  /* Subtle shadow so the bar reads as floating once the page scrolls */
+  box-shadow: 0 4px 12px -8px rgba(0, 0, 0, 0.6);
+  margin: 0 calc(-1 * var(--s6)) var(--s4);
+}
+.vbar[data-tone="critical"] {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 92, 87, 0.06),
+    var(--surface) 40%
+  );
+}
+.vbar[data-tone="high"] {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 157, 77, 0.06),
+    var(--surface) 40%
+  );
+}
+.vbar[data-tone="good"] {
+  background: linear-gradient(
+    90deg,
+    rgba(91, 214, 138, 0.06),
+    var(--surface) 40%
+  );
+}
+.vbar-server {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  max-width: 18ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vbar-sep {
+  color: var(--text-3);
+}
+.vbar-headline {
+  flex: 1 1 auto;
+  font-weight: 500;
+}
+@media (max-width: 720px) {
+  .vbar {
+    margin: 0 calc(-1 * var(--s4)) var(--s3);
+    font-size: 0.85rem;
+  }
+}
+
+/* ── HeroBlock ──────────────────────────────────────────────────────── */
+
+.dd-hero2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: var(--s6);
+  margin: var(--s4) 0 var(--s5);
+  padding: var(--s6);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+@media (max-width: 960px) {
+  .dd-hero2 {
+    grid-template-columns: 1fr;
+    gap: var(--s4);
+    padding: var(--s5);
+  }
+}
+.dd-hero2-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  min-width: 0;
+}
+.dd-hero2-name {
+  font-family: var(--font-display, var(--font-body));
+  font-size: 2.2rem;
+  font-weight: 500;
+  line-height: 1.15;
+  color: var(--text);
+  margin: 0;
+}
+@media (max-width: 720px) {
+  .dd-hero2-name {
+    font-size: 1.7rem;
+  }
+}
+.dd-hero2-coverage {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+}
+.dd-hero2-narrative {
+  margin-top: var(--s2);
+}
+.dd-hero2-narrative-title {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+  margin: 0 0 var(--s2);
+}
+.dd-hero2-bullets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.dd-hero2-bullet {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  font-size: 1rem;
+  line-height: 1.45;
+  color: var(--text);
+}
+.dd-hero2-bullet-glyph {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  width: 18px;
+  text-align: center;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  padding-top: 2px;
+}
+.dd-hero2-bullet-critical {
+  color: var(--sev-critical);
+}
+.dd-hero2-bullet-high {
+  color: var(--sev-high);
+}
+.dd-hero2-bullet-good {
+  color: var(--sev-low);
+}
+.dd-hero2-bullet-info {
+  color: var(--text-2);
+}
+.dd-hero2-bullet-text {
+  flex: 1 1 auto;
+}
+.dd-hero2-right {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--s4);
+  min-width: 0;
+}
+.dd-hero2-sev-total {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  margin-bottom: var(--s3);
+  padding-bottom: var(--s2);
+  border-bottom: 1px solid var(--border);
+}
+.dd-hero2-sev-total-num {
+  font-family: var(--font-display, var(--font-body));
+  font-size: 2.4rem;
+  line-height: 1;
+  color: var(--text);
+  font-weight: 500;
+}
+.dd-hero2-sev-total-label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+}
+.dd-hero2-sev-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dd-hero2-sev-row {
+  display: grid;
+  grid-template-columns: 60px 28px 1fr;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.78rem;
+}
+.dd-hero2-sev-label {
+  color: var(--text-2);
+  font-family: var(--font-mono);
+}
+.dd-hero2-sev-count {
+  color: var(--text);
+  font-family: var(--font-mono);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.dd-hero2-sev-bar-track {
+  position: relative;
+  height: 6px;
+  background: var(--surface-3);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.dd-hero2-sev-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  transition: width 200ms ease-out;
+}
+.dd-hero2-clean {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  color: var(--sev-low);
+  padding: var(--s4) 0;
+}
+.dd-hero2-clean-glyph {
+  font-size: 1.3rem;
+  font-family: var(--font-mono);
+}
+.dd-hero2-clean-text {
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+/* ── CoverageLedger ─────────────────────────────────────────────────── */
+
+.cov-ledger {
+  margin: var(--s5) 0;
+  padding: var(--s5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+.cov-ledger-head {
+  margin-bottom: var(--s4);
+}
+.cov-ledger-title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  font-family: var(--font-display, var(--font-body));
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--text);
+  margin: 0 0 var(--s1);
+}
+.cov-ledger-count {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+}
+.cov-ledger-sub {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  max-width: 80ch;
+}
+.cov-ledger-cta {
+  color: var(--accent);
+}
+.cov-ledger-buckets {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+.cov-bucket {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent-3);
+  border-radius: var(--r-md);
+  padding: var(--s3) var(--s4);
+}
+.cov-bucket-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  margin-bottom: var(--s2);
+}
+.cov-bucket-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text);
+}
+.cov-bucket-count {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.cov-bucket-action {
+  margin: 0 0 var(--s3);
+  font-size: 0.82rem;
+  color: var(--text-2);
+}
+.cov-bucket-action-label {
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.cov-bucket-rules {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.cov-bucket-rule {
+  display: inline-block;
+}
+.cov-bucket-rule-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  padding: 3px 10px;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  text-decoration: none;
+  transition: background var(--t-fast, 120ms);
+  max-width: 320px;
+}
+.cov-bucket-rule-link:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+.cov-bucket-rule-id {
+  font-family: var(--font-mono);
+  color: var(--accent);
+}
+.cov-bucket-rule-name {
+  color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 250px;
+}

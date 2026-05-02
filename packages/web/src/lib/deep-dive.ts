@@ -333,6 +333,18 @@ export interface DeepDiveCveValidation {
   min_severity: string;
 }
 
+/** Structured "why was this rule skipped" reason. Populated by the api on
+ *  each rule whose `status === "skipped"`. The CoverageLedger groups
+ *  skipped rules by the SET of `missing_inputs` so all rules waiting on
+ *  the same input land in one bucket. */
+export type DeepDiveSkipInput = "source_code" | "connection" | "dependencies";
+
+export interface DeepDiveSkipReason {
+  missing_inputs: DeepDiveSkipInput[];
+  /** One-line human-readable summary, pre-canonicalised by the api. */
+  summary: string;
+}
+
 /* ── Module-augmentation: attach optional augmentations to existing
  *    DeepDiveData and DeepDiveRule shapes. We extend the interfaces in
  *    place rather than declaring new ones because the backend layers the
@@ -353,9 +365,22 @@ declare module "./deep-dive" {
     provenance?: DeepDiveProvenance;
   }
 
+  interface DeepDiveCoverageSummary {
+    /** Per-input flags from the analyzer's coverage report. Drives the
+     *  "give us source code, we'll test N more rules" copy in the
+     *  CoverageLedger. Absent when the analyzer didn't emit a coverage
+     *  report. */
+    had_source_code?: boolean;
+    had_connection?: boolean;
+    had_dependencies?: boolean;
+  }
+
   interface DeepDiveRule {
     /** Phase-4 CVE replay corpus coverage for this rule. Absent when the
      *  rule has no replay coverage on file. */
     validated_by_cve?: DeepDiveCveValidation[];
+    /** When status === "skipped", a structured reason driving the
+     *  CoverageLedger groupings. Absent when status !== "skipped". */
+    skip_reason?: DeepDiveSkipReason;
   }
 }

@@ -29,6 +29,9 @@ import DeepDiveSidebar from "@/components/DeepDiveSidebar";
 import KillChainReel from "@/components/KillChainReel";
 import CapabilitySurface from "@/components/CapabilitySurface";
 import ProvenanceFooter from "@/components/ProvenanceFooter";
+import VerdictBar from "@/components/VerdictBar";
+import HeroBlock from "@/components/HeroBlock";
+import CoverageLedger from "@/components/CoverageLedger";
 import type { DeepDiveResponse, DeepDiveData } from "@/lib/deep-dive";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3100";
@@ -97,6 +100,16 @@ export default async function ServerDetailPage({
 
   return (
     <div className="dd-page dd-page-stripped">
+      {/* Phase 3 verdict bar — sticky one-line verdict at the very top.
+          Always present (never honest-gapped); falls back to "Awaiting
+          scan data" when sparse. */}
+      <VerdictBar
+        serverName={dd.server.name}
+        coverage={dd.coverage}
+        categories={dd.categories}
+        attackChains={dd.attack_chains}
+      />
+
       {/* Breadcrumb — kept as the only navigation context. The rest of
           the page chrome (hero, signed pack, posture matrix, risk
           boundary, drift, compliance, footer attestation, honest gaps,
@@ -115,6 +128,17 @@ export default async function ServerDetailPage({
         <span className="sd-bread-current">{dd.server.name}</span>
       </nav>
 
+      {/* Phase 3 hero — server name + coverage line + auto-narrative
+          bullets + severity proportional bar. Always renders the name +
+          coverage line; bullets and severity bar render only when their
+          inputs support them (honest gap). */}
+      <HeroBlock
+        serverName={dd.server.name}
+        coverage={dd.coverage}
+        categories={dd.categories}
+        attackChains={dd.attack_chains}
+      />
+
       {/* Story-lens augmentations (Phase 2 redesign). Each component
           renders nothing when its data is absent — honest gaps, no
           synthetic placeholders. The reel and surface mount BEFORE the
@@ -130,6 +154,14 @@ export default async function ServerDetailPage({
           edges={dd.risk_edges}
         />
       </div>
+
+      {/* Phase 3 coverage ledger — a first-class section listing every
+          rule we couldn't test this scan, grouped by structured reason.
+          Renders nothing when no rules are skipped. */}
+      <CoverageLedger
+        coverage={dd.coverage}
+        categories={dd.categories}
+      />
 
       {hasContent ? (
         <DeepDiveLayout
