@@ -72,9 +72,13 @@ export default function HeroBlock({
   });
 
   // Coverage line: "142 of 164 rules executed · high coverage" — null-safe.
+  // Defensive: total_rules and rules_executed may be missing on older
+  // api responses; fall back to honest copy rather than crashing.
+  const totalRules = Number(coverage?.total_rules) || 0;
+  const rulesExecuted = Number(coverage?.rules_executed) || 0;
   const coverageLine =
-    coverage && coverage.total_rules > 0
-      ? `${coverage.rules_executed} of ${coverage.total_rules} rules executed${
+    coverage && totalRules > 0
+      ? `${rulesExecuted} of ${totalRules} rules executed${
           coverage.coverage_band
             ? ` · ${COVERAGE_BAND_COPY[coverage.coverage_band] ?? coverage.coverage_band + " coverage"}`
             : ""
@@ -82,12 +86,19 @@ export default function HeroBlock({
       : "scan coverage not yet on file";
 
   // Severity bar segments — only render the bar if there's at least one
-  // finding; otherwise the right column shows a "no findings" badge.
-  const totalFindings = coverage?.total_findings ?? 0;
+  // finding AND severity_breakdown is on the response. Otherwise the
+  // right column shows a "no findings" badge.
+  const totalFindings = Number(coverage?.total_findings) || 0;
+  const breakdown =
+    coverage &&
+    coverage.severity_breakdown &&
+    typeof coverage.severity_breakdown === "object"
+      ? coverage.severity_breakdown
+      : null;
   const sevBars =
-    coverage && totalFindings > 0
+    breakdown && totalFindings > 0
       ? SEV_ORDER.map(({ key, label }) => {
-          const count = coverage.severity_breakdown[key];
+          const count = Number(breakdown[key]) || 0;
           const pct = totalFindings > 0 ? (count / totalFindings) * 100 : 0;
           return { key, label, count, pct };
         }).filter((s) => s.count > 0)

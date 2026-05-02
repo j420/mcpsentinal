@@ -20,7 +20,7 @@
  * automatically. We do NOT add `force-dynamic` (Cluster B M1 lesson).
  */
 
-import React from "react";
+import React, { Suspense } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import DeepDiveLayout from "@/components/DeepDiveLayout";
@@ -128,8 +128,12 @@ export default async function ServerDetailPage({
 
       {/* Phase 4 lens + density controls — twin pill rows. Sticky-aligned
           with the verdict bar so the controls stay in view while the
-          page scrolls. Writes ?lens= / ?view= and localStorage. */}
-      <LensDensityControls lens={lens} density={density} />
+          page scrolls. Writes ?lens= / ?view= and localStorage.
+          Suspense boundary required by Next 15 because the client
+          component reads useSearchParams. */}
+      <Suspense fallback={<div className="lds-controls-skeleton" aria-hidden="true" />}>
+        <LensDensityControls lens={lens} density={density} />
+      </Suspense>
 
       {/* Breadcrumb — kept as the only navigation context. The rest of
           the page chrome (hero, signed pack, posture matrix, risk

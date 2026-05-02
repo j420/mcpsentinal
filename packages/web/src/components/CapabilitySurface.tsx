@@ -81,21 +81,27 @@ export default function CapabilitySurface({
   node,
   edges,
 }: CapabilitySurfaceProps) {
-  if (!node || node.capabilities.length === 0) {
+  // Defensive: production data may have a node object missing the
+  // capabilities array. Treat any non-array as "no capabilities on file".
+  const capabilities = Array.isArray(node?.capabilities)
+    ? node!.capabilities
+    : [];
+  if (!node || capabilities.length === 0) {
     // Honest gap: no capability classification on file. The page renders
     // nothing here rather than inventing a placeholder card.
     return null;
   }
 
-  const high = node.capabilities.filter((c) => HIGH_RISK_CAPABILITIES.has(c));
-  const neutral = node.capabilities.filter(
-    (c) => !HIGH_RISK_CAPABILITIES.has(c),
-  );
+  const high = capabilities.filter((c) => HIGH_RISK_CAPABILITIES.has(c));
+  const neutral = capabilities.filter((c) => !HIGH_RISK_CAPABILITIES.has(c));
 
   // Group risk edges by pattern_id so the user sees "you're in P01 across
-  // 2 peer servers" rather than 2 raw rows.
+  // 2 peer servers" rather than 2 raw rows. Defensive: skip malformed
+  // edges (missing pattern_id or peer-server records).
   const byPattern = new Map<string, DeepDiveRiskEdge[]>();
   for (const edge of edges ?? []) {
+    if (!edge || typeof edge.pattern_id !== "string") continue;
+    if (!edge.from_server || !edge.to_server) continue;
     const bucket = byPattern.get(edge.pattern_id) ?? [];
     bucket.push(edge);
     byPattern.set(edge.pattern_id, bucket);
@@ -176,11 +182,17 @@ export default function CapabilitySurface({
               const sev = SEV_BY_PATTERN[patternId] ?? "medium";
               const peers = new Set<string>();
               for (const r of rows) {
-                if (r.from_server.slug !== node.server_slug)
-                  peers.add(r.from_server.name);
-                if (r.to_server.slug !== node.server_slug)
-                  peers.add(r.to_server.name);
+                const fs = r.from_server;
+                const ts = r.to_server;
+                if (fs && fs.slug !== node.server_slug && fs.name)
+                  peers.add(fs.name);
+                if (ts && ts.slug !== node.server_slug && ts.name)
+                  peers.add(ts.name);
               }
+              const desc =
+                rows[0] && typeof rows[0].description === "string"
+                  ? rows[0].description
+                  : "—";
               return (
                 <li
                   key={patternId}
@@ -189,9 +201,7 @@ export default function CapabilitySurface({
                   style={{ borderLeftColor: `var(--sev-${sev})` }}
                 >
                   <span className="csurf-pattern-id">{patternId}</span>
-                  <span className="csurf-pattern-desc">
-                    {rows[0]!.description}
-                  </span>
+                  <span className="csurf-pattern-desc">{desc}</span>
                   {peers.size > 0 && (
                     <span className="csurf-pattern-peers">
                       with {Array.from(peers).slice(0, 3).join(", ")}
