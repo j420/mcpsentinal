@@ -269,7 +269,89 @@ function CardEyebrow({
           {rule.summary}
         </p>
       )}
+      {rule.validated_by_cve && rule.validated_by_cve.length > 0 && (
+        <CveValidationStrip validations={rule.validated_by_cve} />
+      )}
     </header>
+  );
+}
+
+/**
+ * Resolve the public API origin once per render. The web package exposes
+ * `NEXT_PUBLIC_API_URL` (Cluster B precedent — see `page.tsx`), so the
+ * receipt link points at the api host directly rather than the web host.
+ * Falls back to localhost for dev parity with the api Dockerfile EXPOSE.
+ */
+function publicApiOrigin(): string {
+  return (
+    (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_URL) ||
+    "http://localhost:3100"
+  );
+}
+
+/**
+ * FindingReceiptLink — opens the per-finding HMAC-SHA256-signed receipt
+ * in a new tab. The link target is the api origin (NEXT_PUBLIC_API_URL),
+ * not the web origin, so verifiers see the canonical JSON envelope
+ * straight from the api package without a same-origin reverse proxy.
+ */
+function FindingReceiptLink({ findingId }: { findingId: string }) {
+  const href = `${publicApiOrigin()}/api/v1/findings/${encodeURIComponent(
+    findingId,
+  )}/receipt`;
+  return (
+    <div className="rec-finding-receipt">
+      <a
+        className="rec-finding-receipt-link"
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        title="HMAC-SHA256-signed canonical JSON envelope (RFC 8785)"
+      >
+        🔒 Signed receipt ↗
+      </a>
+      <span className="rec-finding-receipt-help">
+        Auditors: this finding can be independently verified offline.
+      </span>
+    </div>
+  );
+}
+
+/**
+ * CveValidationStrip — small in-card pill row listing the Phase-4 CVE
+ * replay corpus cases that exercise this rule. Honest "validated against
+ * real attacks" signal: every entry links to NVD (or research source)
+ * and shows the CVSS where present.
+ */
+function CveValidationStrip({
+  validations,
+}: {
+  validations: NonNullable<DeepDiveRule["validated_by_cve"]>;
+}) {
+  return (
+    <div className="rec-cve-strip" role="group" aria-label="CVE replay validation">
+      <span className="rec-cve-strip-label">
+        Validated against {validations.length} replay
+        {validations.length === 1 ? "" : "s"}
+      </span>
+      <ul className="rec-cve-strip-list">
+        {validations.map((v) => (
+          <li key={v.id} className="rec-cve-strip-item">
+            <a
+              href={v.source_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rec-cve-strip-link"
+              title={`${v.title} · disclosed ${v.disclosed}${
+                v.cvss_v3 != null ? ` · CVSS ${v.cvss_v3.toFixed(1)}` : ""
+              }`}
+            >
+              {v.id}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -539,6 +621,8 @@ function FindingPanel({
             <span className="rec-finding-rem-text">{finding.remediation}</span>
           </div>
         )}
+
+        <FindingReceiptLink findingId={finding.id} />
       </div>
     </details>
   );

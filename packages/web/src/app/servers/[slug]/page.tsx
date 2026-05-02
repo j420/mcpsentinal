@@ -26,6 +26,15 @@ import { notFound } from "next/navigation";
 import DeepDiveLayout from "@/components/DeepDiveLayout";
 import CategorySection from "@/components/CategorySection";
 import DeepDiveSidebar from "@/components/DeepDiveSidebar";
+import KillChainReel from "@/components/KillChainReel";
+import CapabilitySurface from "@/components/CapabilitySurface";
+import ProvenanceFooter from "@/components/ProvenanceFooter";
+import VerdictBar from "@/components/VerdictBar";
+import HeroBlock from "@/components/HeroBlock";
+import CoverageLedger from "@/components/CoverageLedger";
+import LensDensityControls, {
+  resolveLensDensity,
+} from "@/components/LensDensityControls";
 import type { DeepDiveResponse, DeepDiveData } from "@/lib/deep-dive";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3100";
@@ -83,17 +92,45 @@ export async function generateMetadata({
 
 export default async function ServerDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { slug } = await params;
+  const sp = await searchParams;
   const dd = await getDeepDive(slug);
   if (!dd) return notFound();
 
   const hasContent = dd.categories.length > 0;
 
+  // Phase 4 lens + density. Resolved server-side from the URL so SSR and
+  // first paint match the client's eventual hydration — no flash. The
+  // client-side controls component re-syncs from localStorage on mount
+  // when the URL omits the params and the user has a stored preference.
+  const { lens, density } = resolveLensDensity(sp);
+
   return (
-    <div className="dd-page dd-page-stripped">
+    <div
+      className="dd-page dd-page-stripped"
+      data-lens={lens}
+      data-density={density}
+    >
+      {/* Phase 3 verdict bar — sticky one-line verdict at the very top.
+          Always present (never honest-gapped); falls back to "Awaiting
+          scan data" when sparse. */}
+      <VerdictBar
+        serverName={dd.server.name}
+        coverage={dd.coverage}
+        categories={dd.categories}
+        attackChains={dd.attack_chains}
+      />
+
+      {/* Phase 4 lens + density controls — twin pill rows. Sticky-aligned
+          with the verdict bar so the controls stay in view while the
+          page scrolls. Writes ?lens= / ?view= and localStorage. */}
+      <LensDensityControls lens={lens} density={density} />
+
       {/* Breadcrumb — kept as the only navigation context. The rest of
           the page chrome (hero, signed pack, posture matrix, risk
           boundary, drift, compliance, footer attestation, honest gaps,
@@ -111,6 +148,41 @@ export default async function ServerDetailPage({
         </span>
         <span className="sd-bread-current">{dd.server.name}</span>
       </nav>
+
+      {/* Phase 3 hero — server name + coverage line + auto-narrative
+          bullets + severity proportional bar. Always renders the name +
+          coverage line; bullets and severity bar render only when their
+          inputs support them (honest gap). */}
+      <HeroBlock
+        serverName={dd.server.name}
+        coverage={dd.coverage}
+        categories={dd.categories}
+        attackChains={dd.attack_chains}
+      />
+
+      {/* Story-lens augmentations (Phase 2 redesign). Each component
+          renders nothing when its data is absent — honest gaps, no
+          synthetic placeholders. The reel and surface mount BEFORE the
+          taxonomy stack so a regulator's eye lands on the synthesised
+          attack stories first, then drills into the per-rule evidence. */}
+      <div className="dd-story-lens">
+        <KillChainReel
+          chains={dd.attack_chains}
+          currentServerSlug={dd.server.slug}
+        />
+        <CapabilitySurface
+          node={dd.capability_node}
+          edges={dd.risk_edges}
+        />
+      </div>
+
+      {/* Phase 3 coverage ledger — a first-class section listing every
+          rule we couldn't test this scan, grouped by structured reason.
+          Renders nothing when no rules are skipped. */}
+      <CoverageLedger
+        coverage={dd.coverage}
+        categories={dd.categories}
+      />
 
       {hasContent ? (
         <DeepDiveLayout
@@ -137,6 +209,8 @@ export default async function ServerDetailPage({
           </p>
         </section>
       )}
+
+      <ProvenanceFooter provenance={dd.provenance} />
     </div>
   );
 }

@@ -13529,3 +13529,1029 @@ body:has(.dd-page-stripped) .site-main {
     padding: var(--s3) var(--s4) var(--s8);
   }
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Phase 2 — Server detail Story-lens augmentations
+ * KillChainReel + CapabilitySurface + Provenance footer +
+ * RuleEvidenceCard CVE-validation pill row + signed-receipt link.
+ * Built entirely on existing tokens — no new colours, no new fonts.
+ * ──────────────────────────────────────────────────────────────────── */
+
+.dd-story-lens {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s5);
+  margin: var(--s5) 0 var(--s6);
+}
+
+/* ── KillChainReel ──────────────────────────────────────────────────── */
+
+.kcr-reel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s5) var(--s5) var(--s4);
+}
+.kcr-reel-head {
+  margin-bottom: var(--s4);
+}
+.kcr-reel-title {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-family: var(--font-display, var(--font-body));
+  font-size: 1.4rem;
+  font-weight: 500;
+  color: var(--text);
+  margin: 0 0 var(--s1);
+}
+.kcr-reel-count {
+  display: inline-block;
+  padding: 2px 8px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  background: var(--surface-2);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+}
+.kcr-reel-sub {
+  color: var(--text-3);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin: 0;
+  max-width: 70ch;
+}
+.kcr-reel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: var(--s4);
+}
+.kcr-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--sev-medium);
+  border-radius: var(--r-md);
+  padding: var(--s4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+.kcr-card-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.kcr-card-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+.kcr-card-kc {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--accent);
+  background: var(--accent-sub);
+  border: 1px solid var(--accent-ring);
+  padding: 2px 8px;
+  border-radius: var(--r-sm);
+}
+.kcr-card-kc-name {
+  font-weight: 500;
+  color: var(--text);
+}
+.kcr-card-score {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-2);
+}
+.kcr-card-refs {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-3);
+}
+.kcr-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  border-left: 1px dashed var(--border);
+  padding-left: var(--s3);
+}
+.kcr-step {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  position: relative;
+}
+.kcr-step[data-current="true"] {
+  background: var(--accent-2-sub);
+  border-radius: var(--r-sm);
+  padding: 4px 8px;
+  margin-left: -8px;
+}
+.kcr-step-ord {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-3);
+  color: var(--text-2);
+  border-radius: 50%;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+.kcr-step-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.kcr-step-server {
+  font-weight: 500;
+  color: var(--text);
+  font-size: 0.875rem;
+}
+.kcr-step-role {
+  font-size: 0.75rem;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.kcr-step-tools {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-3);
+}
+.kcr-narrative {
+  font-size: 0.875rem;
+  color: var(--text-2);
+  line-height: 1.5;
+  margin: 0;
+  border-top: 1px solid var(--border);
+  padding-top: var(--s3);
+}
+.kcr-mit {
+  border-top: 1px solid var(--border);
+  padding-top: var(--s3);
+}
+.kcr-mit-summary {
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--accent);
+  list-style: none;
+}
+.kcr-mit-summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 6px;
+  transition: transform var(--t-fast, 120ms);
+}
+.kcr-mit[open] .kcr-mit-summary::before {
+  transform: rotate(90deg);
+}
+.kcr-mit-list {
+  list-style: none;
+  margin: var(--s2) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.kcr-mit-item {
+  font-size: 0.8rem;
+  color: var(--text-2);
+  padding-left: var(--s3);
+  border-left: 2px solid var(--sev-low);
+}
+.kcr-mit-target {
+  font-family: var(--font-mono);
+  color: var(--text);
+  margin-right: 6px;
+}
+.kcr-mit-steps {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+
+/* ── CapabilitySurface ──────────────────────────────────────────────── */
+
+.csurf {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s5);
+}
+.csurf-head {
+  margin-bottom: var(--s4);
+}
+.csurf-title {
+  font-family: var(--font-display, var(--font-body));
+  font-size: 1.25rem;
+  font-weight: 500;
+  margin: 0 0 var(--s1);
+  color: var(--text);
+}
+.csurf-sub {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 0.875rem;
+  max-width: 70ch;
+}
+.csurf-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-bottom: var(--s4);
+}
+.csurf-flag {
+  font-size: 0.85rem;
+  padding: 6px 12px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+}
+.csurf-flag-gateway {
+  border-color: var(--sev-high);
+  color: var(--text);
+}
+.csurf-flag-writer {
+  border-color: var(--sev-medium);
+  color: var(--text);
+}
+.csurf-caps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  margin-bottom: var(--s4);
+}
+.csurf-cap-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  flex-wrap: wrap;
+}
+.csurf-cap-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  flex: 0 0 80px;
+  padding-top: 4px;
+}
+.csurf-cap-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1 1 auto;
+}
+.csurf-chip {
+  font-size: 0.78rem;
+  padding: 3px 10px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+}
+.csurf-chip-high {
+  background: rgba(255, 92, 87, 0.08);
+  border-color: rgba(255, 92, 87, 0.32);
+  color: var(--text);
+}
+.csurf-chip-neutral {
+  background: var(--surface-2);
+  color: var(--text-2);
+}
+.csurf-patterns {
+  border-top: 1px solid var(--border);
+  padding-top: var(--s4);
+}
+.csurf-patterns-title {
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin: 0 0 var(--s3);
+  color: var(--text);
+}
+.csurf-pattern-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.csurf-pattern-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  align-items: center;
+  padding: var(--s2) var(--s3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--sev-medium);
+  border-radius: var(--r-sm);
+}
+.csurf-pattern-id {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--accent);
+  flex: 0 0 auto;
+}
+.csurf-pattern-desc {
+  flex: 1 1 auto;
+  font-size: 0.85rem;
+  color: var(--text-2);
+}
+.csurf-pattern-peers {
+  font-size: 0.75rem;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+}
+
+/* ── ProvenanceFooter ───────────────────────────────────────────────── */
+
+.prov-footer {
+  margin-top: var(--s8);
+  padding: var(--s5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  color: var(--text-2);
+}
+.prov-footer-title {
+  font-family: var(--font-display, var(--font-body));
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin: 0 0 var(--s3);
+  color: var(--text);
+}
+.prov-footer-dl {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  row-gap: var(--s2);
+  margin: 0 0 var(--s3);
+}
+.prov-footer-row {
+  display: contents;
+}
+.prov-footer-k {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  padding-top: 2px;
+}
+.prov-footer-v {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-2);
+}
+.prov-mono {
+  font-family: var(--font-mono);
+  background: var(--surface-2);
+  padding: 1px 6px;
+  border-radius: var(--r-sm);
+  color: var(--text);
+}
+.prov-footer-when {
+  color: var(--text-3);
+  font-size: 0.8rem;
+}
+.prov-footer-gap {
+  font-style: italic;
+  color: var(--text-3);
+  margin-left: var(--s2);
+}
+.prov-footer-note {
+  margin: var(--s3) 0 0;
+  border-top: 1px solid var(--border);
+  padding-top: var(--s3);
+  font-size: 0.8rem;
+  color: var(--text-3);
+  line-height: 1.5;
+  max-width: 80ch;
+}
+
+/* ── CVE validation strip on rule cards ─────────────────────────────── */
+
+.rec-cve-strip {
+  margin-top: var(--s2);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  font-size: 0.8rem;
+}
+.rec-cve-strip-label {
+  color: var(--sev-low);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+.rec-cve-strip-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.rec-cve-strip-item {
+  display: inline-block;
+}
+.rec-cve-strip-link {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: var(--r-sm);
+  background: rgba(91, 214, 138, 0.10);
+  border: 1px solid rgba(91, 214, 138, 0.32);
+  color: var(--sev-low);
+  text-decoration: none;
+  transition: background var(--t-fast, 120ms);
+}
+.rec-cve-strip-link:hover {
+  background: rgba(91, 214, 138, 0.20);
+}
+
+/* ── Per-finding signed receipt link ────────────────────────────────── */
+
+.rec-finding-receipt {
+  margin-top: var(--s3);
+  padding-top: var(--s2);
+  border-top: 1px dashed var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+  font-size: 0.78rem;
+}
+.rec-finding-receipt-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  color: var(--accent-2);
+  text-decoration: none;
+  padding: 2px 8px;
+  border-radius: var(--r-sm);
+  background: var(--accent-2-sub);
+  border: 1px solid var(--accent-2-ring);
+  transition: background var(--t-fast, 120ms);
+}
+.rec-finding-receipt-link:hover {
+  background: rgba(95, 174, 255, 0.16);
+}
+.rec-finding-receipt-help {
+  color: var(--text-3);
+  font-size: 0.72rem;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Phase 3 — Verdict bar + Hero + Coverage Ledger
+ * Built entirely on existing tokens.
+ * ──────────────────────────────────────────────────────────────────── */
+
+/* ── VerdictBar (sticky one-liner at the very top) ──────────────────── */
+
+.vbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  padding: 10px 16px 10px 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  border-left: 4px solid var(--sev-info);
+  font-size: 0.9rem;
+  color: var(--text);
+  /* Subtle shadow so the bar reads as floating once the page scrolls */
+  box-shadow: 0 4px 12px -8px rgba(0, 0, 0, 0.6);
+  margin: 0 calc(-1 * var(--s6)) var(--s4);
+}
+.vbar[data-tone="critical"] {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 92, 87, 0.06),
+    var(--surface) 40%
+  );
+}
+.vbar[data-tone="high"] {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 157, 77, 0.06),
+    var(--surface) 40%
+  );
+}
+.vbar[data-tone="good"] {
+  background: linear-gradient(
+    90deg,
+    rgba(91, 214, 138, 0.06),
+    var(--surface) 40%
+  );
+}
+.vbar-server {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  max-width: 18ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vbar-sep {
+  color: var(--text-3);
+}
+.vbar-headline {
+  flex: 1 1 auto;
+  font-weight: 500;
+}
+@media (max-width: 720px) {
+  .vbar {
+    margin: 0 calc(-1 * var(--s4)) var(--s3);
+    font-size: 0.85rem;
+  }
+}
+
+/* ── HeroBlock ──────────────────────────────────────────────────────── */
+
+.dd-hero2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: var(--s6);
+  margin: var(--s4) 0 var(--s5);
+  padding: var(--s6);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+@media (max-width: 960px) {
+  .dd-hero2 {
+    grid-template-columns: 1fr;
+    gap: var(--s4);
+    padding: var(--s5);
+  }
+}
+.dd-hero2-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  min-width: 0;
+}
+.dd-hero2-name {
+  font-family: var(--font-display, var(--font-body));
+  font-size: 2.2rem;
+  font-weight: 500;
+  line-height: 1.15;
+  color: var(--text);
+  margin: 0;
+}
+@media (max-width: 720px) {
+  .dd-hero2-name {
+    font-size: 1.7rem;
+  }
+}
+.dd-hero2-coverage {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+}
+.dd-hero2-narrative {
+  margin-top: var(--s2);
+}
+.dd-hero2-narrative-title {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+  margin: 0 0 var(--s2);
+}
+.dd-hero2-bullets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.dd-hero2-bullet {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  font-size: 1rem;
+  line-height: 1.45;
+  color: var(--text);
+}
+.dd-hero2-bullet-glyph {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  width: 18px;
+  text-align: center;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  padding-top: 2px;
+}
+.dd-hero2-bullet-critical {
+  color: var(--sev-critical);
+}
+.dd-hero2-bullet-high {
+  color: var(--sev-high);
+}
+.dd-hero2-bullet-good {
+  color: var(--sev-low);
+}
+.dd-hero2-bullet-info {
+  color: var(--text-2);
+}
+.dd-hero2-bullet-text {
+  flex: 1 1 auto;
+}
+.dd-hero2-right {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--s4);
+  min-width: 0;
+}
+.dd-hero2-sev-total {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  margin-bottom: var(--s3);
+  padding-bottom: var(--s2);
+  border-bottom: 1px solid var(--border);
+}
+.dd-hero2-sev-total-num {
+  font-family: var(--font-display, var(--font-body));
+  font-size: 2.4rem;
+  line-height: 1;
+  color: var(--text);
+  font-weight: 500;
+}
+.dd-hero2-sev-total-label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+}
+.dd-hero2-sev-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dd-hero2-sev-row {
+  display: grid;
+  grid-template-columns: 60px 28px 1fr;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.78rem;
+}
+.dd-hero2-sev-label {
+  color: var(--text-2);
+  font-family: var(--font-mono);
+}
+.dd-hero2-sev-count {
+  color: var(--text);
+  font-family: var(--font-mono);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.dd-hero2-sev-bar-track {
+  position: relative;
+  height: 6px;
+  background: var(--surface-3);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.dd-hero2-sev-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  transition: width 200ms ease-out;
+}
+.dd-hero2-clean {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  color: var(--sev-low);
+  padding: var(--s4) 0;
+}
+.dd-hero2-clean-glyph {
+  font-size: 1.3rem;
+  font-family: var(--font-mono);
+}
+.dd-hero2-clean-text {
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+/* ── CoverageLedger ─────────────────────────────────────────────────── */
+
+.cov-ledger {
+  margin: var(--s5) 0;
+  padding: var(--s5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+.cov-ledger-head {
+  margin-bottom: var(--s4);
+}
+.cov-ledger-title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  font-family: var(--font-display, var(--font-body));
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--text);
+  margin: 0 0 var(--s1);
+}
+.cov-ledger-count {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+}
+.cov-ledger-sub {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  max-width: 80ch;
+}
+.cov-ledger-cta {
+  color: var(--accent);
+}
+.cov-ledger-buckets {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+.cov-bucket {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent-3);
+  border-radius: var(--r-md);
+  padding: var(--s3) var(--s4);
+}
+.cov-bucket-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  margin-bottom: var(--s2);
+}
+.cov-bucket-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text);
+}
+.cov-bucket-count {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.cov-bucket-action {
+  margin: 0 0 var(--s3);
+  font-size: 0.82rem;
+  color: var(--text-2);
+}
+.cov-bucket-action-label {
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.cov-bucket-rules {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.cov-bucket-rule {
+  display: inline-block;
+}
+.cov-bucket-rule-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  padding: 3px 10px;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  text-decoration: none;
+  transition: background var(--t-fast, 120ms);
+  max-width: 320px;
+}
+.cov-bucket-rule-link:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+.cov-bucket-rule-id {
+  font-family: var(--font-mono);
+  color: var(--accent);
+}
+.cov-bucket-rule-name {
+  color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 250px;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Phase 4 — Lens + Density controls
+ *
+ * The page wrapper carries data-lens="story|evidence|audit" and
+ * data-density="briefing|dossier|forensic". All visibility / ordering
+ * decisions are CSS — the DOM is identical regardless of view, so toggling
+ * is instant and reversible without a re-fetch.
+ * ──────────────────────────────────────────────────────────────────── */
+
+/* ── LensDensityControls (twin pill rows) ───────────────────────────── */
+
+.lds-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s4);
+  margin: 0 0 var(--s4);
+  padding: 10px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+.lds-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.lds-group-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+  margin-right: 4px;
+}
+.lds-pill {
+  appearance: none;
+  background: var(--surface-3);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  padding: 5px 14px;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all var(--t-fast, 120ms);
+}
+.lds-pill:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+.lds-pill-active,
+.lds-pill[data-active="true"] {
+  background: var(--accent);
+  color: #1a1a1a;
+  border-color: var(--accent);
+  font-weight: 500;
+}
+.lds-pill-active:hover {
+  background: var(--accent-hover);
+  color: #1a1a1a;
+}
+@media (max-width: 640px) {
+  .lds-controls {
+    gap: var(--s2);
+    padding: 8px;
+  }
+  .lds-pill {
+    padding: 4px 10px;
+    font-size: 0.78rem;
+  }
+}
+
+/* ── Lens: STORY (default) ──────────────────────────────────────────── */
+/* Default order — no overrides needed. Hero + reel + surface + ledger +
+ * taxonomy + provenance, top-to-bottom. */
+
+/* ── Lens: EVIDENCE — direct to per-rule taxonomy ───────────────────── */
+.dd-page[data-lens="evidence"] .dd-hero2-narrative,
+.dd-page[data-lens="evidence"] .kcr-reel,
+.dd-page[data-lens="evidence"] .csurf,
+.dd-page[data-lens="evidence"] .cov-ledger {
+  display: none;
+}
+/* Evidence lens keeps the hero name + coverage line + severity bar but
+ * drops the narrative panel — the regulator wants the dossier, not the
+ * story. */
+
+/* ── Lens: AUDIT — provenance-first, every claim footnoted ──────────── */
+.dd-page[data-lens="audit"] .dd-story-lens {
+  /* Story-lens augmentations (kill chains, capability surface) move
+   * BELOW the taxonomy in audit lens so the page reads as a regulator-
+   * grade audit log: hero → controls → taxonomy → augmentations →
+   * provenance. */
+  order: 5;
+}
+.dd-page[data-lens="audit"] .prov-footer {
+  /* Audit lens promotes the provenance block to right under the hero so
+   * the chain of custody lands first. We keep the original footer in
+   * place too — the duplication is intentional (audit reads top AND
+   * bottom). */
+  margin-top: var(--s4);
+}
+.dd-page[data-lens="audit"] .dd-page-stripped {
+  /* enables the ordering above */
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Density: BRIEFING — one row per rule ───────────────────────────── */
+/* Hide the methodology block on every rule and the per-finding bodies
+ * (the summary line stays visible so a glance still reveals the
+ * evidence one-liner). The user clicks "Dossier" or "Forensic" to drill
+ * deeper. */
+.dd-page[data-density="briefing"] .rec-method,
+.dd-page[data-density="briefing"] .rec-finding-body {
+  display: none;
+}
+/* Compact the rule head so each rule is a tight strip. */
+.dd-page[data-density="briefing"] .rec-card {
+  padding-top: var(--s2);
+  padding-bottom: var(--s2);
+}
+.dd-page[data-density="briefing"] .rec-summary {
+  display: none;
+}
+/* Findings collapse to single-line strips — keep the eyebrow + sev
+ * badge + one-line evidence, drop the chevron expansion body. */
+.dd-page[data-density="briefing"] .rec-finding {
+  margin-top: var(--s1);
+}
+.dd-page[data-density="briefing"] .rec-finding-chev {
+  opacity: 0.4;
+}
+
+/* ── Density: DOSSIER — current default behaviour ───────────────────── */
+/* No overrides — components render exactly as they were before the lens
+ * + density rework. */
+
+/* ── Density: FORENSIC — everything expanded ────────────────────────── */
+/* Force methodology + finding bodies open regardless of native <details>
+ * state. The <summary> chevron stays in its DOM-driven state but the
+ * body becomes visible. */
+.dd-page[data-density="forensic"] .rec-method[role="region"],
+.dd-page[data-density="forensic"] details.rec-method > .rec-method-body,
+.dd-page[data-density="forensic"] details.rec-finding > .rec-finding-body {
+  display: block !important;
+}
+.dd-page[data-density="forensic"] details > summary::after {
+  content: " · forensic mode (always open)";
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-3);
+  margin-left: 6px;
+}
