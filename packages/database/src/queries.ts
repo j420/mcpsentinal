@@ -529,6 +529,49 @@ export class DatabaseQueries {
     }
   }
 
+  /**
+   * Single finding row by id, joined to its scan + server so the receipt
+   * endpoint has everything it needs in one query: the finding columns
+   * plus the scan's rules_version + completed_at and the server's slug.
+   * Returns null when the id is unknown.
+   *
+   * Used by `GET /api/v1/findings/:id/receipt` to assemble the
+   * canonicalised, signed FindingReceipt envelope.
+   */
+  async getFindingByIdWithProvenance(findingId: string): Promise<{
+    id: string;
+    server_id: string;
+    server_slug: string;
+    scan_id: string;
+    scan_rules_version: string;
+    scan_completed_at: Date | null;
+    rule_id: string;
+    severity: string;
+    evidence: string;
+    remediation: string;
+    owasp_category: string | null;
+    mitre_technique: string | null;
+    confidence: number;
+    evidence_chain: Record<string, unknown> | null;
+    created_at: Date;
+  } | null> {
+    const result = await this.pool.query(
+      `SELECT
+         f.id, f.server_id, srv.slug AS server_slug,
+         f.scan_id, sc.rules_version AS scan_rules_version,
+         sc.completed_at AS scan_completed_at,
+         f.rule_id, f.severity, f.evidence, f.remediation,
+         f.owasp_category, f.mitre_technique,
+         f.confidence, f.evidence_chain, f.created_at
+       FROM findings f
+       JOIN scans sc      ON sc.id  = f.scan_id
+       JOIN servers srv   ON srv.id = f.server_id
+       WHERE f.id = $1`,
+      [findingId]
+    );
+    return result.rows[0] ?? null;
+  }
+
   async getFindingsForServer(serverId: string) {
     return (
       await this.pool.query(
@@ -751,6 +794,30 @@ export class DatabaseQueries {
       [serverId]
     );
     return result.rows;
+  }
+
+  /**
+   * Latest completed scan for a server. Returns the provenance triple
+   * (scan id, rules_version, completed_at) the deep-dive endpoint stamps
+   * onto every response so auditors can trace any claim on the page back
+   * to the exact scan that produced it.
+   *
+   * Returns null when the server has no completed scan on file.
+   */
+  async getLatestCompletedScanForServer(serverId: string): Promise<{
+    id: string;
+    rules_version: string;
+    completed_at: Date;
+  } | null> {
+    const result = await this.pool.query(
+      `SELECT id, rules_version, completed_at
+       FROM scans
+       WHERE server_id = $1 AND status = 'completed'
+       ORDER BY completed_at DESC
+       LIMIT 1`,
+      [serverId]
+    );
+    return result.rows[0] ?? null;
   }
 
   async getLatestScanStages(serverId: string): Promise<{

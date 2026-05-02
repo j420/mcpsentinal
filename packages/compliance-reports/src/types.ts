@@ -189,3 +189,69 @@ export interface ReportInputFinding {
   confidence: number;
   remediation: string;
 }
+
+/**
+ * Provenance fields that travel with a per-finding signed receipt. These
+ * are the auditor-facing answers to "where did this finding come from?":
+ *
+ *   scan_id          → which scan emitted it
+ *   rules_version    → which rules-package version was active for that scan
+ *   sentinel_version → which mcp-sentinel build produced the receipt
+ *   signed_at        → wall-clock signing time (ISO 8601)
+ *
+ * The signature in {@link SignedFinding.attestation} covers the canonical
+ * JSON of {@link FindingReceipt} — see {@link signFinding} in attestation.ts.
+ */
+export interface FindingProvenance {
+  scan_id: string;
+  rules_version: string;
+  sentinel_version: string;
+}
+
+/**
+ * The exact bytes covered by the per-finding HMAC-SHA256 signature. Composed
+ * deterministically from a database Finding row plus the provenance fields
+ * above, then canonicalised via RFC 8785 before signing. Auditors recompute
+ * this shape from the API response and verify the signature offline.
+ *
+ * `evidence_chain` is preserved verbatim so the receipt is self-contained:
+ * an offline auditor can reconstruct the source → propagation → sink → impact
+ * narrative without re-querying the API.
+ */
+export interface FindingReceipt {
+  /** Finding row primary key. */
+  id: string;
+  /** Server slug — the human-readable subject. */
+  server_slug: string;
+  rule_id: string;
+  severity: Severity;
+  confidence: number;
+  evidence: string;
+  evidence_chain: Record<string, unknown> | null;
+  remediation: string;
+  owasp_category: string | null;
+  mitre_technique: string | null;
+  /** ISO 8601 of the finding row's `created_at`. */
+  finding_created_at: string;
+  provenance: FindingProvenance;
+}
+
+/**
+ * Wire-shape for a per-finding signed receipt. Mirrors
+ * {@link SignedComplianceReport} so verification clients can reuse the same
+ * envelope handling. The signature covers `receipt`'s canonical bytes and
+ * NOT the outer `attestation` envelope (matches signReport semantics).
+ */
+export interface SignedFinding {
+  receipt: FindingReceipt;
+  attestation: {
+    algorithm: "HMAC-SHA256";
+    /** Base64 (standard, not URL-safe) of the HMAC-SHA256 tag. */
+    signature: string;
+    key_id: string;
+    /** ISO 8601 timestamp stamped at sign time. */
+    signed_at: string;
+    signer: string;
+    canonicalization: "RFC8785";
+  };
+}

@@ -47,6 +47,7 @@ export type {
 // `loadCases()` on first call and memoises the result for the process lifetime.
 
 import { ALL_FIXTURES } from "./fixtures/index.js";
+import type { CVECaseKind } from "./cve-corpus/index.js";
 import { loadCases, getRegisteredCases } from "./cve-corpus/index.js";
 
 export interface RuleCorpusEntry {
@@ -85,4 +86,83 @@ export async function getCorpusManifest(): Promise<CorpusManifest> {
 
   _manifestCache = manifest;
   return manifest;
+}
+
+// ── Public CVE validation index ────────────────────────────────────────────
+// The corpus manifest above keys `rule_id → cve_replays: string[]` (just IDs).
+// This richer index keys `rule_id → CveReplayValidation[]` with the case
+// metadata (title, source url, disclosure date, CVSS, kind) so the API layer
+// can render a "validated against CVE-2025-6514: mcp-remote OS command
+// injection" pill without re-fetching anything else.
+//
+// The shape is intentionally the public surface — both the api package and
+// future SDK consumers read this. Internal-only fields (rationale, fixtures,
+// expected_rules) are not exposed.
+
+export interface CveReplayValidation {
+  /** "CVE-YYYY-NNNN" for cve-kind, "research-kebab-id" for research-kind. */
+  id: string;
+  kind: CVECaseKind;
+  title: string;
+  source_url: string;
+  /** ISO 8601 (YYYY-MM-DD). */
+  disclosed: string;
+  cvss_v3: number | null;
+  /** Asserted minimum severity for this rule on the unpatched fixture. */
+  min_severity: string;
+}
+
+export type CveValidationIndex = Record<string, CveReplayValidation[]>;
+
+let _validationIndexCache: CveValidationIndex | null = null;
+
+/**
+ * Build (and memoise) the rule_id → CveReplayValidation[] inverse index
+ * by iterating the registered CVE corpus cases. Each rule the case lists
+ * under `expected_rules` becomes a validation entry for that rule.
+ *
+ * Memoised for the process lifetime — the registry is loaded once via
+ * `loadCases()` and the case set is immutable.
+ */
+export async function getCveValidationIndex(): Promise<CveValidationIndex> {
+  if (_validationIndexCache) return _validationIndexCache;
+
+  await loadCases();
+
+  const index: CveValidationIndex = {};
+  for (const c of getRegisteredCases()) {
+    for (const expected of c.expected_rules) {
+      const entry: CveReplayValidation = {
+        id: c.id,
+        kind: c.kind,
+        title: c.title,
+        source_url: c.source_url,
+        disclosed: c.disclosed,
+        cvss_v3: typeof c.cvss_v3 === "number" ? c.cvss_v3 : null,
+        min_severity: expected.min_severity,
+      };
+      const bucket = index[expected.rule_id] ?? (index[expected.rule_id] = []);
+      // Dedupe by case id — multiple expected_rules entries from the same
+      // case for the same rule_id would otherwise double-count.
+      if (!bucket.some((b) => b.id === entry.id)) {
+        bucket.push(entry);
+      }
+    }
+  }
+  // Stable order: cve-kind first (by id), then research-kind (by id). Auditors
+  // expect canonical CVE rows above research-attack rows.
+  for (const ruleId of Object.keys(index)) {
+    index[ruleId]!.sort((a, b) => {
+      if (a.kind !== b.kind) return a.kind === "cve" ? -1 : 1;
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    });
+  }
+
+  _validationIndexCache = index;
+  return index;
+}
+
+/** Test-only: drop the memoised index so a hermetic test can rebuild. */
+export function _resetCveValidationIndexForTests(): void {
+  _validationIndexCache = null;
 }
