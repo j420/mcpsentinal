@@ -14690,3 +14690,191 @@ body:has(.dd-page-stripped) .site-main {
   color: var(--text-3);
   line-height: 1.55;
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Phase 5 — Mitigation Simulator (KillChainReel)
+ * ──────────────────────────────────────────────────────────────────── */
+
+.kcr-reel-sim-hint {
+  display: inline-block;
+  margin-left: 6px;
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.kcr-sim-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin: 0 0 var(--s4);
+  padding: 10px 14px;
+  background: var(--accent-sub);
+  border: 1px solid var(--accent-ring);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--r-md);
+  font-size: 0.88rem;
+  color: var(--text);
+}
+.kcr-sim-bar[data-sim-state="all-broken"] {
+  background: rgba(91, 214, 138, 0.10);
+  border-color: rgba(91, 214, 138, 0.32);
+  border-left-color: var(--sev-low);
+}
+.kcr-sim-bar-glyph {
+  font-size: 1.1rem;
+}
+.kcr-sim-bar-text {
+  flex: 1 1 auto;
+}
+.kcr-sim-bar-reset {
+  appearance: none;
+  background: var(--surface-3);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  transition: all var(--t-fast, 120ms);
+}
+.kcr-sim-bar-reset:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* "✓ BROKEN" pill on the chain card header when an applied mitigation
+ * neutralises the chain. Visual rhyme with the sim-bar's good-state. */
+.kcr-card-broken {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 9px;
+  background: rgba(91, 214, 138, 0.12);
+  color: var(--sev-low);
+  border: 1px solid rgba(91, 214, 138, 0.40);
+  border-radius: var(--r-full);
+}
+
+/* When the chain is broken, the whole card is desaturated to signal
+ * "no longer a live attack story". The sim-bar above carries the
+ * positive state. */
+.kcr-card[data-chain-broken="true"] {
+  opacity: 0.78;
+}
+
+/* Per-step "broken" state — strikethrough + greyed body. The numeric
+ * ordinal stays full-opacity so a regulator can still scan the chain
+ * shape; the body greys to signal the step is no longer reachable. */
+.kcr-step[data-broken="true"] .kcr-step-body {
+  opacity: 0.45;
+  text-decoration: line-through;
+  text-decoration-color: var(--text-3);
+}
+.kcr-step[data-broken="true"] .kcr-step-ord {
+  background: rgba(91, 214, 138, 0.12);
+  color: var(--sev-low);
+}
+
+/* Mitigation pills (replaces the old <details> accordion).
+ * Each pill is a button — click toggles applied. Applied state uses
+ * the accent colour to make the toggle obvious. */
+.kcr-mit-sim {
+  margin-top: var(--s3);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border);
+}
+.kcr-mit-sim-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  margin-bottom: var(--s2);
+}
+.kcr-mit-sim-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.kcr-mit-sim-item {
+  display: block;
+}
+.kcr-mit-sim-pill {
+  appearance: none;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  background: var(--surface-3);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 8px 12px;
+  font-family: var(--font-body);
+  font-size: 0.84rem;
+  cursor: pointer;
+  transition: all var(--t-fast, 120ms);
+}
+.kcr-mit-sim-pill:hover {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--accent-ring);
+}
+.kcr-mit-sim-pill-applied {
+  background: rgba(91, 214, 138, 0.10);
+  color: var(--text);
+  border-color: rgba(91, 214, 138, 0.40);
+}
+.kcr-mit-sim-pill-applied:hover {
+  background: rgba(91, 214, 138, 0.18);
+  border-color: rgba(91, 214, 138, 0.55);
+}
+.kcr-mit-sim-pill-glyph {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  width: 18px;
+  text-align: center;
+  color: var(--text-3);
+}
+.kcr-mit-sim-pill-applied .kcr-mit-sim-pill-glyph {
+  color: var(--sev-low);
+}
+.kcr-mit-sim-pill-target {
+  font-family: var(--font-mono);
+  color: var(--text);
+  flex: 0 0 auto;
+}
+.kcr-mit-sim-pill-desc {
+  flex: 1 1 auto;
+  color: inherit;
+}
+.kcr-mit-sim-pill-steps {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+.kcr-mit-sim-pill-applied .kcr-mit-sim-pill-steps {
+  color: var(--sev-low);
+}
+.kcr-mit-sim-status {
+  margin: var(--s3) 0 0;
+  padding: 8px 12px;
+  background: rgba(91, 214, 138, 0.06);
+  border: 1px solid rgba(91, 214, 138, 0.32);
+  border-radius: var(--r-sm);
+  color: var(--sev-low);
+  font-size: 0.82rem;
+  font-family: var(--font-mono);
+}
