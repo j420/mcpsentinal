@@ -5,6 +5,8 @@ export type {
   ControlEvidence,
   ControlResult,
   ControlStatus,
+  FindingProvenance,
+  FindingReceipt,
   FrameworkId,
   KillChainNarrative,
   OverallStatus,
@@ -14,6 +16,7 @@ export type {
   ReportServer,
   ReportSummary,
   SignedComplianceReport,
+  SignedFinding,
 } from "./types.js";
 export { FRAMEWORK_IDS } from "./types.js";
 
@@ -21,7 +24,9 @@ export { FRAMEWORK_IDS } from "./types.js";
 export { canonicalize, CanonicalizationError } from "./canonicalize.js";
 export {
   resolveSigningContextFromEnv,
+  signFinding,
   signReport,
+  verifyFinding,
   verifyReport,
 } from "./attestation.js";
 export type { SigningContext } from "./attestation.js";

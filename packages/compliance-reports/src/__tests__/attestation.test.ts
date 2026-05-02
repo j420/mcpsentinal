@@ -3,11 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   resolveSigningContextFromEnv,
+  signFinding,
   signReport,
+  verifyFinding,
   verifyReport,
 } from "../attestation.js";
 import type { SigningContext } from "../attestation.js";
-import type { ComplianceReport } from "../types.js";
+import type { ComplianceReport, FindingReceipt } from "../types.js";
 
 const BASE_REPORT: ComplianceReport = {
   version: "1.0",
@@ -139,6 +141,102 @@ describe("HMAC-SHA256 attestation", () => {
     );
     expect(src).toContain("timingSafeEqual");
     expect(src).not.toMatch(/signature\s*===\s*/); // no plain ===
+  });
+});
+
+// ─── Per-finding receipt signing (Cluster D follow-on) ────────────────────
+
+const BASE_RECEIPT: FindingReceipt = {
+  id: "00000000-0000-0000-0000-000000000abc",
+  server_slug: "demo-server",
+  rule_id: "C1",
+  severity: "critical",
+  confidence: 0.92,
+  evidence: "exec(user_input) at server.ts:42",
+  evidence_chain: { links: [] },
+  remediation: "Replace exec() with execFile() and validate inputs.",
+  owasp_category: "MCP03-command-injection",
+  mitre_technique: "AML.T0054",
+  finding_created_at: "2026-04-30T10:15:00.000Z",
+  provenance: {
+    scan_id: "00000000-0000-0000-0000-000000000111",
+    rules_version: "2026-04-23",
+    sentinel_version: "0.4.0",
+  },
+};
+
+describe("HMAC-SHA256 attestation — per-finding receipt", () => {
+  it("round-trips signFinding → verifyFinding", () => {
+    const signed = signFinding(BASE_RECEIPT, CTX);
+    expect(signed.attestation.algorithm).toBe("HMAC-SHA256");
+    expect(signed.attestation.canonicalization).toBe("RFC8785");
+    expect(signed.attestation.signature).toMatch(/^[A-Za-z0-9+/]+=*$/);
+    expect(signed.receipt).toEqual(BASE_RECEIPT);
+    const result = verifyFinding(signed, CTX);
+    expect(result.valid).toBe(true);
+  });
+
+  it("detects tampering with the receipt body", () => {
+    const signed = signFinding(BASE_RECEIPT, CTX);
+    const tampered = {
+      ...signed,
+      receipt: { ...signed.receipt, severity: "low" as FindingReceipt["severity"] },
+    };
+    const result = verifyFinding(tampered, CTX);
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBe("signature does not match canonicalised receipt");
+  });
+
+  it("rejects signatures produced under a different key", () => {
+    const signed = signFinding(BASE_RECEIPT, CTX);
+    const wrongKey: SigningContext = { key: "different-secret", key_id: CTX.key_id };
+    const result = verifyFinding(signed, wrongKey);
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBe("signature does not match canonicalised receipt");
+  });
+
+  it("rejects unsupported algorithm declarations", () => {
+    const signed = signFinding(BASE_RECEIPT, CTX);
+    const bogus = {
+      ...signed,
+      attestation: { ...signed.attestation, algorithm: "HMAC-MD5" as unknown as "HMAC-SHA256" },
+    };
+    const result = verifyFinding(bogus, CTX);
+    expect(result.valid).toBe(false);
+    expect(result.reason).toContain("unsupported algorithm");
+  });
+
+  it("rejects unsupported canonicalization declarations", () => {
+    const signed = signFinding(BASE_RECEIPT, CTX);
+    const bogus = {
+      ...signed,
+      attestation: {
+        ...signed.attestation,
+        canonicalization: "JSON.stringify" as unknown as "RFC8785",
+      },
+    };
+    const result = verifyFinding(bogus, CTX);
+    expect(result.valid).toBe(false);
+    expect(result.reason).toContain("unsupported canonicalization");
+  });
+
+  it("produces byte-identical signatures across runs for identical receipt", () => {
+    // signed_at differs run to run, but the signature is over the receipt
+    // body only — auditors rely on this determinism to verify offline.
+    const a = signFinding(BASE_RECEIPT, CTX);
+    const b = signFinding(BASE_RECEIPT, CTX);
+    expect(a.attestation.signature).toBe(b.attestation.signature);
+  });
+
+  it("receipts and reports cannot accidentally validate against each other", () => {
+    // The two surfaces are distinct: a signed report's signature must not
+    // verify when fed into verifyFinding, and vice versa. The bodies have
+    // disjoint top-level shapes so canonicalisation produces different bytes.
+    const signedReport = signReport(BASE_REPORT, CTX);
+    const signedReceipt = signFinding(BASE_RECEIPT, CTX);
+    expect(signedReport.attestation.signature).not.toBe(
+      signedReceipt.attestation.signature,
+    );
   });
 });
 

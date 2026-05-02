@@ -2,7 +2,12 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import pino from "pino";
 
 import { canonicalize } from "./canonicalize.js";
-import type { ComplianceReport, SignedComplianceReport } from "./types.js";
+import type {
+  ComplianceReport,
+  FindingReceipt,
+  SignedComplianceReport,
+  SignedFinding,
+} from "./types.js";
 
 const logger = pino({ name: "compliance-reports:attestation", level: "info" }, pino.destination(2));
 
@@ -84,6 +89,73 @@ export function verifyReport(
   // is what we explicitly DO NOT want here.
   const ok = timingSafeEqual(actual, expected);
   return ok ? { valid: true } : { valid: false, reason: "signature does not match canonicalised payload" };
+}
+
+/**
+ * Sign a single finding receipt. Mirrors {@link signReport}: the signature
+ * covers exactly the bytes produced by {@link canonicalize} over `receipt`
+ * (RFC 8785), independent of the outer attestation envelope. Auditors verify
+ * by recomputing the canonical bytes locally and comparing the HMAC.
+ *
+ * The receipt is the auditor's offline-verifiable artifact: paired with the
+ * public `key_id`, any third party with the corresponding HMAC secret can
+ * confirm that this exact JSON was produced by this Sentinel deployment at
+ * the stated `signed_at`. Useful for compliance packages that include a
+ * subset of findings without the full ComplianceReport envelope.
+ */
+export function signFinding(receipt: FindingReceipt, ctx: SigningContext): SignedFinding {
+  const canonical = canonicalize(receipt);
+  const hmac = createHmac("sha256", ctx.key);
+  hmac.update(Buffer.from(canonical, "utf8"));
+  const signature = hmac.digest("base64");
+  return {
+    receipt,
+    attestation: {
+      algorithm: "HMAC-SHA256",
+      signature,
+      key_id: ctx.key_id,
+      signed_at: new Date().toISOString(),
+      signer: SIGNER,
+      canonicalization: "RFC8785",
+    },
+  };
+}
+
+/**
+ * Verify a per-finding receipt. Symmetric with {@link verifyReport}: rejects
+ * unsupported algorithm/canonicalization, decodes the signature in base64,
+ * and compares in constant time. Never throws.
+ */
+export function verifyFinding(
+  signed: SignedFinding,
+  ctx: SigningContext,
+): { valid: boolean; reason?: string } {
+  if (signed.attestation.algorithm !== "HMAC-SHA256") {
+    return { valid: false, reason: `unsupported algorithm: ${signed.attestation.algorithm}` };
+  }
+  if (signed.attestation.canonicalization !== "RFC8785") {
+    return {
+      valid: false,
+      reason: `unsupported canonicalization: ${signed.attestation.canonicalization}`,
+    };
+  }
+  const canonical = canonicalize(signed.receipt);
+  const hmac = createHmac("sha256", ctx.key);
+  hmac.update(Buffer.from(canonical, "utf8"));
+  const expected = hmac.digest();
+  let actual: Buffer;
+  try {
+    actual = Buffer.from(signed.attestation.signature, "base64");
+  } catch {
+    return { valid: false, reason: "signature is not valid base64" };
+  }
+  if (actual.length !== expected.length) {
+    return { valid: false, reason: "signature length mismatch" };
+  }
+  const ok = timingSafeEqual(actual, expected);
+  return ok
+    ? { valid: true }
+    : { valid: false, reason: "signature does not match canonicalised receipt" };
 }
 
 /**

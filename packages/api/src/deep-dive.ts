@@ -75,6 +75,73 @@ import type {
   Server,
   Severity,
 } from "@mcp-sentinel/database";
+import type { CveReplayValidation } from "@mcp-sentinel/red-team";
+import type { CapabilityNode, RiskEdge } from "@mcp-sentinel/risk-matrix";
+
+// ─── Cluster D follow-on: Story-lens augmentations ──────────────────────────
+// These types layer on top of the core deep-dive contract. The existing
+// DeepDive*Schema in @mcp-sentinel/database all use `.passthrough()`, so
+// the additive fields below ride out on the wire without a Zod refactor.
+//
+// Every field is optional: a server with no synthesized kill chains, no
+// risk-matrix run, or pre-Phase-4 corpus state simply omits the field. The
+// frontend renders an explicit empty state per field rather than guessing.
+
+/** A single multi-step kill chain involving this server. Mirrors the row
+ *  shape returned by `DatabaseQueries.getAttackChainsForServer()`. The
+ *  helper is intentionally pass-through: shaping happens in the assembler
+ *  and the fields are NOT canonicalised at this layer. */
+export interface DeepDiveAttackChain {
+  chain_id: string;
+  kill_chain_id: string;
+  kill_chain_name: string;
+  /** Ordered attack steps. Shape stable: each entry is `{ ordinal, server_id,
+   *  server_name, role, capabilities_used, tools_involved, edge_to_next?,
+   *  narrative }`. We pass it through as `unknown[]` so the contract here
+   *  doesn't drift if the attack-graph engine adds fields. */
+  steps: unknown[];
+  exploitability_overall: number;
+  exploitability_rating: string;
+  narrative: string;
+  /** Pre-computed mitigations from the engine. Each entry shape:
+   *  `{ action, target_server_id?, target_server_name?, description,
+   *  breaks_steps: number[], effect }`. Pass-through for the same reason. */
+  mitigations: unknown[];
+  owasp_refs: string[];
+  mitre_refs: string[];
+}
+
+/** A cross-server risk edge involving this server (as source or target).
+ *  Mirrors the join row from `DatabaseQueries.getRiskEdgesForServer()`. */
+export interface DeepDiveRiskEdge {
+  config_id: string;
+  from_server: { id: string; name: string; slug: string };
+  to_server: { id: string; name: string; slug: string };
+  edge_type: string;
+  pattern_id: string;
+  severity: string;
+  description: string;
+  owasp_category: string | null;
+  mitre_technique: string | null;
+}
+
+/** Provenance footprint that travels with every deep-dive response. The
+ *  same triple is also embedded in per-finding signed receipts so auditors
+ *  can correlate page-level facts with their signed counterparts. */
+export interface DeepDiveProvenance {
+  /** Last completed scan id whose findings populate this view. Null when
+   *  the server has never been scanned successfully. */
+  scan_id: string | null;
+  /** ISO 8601 of the scan's completed_at. Null on never-scanned. */
+  scan_completed_at: string | null;
+  /** rules-package version the scan ran against. */
+  rules_version: string | null;
+  /** Sentinel build version (from MCP_SENTINEL_VERSION env var). */
+  sentinel_version: string;
+  /** HMAC key id auditors will use to verify per-finding receipts. The
+   *  raw HMAC secret is NEVER exposed — only the public key id. */
+  signing_key_id: string;
+}
 
 // ─── Taxonomy + Methodology types (loader contracts) ───────────────────────
 
@@ -429,6 +496,36 @@ export interface BuildDeepDiveInput {
    * opt out of the per-rule backing footer.
    */
   getDetectionQuality: (ruleId: string) => DetectionQuality | null;
+  /**
+   * Reverse index from `cve-validation.ts`. Returns the list of CVE / research
+   * replay cases that exercise this rule, with title, source URL, and
+   * disclosure date so the frontend can render a "validated against CVE-X,
+   * CVE-Y" pill. Returns an empty array when the rule has no replay coverage.
+   * Optional — when omitted, no rule receives a `validated_by_cve` field.
+   */
+  getCveValidation?: (ruleId: string) => CveReplayValidation[];
+  /**
+   * Synthesized kill chains involving this server (from
+   * `DatabaseQueries.getAttackChainsForServer()`). Optional — empty / absent
+   * when no chains have been computed for this server. The frontend
+   * Story-lens reel iterates this list verbatim.
+   */
+  attackChains?: DeepDiveAttackChain[];
+  /**
+   * Cross-server risk edges that involve this server. Optional — empty
+   * when the server hasn't participated in a risk-matrix run yet.
+   */
+  riskEdges?: DeepDiveRiskEdge[];
+  /**
+   * Risk-matrix capability classification for this server (drives the
+   * Story-lens "Capability Surface" diagram). Optional.
+   */
+  capabilityNode?: CapabilityNode | null;
+  /**
+   * Provenance triple stamped on every response. Required when set so the
+   * audit drawer can render the answer to "where did this view come from?"
+   */
+  provenance?: DeepDiveProvenance;
 }
 
 export interface AnalysisCoverageInput {
@@ -452,16 +549,19 @@ export function buildDeepDive(input: BuildDeepDiveInput): DeepDiveResponse {
   // renders a "taxonomy unavailable" placeholder. coverage still populates
   // from findings + (optional) analysis_coverage so the hero still works.
   if (!input.taxonomy || input.taxonomy.categories.length === 0) {
-    return {
-      server: { slug: input.server.slug, name: input.server.name },
-      coverage: assembleCoverage({
-        coverage: input.coverage,
-        findings: input.findings,
-        totalRulesInTaxonomy: 0,
-        rulesWithFindings: countDistinctRules(findingsByRule),
-      }),
-      categories: [],
-    };
+    return decorateResponse(
+      {
+        server: { slug: input.server.slug, name: input.server.name },
+        coverage: assembleCoverage({
+          coverage: input.coverage,
+          findings: input.findings,
+          totalRulesInTaxonomy: 0,
+          rulesWithFindings: countDistinctRules(findingsByRule),
+        }),
+        categories: [],
+      },
+      input,
+    );
   }
 
   // Track which rules we've placed under a category — used to compute
@@ -491,22 +591,62 @@ export function buildDeepDive(input: BuildDeepDiveInput): DeepDiveResponse {
       ruleAppearances,
       getFrameworkControls: input.getFrameworkControls,
       getDetectionQuality: input.getDetectionQuality,
+      getCveValidation: input.getCveValidation,
     }),
   );
 
   const totalRulesInTaxonomy = ruleAppearances.size;
   const rulesWithFindings = countDistinctRules(findingsByRule);
 
-  return {
-    server: { slug: input.server.slug, name: input.server.name },
-    coverage: assembleCoverage({
-      coverage: input.coverage,
-      findings: input.findings,
-      totalRulesInTaxonomy,
-      rulesWithFindings,
-    }),
-    categories,
+  return decorateResponse(
+    {
+      server: { slug: input.server.slug, name: input.server.name },
+      coverage: assembleCoverage({
+        coverage: input.coverage,
+        findings: input.findings,
+        totalRulesInTaxonomy,
+        rulesWithFindings,
+      }),
+      categories,
+    },
+    input,
+  );
+}
+
+/**
+ * Layer the optional Story-lens augmentations onto the core response. The
+ * DeepDive*Schema all use `.passthrough()`, so these fields ride out
+ * verbatim without a Zod refactor — but consumers reading the original
+ * shape (`server`, `coverage`, `categories`) keep working.
+ *
+ * Empty arrays / null fields are omitted entirely so a server with no
+ * synthesized chain or no risk-matrix run doesn't carry `attack_chains: []`
+ * — the frontend distinguishes "no data" (key absent) from "computed and
+ * empty" (`attack_chains: []`).
+ */
+function decorateResponse(
+  base: DeepDiveResponse,
+  input: BuildDeepDiveInput,
+): DeepDiveResponse {
+  const augmented = base as DeepDiveResponse & {
+    attack_chains?: DeepDiveAttackChain[];
+    risk_edges?: DeepDiveRiskEdge[];
+    capability_node?: CapabilityNode;
+    provenance?: DeepDiveProvenance;
   };
+  if (Array.isArray(input.attackChains) && input.attackChains.length > 0) {
+    augmented.attack_chains = input.attackChains;
+  }
+  if (Array.isArray(input.riskEdges) && input.riskEdges.length > 0) {
+    augmented.risk_edges = input.riskEdges;
+  }
+  if (input.capabilityNode) {
+    augmented.capability_node = input.capabilityNode;
+  }
+  if (input.provenance) {
+    augmented.provenance = input.provenance;
+  }
+  return augmented;
 }
 
 // ─── Internal assembly ──────────────────────────────────────────────────────
@@ -537,6 +677,7 @@ interface AssembleCategoryInput {
   ruleAppearances: Map<string, Array<{ category_id: string; sub_category_id: string }>>;
   getFrameworkControls: (ruleId: string) => FrameworkControlMapping[];
   getDetectionQuality: (ruleId: string) => DetectionQuality | null;
+  getCveValidation?: (ruleId: string) => CveReplayValidation[];
 }
 
 function assembleCategory(input: AssembleCategoryInput): DeepDiveCategory {
@@ -550,6 +691,7 @@ function assembleCategory(input: AssembleCategoryInput): DeepDiveCategory {
       ruleAppearances: input.ruleAppearances,
       getFrameworkControls: input.getFrameworkControls,
       getDetectionQuality: input.getDetectionQuality,
+      getCveValidation: input.getCveValidation,
     }),
   );
 
@@ -582,6 +724,7 @@ function assembleSubCategory(input: AssembleSubCategoryInput): DeepDiveSubCatego
       ruleAppearances: input.ruleAppearances,
       getFrameworkControls: input.getFrameworkControls,
       getDetectionQuality: input.getDetectionQuality,
+      getCveValidation: input.getCveValidation,
     }),
   );
   const counts = computeRuleCounts(rules);
@@ -605,6 +748,7 @@ interface AssembleRuleInput {
   ruleAppearances: Map<string, Array<{ category_id: string; sub_category_id: string }>>;
   getFrameworkControls: (ruleId: string) => FrameworkControlMapping[];
   getDetectionQuality: (ruleId: string) => DetectionQuality | null;
+  getCveValidation?: (ruleId: string) => CveReplayValidation[];
 }
 
 function assembleRule(input: AssembleRuleInput): DeepDiveRule {
@@ -676,6 +820,17 @@ function assembleRule(input: AssembleRuleInput): DeepDiveRule {
   };
   if (otherAppearances.length > 0) {
     rule.cross_referenced_in = otherAppearances;
+  }
+  // Story-lens augmentation: layer the CVE replay coverage onto the rule
+  // via passthrough. Empty arrays are omitted entirely so the frontend
+  // distinguishes "no replay coverage on file" (key absent) from "the
+  // index returned []" (rare, treated the same as absent).
+  if (input.getCveValidation) {
+    const validations = input.getCveValidation(input.ruleId);
+    if (validations.length > 0) {
+      (rule as DeepDiveRule & { validated_by_cve?: CveReplayValidation[] })
+        .validated_by_cve = validations;
+    }
   }
   return rule;
 }

@@ -40,6 +40,11 @@ vi.mock("@mcp-sentinel/database", () => {
     getAttackChainsForServer: vi.fn().mockResolvedValue([]),
     getRiskEdgesForServer: vi.fn().mockResolvedValue([]),
     getComplianceFindingsForServer: vi.fn().mockResolvedValue([]),
+    // Cluster D follow-on (Story-lens augmentations) — provenance triple
+    // and per-finding signed receipt endpoint. Default to null so tests
+    // that don't configure a scan / finding row see the honest-gap path.
+    getLatestCompletedScanForServer: vi.fn().mockResolvedValue(null),
+    getFindingByIdWithProvenance: vi.fn().mockResolvedValue(null),
   };
 
   // Real Zod schema for ScoreDetailResponse — kept in sync with
@@ -102,6 +107,10 @@ vi.mock("@mcp-sentinel/database", () => {
 // /servers/:slug request. Tests that need the corpus value can override.
 vi.mock("@mcp-sentinel/red-team", () => ({
   getCorpusManifest: vi.fn().mockResolvedValue({}),
+  // Cluster D follow-on — primeCveValidationIndex() dynamic-imports this
+  // module too. Default to no replay coverage so deep-dive responses omit
+  // the validated_by_cve field. Tests that exercise the pill override this.
+  getCveValidationIndex: vi.fn().mockResolvedValue({}),
 }));
 
 // ─── Mock pg to avoid real connection pools ───────────────────────────────────
@@ -136,6 +145,9 @@ type MockDb = {
   getAttackChainsForServer: ReturnType<typeof vi.fn>;
   // PR #218 — Phase-5 compliance findings tab (restored after route collision)
   getComplianceFindingsForServer: ReturnType<typeof vi.fn>;
+  // Cluster D follow-on — provenance triple + per-finding receipt endpoint
+  getLatestCompletedScanForServer: ReturnType<typeof vi.fn>;
+  getFindingByIdWithProvenance: ReturnType<typeof vi.fn>;
 };
 const { _mockDb: db } = (await import("@mcp-sentinel/database")) as unknown as {
   _mockDb: MockDb;
@@ -2673,5 +2685,330 @@ describe("Deep Dive endpoint (GET /api/v1/servers/:slug/deep-dive)", () => {
     for (const r of allRules) {
       expect(r.status).toBe("passed");
     }
+  });
+});
+
+// ─── Cluster D follow-on — Story-lens augmentations on /deep-dive ─────────
+// These tests exercise the additive fields layered onto the deep-dive
+// response: attack_chains, risk_edges, capability_node, provenance, and
+// per-rule validated_by_cve. The base contract (`server`, `coverage`,
+// `categories`) is covered by the suite above; this block focuses only
+// on the new surface so a regression here is easy to localise.
+describe("Deep Dive — Story-lens augmentations", () => {
+  // The shared top-level `db` is the mocked DatabaseQueries instance —
+  // every method is a vi.fn(), reset by the per-test beforeEach below.
+
+  const baseServer = {
+    id: "00000000-0000-0000-0000-000000000aaa",
+    slug: "dd-aug-server",
+    name: "Augmented Deep Dive Server",
+    category: "filesystem",
+    latest_score: 60,
+  };
+
+  beforeAll(async () => {
+    const dd = await import("../deep-dive.js");
+    // Pin a tiny taxonomy + methodology so the assembler emits at least
+    // one rule we can verify the validated_by_cve pill on.
+    dd._setTaxonomyForTests({
+      categories: [
+        {
+          id: "code-vulns",
+          title: "Code Vulnerabilities",
+          summary: "Code execution risks.",
+          frameworks: ["MCP03"],
+          sub_categories: [
+            {
+              id: "command-injection",
+              title: "Command Injection",
+              summary: "shell exec sinks",
+              rules: ["C1"],
+            },
+          ],
+        },
+      ],
+    } as never);
+    dd._setMethodologyForTests({
+      C1: {
+        technique: "ast-taint",
+        verified_edge_cases: [],
+        edge_case_strategies: [],
+        confidence_cap: 0.99,
+        summary: "Detects command injection.",
+        rule_meta: {
+          name: "Command Injection",
+          severity: "critical",
+          category: "code-analysis",
+          owasp: "MCP03-command-injection",
+          mitre: "AML.T0054",
+          remediation: "Use execFile().",
+          requires_inputs: ["source_code"],
+        },
+      },
+    } as never);
+  });
+
+  beforeEach(() => {
+    db.findServerBySlug.mockResolvedValue(baseServer);
+    db.getFindingsForServer.mockResolvedValue([]);
+    db.getLatestScoreForServer.mockResolvedValue(null);
+    db.getAttackChainsForServer.mockResolvedValue([]);
+    db.getRiskEdgesForServer.mockResolvedValue([]);
+    db.getToolsForServer.mockResolvedValue([]);
+    db.getLatestCompletedScanForServer.mockResolvedValue(null);
+  });
+
+  it("attaches provenance even when no scan / chain / risk-edge data exists", async () => {
+    const res = await request(app).get(
+      "/api/v1/servers/dd-aug-server/deep-dive",
+    );
+    expect(res.status).toBe(200);
+    const body = res.body.data as Record<string, unknown>;
+    const provenance = body.provenance as Record<string, unknown> | undefined;
+    expect(provenance).toBeDefined();
+    // Honest gaps: scan_id / completed_at / rules_version are null when no
+    // completed scan is on file. signing_key_id + sentinel_version are
+    // always populated.
+    expect(provenance!.scan_id).toBeNull();
+    expect(provenance!.scan_completed_at).toBeNull();
+    expect(provenance!.rules_version).toBeNull();
+    expect(typeof provenance!.sentinel_version).toBe("string");
+    expect(typeof provenance!.signing_key_id).toBe("string");
+    // Empty arrays are omitted entirely so the frontend distinguishes "no
+    // data" (key absent) from "computed and empty".
+    expect("attack_chains" in body).toBe(false);
+    expect("risk_edges" in body).toBe(false);
+    // capability_node is always emitted (the classifier is pure) — even
+    // a zero-tools server gets an empty capabilities array.
+    expect(body.capability_node).toBeDefined();
+  });
+
+  it("surfaces attack chains, risk edges, and provenance when present", async () => {
+    db.getAttackChainsForServer.mockResolvedValue([
+      {
+        id: "row-1",
+        chain_id: "chain-abc",
+        config_id: "cfg-1",
+        kill_chain_id: "KC01",
+        kill_chain_name: "Indirect Injection → Data Exfiltration",
+        steps: [{ ordinal: 1, server_id: baseServer.id, role: "data-source" }],
+        exploitability_overall: 0.78,
+        exploitability_rating: "critical",
+        narrative: "Attacker uses ... to reach ...",
+        mitigations: [
+          {
+            action: "remove_server",
+            target_server_name: "web-scraper",
+            description: "Removes injection entry point",
+            breaks_steps: [1],
+            effect: "breaks_chain",
+          },
+        ],
+        owasp_refs: ["MCP01"],
+        mitre_refs: ["AML.T0054.001"],
+        created_at: new Date(),
+      },
+    ]);
+    db.getRiskEdgesForServer.mockResolvedValue([
+      {
+        id: "edge-1",
+        config_id: "cfg-1",
+        from_server_id: baseServer.id,
+        from_server_name: baseServer.name,
+        from_server_slug: baseServer.slug,
+        to_server_id: "00000000-0000-0000-0000-000000000bbb",
+        to_server_name: "exfil-mcp",
+        to_server_slug: "exfil-mcp",
+        edge_type: "exfiltration_chain",
+        pattern_id: "P06",
+        severity: "high",
+        description: "Data read here flows to exfil-mcp's send_message",
+        owasp_category: "MCP04",
+        mitre_technique: "AML.T0057",
+        detected_at: "2026-04-30T08:00:00Z",
+      },
+    ]);
+    db.getLatestCompletedScanForServer.mockResolvedValue({
+      id: "00000000-0000-0000-0000-000000000ccc",
+      rules_version: "2026-04-23",
+      completed_at: new Date("2026-04-30T08:00:00Z"),
+    });
+
+    const res = await request(app).get(
+      "/api/v1/servers/dd-aug-server/deep-dive",
+    );
+    expect(res.status).toBe(200);
+    const body = res.body.data as Record<string, unknown>;
+
+    const chains = body.attack_chains as Array<Record<string, unknown>>;
+    expect(chains.length).toBe(1);
+    expect(chains[0]!.kill_chain_id).toBe("KC01");
+    expect(chains[0]!.exploitability_rating).toBe("critical");
+    // Internal columns (id, config_id, created_at) are stripped.
+    expect("id" in chains[0]!).toBe(false);
+    expect("config_id" in chains[0]!).toBe(false);
+    expect("created_at" in chains[0]!).toBe(false);
+
+    const edges = body.risk_edges as Array<Record<string, unknown>>;
+    expect(edges.length).toBe(1);
+    expect(edges[0]!.pattern_id).toBe("P06");
+    // Per-server columns are nested into from_server / to_server.
+    expect((edges[0]!.from_server as Record<string, unknown>).slug).toBe(
+      baseServer.slug,
+    );
+    expect((edges[0]!.to_server as Record<string, unknown>).slug).toBe(
+      "exfil-mcp",
+    );
+
+    const provenance = body.provenance as Record<string, unknown>;
+    expect(provenance.scan_id).toBe("00000000-0000-0000-0000-000000000ccc");
+    expect(provenance.rules_version).toBe("2026-04-23");
+    expect(typeof provenance.scan_completed_at).toBe("string");
+  });
+
+  it("attaches validated_by_cve to a rule whose Phase-4 corpus index is non-empty", async () => {
+    // Override the cve-validation index (mocked at module scope to {}).
+    const cveMod = await import("../cve-validation.js");
+    cveMod._setCveValidationIndexForTests(
+      new Map([
+        [
+          "C1",
+          [
+            {
+              id: "CVE-2025-6514",
+              kind: "cve" as const,
+              title: "mcp-remote OS command injection",
+              source_url: "https://nvd.nist.gov/vuln/detail/CVE-2025-6514",
+              disclosed: "2025-07-02",
+              cvss_v3: 9.6,
+              min_severity: "critical",
+            },
+          ],
+        ],
+      ]),
+    );
+
+    const res = await request(app).get(
+      "/api/v1/servers/dd-aug-server/deep-dive",
+    );
+    expect(res.status).toBe(200);
+    const body = res.body.data as Record<string, unknown>;
+    const cats = body.categories as Array<Record<string, unknown>>;
+    const subs = cats[0]!.sub_categories as Array<Record<string, unknown>>;
+    const rules = subs[0]!.rules as Array<Record<string, unknown>>;
+    const c1 = rules.find((r) => r.rule_id === "C1");
+    expect(c1).toBeDefined();
+    const validations = c1!.validated_by_cve as Array<Record<string, unknown>>;
+    expect(validations).toBeDefined();
+    expect(validations.length).toBe(1);
+    expect(validations[0]!.id).toBe("CVE-2025-6514");
+    cveMod._resetCveValidationIndexForTests();
+  });
+});
+
+// ─── /api/v1/findings/:id/receipt ─────────────────────────────────────────
+describe("Finding receipt endpoint (GET /api/v1/findings/:id/receipt)", () => {
+  // Reuse the shared top-level `db` mock instance.
+
+  const VALID_UUID = "11111111-2222-3333-4444-555555555555";
+  const findingRow = {
+    id: VALID_UUID,
+    server_id: "00000000-0000-0000-0000-000000000aaa",
+    server_slug: "demo-server",
+    scan_id: "00000000-0000-0000-0000-000000000111",
+    scan_rules_version: "2026-04-23",
+    scan_completed_at: new Date("2026-04-30T08:00:00.000Z"),
+    rule_id: "C1",
+    severity: "critical",
+    evidence: "exec(req.body.cmd) at server.ts:42",
+    remediation: "Use execFile() and validate inputs against allowlist.",
+    owasp_category: "MCP03-command-injection",
+    mitre_technique: "AML.T0054",
+    confidence: 0.92,
+    evidence_chain: { links: [] },
+    created_at: new Date("2026-04-30T08:00:00.000Z"),
+  };
+
+  beforeEach(() => {
+    db.getFindingByIdWithProvenance.mockReset();
+  });
+
+  it("400s on a malformed finding id (no SQL probe reaches the DB)", async () => {
+    db.getFindingByIdWithProvenance.mockResolvedValue(null);
+    const res = await request(app).get(
+      "/api/v1/findings/not-a-uuid/receipt",
+    );
+    expect(res.status).toBe(400);
+    expect(db.getFindingByIdWithProvenance).not.toHaveBeenCalled();
+  });
+
+  it("404s when the finding does not exist", async () => {
+    db.getFindingByIdWithProvenance.mockResolvedValue(null);
+    const res = await request(app).get(
+      `/api/v1/findings/${VALID_UUID}/receipt`,
+    );
+    expect(res.status).toBe(404);
+    expect(db.getFindingByIdWithProvenance).toHaveBeenCalledWith(VALID_UUID);
+  });
+
+  it("returns a signed receipt that round-trips through verifyFinding", async () => {
+    db.getFindingByIdWithProvenance.mockResolvedValue(findingRow);
+    const res = await request(app).get(
+      `/api/v1/findings/${VALID_UUID}/receipt`,
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers["x-mcp-sentinel-algorithm"]).toBe("HMAC-SHA256");
+    expect(res.headers["x-mcp-sentinel-canonicalization"]).toBe("RFC8785");
+    expect(res.headers["x-mcp-sentinel-signature"]).toBeDefined();
+    expect(res.headers["x-mcp-sentinel-key-id"]).toBeDefined();
+
+    const { resolveSigningContextFromEnv, verifyFinding } = await import(
+      "@mcp-sentinel/compliance-reports"
+    );
+    const ctx = resolveSigningContextFromEnv();
+    const result = verifyFinding(res.body, ctx);
+    expect(result.valid).toBe(true);
+
+    // Receipt body carries the finding fields the auditor expects.
+    expect(res.body.receipt.id).toBe(VALID_UUID);
+    expect(res.body.receipt.rule_id).toBe("C1");
+    expect(res.body.receipt.server_slug).toBe("demo-server");
+    expect(res.body.receipt.provenance.scan_id).toBe(
+      "00000000-0000-0000-0000-000000000111",
+    );
+    expect(res.body.receipt.provenance.rules_version).toBe("2026-04-23");
+    expect(typeof res.body.receipt.provenance.sentinel_version).toBe("string");
+  });
+
+  it("emits the dev-key warning header when COMPLIANCE_SIGNING_KEY is unset", async () => {
+    const original = process.env["COMPLIANCE_SIGNING_KEY"];
+    delete process.env["COMPLIANCE_SIGNING_KEY"];
+    try {
+      db.getFindingByIdWithProvenance.mockResolvedValue(findingRow);
+      const res = await request(app).get(
+        `/api/v1/findings/${VALID_UUID}/receipt`,
+      );
+      expect(res.status).toBe(200);
+      expect(res.headers["x-mcp-sentinel-warning"]).toBe("dev-key-in-use");
+    } finally {
+      if (original !== undefined) process.env["COMPLIANCE_SIGNING_KEY"] = original;
+    }
+  });
+
+  it("tampering with the receipt body invalidates the signature", async () => {
+    db.getFindingByIdWithProvenance.mockResolvedValue(findingRow);
+    const res = await request(app).get(
+      `/api/v1/findings/${VALID_UUID}/receipt`,
+    );
+    expect(res.status).toBe(200);
+    const tampered = {
+      ...res.body,
+      receipt: { ...res.body.receipt, severity: "low" },
+    };
+    const { resolveSigningContextFromEnv, verifyFinding } = await import(
+      "@mcp-sentinel/compliance-reports"
+    );
+    const result = verifyFinding(tampered, resolveSigningContextFromEnv());
+    expect(result.valid).toBe(false);
   });
 });

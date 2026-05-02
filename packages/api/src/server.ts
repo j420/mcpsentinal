@@ -16,7 +16,7 @@ import type {
   ScoreDetailResponse,
   Server,
 } from "@mcp-sentinel/database";
-import { RiskMatrixAnalyzer } from "@mcp-sentinel/risk-matrix";
+import { RiskMatrixAnalyzer, buildCapabilityNode } from "@mcp-sentinel/risk-matrix";
 import { createBadgeSvg } from "./badge.js";
 import { createComplianceReportRoutes } from "./compliance-report-routes.js";
 import {
@@ -34,11 +34,23 @@ import {
   primeDetectionQualityIndex,
 } from "./detection-quality.js";
 import {
+  getCveValidationForRule,
+  primeCveValidationIndex,
+} from "./cve-validation.js";
+import {
   buildDeepDive,
   loadRuleMethodology,
   loadTaxonomy,
   type AnalysisCoverageInput as DeepDiveAnalysisCoverageInput,
+  type DeepDiveAttackChain,
+  type DeepDiveProvenance,
+  type DeepDiveRiskEdge,
 } from "./deep-dive.js";
+import {
+  resolveSigningContextFromEnv,
+  signFinding,
+  type FindingReceipt,
+} from "@mcp-sentinel/compliance-reports";
 
 // Sentinel + rules version — mirrors the constants in compliance-report-routes.ts
 // so the Posture Matrix endpoint stamps the same `rules_version` value
@@ -163,6 +175,15 @@ function isValidSlug(slug: string): boolean {
     !slug.includes("/") &&    // no path separators
     !slug.includes("\x00")    // no null bytes
   );
+}
+
+// Findings are persisted with UUIDv4 primary keys. The receipt endpoint
+// rejects anything else before it reaches the database — keeps SQL probes
+// and traversal attempts out of the query path.
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isValidUuid(id: string): boolean {
+  return UUID_RE.test(id);
 }
 
 // ─── Database ─────────────────────────────────────────────────────────────────
@@ -454,18 +475,35 @@ app.get(
         res.status(404).json({ error: "Server not found" });
         return;
       }
-      // Prime the existing reverse indexes BEFORE we map over rules so the
-      // synchronous lookups inside `buildDeepDive()` are O(1) per rule.
-      // Mirrors the multi-endpoint augmentation discipline used by
-      // /findings + /servers/:slug for framework_controls / detection_quality.
-      const [findings, score, _qualityIndex, taxonomy, methodology] =
-        await Promise.all([
-          db.getFindingsForServer(server.id),
-          db.getLatestScoreForServer(server.id),
-          primeDetectionQualityIndex(),
-          loadTaxonomy(),
-          loadRuleMethodology(),
-        ]);
+      // Prime the existing reverse indexes AND fetch the Story-lens
+      // augmentations (kill chains, risk edges, capability surface, latest
+      // scan provenance) BEFORE we map over rules so the synchronous
+      // lookups inside `buildDeepDive()` are O(1) per rule. Mirrors the
+      // multi-endpoint augmentation discipline used by /findings +
+      // /servers/:slug for framework_controls / detection_quality.
+      const [
+        findings,
+        score,
+        _qualityIndex,
+        _cveIndex,
+        taxonomy,
+        methodology,
+        attackChainRows,
+        riskEdgeRows,
+        tools,
+        latestScan,
+      ] = await Promise.all([
+        db.getFindingsForServer(server.id),
+        db.getLatestScoreForServer(server.id),
+        primeDetectionQualityIndex(),
+        primeCveValidationIndex(),
+        loadTaxonomy(),
+        loadRuleMethodology(),
+        db.getAttackChainsForServer(server.id),
+        db.getRiskEdgesForServer(server.id),
+        db.getToolsForServer(server.id),
+        db.getLatestCompletedScanForServer(server.id),
+      ]);
 
       // Project the persisted analysis_coverage into the helper's contract.
       // Pre-migration: getLatestScoreForServer returns analysis_coverage =
@@ -486,6 +524,77 @@ app.get(
           }
         : null;
 
+      // Project the persisted attack-chain rows into the helper's contract.
+      // Each row is verbatim from `attack_chains`; we drop the postgres-
+      // specific fields (`id`, `config_id`, `created_at`) before serving
+      // since they're internal correlation ids regulators don't need.
+      const attackChains: DeepDiveAttackChain[] = attackChainRows.map((row) => ({
+        chain_id: row.chain_id,
+        kill_chain_id: row.kill_chain_id,
+        kill_chain_name: row.kill_chain_name,
+        steps: row.steps,
+        exploitability_overall: row.exploitability_overall,
+        exploitability_rating: row.exploitability_rating,
+        narrative: row.narrative,
+        mitigations: row.mitigations,
+        owasp_refs: row.owasp_refs,
+        mitre_refs: row.mitre_refs,
+      }));
+
+      // Project the persisted risk_edges rows into the helper's contract.
+      // Same row shape as `getRiskEdgesForServer` — we just nest the per-
+      // server columns into `from_server` / `to_server` so the frontend
+      // doesn't have to reconstruct the relationship from flat columns.
+      const riskEdges: DeepDiveRiskEdge[] = riskEdgeRows.map((row) => ({
+        config_id: row.config_id,
+        from_server: {
+          id: row.from_server_id,
+          name: row.from_server_name,
+          slug: row.from_server_slug,
+        },
+        to_server: {
+          id: row.to_server_id,
+          name: row.to_server_name,
+          slug: row.to_server_slug,
+        },
+        edge_type: row.edge_type,
+        pattern_id: row.pattern_id,
+        severity: row.severity,
+        description: row.description,
+        owasp_category: row.owasp_category,
+        mitre_technique: row.mitre_technique,
+      }));
+
+      // Compute the capability node from the server's tools. Pure function
+      // (no fs, no db) — same classifier the cross-server risk-matrix run
+      // uses, so the capabilities surfaced here match what feeds P01-P12.
+      const capabilityNode = buildCapabilityNode({
+        server_id: server.id,
+        server_name: server.name,
+        server_slug: server.slug,
+        latest_score: server.latest_score ?? null,
+        category: server.category ?? null,
+        tools: tools.map((t: { name: string; description: string | null; capability_tags?: string[] }) => ({
+          name: t.name,
+          description: t.description,
+          capability_tags: t.capability_tags,
+        })),
+      });
+
+      // Provenance triple — every claim on the page traces back to this.
+      // The signing key id is the public identifier ONLY; the raw HMAC
+      // secret never leaves resolveSigningContextFromEnv().
+      const signingCtx = resolveSigningContextFromEnv();
+      const provenance: DeepDiveProvenance = {
+        scan_id: latestScan?.id ?? null,
+        scan_completed_at: latestScan?.completed_at
+          ? new Date(latestScan.completed_at).toISOString()
+          : null,
+        rules_version: latestScan?.rules_version ?? null,
+        sentinel_version: SENTINEL_VERSION,
+        signing_key_id: signingCtx.key_id,
+      };
+
       const body = buildDeepDive({
         server: { slug: server.slug, name: server.name },
         findings,
@@ -494,6 +603,11 @@ app.get(
         coverage,
         getFrameworkControls: (ruleId) => getFrameworkControlsForRule(ruleId),
         getDetectionQuality: (ruleId) => getDetectionQualityForRule(ruleId),
+        getCveValidation: (ruleId) => getCveValidationForRule(ruleId),
+        attackChains,
+        riskEdges,
+        capabilityNode,
+        provenance,
       });
 
       // Match the rest of the public surface — 5min fresh, 60s SWR.
@@ -504,6 +618,100 @@ app.get(
       res.status(500).json({ error: "Internal server error" });
     }
   }
+);
+
+// GET /api/v1/findings/:id/receipt — Per-finding signed receipt
+//
+// Returns a HMAC-SHA256-signed FindingReceipt envelope. Auditors copy the
+// canonical JSON out of `receipt`, recompute the canonicalisation locally
+// (RFC 8785), and verify the HMAC against the documented public key id —
+// proving the finding originated from this Sentinel deployment at the
+// stated `signed_at`.
+//
+// Reuses the same signing infrastructure that produces signed compliance
+// reports (`@mcp-sentinel/compliance-reports/attestation`):
+//   - same RFC 8785 canonicalization
+//   - same HMAC-SHA256 algorithm
+//   - same key_id flowing from COMPLIANCE_SIGNING_KEY{,_ID} env vars
+//
+// Response headers mirror the Phase 5 compliance-report routes so any
+// client that already verifies compliance reports can verify finding
+// receipts with zero new code. Dev-key warning header is set whenever
+// the env vars are unset (see resolveSigningContextFromEnv).
+//
+// Validation:
+//   - :id must be a UUIDv4 (matches the `findings.id` column shape)
+//   - 404 when the id is unknown
+//   - 400 when the id fails UUID validation (kept off the SQL path)
+app.get(
+  "/api/v1/findings/:id/receipt",
+  rateLimitMiddleware(),
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+    if (!id || !isValidUuid(id)) {
+      res.status(400).json({ error: "Invalid finding id" });
+      return;
+    }
+    try {
+      const row = await db.getFindingByIdWithProvenance(id);
+      if (!row) {
+        res.status(404).json({ error: "Finding not found" });
+        return;
+      }
+      const receipt: FindingReceipt = {
+        id: row.id,
+        server_slug: row.server_slug,
+        rule_id: row.rule_id,
+        // Severity comes off the row as `string`; the DB column is a checked
+        // enum and the FindingSchema narrows it. Re-narrow at the boundary
+        // so the receipt's typed severity matches FindingReceipt.
+        severity: row.severity as FindingReceipt["severity"],
+        confidence: row.confidence,
+        evidence: row.evidence,
+        evidence_chain: row.evidence_chain,
+        remediation: row.remediation,
+        owasp_category: row.owasp_category,
+        mitre_technique: row.mitre_technique,
+        finding_created_at: new Date(row.created_at).toISOString(),
+        provenance: {
+          scan_id: row.scan_id,
+          rules_version: row.scan_rules_version,
+          sentinel_version: SENTINEL_VERSION,
+        },
+      };
+      const signingCtx = resolveSigningContextFromEnv();
+      const signed = signFinding(receipt, signingCtx);
+
+      // Mirror the Phase 5 compliance-report attestation header surface so
+      // verifiers reuse one envelope-handling code path. The signature is
+      // ALSO in the body — headers are a convenience for tooling that
+      // wants to verify without parsing the JSON.
+      res.setHeader("X-MCP-Sentinel-Signature", signed.attestation.signature);
+      res.setHeader("X-MCP-Sentinel-Key-Id", signed.attestation.key_id);
+      res.setHeader("X-MCP-Sentinel-Signed-At", signed.attestation.signed_at);
+      res.setHeader("X-MCP-Sentinel-Algorithm", signed.attestation.algorithm);
+      res.setHeader(
+        "X-MCP-Sentinel-Canonicalization",
+        signed.attestation.canonicalization,
+      );
+      // Flag dev-key responses so verifiers don't accidentally trust them in
+      // production. Same pattern as compliance-report-routes.ts.
+      if (!process.env["COMPLIANCE_SIGNING_KEY"]) {
+        res.setHeader("X-MCP-Sentinel-Warning", "dev-key-in-use");
+      }
+
+      // Receipts are deterministic per finding (the finding row is append-
+      // only, ADR-008) — long cache is safe. Match compliance-report cadence.
+      res.setHeader(
+        "Cache-Control",
+        "public, max-age=300, stale-while-revalidate=60",
+      );
+      res.json(signed);
+    } catch (err) {
+      logger.error(err, "Finding receipt error");
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
 );
 
 // ─── Compliance routes ────────────────────────────────────────────────────────
