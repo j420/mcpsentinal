@@ -123,7 +123,19 @@ export default async function ServerDetailPage({
   const dd = await getDeepDive(slug);
   if (!dd) return notFound();
 
-  const hasContent = dd.categories.length > 0;
+  // Defensive coercion of every nested array on the deep-dive payload.
+  // The TS types say these are required, but at runtime an older api
+  // deploy or a partial-response edge case can land here with undefined
+  // / null fields. The page MUST NOT throw at the server-component
+  // level — that bypasses every per-section boundary and triggers the
+  // route-level error.tsx (HTTP 500). Coercing once up front means the
+  // rest of the render reads from arrays that are guaranteed to exist.
+  const safeCategories = Array.isArray(dd.categories) ? dd.categories : [];
+  const safeAttackChains = Array.isArray(dd.attack_chains)
+    ? dd.attack_chains
+    : undefined;
+  const safeRiskEdges = Array.isArray(dd.risk_edges) ? dd.risk_edges : undefined;
+  const hasContent = safeCategories.length > 0;
 
   // Phase 4 lens + density. Resolved server-side from the URL so SSR and
   // first paint match the client's eventual hydration — no flash. The
@@ -164,8 +176,8 @@ export default async function ServerDetailPage({
         <VerdictBar
           serverName={dd.server?.name ?? slug}
           coverage={dd.coverage}
-          categories={dd.categories}
-          attackChains={dd.attack_chains}
+          categories={safeCategories}
+          attackChains={safeAttackChains}
         />
       </SectionBoundary>
 
@@ -194,22 +206,22 @@ export default async function ServerDetailPage({
         <HeroBlock
           serverName={dd.server?.name ?? slug}
           coverage={dd.coverage}
-          categories={dd.categories}
-          attackChains={dd.attack_chains}
+          categories={safeCategories}
+          attackChains={safeAttackChains}
         />
       </SectionBoundary>
 
       <div className="dd-story-lens">
         <SectionBoundary section="kill-chain-reel" label="Attack stories">
           <KillChainReel
-            chains={dd.attack_chains}
+            chains={safeAttackChains}
             currentServerSlug={dd.server?.slug ?? slug}
           />
         </SectionBoundary>
         <SectionBoundary section="capability-surface" label="Capability surface">
           <CapabilitySurface
             node={dd.capability_node}
-            edges={dd.risk_edges}
+            edges={safeRiskEdges}
           />
         </SectionBoundary>
       </div>
@@ -217,7 +229,7 @@ export default async function ServerDetailPage({
       <SectionBoundary section="coverage-ledger" label="Coverage ledger">
         <CoverageLedger
           coverage={dd.coverage}
-          categories={dd.categories}
+          categories={safeCategories}
         />
       </SectionBoundary>
 
@@ -230,7 +242,7 @@ export default async function ServerDetailPage({
         <SectionBoundary section="compliance-view" label="Compliance posture">
           <ComplianceLensView
             serverSlug={dd.server?.slug ?? slug}
-            categories={dd.categories ?? []}
+            categories={safeCategories}
             apiOrigin={PUBLIC_API_ORIGIN}
           />
         </SectionBoundary>
@@ -241,17 +253,17 @@ export default async function ServerDetailPage({
               sidebar={
                 <SectionBoundary section="taxonomy-sidebar" label="Sidebar">
                   <Suspense fallback={null}>
-                    <DeepDiveSidebar categories={dd.categories} />
+                    <DeepDiveSidebar categories={safeCategories} />
                   </Suspense>
                 </SectionBoundary>
               }
               main={
                 <div className="dd-main">
-                  {dd.categories.map((cat) => (
+                  {safeCategories.map((cat, ci) => (
                     <SectionBoundary
-                      key={cat.id}
-                      section={`category-${cat.id ?? "unknown"}`}
-                      label={cat.title ?? cat.id ?? "Category"}
+                      key={cat?.id ?? `cat-${ci}`}
+                      section={`category-${cat?.id ?? "unknown"}`}
+                      label={cat?.title ?? cat?.id ?? "Category"}
                     >
                       <CategorySection cat={cat} />
                     </SectionBoundary>
@@ -289,7 +301,7 @@ export default async function ServerDetailPage({
           <ForensicDrawer
             serverSlug={dd.server?.slug ?? slug}
             serverName={dd.server?.name ?? slug}
-            categories={dd.categories ?? []}
+            categories={safeCategories}
             provenance={dd.provenance}
             apiOrigin={PUBLIC_API_ORIGIN}
           />
@@ -303,9 +315,11 @@ export default async function ServerDetailPage({
       <SectionBoundary section="mobile-navigate-fab" label="Mobile navigate">
         <Suspense fallback={null}>
           <MobileNavigateFAB
-            categories={dd.categories ?? []}
+            categories={safeCategories}
             lens={lens}
-            hasChains={Array.isArray(dd.attack_chains) && dd.attack_chains.length > 0}
+            hasChains={
+              Array.isArray(safeAttackChains) && safeAttackChains.length > 0
+            }
             hasSurface={Boolean(dd.capability_node)}
             hasCoverageLedger={(dd.coverage?.rules_skipped_no_data ?? 0) > 0}
           />
