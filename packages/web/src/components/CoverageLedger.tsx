@@ -116,7 +116,7 @@ export default function CoverageLedger({
     .reduce((acc, b) => acc + b.rules.length, 0);
 
   return (
-    <section className="cov-ledger" aria-labelledby="cov-ledger-title">
+    <section id="dd-section-coverage" className="cov-ledger" aria-labelledby="cov-ledger-title">
       <header className="cov-ledger-head">
         <h2 id="cov-ledger-title" className="cov-ledger-title">
           Coverage ledger

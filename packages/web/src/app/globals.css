@@ -15709,3 +15709,243 @@ body[data-trace-active]
   line-height: 1.55;
   max-width: 70ch;
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Phase 5 — Mobile pass
+ *
+ * Three deliverables:
+ *   1. .dd-mobile-stripe   — 4-px severity-coloured strip pinned to
+ *                            viewport top, always visible while scrolling
+ *                            on a phone
+ *   2. .mobile-nav-fab     — floating "Navigate" pill bottom-right that
+ *                            opens a bottom-sheet TOC
+ *   3. tighter mobile rules across the existing components
+ *
+ * Breakpoint discipline: anything mobile-only is hidden above 720px.
+ * Anything desktop-relevant degrades gracefully on mobile (no display:
+ * none on data-bearing sections — only on chrome).
+ * ──────────────────────────────────────────────────────────────────── */
+
+/* Section anchor offsets — every dd-section-* heading should clear the
+ * sticky verdict bar + lens controls when the user jumps to it. */
+[id^="dd-section-"] {
+  scroll-margin-top: 96px;
+}
+
+/* ── 1. MobileViewportStripe ────────────────────────────────────────── */
+.dd-mobile-stripe {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  z-index: 100; /* above sticky verdict bar (z-index: 30) */
+  pointer-events: none;
+  display: none;
+}
+@media (max-width: 720px) {
+  .dd-mobile-stripe {
+    display: block;
+  }
+  /* Bump the verdict bar down by 4px so the stripe doesn't overlap. */
+  .vbar {
+    top: 4px;
+  }
+}
+
+/* ── 2. MobileNavigateFAB ───────────────────────────────────────────── */
+.mobile-nav-fab {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 90;
+  display: none; /* shown via media query + visible-class */
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: var(--accent);
+  color: #1a1a1a;
+  border: 1px solid var(--accent);
+  border-radius: 9999px;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 0.92rem;
+  cursor: pointer;
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  transform: translateY(20px);
+  transition:
+    opacity 200ms ease-out,
+    transform 200ms ease-out,
+    background 120ms;
+  /* Touch target: 44x44 minimum per WCAG mobile guidance — the padding
+   * + content already exceeds that on every screen. */
+}
+.mobile-nav-fab span[aria-hidden] {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+@media (max-width: 720px) {
+  .mobile-nav-fab {
+    display: inline-flex;
+  }
+}
+.mobile-nav-fab.mobile-nav-fab-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.mobile-nav-fab:hover {
+  background: var(--accent-hover);
+}
+.mobile-nav-fab:focus-visible {
+  outline: 3px solid var(--accent-2);
+  outline-offset: 3px;
+}
+
+/* Bottom-sheet container (rendered when open) */
+.mobile-nav-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 10, 16, 0.6);
+  z-index: 1100; /* above forensic drawer's 1000 so a tap on the FAB
+                  * inside the drawer (shouldn't happen — we hide the
+                  * FAB when ?finding= is present — but defensive) lands
+                  * cleanly on top */
+  display: flex;
+  align-items: flex-end;
+  animation: mobileNavFadeIn 160ms ease-out;
+}
+@keyframes mobileNavFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.mobile-nav-sheet {
+  width: 100%;
+  max-height: 70vh;
+  background: var(--surface);
+  border-top-left-radius: var(--r-lg);
+  border-top-right-radius: var(--r-lg);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -16px 40px -12px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  animation: mobileNavSlideUp 220ms cubic-bezier(0.23, 1, 0.32, 1);
+  overflow: hidden;
+}
+@keyframes mobileNavSlideUp {
+  from { transform: translateY(40px); opacity: 0.6; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mobile-nav-backdrop, .mobile-nav-sheet { animation: none; }
+}
+
+.mobile-nav-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--s4) var(--s4) var(--s3);
+  border-bottom: 1px solid var(--border);
+}
+.mobile-nav-sheet-title {
+  margin: 0;
+  font-family: var(--font-display, var(--font-body));
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--text);
+}
+.mobile-nav-sheet-close {
+  appearance: none;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.mobile-nav-sheet-close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.mobile-nav-sheet-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+.mobile-nav-sheet-item {
+  display: block;
+  border-bottom: 1px solid var(--border);
+}
+.mobile-nav-sheet-item:last-child {
+  border-bottom: none;
+}
+.mobile-nav-sheet-link {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px var(--s4);
+  background: transparent;
+  border: none;
+  color: var(--text);
+  text-align: left;
+  font-size: 1rem;
+  cursor: pointer;
+  /* 44px minimum touch height — padding above + line-height delivers it. */
+}
+.mobile-nav-sheet-link:hover,
+.mobile-nav-sheet-link:focus-visible {
+  background: var(--surface-2);
+  outline: none;
+}
+.mobile-nav-sheet-chev {
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+}
+
+/* ── 3. Mobile-tightening across existing components ────────────────── */
+
+/* Kill-chain reel: single-column on narrow screens (default `auto-fill`
+ * with min 360px lands at 1 column on phones, but force the gap down). */
+@media (max-width: 640px) {
+  .kcr-reel-grid { gap: var(--s3); }
+  .kcr-card { padding: var(--s3); }
+  .kcr-card-title-row { gap: 6px; }
+  .kcr-card-score { margin-left: 0; }
+}
+
+/* Compliance lens: framework grid collapses to one column at 720px. */
+@media (max-width: 720px) {
+  .cl-fw-grid { grid-template-columns: 1fr; }
+  .cl-fw-card { padding: var(--s4); }
+  .cl-fw-head { flex-direction: column; gap: var(--s2); }
+  .cl-fw-actions { width: 100%; }
+}
+
+/* Hero block on mobile: extra room for the narrative bullets, severity
+ * bar list switches to compact spacing. */
+@media (max-width: 640px) {
+  .dd-hero2 { padding: var(--s4); gap: var(--s3); }
+  .dd-hero2-name { font-size: 1.5rem; }
+  .dd-hero2-right { padding: var(--s3); }
+}
+
+/* Coverage ledger: bucket rules wrap snugly. */
+@media (max-width: 640px) {
+  .cov-bucket-rule-link { max-width: 100%; }
+  .cov-bucket-rule-name { max-width: 50vw; }
+}
+
+/* Section boundary fallbacks shrink down on mobile — they shouldn't
+ * dominate the viewport. */
+@media (max-width: 640px) {
+  .section-boundary-fallback { font-size: 0.75rem; padding: 8px 10px; }
+}

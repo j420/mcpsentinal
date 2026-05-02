@@ -265,7 +265,7 @@ export default function ComplianceLensView({
   }
 
   return (
-    <section className="cl-view" aria-labelledby="cl-view-title">
+    <section id="dd-section-compliance" className="cl-view" aria-labelledby="cl-view-title">
       <header className="cl-view-head">
         <h2 id="cl-view-title" className="cl-view-title">
           Compliance posture

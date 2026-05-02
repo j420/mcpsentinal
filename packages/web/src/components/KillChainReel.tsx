@@ -184,7 +184,7 @@ export default function KillChainReel({
   if (totalChains === 0) return null;
 
   return (
-    <section className="kcr-reel" aria-labelledby="kcr-reel-title">
+    <section id="dd-section-chains" className="kcr-reel" aria-labelledby="kcr-reel-title">
       <header className="kcr-reel-head">
         <h2 id="kcr-reel-title" className="kcr-reel-title">
           Attack stories involving this server

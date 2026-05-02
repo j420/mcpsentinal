@@ -49,7 +49,11 @@ export default function ProvenanceFooter({ provenance }: ProvenanceFooterProps) 
   } = provenance;
 
   return (
-    <footer className="prov-footer" aria-labelledby="prov-footer-title">
+    <footer
+      id="dd-section-provenance"
+      className="prov-footer"
+      aria-labelledby="prov-footer-title"
+    >
       <h2 id="prov-footer-title" className="prov-footer-title">
         Provenance &amp; attestation
       </h2>

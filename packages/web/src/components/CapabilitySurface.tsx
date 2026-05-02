@@ -112,7 +112,7 @@ export default function CapabilitySurface({
   );
 
   return (
-    <section className="csurf" aria-labelledby="csurf-title">
+    <section id="dd-section-surface" className="csurf" aria-labelledby="csurf-title">
       <header className="csurf-head">
         <h2 id="csurf-title" className="csurf-title">
           Capability surface

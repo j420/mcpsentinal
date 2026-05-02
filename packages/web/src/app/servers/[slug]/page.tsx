@@ -39,6 +39,8 @@ import SectionBoundary from "@/components/SectionBoundary";
 import HoverTraceController from "@/components/HoverTraceController";
 import ForensicDrawer from "@/components/ForensicDrawer";
 import ComplianceLensView from "@/components/ComplianceLensView";
+import MobileViewportStripe from "@/components/MobileViewportStripe";
+import MobileNavigateFAB from "@/components/MobileNavigateFAB";
 import type { DeepDiveResponse, DeepDiveData } from "@/lib/deep-dive";
 
 // Public api origin for receipt-URL construction. NEXT_PUBLIC_API_URL
@@ -135,6 +137,14 @@ export default async function ServerDetailPage({
       data-lens={lens}
       data-density={density}
     >
+      {/* Phase 5 — mobile viewport stripe (4-px severity-coloured strip
+          pinned to the very top of the viewport). Hidden via CSS on
+          desktop. Always-visible status the user can never miss while
+          scrolling on a phone. */}
+      <SectionBoundary section="mobile-stripe" label="Mobile severity strip">
+        <MobileViewportStripe coverage={dd.coverage} />
+      </SectionBoundary>
+
       {/* Phase 5 — page-wide hover-to-trace controller. Mounts once per
           page; emits no markup. Delegated mouseover/focusin listener
           wires every [data-trace] element into the same highlight cluster
@@ -282,6 +292,22 @@ export default async function ServerDetailPage({
             categories={dd.categories ?? []}
             provenance={dd.provenance}
             apiOrigin={PUBLIC_API_ORIGIN}
+          />
+        </Suspense>
+      </SectionBoundary>
+
+      {/* Phase 5 — mobile navigate FAB. Hidden via CSS above 720px;
+          appears once the user scrolls past the verdict bar. Opens a
+          bottom-sheet TOC anchored to each section's stable id. Uses
+          useSearchParams so wrapped in Suspense per Next 15. */}
+      <SectionBoundary section="mobile-navigate-fab" label="Mobile navigate">
+        <Suspense fallback={null}>
+          <MobileNavigateFAB
+            categories={dd.categories ?? []}
+            lens={lens}
+            hasChains={Array.isArray(dd.attack_chains) && dd.attack_chains.length > 0}
+            hasSurface={Boolean(dd.capability_node)}
+            hasCoverageLedger={(dd.coverage?.rules_skipped_no_data ?? 0) > 0}
           />
         </Suspense>
       </SectionBoundary>
