@@ -1,3 +1,4 @@
+"use client";
 /**
  * HeroBlock — page-opening "What you should know" panel.
  *
@@ -9,10 +10,13 @@
  *          bullets ("What you should know" — buildAutoNarrative output).
  *   Right: severity proportional bar with counts.
  *
- * Server component — pure SSR. Bullets are built deterministically from
- * the response (no LLM, ADR-006). Empty bullet list → no narrative panel,
- * but the server name + coverage line still render so the page never
- * looks broken when only sparse data is on file.
+ * Client component (`"use client"`) so that any unexpected render
+ * exception is caught by the surrounding <SectionBoundary/> instead of
+ * propagating up to the route-level error.tsx and emitting a 500.
+ * Bullets are still built deterministically from the response (no LLM,
+ * ADR-006). Empty bullet list → no narrative panel, but the server name
+ * + coverage line still render so the page never looks broken when only
+ * sparse data is on file.
  *
  * Visual language: tokens only — `--text`, `--text-2`, `--text-3`,
  * `--surface`, `--surface-2`, `--border`, `--font-display`,
