@@ -14878,3 +14878,122 @@ body:has(.dd-page-stripped) .site-main {
   font-size: 0.82rem;
   font-family: var(--font-mono);
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Phase 5 — Hover-to-Trace
+ *
+ * Page-wide spatial reasoning: hover any [data-trace] element, every
+ * other element with the same trace key lights up across the page.
+ * The controller (HoverTraceController.tsx) sets:
+ *   body[data-trace-active="<key>"]
+ *   [data-trace="<key>"][data-trace-match="true"]   (on every match)
+ * The CSS below gives the visual layer.
+ *
+ * Design choices:
+ *   - Non-matching [data-trace] elements dim to ~55% so the eye lands
+ *     on matches without losing context (vs aggressive 0% which
+ *     destroys spatial reasoning).
+ *   - Matching elements get a thin accent outline + accent tint —
+ *     legible on every existing background.
+ *   - Transitions are 120ms — fast enough to feel live, slow enough
+ *     not to flicker on cursor jitter.
+ *   - data-trace elements get a default `cursor: help` so the
+ *     interaction is discoverable.
+ * ──────────────────────────────────────────────────────────────────── */
+
+[data-trace] {
+  cursor: help;
+  transition:
+    opacity var(--t-fast, 120ms),
+    outline-color var(--t-fast, 120ms),
+    background-color var(--t-fast, 120ms);
+  border-radius: 3px;
+}
+
+/* Subtle hint that the element is interactive — only shows when no
+ * trace is active (so the underline doesn't fight the highlight). */
+body:not([data-trace-active]) [data-trace]:hover {
+  outline: 1px dashed var(--accent-ring);
+  outline-offset: 2px;
+}
+
+/* Once a trace key is active, dim non-matching cousins. */
+body[data-trace-active] [data-trace]:not([data-trace-match]) {
+  opacity: 0.55;
+}
+
+/* Match the active key — accent ring + accent tint. */
+body[data-trace-active] [data-trace-match] {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+  background-color: var(--accent-sub);
+  position: relative;
+  z-index: 1;
+}
+
+/* Special-case the kill-chain step server name + tool — they sit
+ * inside a flexbox row, so a margin-driven outline would re-flow
+ * neighbours. Use box-shadow instead for those (no layout shift). */
+body[data-trace-active]
+  .kcr-step-server[data-trace-match],
+body[data-trace-active]
+  .kcr-step-tool[data-trace-match],
+body[data-trace-active]
+  .csurf-pattern-peer[data-trace-match] {
+  outline: none;
+  box-shadow:
+    0 0 0 1px var(--accent),
+    0 0 0 4px var(--accent-sub);
+}
+
+/* For the rule pill in the coverage ledger, the link itself carries
+ * data-trace; keep the highlight inset so it doesn't bleed into
+ * neighbouring pills. */
+body[data-trace-active]
+  a.cov-bucket-rule-link[data-trace-match] {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* CVE pill highlight — it lives on a dotted strip; keep the highlight
+ * crisp. */
+body[data-trace-active]
+  a.rec-cve-strip-link[data-trace-match] {
+  outline: 1px solid var(--sev-low);
+  outline-offset: 1px;
+  background-color: rgba(91, 214, 138, 0.18);
+}
+
+/* Don't dim the body chrome itself when a trace is active — only the
+ * other [data-trace] elements need to fade. The hero, verdict bar, and
+ * non-trace text stay full opacity. */
+
+/* Print styles: no highlight in print. */
+@media print {
+  [data-trace] {
+    cursor: auto;
+    transition: none;
+  }
+  body[data-trace-active] [data-trace] {
+    opacity: 1 !important;
+    outline: none !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+  }
+}
+
+/* Reduced-motion: keep the colour change but skip the transition. */
+@media (prefers-reduced-motion: reduce) {
+  [data-trace] {
+    transition: none;
+  }
+}
+
+/* Touch / no-hover: trace works via tap on focusable elements. */
+[data-trace][tabindex] {
+  outline: none; /* visual outline lives on data-trace-match instead */
+}
+[data-trace][tabindex]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

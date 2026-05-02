@@ -148,6 +148,8 @@ export default function CapabilitySurface({
                   key={cap}
                   className="csurf-chip csurf-chip-high"
                   title={cap}
+                  data-trace={`capability:${cap}`}
+                  tabIndex={0}
                 >
                   {CAPABILITY_LABELS[cap] ?? cap}
                 </span>
@@ -164,6 +166,8 @@ export default function CapabilitySurface({
                   key={cap}
                   className="csurf-chip csurf-chip-neutral"
                   title={cap}
+                  data-trace={`capability:${cap}`}
+                  tabIndex={0}
                 >
                   {CAPABILITY_LABELS[cap] ?? cap}
                 </span>
@@ -194,6 +198,34 @@ export default function CapabilitySurface({
                 rows[0] && typeof rows[0].description === "string"
                   ? rows[0].description
                   : "—";
+              // Build the peer-name list with per-name trace targets — we
+              // need slugs to match the kill-chain step's `data-trace`,
+              // so we re-walk the source rows to grab a slug per name.
+              const peerEntries: Array<{ name: string; slug: string }> = [];
+              for (const r of rows) {
+                if (r.from_server && r.from_server.slug !== node.server_slug) {
+                  if (
+                    r.from_server.name &&
+                    !peerEntries.some((p) => p.name === r.from_server.name)
+                  ) {
+                    peerEntries.push({
+                      name: r.from_server.name,
+                      slug: r.from_server.slug,
+                    });
+                  }
+                }
+                if (r.to_server && r.to_server.slug !== node.server_slug) {
+                  if (
+                    r.to_server.name &&
+                    !peerEntries.some((p) => p.name === r.to_server.name)
+                  ) {
+                    peerEntries.push({
+                      name: r.to_server.name,
+                      slug: r.to_server.slug,
+                    });
+                  }
+                }
+              }
               return (
                 <li
                   key={patternId}
@@ -201,12 +233,32 @@ export default function CapabilitySurface({
                   data-sev={sev}
                   style={{ borderLeftColor: `var(--sev-${sev})` }}
                 >
-                  <span className="csurf-pattern-id">{patternId}</span>
+                  <span
+                    className="csurf-pattern-id"
+                    data-trace={`pattern:${patternId}`}
+                    tabIndex={0}
+                  >
+                    {patternId}
+                  </span>
                   <span className="csurf-pattern-desc">{desc}</span>
-                  {peers.size > 0 && (
+                  {peerEntries.length > 0 && (
                     <span className="csurf-pattern-peers">
-                      with {Array.from(peers).slice(0, 3).join(", ")}
-                      {peers.size > 3 ? ` +${peers.size - 3}` : ""}
+                      with{" "}
+                      {peerEntries.slice(0, 3).map((p, pi) => (
+                        <React.Fragment key={p.slug}>
+                          {pi > 0 ? ", " : null}
+                          <span
+                            className="csurf-pattern-peer"
+                            data-trace={`server:${p.slug}`}
+                            tabIndex={0}
+                          >
+                            {p.name}
+                          </span>
+                        </React.Fragment>
+                      ))}
+                      {peerEntries.length > 3
+                        ? ` +${peerEntries.length - 3}`
+                        : ""}
                     </span>
                   )}
                 </li>

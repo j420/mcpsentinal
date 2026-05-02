@@ -169,6 +169,7 @@ export default function CoverageLedger({
                     className="cov-bucket-rule-link"
                     href={`#rule-${r.rule_id}`}
                     title={r.name}
+                    data-trace={`rule:${r.rule_id}`}
                   >
                     <code className="cov-bucket-rule-id">{r.rule_id}</code>
                     <span className="cov-bucket-rule-name">{r.name}</span>

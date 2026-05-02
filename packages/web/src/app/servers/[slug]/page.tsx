@@ -36,6 +36,7 @@ import LensDensityControls, {
   resolveLensDensity,
 } from "@/components/LensDensityControls";
 import SectionBoundary from "@/components/SectionBoundary";
+import HoverTraceController from "@/components/HoverTraceController";
 import type { DeepDiveResponse, DeepDiveData } from "@/lib/deep-dive";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3100";
@@ -127,6 +128,14 @@ export default async function ServerDetailPage({
       data-lens={lens}
       data-density={density}
     >
+      {/* Phase 5 — page-wide hover-to-trace controller. Mounts once per
+          page; emits no markup. Delegated mouseover/focusin listener
+          wires every [data-trace] element into the same highlight cluster
+          so a buyer/CISO can hover a tool, capability, server, rule, cve,
+          kill-chain id, pattern, or framework control and see every
+          reference light up across the page. */}
+      <HoverTraceController />
+
       {/* Each major section is wrapped in its own SectionBoundary so a
           single render exception degrades to a quiet skeleton instead of
           taking down the whole page via the route-level error.tsx. The

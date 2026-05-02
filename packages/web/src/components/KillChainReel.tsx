@@ -278,7 +278,13 @@ export default function KillChainReel({
               <header className="kcr-card-head">
                 <div className="kcr-card-title-row">
                   {chain.kill_chain_id && (
-                    <span className="kcr-card-kc">{chain.kill_chain_id}</span>
+                    <span
+                      className="kcr-card-kc"
+                      data-trace={`kc:${chain.kill_chain_id}`}
+                      tabIndex={0}
+                    >
+                      {chain.kill_chain_id}
+                    </span>
                   )}
                   {chain.kill_chain_name && (
                     <span className="kcr-card-kc-name">
@@ -345,7 +351,14 @@ export default function KillChainReel({
                         </span>
                         <div className="kcr-step-body">
                           {step.server_name && (
-                            <div className="kcr-step-server">
+                            <div
+                              className="kcr-step-server"
+                              data-trace={
+                                step.server_id
+                                  ? `server:${step.server_id}`
+                                  : undefined
+                              }
+                            >
                               {step.server_name}
                             </div>
                           )}
@@ -354,7 +367,18 @@ export default function KillChainReel({
                           )}
                           {tools.length > 0 && (
                             <div className="kcr-step-tools">
-                              {tools.slice(0, 3).join(", ")}
+                              {tools.slice(0, 3).map((tool, ti) => (
+                                <React.Fragment key={`${tool}-${ti}`}>
+                                  {ti > 0 ? ", " : null}
+                                  <span
+                                    className="kcr-step-tool"
+                                    data-trace={`tool:${tool}`}
+                                    tabIndex={0}
+                                  >
+                                    {tool}
+                                  </span>
+                                </React.Fragment>
+                              ))}
                               {tools.length > 3 ? ` +${tools.length - 3}` : ""}
                             </div>
                           )}
