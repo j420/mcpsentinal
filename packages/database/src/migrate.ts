@@ -630,6 +630,60 @@ const MIGRATIONS = [
         WHERE total_score_v2 IS NOT NULL;
     `,
   },
+  {
+    id: "014_v2_score_persistence",
+    sql: `
+      -- Phase 1.1 — Persist the 8 v2 sub-scores + coverage band + analysis coverage.
+      --
+      -- Until this migration, the scorer (packages/scorer/src/scorer.ts → ScoreResult)
+      -- produced 8 v2 sub-scores and an AnalysisCoverageInput, but only the legacy
+      -- 5 sub-scores were persisted. getLatestScoreForServer returned literal null for
+      -- coverage_band, v2_sub_scores, and analysis_coverage on every scan — which made
+      -- the public registry's "scan coverage not yet on file" message permanent and
+      -- silently disabled the deep-dive coverage ledger.
+      --
+      -- This migration:
+      --   1. Adds the 7 missing v2 sub-score columns (schema/ecosystem/protocol/
+      --      adversarial/compliance/supply_chain/infrastructure). \`code_score\` is
+      --      already in the table because v1 also bucketed code separately.
+      --   2. Adds \`coverage_band\` as a top-level VARCHAR for indexable filtering
+      --      ("show me all servers with high-confidence scores").
+      --   3. Adds \`analysis_coverage\` as JSONB carrying the full coverage input so
+      --      the API can render the gap explanation per scan.
+      --
+      -- Defaults: 100 for the v2 sub-scores (no findings = clean = 100, matching
+      -- the scorer's initial state) and NULL for coverage_band / analysis_coverage
+      -- so historical rows are honestly distinguishable from post-migration rows.
+      -- ADR-008 is preserved: this is an ALTER TABLE, not an UPDATE — historical
+      -- rows are not rewritten with synthesised values.
+
+      ALTER TABLE scores
+        ADD COLUMN IF NOT EXISTS schema_score          INTEGER NOT NULL DEFAULT 100
+          CHECK (schema_score          >= 0 AND schema_score          <= 100),
+        ADD COLUMN IF NOT EXISTS ecosystem_score       INTEGER NOT NULL DEFAULT 100
+          CHECK (ecosystem_score       >= 0 AND ecosystem_score       <= 100),
+        ADD COLUMN IF NOT EXISTS protocol_score        INTEGER NOT NULL DEFAULT 100
+          CHECK (protocol_score        >= 0 AND protocol_score        <= 100),
+        ADD COLUMN IF NOT EXISTS adversarial_score     INTEGER NOT NULL DEFAULT 100
+          CHECK (adversarial_score     >= 0 AND adversarial_score     <= 100),
+        ADD COLUMN IF NOT EXISTS compliance_score      INTEGER NOT NULL DEFAULT 100
+          CHECK (compliance_score      >= 0 AND compliance_score      <= 100),
+        ADD COLUMN IF NOT EXISTS supply_chain_score    INTEGER NOT NULL DEFAULT 100
+          CHECK (supply_chain_score    >= 0 AND supply_chain_score    <= 100),
+        ADD COLUMN IF NOT EXISTS infrastructure_score  INTEGER NOT NULL DEFAULT 100
+          CHECK (infrastructure_score  >= 0 AND infrastructure_score  <= 100),
+        ADD COLUMN IF NOT EXISTS coverage_band         VARCHAR(10)
+          CHECK (coverage_band IS NULL OR coverage_band IN ('high', 'medium', 'low', 'minimal')),
+        ADD COLUMN IF NOT EXISTS analysis_coverage     JSONB;
+
+      -- Index on coverage_band for the public registry filter
+      -- ("show me all high-confidence scores"). Partial — pre-migration NULLs
+      -- and historical rows without a band stay out of the B-tree.
+      CREATE INDEX IF NOT EXISTS idx_scores_coverage_band
+        ON scores(coverage_band)
+        WHERE coverage_band IS NOT NULL;
+    `,
+  },
 ];
 
 export async function migrate(connectionString: string): Promise<void> {

@@ -2721,6 +2721,36 @@ describe("Deep Dive endpoint (GET /api/v1/servers/:slug/deep-dive)", () => {
     expect((body.coverage as CovWithFlags).had_connection).toBeUndefined();
     expect((body.coverage as CovWithFlags).had_dependencies).toBeUndefined();
   });
+
+  // ─── Phase 2.3 — audit_summary block presence + shape ─────────────────
+  it("attaches the 8-section audit_summary block (Phase 2 verdict layer)", async () => {
+    db.getLatestScoreForServer.mockResolvedValue(null);
+    db.getFindingsForServer.mockResolvedValue([]);
+    const res = await request(app).get("/api/v1/servers/dd-server/deep-dive");
+    expect(res.status).toBe(200);
+    const body = res.body.data as z.infer<typeof DeepDiveResponseSchema> & {
+      audit_summary?: Record<string, unknown>;
+    };
+    expect(body.audit_summary).toBeTruthy();
+    const audit = body.audit_summary as Record<string, unknown>;
+    // All 8 sections present.
+    expect(audit.verdict).toBeTruthy();
+    expect(audit.testing_depth).toBeTruthy();
+    expect(audit.attack_intelligence).toBeTruthy();
+    expect(audit.risk_summary).toBeTruthy();
+    expect(audit.gaps).toBeDefined();
+    expect(audit.recommendation).toBeTruthy();
+    expect(audit.confidence).toBeTruthy();
+    expect(audit.evidence_trust).toBeTruthy();
+    // No findings + null score → conservative verdict (RISK because score=0
+    // falls in the critical band; recommendation NO for the same reason).
+    const verdict = audit.verdict as Record<string, unknown>;
+    expect(verdict.pill).toBe("RISK");
+    expect(verdict.score).toBe(0);
+    const recommendation = audit.recommendation as Record<string, unknown>;
+    expect(recommendation.use_in_production).toBe("NO");
+    expect((recommendation.disclaimer as string).length).toBeGreaterThan(0);
+  });
 });
 
 // ─── Cluster D follow-on — Story-lens augmentations on /deep-dive ─────────

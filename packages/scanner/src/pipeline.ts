@@ -580,7 +580,21 @@ export class ScanPipeline {
       // Chunk 0.2: thread the engine_v2 flag map so the scorer can emit a
       // shadow `total_score_v2` alongside the public score (null when no
       // rule is v2-flagged yet).
-      const score = computeScore(findings, ruleCategories, undefined, ruleEngineV2);
+      // Phase 1.1: thread analyzer coverage so the scorer's AnalysisCoverageInput
+      // is populated → persisted → surfaced on the public registry as an
+      // honest confidence band per scan. Without this the deep-dive page's
+      // CoverageLedger is dead code.
+      const coverageForScorer = {
+        had_source_code: profileResult.coverage.had_source_code,
+        had_connection: profileResult.coverage.had_connection,
+        had_dependencies: profileResult.coverage.had_dependencies,
+        coverage_ratio: profileResult.coverage.coverage_ratio,
+        confidence_band: profileResult.coverage.confidence_band,
+        techniques_run: profileResult.coverage.techniques_run,
+        rules_executed: profileResult.coverage.rules_executed,
+        rules_skipped_no_data: profileResult.coverage.rules_skipped_no_data,
+      };
+      const score = computeScore(findings, ruleCategories, coverageForScorer, ruleEngineV2);
       const hasLethalTrifecta = findings.some((f) => f.rule_id === "F1");
       log.info(
         {
@@ -657,6 +671,28 @@ export class ScanPipeline {
         total_score_v2: score.total_score_v2,
         techniques_v2:
           Object.keys(score.techniques_v2).length === 0 ? null : score.techniques_v2,
+        // Phase 1.1: persist the 8 v2 sub-scores so the public registry can
+        // render per-domain breakdowns without falling back to "scan coverage
+        // not yet on file".
+        schema_score: score.schema_score,
+        ecosystem_score: score.ecosystem_score,
+        protocol_score: score.protocol_score,
+        adversarial_score: score.adversarial_score,
+        compliance_score: score.compliance_score,
+        supply_chain_score: score.supply_chain_score,
+        infrastructure_score: score.infrastructure_score,
+        // Phase 1.1: persist coverage so the deep-dive page's CoverageLedger
+        // becomes meaningful and rule status="skipped" can fire.
+        coverage_band: coverageForScorer.confidence_band,
+        analysis_coverage: {
+          had_source_code: coverageForScorer.had_source_code,
+          had_connection: coverageForScorer.had_connection,
+          had_dependencies: coverageForScorer.had_dependencies,
+          coverage_ratio: coverageForScorer.coverage_ratio,
+          techniques_run: coverageForScorer.techniques_run,
+          rules_executed: coverageForScorer.rules_executed,
+          rules_skipped_no_data: coverageForScorer.rules_skipped_no_data,
+        },
       });
 
       await this.db.completeScan(scanId, findings.length, null, stages);

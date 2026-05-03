@@ -361,7 +361,14 @@ describe("RuleEvidenceCard — cross-reference mode", () => {
 });
 
 describe("RuleEvidenceCard — methodology gap honesty", () => {
-  it("renders the 'no backing data wired' copy when fixtures + CVEs are empty", () => {
+  // Phase 1.4c — backing now distinguishes two empty states:
+  //   1. backing == null         → "validation corpus not yet wired"
+  //   2. backing all-empty fields → "no validation runs on file yet"
+  // The previous single "no backing data wired yet" copy collapsed both;
+  // the regulator-grade UX requires the two states to render distinctly so
+  // a reader knows which gap is OURS vs which is the validation team's.
+
+  it("renders 'no validation runs on file' when backing is wired but empty", () => {
     const rule = baseRule({
       status: "passed",
       findings: [],
@@ -375,7 +382,24 @@ describe("RuleEvidenceCard — methodology gap honesty", () => {
     });
     const { container } = render(<RuleEvidenceCard rule={rule} />);
     const summary = container.querySelector(".rec-method-summary")?.textContent ?? "";
-    expect(summary).toMatch(/no backing data wired yet/);
+    expect(summary).toMatch(/no validation runs on file yet/);
+    // The collapsed body should also surface the structured data-attribute
+    // so a downstream test or CSS rule can target the empty state directly.
+    const bodyGap = container.querySelector("[data-rec-backing-state]");
+    expect(bodyGap?.getAttribute("data-rec-backing-state")).toBe("wired_no_runs");
+  });
+
+  it("renders 'validation corpus not yet wired' when backing is null", () => {
+    const rule = baseRule({
+      status: "passed",
+      findings: [],
+      backing: null,
+    });
+    const { container } = render(<RuleEvidenceCard rule={rule} />);
+    const summary = container.querySelector(".rec-method-summary")?.textContent ?? "";
+    expect(summary).toMatch(/validation corpus not yet wired/);
+    const bodyGap = container.querySelector("[data-rec-backing-state]");
+    expect(bodyGap?.getAttribute("data-rec-backing-state")).toBe("not_wired");
   });
 
   it("renders 'technique not declared' when methodology technique is empty", () => {

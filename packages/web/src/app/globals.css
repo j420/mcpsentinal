@@ -16108,3 +16108,493 @@ body[data-trace-active]
 @media (max-width: 640px) {
   .section-boundary-fallback { font-size: 0.75rem; padding: 8px 10px; }
 }
+
+/* ───────────────────────────────────────────────────────────────────────
+ * Audit Summary Panels (Phase 2 / 3 of the server detail redesign)
+ *
+ * Senior Security Architect verdict layer. Eight panels, each a
+ * `<section className="audit-panel audit-panel-<name>">`. Tone is
+ * applied via `audit-tone-<good|moderate|critical|muted>` which sets
+ * the accent CSS variables — the panel internals consume those vars
+ * rather than hardcoding colours, so a single tone change cascades.
+ *
+ * Three pill scales coexist on the page (verdict SAFE/CAUTION/RISK,
+ * category SAFE/CAUTION/UNKNOWN, recommendation YES/CONDITIONAL/NO).
+ * Distinct shapes per scale (pill vs chip vs button-block) prevent
+ * pill inflation — the verdict pill is largest, recommendation block
+ * is widest, category chips are smallest.
+ * ─────────────────────────────────────────────────────────────────── */
+
+.audit-panel {
+  --audit-accent: var(--sev-info);
+  --audit-accent-sub: var(--sev-info-sub);
+  --audit-accent-border: var(--sev-info-border);
+  background: var(--surface, #fff);
+  border: 1px solid var(--surface-border, #e5e5ea);
+  border-left: 4px solid var(--audit-accent);
+  border-radius: 6px;
+  padding: 16px 20px;
+  margin: 12px 0;
+}
+.audit-panel-empty {
+  --audit-accent: #c7c7cc;
+  --audit-accent-sub: rgba(199, 199, 204, 0.10);
+  background: rgba(199, 199, 204, 0.05);
+}
+.audit-panel-empty-text {
+  color: var(--text-muted, #6b6b73);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.audit-tone-good {
+  --audit-accent: var(--sev-info);
+  --audit-accent-sub: var(--sev-info-sub);
+  --audit-accent-border: var(--sev-info-border);
+}
+.audit-tone-moderate {
+  --audit-accent: var(--sev-medium);
+  --audit-accent-sub: var(--sev-medium-sub);
+  --audit-accent-border: var(--sev-medium-border);
+}
+.audit-tone-critical {
+  --audit-accent: var(--sev-critical);
+  --audit-accent-sub: var(--sev-critical-sub);
+  --audit-accent-border: var(--sev-critical-border);
+}
+.audit-tone-muted {
+  --audit-accent: #c7c7cc;
+  --audit-accent-sub: rgba(199, 199, 204, 0.12);
+  --audit-accent-border: rgba(199, 199, 204, 0.30);
+}
+
+/* Section heads (shared) */
+.audit-section-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.audit-section-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+.audit-section-sublabel {
+  font-size: 0.75rem;
+  color: var(--text-muted, #6b6b73);
+  margin-left: auto;
+}
+.audit-rec-section-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted, #6b6b73);
+  margin: 12px 0 6px 0;
+}
+
+/* Chips + pills */
+.audit-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  background: var(--audit-accent-sub);
+  color: var(--audit-accent);
+  border: 1px solid var(--audit-accent-border);
+}
+.audit-chip-good { background: var(--sev-info-sub); color: var(--sev-info); border-color: var(--sev-info-border); }
+.audit-chip-moderate { background: var(--sev-medium-sub); color: var(--sev-medium); border-color: var(--sev-medium-border); }
+.audit-chip-critical { background: var(--sev-critical-sub); color: var(--sev-critical); border-color: var(--sev-critical-border); }
+.audit-chip-muted { background: rgba(199, 199, 204, 0.15); color: #6b6b73; border-color: rgba(199, 199, 204, 0.40); }
+
+/* §1 Verdict */
+.audit-verdict-head {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.audit-pill-verdict {
+  font-size: 0.9rem;
+  padding: 6px 14px;
+  border-radius: 4px;
+  border: 2px solid var(--audit-accent);
+  background: var(--audit-accent-sub);
+  color: var(--audit-accent);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.audit-verdict-score-num {
+  font-size: 2.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--audit-accent);
+}
+.audit-verdict-score-band {
+  font-size: 0.85rem;
+  color: var(--text-muted, #6b6b73);
+  margin-left: 6px;
+}
+.audit-verdict-reasons {
+  list-style: decimal;
+  list-style-position: inside;
+  padding: 0;
+  margin: 12px 0;
+}
+.audit-verdict-reason { padding: 4px 0; font-size: 0.9rem; }
+.audit-verdict-worst {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--audit-accent-sub);
+  border-radius: 4px;
+}
+.audit-verdict-worst-label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--audit-accent);
+  margin-bottom: 4px;
+}
+.audit-verdict-worst-text { margin: 0; font-size: 0.875rem; }
+
+/* §6 Recommendation — distinct shape from verdict pill (button-block) */
+.audit-rec-head { margin-bottom: 12px; }
+.audit-rec-eyebrow {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-muted, #6b6b73);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.audit-rec-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 14px;
+  border-radius: 4px;
+  background: var(--audit-accent-sub);
+  border-left: 4px solid var(--audit-accent);
+}
+.audit-rec-label {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--audit-accent);
+  line-height: 1;
+}
+.audit-rec-headline { font-size: 0.875rem; }
+.audit-rec-conditions, .audit-rec-rationale { margin-top: 12px; }
+.audit-rec-conditions-list, .audit-rec-rationale-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.audit-rec-condition, .audit-rec-rationale-item {
+  font-size: 0.875rem;
+  padding: 4px 0;
+}
+.audit-rec-bullet {
+  color: var(--audit-accent);
+  font-weight: 700;
+  margin-right: 6px;
+}
+.audit-rec-disclaimer {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--surface-border, #e5e5ea);
+  font-size: 0.75rem;
+  color: var(--text-muted, #6b6b73);
+  font-style: italic;
+}
+
+/* §2 Testing depth */
+.audit-testing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.audit-testing-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 8px 10px;
+  background: var(--audit-accent-sub);
+  border-radius: 4px;
+}
+.audit-testing-stat-num {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--audit-accent);
+}
+.audit-testing-stat-label {
+  font-size: 0.75rem;
+  color: var(--text-muted, #6b6b73);
+}
+.audit-testing-inputs-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.audit-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  border: 1px solid;
+}
+.audit-input-present {
+  background: var(--sev-info-sub);
+  color: var(--sev-info);
+  border-color: var(--sev-info-border);
+}
+.audit-input-missing {
+  background: rgba(199, 199, 204, 0.10);
+  color: var(--text-muted, #6b6b73);
+  border-color: rgba(199, 199, 204, 0.40);
+}
+.audit-input-glyph { font-weight: 700; }
+
+/* §4 Risk summary grid */
+.audit-risk-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.audit-risk-cell {
+  border: 1px solid var(--surface-border, #e5e5ea);
+  border-left: 3px solid var(--audit-accent);
+  border-radius: 4px;
+}
+.audit-risk-good { --audit-accent: var(--sev-info); }
+.audit-risk-moderate { --audit-accent: var(--sev-medium); }
+.audit-risk-muted { --audit-accent: #c7c7cc; }
+.audit-risk-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  text-decoration: none;
+  color: inherit;
+}
+.audit-risk-link:hover { background: var(--audit-accent-sub); }
+.audit-risk-glyph { color: var(--audit-accent); font-weight: 700; }
+.audit-risk-name { flex: 1; font-size: 0.85rem; }
+.audit-risk-chip { font-size: 0.65rem; }
+
+/* §3 Attack intelligence */
+.audit-attack-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.audit-attack-card {
+  border: 1px solid var(--surface-border, #e5e5ea);
+  border-left: 4px solid var(--audit-accent);
+  border-radius: 4px;
+  padding: 12px 14px;
+  background: var(--surface, #fff);
+}
+.audit-attack-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.audit-attack-id {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--audit-accent);
+}
+.audit-attack-name { flex: 1; font-size: 0.9rem; font-weight: 600; }
+.audit-attack-narrative {
+  font-size: 0.875rem;
+  color: var(--text, #1d1d1f);
+  margin: 8px 0;
+}
+.audit-attack-trio {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0 0;
+}
+.audit-attack-trio-item {
+  flex: 1 1 120px;
+  display: flex;
+  flex-direction: column;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: var(--audit-accent-sub);
+  border-left: 3px solid var(--audit-accent);
+  min-width: 0;
+}
+.audit-attack-trio-eyebrow {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--audit-accent);
+}
+.audit-attack-trio-text {
+  font-size: 0.85rem;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+/* §5 Gaps */
+.audit-gaps-list { list-style: none; padding: 0; margin: 0; }
+.audit-gap-bucket {
+  border: 1px solid var(--surface-border, #e5e5ea);
+  border-left: 3px solid var(--audit-accent);
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+.audit-gap-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  list-style: none;
+}
+.audit-gap-bucket-title { flex: 1; font-weight: 600; }
+.audit-gap-bucket-count {
+  font-size: 0.75rem;
+  color: var(--text-muted, #6b6b73);
+}
+.audit-gap-rules {
+  list-style: none;
+  padding: 0 10px 8px 10px;
+  margin: 0;
+}
+.audit-gap-rule {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 0.8rem;
+  border-top: 1px dashed var(--surface-border, #e5e5ea);
+}
+.audit-gap-rule-id {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-weight: 700;
+  color: var(--audit-accent);
+}
+.audit-gap-rule-name { flex: 1; }
+
+/* §7 Confidence */
+.audit-confidence-headline { font-size: 0.875rem; margin: 8px 0; }
+.audit-confidence-factors {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0 0;
+}
+.audit-confidence-factor {
+  font-size: 0.8rem;
+  padding: 3px 0;
+  color: var(--text-muted, #6b6b73);
+}
+.audit-confidence-factor-glyph {
+  color: var(--audit-accent);
+  font-weight: 700;
+  margin-right: 6px;
+}
+
+/* §8 Evidence trust */
+.audit-trust-claims {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px 0;
+}
+.audit-trust-claim {
+  display: flex;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--surface-border, #e5e5ea);
+  font-size: 0.875rem;
+}
+.audit-trust-claim:last-child { border-bottom: none; }
+.audit-trust-glyph { font-weight: 700; min-width: 16px; text-align: center; }
+.audit-trust-yes { color: var(--sev-info); }
+.audit-trust-no { color: var(--sev-critical); }
+.audit-trust-receipt {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--surface-border, #e5e5ea);
+}
+.audit-trust-receipt-summary {
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--audit-accent);
+}
+.audit-trust-receipt-body { padding: 8px 0; }
+.audit-trust-receipt-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 0.8rem;
+}
+.audit-trust-receipt-label {
+  min-width: 130px;
+  font-weight: 600;
+  color: var(--text-muted, #6b6b73);
+}
+.audit-trust-receipt-code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.75rem;
+  word-break: break-all;
+}
+.audit-trust-receipt-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted, #6b6b73);
+  margin: 8px 0 0 0;
+}
+
+/* Forensic detail collapsible — separates audit summary from drill-down */
+.audit-forensic-detail {
+  margin-top: 24px;
+  padding: 12px 16px;
+  border: 1px dashed var(--surface-border, #e5e5ea);
+  border-radius: 6px;
+}
+.audit-forensic-detail-summary {
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.audit-forensic-detail-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted, #6b6b73);
+  margin-top: 4px;
+}

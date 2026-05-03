@@ -325,6 +325,9 @@ POST /api/v1/scan                     → ScanRequestResponse (authenticated)
 | Score job fails | Findings in DB but `latest_score` stale | Run `pnpm score` locally or re-trigger scan.yml |
 | Railway API down | Public registry unavailable | Railway provides auto-restart; check Railway dashboard |
 | GitHub rate limit hit | Source code fetch fails for some servers | Scanner records error per server; re-run next day |
+| **Audit summary layout regression** (server detail page misrenders or 500s after the Phase 2 redesign) | `/servers/<slug>` shows broken hero / verdict / recommendation | Set `MCPS_AUDIT_LAYOUT_DISABLED=1` on the **web** service (Railway env), redeploy. The page reverts to the pre-redesign layout (audit panels skipped, detail cascade rendered top-level). The deep-dive API still emits `audit_summary` — only the UI is suppressed. |
+| **Stale deep-dive cache after schema bump** | Cached responses lack `audit_summary`; web falls back to detail-only layout for affected slugs | Wait 5min for SWR to expire OR force a re-revalidate by appending `?v=2` to the API URL. The `X-MCP-Sentinel-Deep-Dive-Schema: 2` response header lets ops detect old responses. |
+| **Migration 014 not yet applied** | `getLatestScoreForServer` returns `analysis_coverage: null`; coverage_band always missing; rule status defaults to honest-pessimism "passed"; gaps panel empty | Run `pnpm db:migrate` against the affected DB. Existing scores rows backfill v2 sub-scores from the column DEFAULT (100); new scans populate everything. |
 
 ---
 

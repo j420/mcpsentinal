@@ -46,6 +46,7 @@ import {
   type DeepDiveProvenance,
   type DeepDiveRiskEdge,
 } from "./deep-dive.js";
+import { buildAuditSummary } from "./audit-summary.js";
 import {
   resolveSigningContextFromEnv,
   signFinding,
@@ -610,7 +611,31 @@ app.get(
         provenance,
       });
 
+      // Phase 2.3 — Senior Security Architect verdict layer.
+      // Pure derivation from data already loaded above; no new DB calls.
+      // Rides on the DeepDiveResponseSchema's .passthrough() so the field
+      // additively appears alongside server / coverage / categories.
+      const auditSummary = buildAuditSummary({
+        deepDive: body,
+        score: score
+          ? {
+              total_score: score.total_score,
+              coverage_band: score.coverage_band ?? null,
+              analysis_coverage: score.analysis_coverage ?? null,
+            }
+          : null,
+        findings,
+        attackChains,
+      });
+      (body as typeof body & { audit_summary: typeof auditSummary }).audit_summary =
+        auditSummary;
+
       // Match the rest of the public surface — 5min fresh, 60s SWR.
+      // Phase 4.3 — schema_version header: bumped from "1" → "2" with the
+      // audit_summary block. Lets clients (curl scripts, CI, the web's
+      // built-in fetch revalidation) detect that they're seeing the new
+      // shape and invalidate any local cache during the rollout window.
+      res.setHeader("X-MCP-Sentinel-Deep-Dive-Schema", "2");
       res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=60");
       res.json({ data: body });
     } catch (err) {
