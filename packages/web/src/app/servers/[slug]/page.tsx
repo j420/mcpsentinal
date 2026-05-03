@@ -38,6 +38,7 @@ import LensDensityControls from "@/components/LensDensityControls";
 // technical depth stays one click away.
 import VerdictPanel from "@/components/audit/VerdictPanel";
 import RecommendationPanel from "@/components/audit/RecommendationPanel";
+import ScoreForecasterPanel from "@/components/audit/ScoreForecasterPanel";
 import TestingDepthPanel from "@/components/audit/TestingDepthPanel";
 import RiskSummaryPanel from "@/components/audit/RiskSummaryPanel";
 import AttackIntelPanel from "@/components/audit/AttackIntelPanel";
@@ -262,6 +263,16 @@ export default async function ServerDetailPage({
           </SectionBoundary>
           <SectionBoundary section="audit-recommendation" label="Recommendation">
             <RecommendationPanel recommendation={safeAudit.recommendation} />
+          </SectionBoundary>
+          {/* Phase X — Score Forecaster. Interactive "what if I fix these
+              findings?" panel. Sits between Recommendation and Testing
+              Depth so the reading order is verdict → what to do →
+              concrete fix impact → coverage proof. */}
+          <SectionBoundary section="audit-forecaster" label="Score forecaster">
+            <ScoreForecasterPanel
+              currentScore={safeAudit.verdict.score}
+              categories={safeCategories}
+            />
           </SectionBoundary>
           <SectionBoundary section="audit-testing-depth" label="Testing depth">
             <TestingDepthPanel depth={safeAudit.testing_depth} />

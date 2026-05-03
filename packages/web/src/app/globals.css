@@ -16598,3 +16598,180 @@ body[data-trace-active]
   color: var(--text-muted, #6b6b73);
   margin-top: 4px;
 }
+
+/* ───────────────────────────────────────────────────────────────────────
+ * Score Forecaster — interactive "what if I fix these findings?" panel
+ * (Phase 4+). The first interactive surface on the deep-dive page.
+ * Tone follows the projected score band, not the current one — the
+ * accent colour shifts as the user toggles findings, providing
+ * immediate visual feedback that resolving the right ones moves them
+ * out of the critical/poor band.
+ * ─────────────────────────────────────────────────────────────────── */
+
+.audit-panel-forecaster { /* base styles inherited from .audit-panel */ }
+
+.audit-forecast-meter {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 14px;
+  background: var(--audit-accent-sub);
+  border-radius: 6px;
+  margin: 12px 0;
+}
+.audit-forecast-meter-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 80px;
+}
+.audit-forecast-meter-eyebrow {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-muted, #6b6b73);
+}
+.audit-forecast-meter-num {
+  font-size: 2.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.audit-forecast-meter-num.audit-tone-good { color: var(--sev-info); }
+.audit-forecast-meter-num.audit-tone-moderate { color: var(--sev-medium); }
+.audit-forecast-meter-num.audit-tone-poor { color: var(--sev-medium); }
+.audit-forecast-meter-num.audit-tone-critical { color: var(--sev-critical); }
+.audit-forecast-meter-band {
+  font-size: 0.7rem;
+  color: var(--text-muted, #6b6b73);
+}
+.audit-forecast-meter-arrow {
+  font-size: 1.5rem;
+  color: var(--audit-accent);
+  font-weight: 700;
+}
+.audit-forecast-meter-delta {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.audit-forecast-delta-num {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.audit-forecast-delta-up { color: var(--sev-info); }
+.audit-forecast-delta-flat { color: var(--text-muted, #6b6b73); }
+
+.audit-forecast-warning {
+  margin: 8px 0;
+  padding: 8px 12px;
+  background: var(--sev-critical-sub);
+  border-left: 3px solid var(--sev-critical);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: var(--sev-critical);
+}
+.audit-forecast-help {
+  font-size: 0.8rem;
+  color: var(--text-muted, #6b6b73);
+  margin: 8px 0 12px 0;
+}
+
+.audit-forecast-findings {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.audit-forecast-finding {
+  border: 1px solid var(--surface-border, #e5e5ea);
+  border-radius: 4px;
+  margin-bottom: 6px;
+  transition: background-color 0.12s ease;
+}
+.audit-forecast-finding-on {
+  background: var(--sev-info-sub);
+  border-color: var(--sev-info-border);
+}
+.audit-forecast-finding-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.audit-forecast-finding-cb {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--sev-info);
+}
+.audit-forecast-sev {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
+  border-radius: 3px;
+  min-width: 56px;
+  text-align: center;
+}
+.audit-forecast-sev-5 { background: var(--sev-critical-sub); color: var(--sev-critical); }
+.audit-forecast-sev-4 { background: var(--sev-high-sub, var(--sev-critical-sub)); color: var(--sev-high, var(--sev-critical)); }
+.audit-forecast-sev-3 { background: var(--sev-medium-sub); color: var(--sev-medium); }
+.audit-forecast-sev-2 { background: var(--sev-low-sub, rgba(199, 199, 204, 0.15)); color: var(--sev-low, #6b6b73); }
+.audit-forecast-sev-1 { background: var(--sev-info-sub); color: var(--sev-info); }
+
+.audit-forecast-rule-id {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-weight: 700;
+  font-size: 0.8rem;
+  min-width: 36px;
+}
+.audit-forecast-rule-name {
+  flex: 1;
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.audit-forecast-recovery {
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--sev-info);
+  white-space: nowrap;
+}
+.audit-forecast-trifecta {
+  font-size: 0.6rem;
+  padding: 1px 5px;
+}
+.audit-forecast-remediation {
+  margin: 0;
+  padding: 8px 10px 10px 36px;
+  font-size: 0.8rem;
+  color: var(--text, #1d1d1f);
+  border-top: 1px dashed var(--surface-border, #e5e5ea);
+}
+.audit-forecast-more {
+  font-size: 0.75rem;
+  color: var(--text-muted, #6b6b73);
+  margin: 8px 0 0 0;
+  font-style: italic;
+}
+.audit-forecast-reset {
+  margin-top: 8px;
+  padding: 4px 12px;
+  border: 1px solid var(--surface-border, #e5e5ea);
+  background: transparent;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  color: var(--text-muted, #6b6b73);
+}
+.audit-forecast-reset:hover {
+  background: var(--surface-hover, #f5f5f7);
+}
