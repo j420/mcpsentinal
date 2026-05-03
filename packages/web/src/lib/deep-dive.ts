@@ -363,6 +363,10 @@ declare module "./deep-dive" {
     capability_node?: DeepDiveCapabilityNode;
     /** Provenance triple — every claim on the page traces back to this. */
     provenance?: DeepDiveProvenance;
+    /** Phase 2 — Senior Security Architect verdict layer. Absent on stale
+     *  cache entries during the rollout window; the page degrades to the
+     *  detail cascade alone in that case. */
+    audit_summary?: AuditSummary;
   }
 
   interface DeepDiveCoverageSummary {
@@ -382,5 +386,110 @@ declare module "./deep-dive" {
     /** When status === "skipped", a structured reason driving the
      *  CoverageLedger groupings. Absent when status !== "skipped". */
     skip_reason?: DeepDiveSkipReason;
+    /** Phase 1.3 — false on cross-reference placements (rule appears in
+     *  N sub-categories; the FIRST is canonical, others are navigation
+     *  aids). Excluded from finding-count rollups. */
+    is_canonical?: boolean;
   }
+}
+
+// ── Audit Summary (Phase 2 — Senior Security Architect verdict layer) ─────
+// Mirrors `AuditSummarySchema` in `packages/database/src/schemas.ts` exactly.
+// Web cannot import from `@mcp-sentinel/database` (boundary rule) — the
+// shape is duplicated here as the single web-side source of truth.
+
+export type AuditVerdictPill = "SAFE" | "CAUTION" | "RISK";
+export type AuditScoreBand = "good" | "moderate" | "poor" | "critical";
+export type AuditCoverageLevel = "HIGH" | "MEDIUM" | "LOW";
+export type AuditConfidenceLevel = "HIGH" | "MEDIUM" | "LOW";
+export type AuditAttackOutcome = "BLOCKED" | "NOT_OBSERVED" | "VULNERABLE";
+export type AuditCategoryStatus = "SAFE" | "CAUTION" | "UNKNOWN";
+export type AuditRecommendationDecision = "YES" | "CONDITIONAL" | "NO";
+export type AuditImpact = "LOW" | "MEDIUM" | "HIGH";
+
+/** §1 — top-line verdict. */
+export interface AuditVerdict {
+  pill: AuditVerdictPill;
+  score: number;
+  band: AuditScoreBand;
+  /** 2-3 concrete reasons, derived from auto-narrative bullets. */
+  reasons: string[];
+  /** One sentence describing what could go wrong. */
+  worst_case: string;
+}
+
+/** §2 — testing depth proof. */
+export interface AuditTestingDepth {
+  categories_tested: string[];
+  tests_executed: number;
+  tests_skipped_no_data: number;
+  inputs_available: { code: boolean; runtime: boolean; deps: boolean };
+  coverage_level: AuditCoverageLevel;
+}
+
+/** §3 — one attack scenario with explicit source → propagation → sink. */
+export interface AuditAttackScenario {
+  chain_id: string;
+  name: string;
+  narrative: string;
+  source: string;
+  propagation: string[];
+  sink: string;
+  outcome: AuditAttackOutcome;
+}
+
+export interface AuditAttackIntelligence {
+  scenarios: AuditAttackScenario[];
+}
+
+/** §4 — per-category status pills. */
+export interface AuditRiskSummaryEntry {
+  category_id: string;
+  name: string;
+  status: AuditCategoryStatus;
+}
+
+export interface AuditRiskSummary {
+  categories: AuditRiskSummaryEntry[];
+}
+
+/** §5 — per-rule gaps. */
+export interface AuditGap {
+  rule_id: string;
+  name: string;
+  missing_inputs: string[];
+  impact: AuditImpact;
+}
+
+/** §6 — production recommendation. */
+export interface AuditRecommendation {
+  use_in_production: AuditRecommendationDecision;
+  conditions: string[];
+  rationale: string[];
+  disclaimer: string;
+}
+
+/** §7 — confidence in the verdict. */
+export interface AuditConfidence {
+  level: AuditConfidenceLevel;
+  factors: string[];
+}
+
+/** §8 — evidence trust statement. */
+export interface AuditEvidenceTrust {
+  runtime_analysis: boolean;
+  e2e_chain_preserved: boolean;
+  receipt_url_pattern: string;
+}
+
+/** Full §1-§8 audit summary. */
+export interface AuditSummary {
+  verdict: AuditVerdict;
+  testing_depth: AuditTestingDepth;
+  attack_intelligence: AuditAttackIntelligence;
+  risk_summary: AuditRiskSummary;
+  gaps: AuditGap[];
+  recommendation: AuditRecommendation;
+  confidence: AuditConfidence;
+  evidence_trust: AuditEvidenceTrust;
 }

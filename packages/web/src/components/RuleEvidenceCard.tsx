@@ -181,16 +181,39 @@ function skipReasonFor(category: string): string {
 }
 
 /**
- * Compute aggregate "X fixtures · Y CVEs" string for the methodology
- * one-liner. Returns `null` when there is no backing at all so the caller
- * renders the honest "no validation evidence wired" copy instead.
+ * Phase 1.4c — distinguish two empty states on the DetectionQuality footer.
+ *
+ * The schema explicitly contracts two distinct empty states:
+ *   1. `backing == null` — the rule is NOT YET WIRED into the red-team
+ *      corpus or the CVE replay manifest. An honest gap on our side.
+ *   2. `backing != null` with `fixture_count: 0`, empty `cve_replay_ids`,
+ *      and null `precision`/`recall` — the rule IS wired but has no
+ *      validation runs on file yet. A different message; the regulator
+ *      reads "we tried to validate, no runs landed" vs "we never tried".
+ *   3. `backing` carries real numbers — render the prose summary.
+ *
+ * Collapsing both empty states to one string was a regulator-grade UX bug
+ * — the page used to render "no fixtures or CVE replays for this rule
+ * yet" for both, hiding that case (1) is OUR work to do and case (2) is
+ * the team's work to schedule.
  */
-function summariseBacking(backing: DeepDiveRuleBacking | null): string | null {
-  if (!backing) return null;
+type BackingState =
+  | { kind: "not_wired"; text: string }
+  | { kind: "wired_no_runs"; text: string }
+  | { kind: "summary"; text: string };
+
+function classifyBacking(backing: DeepDiveRuleBacking | null): BackingState {
+  if (!backing) {
+    return {
+      kind: "not_wired",
+      text: "rule not yet wired into red-team or CVE replay corpora",
+    };
+  }
   const fixtureCount = backing.fixture_count ?? 0;
   const cveCount = backing.cve_replay_ids?.length ?? 0;
-  const hasPrec = typeof backing.precision === "number";
-  const hasRecall = typeof backing.recall === "number";
+  const hasPrec = typeof backing.precision === "number" && backing.precision !== null;
+  const hasRecall = typeof backing.recall === "number" && backing.recall !== null;
+
   const parts: string[] = [];
   if (fixtureCount > 0) {
     parts.push(`${fixtureCount} fixture${fixtureCount === 1 ? "" : "s"}`);
@@ -198,10 +221,30 @@ function summariseBacking(backing: DeepDiveRuleBacking | null): string | null {
   if (cveCount > 0) {
     parts.push(`${cveCount} CVE${cveCount === 1 ? "" : "s"}`);
   }
-  if (hasPrec && backing.precision !== null) parts.push(`precision ${formatScalar(backing.precision)}`);
-  if (hasRecall && backing.recall !== null) parts.push(`recall ${formatScalar(backing.recall)}`);
-  if (parts.length === 0) return null;
-  return parts.join(" · ");
+  if (hasPrec) parts.push(`precision ${formatScalar(backing.precision as number)}`);
+  if (hasRecall) parts.push(`recall ${formatScalar(backing.recall as number)}`);
+
+  if (parts.length === 0) {
+    return {
+      kind: "wired_no_runs",
+      text: "wired into validation corpora — no runs on file for this rule yet",
+    };
+  }
+  return { kind: "summary", text: parts.join(" · ") };
+}
+
+/**
+ * Severity tokens used inside CSS variable names. globals.css defines
+ * --sev-info / --sev-info-sub / --sev-info-border (no --sev-informational
+ * variants), so we collapse "informational" → "info" before interpolating.
+ * Without this, severity-tinted borders rendered with `var(--sev-informational)`
+ * resolve to undefined and the card loses its severity colour entirely.
+ *
+ * HeroBlock already does the same mapping at the call site
+ * (HeroBlock.tsx:247) — this helper centralises the rule.
+ */
+function severityCssToken(sev: string): string {
+  return sev === "informational" ? "info" : sev;
 }
 
 /* ─── Sub-components ───────────────────────────────────────────────── */
@@ -438,13 +481,19 @@ function MethodologyBlock({
   const technique = rule.methodology?.technique?.trim() ?? "";
   const verifiedEdgeCases = rule.methodology?.verified_edge_cases ?? [];
   const confidenceCap = rule.methodology?.confidence_cap ?? null;
-  const backingSummary = summariseBacking(rule.backing);
+  const backingState = classifyBacking(rule.backing);
   const lastValidated = fmtRelative(rule.backing?.last_validated_at ?? null);
 
   // The header "summary line" is what is visible when the details element
   // is collapsed — a one-shot density read of the testing posture.
-  const headerLine = `${technique ? technique : "technique not declared"}${
-    backingSummary ? ` · ${backingSummary}` : " · no backing data wired yet"
+  // Three cases mirror classifyBacking so the collapsed-state copy is
+  // honest about WHY backing is absent (regulator UX requirement).
+  const headerLine = `${technique ? technique : "technique not declared"} · ${
+    backingState.kind === "summary"
+      ? backingState.text
+      : backingState.kind === "wired_no_runs"
+        ? "no validation runs on file yet"
+        : "validation corpus not yet wired"
   }`;
 
   const body = (
@@ -464,11 +513,18 @@ function MethodologyBlock({
         <div className="rec-method-row">
           <dt className="rec-method-k">Backing</dt>
           <dd className="rec-method-v">
-            {backingSummary ? (
-              <span>{backingSummary}</span>
+            {backingState.kind === "summary" ? (
+              <span>{backingState.text}</span>
             ) : (
-              <span className="rec-method-gap">
-                no fixtures or CVE replays for this rule yet
+              // Phase 1.4c — distinguish "not_wired" (our gap to fill)
+              // from "wired_no_runs" (the validation team's gap to fill).
+              // data-rec-backing-state lets the page CSS or a regression
+              // test distinguish the two without re-parsing the prose.
+              <span
+                className="rec-method-gap"
+                data-rec-backing-state={backingState.kind}
+              >
+                {backingState.text}
               </span>
             )}
           </dd>
@@ -725,16 +781,59 @@ export default function RuleEvidenceCard({
     );
   }
 
-  const status = rule.status;
+  // Phase 1.4a — explicit status fallback. The cascade below was
+  // `if findings → … else if passed → … else (default) → SKIPPED card`,
+  // which silently rendered the SKIPPED state with boilerplate copy when
+  // `rule.status` was undefined or carried an unrecognised string. The
+  // API contract is `"passed" | "findings" | "skipped"`, but a partial
+  // payload from a stale cache or a future API addition shouldn't
+  // present a misleading "SKIPPED — input X unavailable" message to a
+  // regulator. Normalise here and surface unknown values as data instead
+  // of pretending we know what they mean.
+  const KNOWN_STATUSES = ["findings", "passed", "skipped"] as const;
+  const isKnownStatus = (s: unknown): s is (typeof KNOWN_STATUSES)[number] =>
+    typeof s === "string" && (KNOWN_STATUSES as readonly string[]).includes(s);
+  const status: (typeof KNOWN_STATUSES)[number] | "unknown" = isKnownStatus(rule.status)
+    ? rule.status
+    : "unknown";
   const sev = rule.severity;
+  // Phase 1.4b — collapse "informational" → "info" for CSS variable
+  // interpolation. globals.css defines --sev-info / --sev-info-sub /
+  // --sev-info-border (no --sev-informational variants); without this
+  // the severity-tinted border resolves to undefined for informational.
+  const cssSev = severityCssToken(sev);
 
   // Severity-tinted left border lives on a CSS variable so we can
   // express it once here and let the stylesheet handle dark/light tints.
   const borderStyle: React.CSSProperties = {
-    ["--rec-sev-color" as never]: `var(--sev-${sev})`,
-    ["--rec-sev-sub" as never]: `var(--sev-${sev}-sub)`,
-    ["--rec-sev-border" as never]: `var(--sev-${sev}-border)`,
+    ["--rec-sev-color" as never]: `var(--sev-${cssSev})`,
+    ["--rec-sev-sub" as never]: `var(--sev-${cssSev}-sub)`,
+    ["--rec-sev-border" as never]: `var(--sev-${cssSev}-border)`,
   };
+
+  // Phase 1.4a — explicit unknown-status branch. Renders the rule with
+  // a clear "status not derived" banner instead of falling through to
+  // the SKIPPED card. The page can still show the methodology + framework
+  // crosswalk; it just won't pretend to know whether the rule passed or
+  // was skipped.
+  if (status === "unknown") {
+    return (
+      <article
+        id={`rule-${rule.rule_id}`}
+        className={`rec-card rec-card-unknown rec-sev-${sev}`}
+        style={borderStyle}
+        aria-label={`${rule.rule_id} ${rule.name} — status not derived for this scan`}
+        data-rec-status="unknown"
+      >
+        <CardEyebrow rule={rule} state="skipped" />
+        <div className="rec-method-gap" role="note">
+          Status was not derived for this scan — methodology shown for
+          reference; treat the result as inconclusive.
+        </div>
+        <MethodologyBlock rule={rule} collapsible={true} />
+      </article>
+    );
+  }
 
   // ── State A: findings ────────────────────────────────────────────
   if (status === "findings") {

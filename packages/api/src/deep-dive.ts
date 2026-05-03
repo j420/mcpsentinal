@@ -372,6 +372,30 @@ function projectMethodologyManifest(parsed: unknown): MethodologyManifest | null
     const severity: Severity = allowedSev.includes(severityRaw as Severity)
       ? (severityRaw as Severity)
       : "informational";
+    // Phase 1.2 — forward `requires_inputs` from the manifest so the
+    // deriveStatus/deriveSkipReason pair can actually classify "skipped".
+    // The analyzer's RuleRequirements declares many input keys
+    // (source_code, dependencies, connection_metadata, tools, resources,
+    // prompts, roots, declared_capabilities, min_tools(N), scan_history)
+    // — but the deep-dive coverage report only tracks 3 boolean flags
+    // (had_source_code, had_connection, had_dependencies). Filter to
+    // those 3 so we only emit values deriveStatus knows how to compare.
+    // Other input requirements are always present in normal scans (tools)
+    // or have no coverage flag (resources/prompts) — neither drives a
+    // "skipped" classification today.
+    const requiresInputs: Array<"source_code" | "connection" | "dependencies"> = [];
+    if (Array.isArray(e["requires_inputs"])) {
+      for (const raw of e["requires_inputs"] as unknown[]) {
+        if (typeof raw !== "string") continue;
+        if (raw === "source_code") requiresInputs.push("source_code");
+        else if (raw === "connection_metadata") requiresInputs.push("connection");
+        else if (raw === "dependencies") requiresInputs.push("dependencies");
+        // tools / resources / prompts / roots / declared_capabilities /
+        // min_tools(N) / scan_history are intentionally ignored — no
+        // analyzer coverage flag tracks them distinctly.
+      }
+    }
+
     out[ruleId] = {
       technique,
       verified_edge_cases: verified,
@@ -385,6 +409,7 @@ function projectMethodologyManifest(parsed: unknown): MethodologyManifest | null
         owasp: typeof e["owasp"] === "string" ? (e["owasp"] as string) : null,
         mitre: typeof e["mitre"] === "string" ? (e["mitre"] as string) : null,
         remediation: typeof e["remediation"] === "string" ? (e["remediation"] as string) : "",
+        requires_inputs: requiresInputs,
       },
     };
   }
@@ -751,9 +776,40 @@ interface AssembleRuleInput {
   getCveValidation?: (ruleId: string) => CveReplayValidation[];
 }
 
+/**
+ * Phase 1.3 — finding-count dedup invariant.
+ *
+ * A rule that appears in N sub-categories (one canonical placement +
+ * N-1 cross-references in the taxonomy) used to clone its `findings[]`
+ * into every placement, so a rule with 2 findings placed in 2 sub-cats
+ * inflated the category-level finding_count to 4 — diverging from
+ * `coverage.total_findings` (computed from the raw findings array, = 2).
+ *
+ * Resolution: each rule has exactly ONE canonical placement (the first
+ * one in the taxonomy YAML's `rule_ids[]` ordering, surfaced by the
+ * first entry in `ruleAppearances[ruleId]`). Cross-reference placements
+ * still render the rule card (so the user sees "this rule was tested"
+ * in both sub-categories), but they carry `is_canonical: false` and are
+ * EXCLUDED from every count rollup — finding_count, rules_total,
+ * rules_passed, rules_with_findings, rules_skipped, severity_breakdown.
+ *
+ * Invariant preserved: sum(category.counts.finding_count) === coverage.total_findings.
+ *
+ * `is_canonical` rides via `.passthrough()` on `DeepDiveRuleSchema` —
+ * additive, no Zod refactor required, web layer can use it to render
+ * cross-ref placements as a "see canonical →" navigation aid.
+ */
+function isCanonicalPlacement(input: AssembleRuleInput): boolean {
+  const appearances = input.ruleAppearances.get(input.ruleId) ?? [];
+  if (appearances.length === 0) return true; // defensive — no taxonomy data, treat as canonical
+  const first = appearances[0];
+  return first.category_id === input.categoryId && first.sub_category_id === input.subCategoryId;
+}
+
 function assembleRule(input: AssembleRuleInput): DeepDiveRule {
   const found = input.findingsByRule.get(input.ruleId) ?? [];
   const methodologyEntry = input.methodology?.[input.ruleId];
+  const isCanonical = isCanonicalPlacement(input);
 
   // status derivation:
   //   findings present       → "findings"
@@ -828,6 +884,11 @@ function assembleRule(input: AssembleRuleInput): DeepDiveRule {
     status,
     findings,
   };
+  // Phase 1.3 — canonical placement marker (passthrough field).
+  // `false` means this is a cross-reference rendering of a rule whose
+  // canonical placement lives in another sub-category. Excluded from
+  // every count rollup so the page math agrees with coverage.total_findings.
+  (rule as DeepDiveRule & { is_canonical?: boolean }).is_canonical = isCanonical;
   if (otherAppearances.length > 0) {
     rule.cross_referenced_in = otherAppearances;
   }
@@ -962,12 +1023,23 @@ function computeRuleCounts(rules: DeepDiveRule[]): {
   finding_count: number;
   severity_breakdown: DeepDiveSeverityBreakdown;
 } {
+  let total = 0;
   let passed = 0;
   let withFindings = 0;
   let skipped = 0;
   let findingCount = 0;
   const sev = emptySeverityBreakdown();
   for (const r of rules) {
+    // Phase 1.3 — skip non-canonical (cross-referenced) placements so a
+    // rule appearing in N sub-categories is counted ONCE, in its canonical
+    // home. Without this guard, sum(category.finding_count) diverges from
+    // coverage.total_findings because the same finding[] is cloned per
+    // placement. The `is_canonical` field rides via passthrough on
+    // DeepDiveRuleSchema (set in assembleRule).
+    const canonical =
+      (r as DeepDiveRule & { is_canonical?: boolean }).is_canonical !== false;
+    if (!canonical) continue;
+    total++;
     if (r.status === "passed") passed++;
     else if (r.status === "findings") withFindings++;
     else skipped++;
@@ -975,7 +1047,7 @@ function computeRuleCounts(rules: DeepDiveRule[]): {
     for (const f of r.findings) bumpSeverity(sev, f.severity);
   }
   return {
-    rules_total: rules.length,
+    rules_total: total,
     rules_passed: passed,
     rules_with_findings: withFindings,
     rules_skipped: skipped,

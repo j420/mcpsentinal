@@ -131,6 +131,33 @@ export interface RuleMethodology {
   edge_case_strategies: string[];
   evidence_contract: EvidenceContract | null;
   threat_refs: ThreatRef[];
+  /**
+   * Phase 1.2 — declared input requirements parsed from the rule's
+   * `readonly requires: RuleRequirements = { ... }` declaration in
+   * `index.ts`. Consumed by the deep-dive endpoint's `deriveStatus` to
+   * decide whether a rule is "passed" (ran with all inputs available) or
+   * "skipped" (a required input was missing for this server). Without
+   * this field, every findingless rule defaults to "passed" — silently
+   * misleading for rules that needed source code or live connection
+   * data we did not have.
+   *
+   * Empty array means the rule is always-applicable (declares no input
+   * requirements) — should never be classified as "skipped" for missing
+   * data even if the server lacks source / connection / dependencies.
+   */
+  requires_inputs: string[];
+  /**
+   * Phase 1.2 — short human-readable summary of what this rule detects.
+   * Sourced from the first `true_positive` test case description in the
+   * YAML metadata. Test cases are mandatory so this field is reliably
+   * non-empty for active rules. Falls back to the rule name when test
+   * cases are absent or malformed.
+   *
+   * Used by the deep-dive page to render a one-line description per
+   * rule. The previous default of "" caused every rule to render with
+   * no description — observed in production.
+   */
+  summary: string;
 }
 
 export interface RetiredRule {
@@ -218,6 +245,68 @@ function extractTechnique(indexPath: string): string | null {
   return null;
 }
 
+/**
+ * Extract the `readonly requires: RuleRequirements = { ... }` declaration
+ * from a rule's index.ts and return the list of input keys the rule
+ * declares as required. Handles both single-line and multi-line shapes:
+ *
+ *   readonly requires: RuleRequirements = { source_code: true };
+ *
+ *   readonly requires: RuleRequirements = {
+ *     source_code: true,
+ *     dependencies: true,
+ *     min_tools: 10,
+ *   };
+ *
+ * The valid keys mirror `RuleRequirements` at
+ * `packages/analyzer/src/rules/base.ts:62-85`. Boolean keys with `true`
+ * are emitted verbatim (e.g. `source_code`); the numeric `min_tools`
+ * key is emitted as `min_tools(N)` so downstream consumers can render
+ * "needs >10 tools" without a second extraction pass.
+ *
+ * Returns [] when no requires declaration is parseable — a rule with no
+ * declared inputs is always-applicable and should not be classified as
+ * "skipped" for missing data.
+ */
+function extractRequiresInputs(indexPath: string): string[] {
+  const text = readFileSync(indexPath, "utf8");
+  const start = text.indexOf("readonly requires");
+  if (start < 0) return [];
+  const openBrace = text.indexOf("{", start);
+  if (openBrace < 0) return [];
+  // Walk forward to find the matching closing brace, respecting nested braces.
+  let depth = 0;
+  let close = -1;
+  for (let i = openBrace; i < text.length; i++) {
+    const c = text[i];
+    if (c === "{") depth++;
+    else if (c === "}") {
+      depth--;
+      if (depth === 0) {
+        close = i;
+        break;
+      }
+    }
+  }
+  if (close < 0) return [];
+  const body = text.slice(openBrace + 1, close);
+
+  const out: string[] = [];
+  // Boolean inputs: `source_code: true`, `dependencies: true`, etc.
+  // Only `true` matters — `false` declarations don't require the input.
+  for (const m of body.matchAll(/\b([a-z_][a-z0-9_]*)\s*:\s*true\b/gi)) {
+    out.push(m[1]);
+  }
+  // Numeric guard: `min_tools: 10`. Render as "min_tools(10)" so the
+  // downstream gap message is honest about the threshold.
+  for (const m of body.matchAll(/\bmin_tools\s*:\s*(\d+)\b/g)) {
+    out.push(`min_tools(${m[1]})`);
+  }
+  // Deduplicate while preserving order — a rule might declare the same
+  // key twice through copy-paste; the manifest should not double-count.
+  return Array.from(new Set(out));
+}
+
 // ─── CHARTER.md frontmatter parsing ─────────────────────────────────────────
 
 interface CharterRaw {
@@ -267,6 +356,32 @@ interface RuleYaml {
   mitre?: string | null;
   remediation?: string;
   enabled?: boolean;
+  /**
+   * Test cases declared under `test_cases.true_positive[]`. Each entry has
+   * a `description` field that is — by repository convention — a one-line
+   * concrete example of what the rule fires on. The first such description
+   * is the closest thing to a machine-derivable rule summary.
+   */
+  test_cases?: {
+    true_positive?: Array<{ description?: string; expected?: boolean }>;
+    true_negative?: Array<{ description?: string; expected?: boolean }>;
+  };
+}
+
+/**
+ * Build the human-readable summary for a rule. Prefers the first
+ * true_positive test case description (concise, concrete, always
+ * present in the YAML). Falls back to the rule name when test cases
+ * are absent/empty so the page never renders an empty description.
+ */
+function deriveSummary(yaml: RuleYaml): string {
+  const positives = yaml.test_cases?.true_positive ?? [];
+  for (const tc of positives) {
+    if (typeof tc?.description === "string" && tc.description.trim().length > 0) {
+      return tc.description.trim();
+    }
+  }
+  return (yaml.name ?? "").trim();
 }
 
 function loadAllRuleYamls(): Map<string, RuleYaml> {
@@ -433,6 +548,11 @@ export function buildManifest(): Manifest {
         : [],
       evidence_contract: evidenceContract,
       threat_refs: threatRefs,
+      // Phase 1.2 — required inputs parsed from `readonly requires` in
+      // index.ts, and a one-line summary derived from the first
+      // true_positive test case description.
+      requires_inputs: extractRequiresInputs(indexPath),
+      summary: deriveSummary(yaml),
     };
   }
 

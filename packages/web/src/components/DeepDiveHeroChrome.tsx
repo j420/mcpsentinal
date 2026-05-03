@@ -29,28 +29,14 @@ import {
 } from "./SignedEvidencePack";
 import type { DeepDiveCoverageSummary } from "@/lib/deep-dive";
 
-// ── Helpers (kept local — mirror EvidenceSummaryHero so the two stay in lock-step) ──
+// ── Helpers ───────────────────────────────────────────────────────────────
+//
+// Phase 3.2 — `scoreBand` / `scoreToLetter` / `bandLabel` moved to
+// `@/lib/score-band`. The previous duplicate-with-regression-guard pattern
+// is replaced by a single shared module — the same thresholds now drive
+// the page hero, this chrome bar, and the API's audit-summary derivation.
 
-function scoreBand(score: number): "good" | "moderate" | "poor" | "critical" {
-  if (score >= 80) return "good";
-  if (score >= 60) return "moderate";
-  if (score >= 40) return "poor";
-  return "critical";
-}
-
-function scoreToLetter(score: number): string {
-  if (score >= 90) return "A";
-  if (score >= 80) return "A−";
-  if (score >= 70) return "B";
-  if (score >= 60) return "C";
-  if (score >= 50) return "D";
-  if (score >= 40) return "D−";
-  return "F";
-}
-
-function bandLabel(band: ReturnType<typeof scoreBand>): string {
-  return { good: "Good", moderate: "Moderate", poor: "Poor", critical: "Critical" }[band];
-}
+import { scoreBand, scoreToLetter, bandLabel } from "@/lib/score-band";
 
 function coverageBandLabel(band: NonNullable<DeepDiveCoverageSummary["coverage_band"]>): string {
   return { high: "HIGH", medium: "MEDIUM", low: "LOW", minimal: "MINIMAL" }[band];

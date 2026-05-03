@@ -602,6 +602,31 @@ export class DatabaseQueries {
     // Phase 0, chunk 0.2 — shadow score from engine_v2 rules only.
     total_score_v2?: number | null;
     techniques_v2?: Record<string, string> | null;
+    // Phase 1.1 — v2 sub-scores (8 balanced buckets — the scorer always emits
+    // these; they were previously discarded at the persistence boundary).
+    // Optional so legacy callers that only pass the 5 v1 sub-scores keep working
+    // (they default to 100 = clean, matching the scorer's initial state).
+    schema_score?: number;
+    ecosystem_score?: number;
+    protocol_score?: number;
+    adversarial_score?: number;
+    compliance_score?: number;
+    supply_chain_score?: number;
+    infrastructure_score?: number;
+    // Phase 1.1 — coverage signals so the public registry can render an
+    // honest confidence band per scan ("85/100 with full source-code analysis"
+    // vs "85/100 without source code"). NULL until the analyzer threads
+    // coverage into the scorer.
+    coverage_band?: "high" | "medium" | "low" | "minimal" | null;
+    analysis_coverage?: {
+      had_source_code: boolean;
+      had_connection: boolean;
+      had_dependencies: boolean;
+      coverage_ratio: number;
+      techniques_run: string[];
+      rules_executed: number;
+      rules_skipped_no_data: number;
+    } | null;
   }): Promise<void> {
     // Defense-in-depth at the storage boundary. Every score column in `scores`
     // is INTEGER with a CHECK (>= 0 AND <= 100) constraint. The scorer keeps
@@ -638,19 +663,62 @@ export class DatabaseQueries {
     const behaviorScoreInt = toIntForDB("behavior_score", score.behavior_score);
     const totalScoreV2Int = toIntForDB("total_score_v2", score.total_score_v2);
 
+    // v2 sub-scores default to 100 (clean) when the caller doesn't provide them
+    // — matches the scorer's initial state and the column DEFAULT in the
+    // 014_v2_score_persistence migration. toIntForDB tolerates undefined.
+    const schemaScoreInt         = toIntForDB("schema_score",         score.schema_score         ?? 100);
+    const ecosystemScoreInt      = toIntForDB("ecosystem_score",      score.ecosystem_score      ?? 100);
+    const protocolScoreInt       = toIntForDB("protocol_score",       score.protocol_score       ?? 100);
+    const adversarialScoreInt    = toIntForDB("adversarial_score",    score.adversarial_score    ?? 100);
+    const complianceScoreInt     = toIntForDB("compliance_score",     score.compliance_score     ?? 100);
+    const supplyChainScoreInt    = toIntForDB("supply_chain_score",   score.supply_chain_score   ?? 100);
+    const infrastructureScoreInt = toIntForDB("infrastructure_score", score.infrastructure_score ?? 100);
+
+    // Coverage band is a constrained string ('high' | 'medium' | 'low' | 'minimal');
+    // analysis_coverage is the raw JSONB the scorer was passed. Both nullable —
+    // pre-Phase-1 scans and pre-coverage scans persist as null and the API surfaces
+    // that honestly ("scan coverage not yet on file") rather than synthesising.
+    const coverageBand: string | null = score.coverage_band ?? null;
+    const analysisCoverageJson: string | null =
+      score.analysis_coverage ? JSON.stringify(score.analysis_coverage) : null;
+
     await this.pool.query(
-      `INSERT INTO scores (server_id, scan_id, total_score, code_score, deps_score, config_score, description_score, behavior_score, owasp_coverage, total_score_v2, techniques_v2)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      `INSERT INTO scores (
+         server_id, scan_id, total_score,
+         code_score, deps_score, config_score, description_score, behavior_score,
+         owasp_coverage,
+         total_score_v2, techniques_v2,
+         schema_score, ecosystem_score, protocol_score, adversarial_score,
+         compliance_score, supply_chain_score, infrastructure_score,
+         coverage_band, analysis_coverage
+       )
+       VALUES (
+         $1, $2, $3,
+         $4, $5, $6, $7, $8,
+         $9,
+         $10, $11,
+         $12, $13, $14, $15, $16, $17, $18,
+         $19, $20
+       )
        ON CONFLICT (server_id, scan_id) DO UPDATE SET
-         total_score = EXCLUDED.total_score,
-         code_score = EXCLUDED.code_score,
-         deps_score = EXCLUDED.deps_score,
-         config_score = EXCLUDED.config_score,
-         description_score = EXCLUDED.description_score,
-         behavior_score = EXCLUDED.behavior_score,
-         owasp_coverage = EXCLUDED.owasp_coverage,
-         total_score_v2 = EXCLUDED.total_score_v2,
-         techniques_v2 = EXCLUDED.techniques_v2`,
+         total_score          = EXCLUDED.total_score,
+         code_score           = EXCLUDED.code_score,
+         deps_score           = EXCLUDED.deps_score,
+         config_score         = EXCLUDED.config_score,
+         description_score    = EXCLUDED.description_score,
+         behavior_score       = EXCLUDED.behavior_score,
+         owasp_coverage       = EXCLUDED.owasp_coverage,
+         total_score_v2       = EXCLUDED.total_score_v2,
+         techniques_v2        = EXCLUDED.techniques_v2,
+         schema_score         = EXCLUDED.schema_score,
+         ecosystem_score      = EXCLUDED.ecosystem_score,
+         protocol_score       = EXCLUDED.protocol_score,
+         adversarial_score    = EXCLUDED.adversarial_score,
+         compliance_score     = EXCLUDED.compliance_score,
+         supply_chain_score   = EXCLUDED.supply_chain_score,
+         infrastructure_score = EXCLUDED.infrastructure_score,
+         coverage_band        = EXCLUDED.coverage_band,
+         analysis_coverage    = EXCLUDED.analysis_coverage`,
       [
         score.server_id,
         score.scan_id,
@@ -663,6 +731,15 @@ export class DatabaseQueries {
         JSON.stringify(score.owasp_coverage),
         totalScoreV2Int,
         score.techniques_v2 ? JSON.stringify(score.techniques_v2) : null,
+        schemaScoreInt,
+        ecosystemScoreInt,
+        protocolScoreInt,
+        adversarialScoreInt,
+        complianceScoreInt,
+        supplyChainScoreInt,
+        infrastructureScoreInt,
+        coverageBand,
+        analysisCoverageJson,
       ]
     );
 
@@ -694,19 +771,16 @@ export class DatabaseQueries {
     behavior_score: number;
     owasp_coverage: Record<string, boolean>;
     /**
-     * The 8 v2 sub-scores (schema/ecosystem/protocol/adversarial/compliance/
-     * supply_chain/infrastructure) and `analysis_coverage` are produced by the
-     * scorer (`packages/scorer/src/scorer.ts → ScoreResult`) but are NOT yet
-     * persisted in the `scores` table.
-     *
-     * TODO: data populates after migration <NNN>_add_v2_score_fields.sql lands
-     * (adds: schema_score, ecosystem_score, protocol_score, adversarial_score,
-     * compliance_score, supply_chain_score, infrastructure_score, coverage_band,
-     * analysis_coverage JSONB). Until then we return null and the API surfaces
-     * `score_detail.coverage_band = null`, `score_detail.v2_sub_scores = null`,
-     * `score_detail.analysis_coverage = null` for every existing scan.
+     * Coverage band — populated by migration 014_v2_score_persistence onward.
+     * NULL for historical rows scanned before the migration; the API surfaces
+     * that as "scan coverage not yet on file" rather than synthesising a band.
      */
     coverage_band: "high" | "medium" | "low" | "minimal" | null;
+    /**
+     * The 8 v2 sub-scores (schema/ecosystem/protocol/adversarial/compliance/
+     * supply_chain/infrastructure). The 9th — code_score — is on the legacy
+     * row above. NULL only on historical rows scanned before migration 014.
+     */
     v2_sub_scores: {
       schema_score: number;
       ecosystem_score: number;
@@ -716,6 +790,13 @@ export class DatabaseQueries {
       supply_chain_score: number;
       infrastructure_score: number;
     } | null;
+    /**
+     * Analysis coverage signal carrying source/connection/deps presence,
+     * coverage ratio, techniques run, and rules executed/skipped counts.
+     * Mirrors the scorer's AnalysisCoverageInput. NULL on historical rows
+     * scanned before migration 014, OR on rows where the analyzer didn't
+     * thread coverage into the scorer.
+     */
     analysis_coverage: {
       had_source_code: boolean;
       had_connection: boolean;
@@ -726,13 +807,16 @@ export class DatabaseQueries {
       rules_skipped_no_data: number;
     } | null;
   } | null> {
-    // SELECT only columns that actually exist today. The scenario-B fields
-    // (v2 sub-scores, coverage_band, analysis_coverage) are returned as null
-    // until the additive migration adds the columns. When that migration lands,
-    // extend the SELECT and the row → return mapping below; the API contract
-    // will not need to change because it already accepts null for these fields.
+    // Migration 014_v2_score_persistence backfills the v2 sub-score columns
+    // and adds coverage_band / analysis_coverage. Pre-migration rows return
+    // NULL for these — the API surfaces null verbatim ("scan coverage not yet
+    // on file") instead of synthesising a band.
     const result = await this.pool.query(
-      `SELECT total_score, code_score, deps_score, config_score, description_score, behavior_score, owasp_coverage
+      `SELECT total_score, code_score, deps_score, config_score, description_score, behavior_score,
+              owasp_coverage,
+              schema_score, ecosystem_score, protocol_score, adversarial_score,
+              compliance_score, supply_chain_score, infrastructure_score,
+              coverage_band, analysis_coverage
        FROM scores
        WHERE server_id = $1
        ORDER BY created_at DESC
@@ -741,6 +825,20 @@ export class DatabaseQueries {
     );
     const row = result.rows[0];
     if (!row) return null;
+
+    // v2 sub-scores: present iff every column is populated. The migration's
+    // DEFAULT 100 means post-migration rows always have these — but a row
+    // inserted by an older insertScore version would have only the legacy 5,
+    // so guard against partial population to avoid synthesising "all clean".
+    const allV2Present =
+      row.schema_score !== null && row.schema_score !== undefined &&
+      row.ecosystem_score !== null && row.ecosystem_score !== undefined &&
+      row.protocol_score !== null && row.protocol_score !== undefined &&
+      row.adversarial_score !== null && row.adversarial_score !== undefined &&
+      row.compliance_score !== null && row.compliance_score !== undefined &&
+      row.supply_chain_score !== null && row.supply_chain_score !== undefined &&
+      row.infrastructure_score !== null && row.infrastructure_score !== undefined;
+
     return {
       total_score: row.total_score,
       code_score: row.code_score,
@@ -749,11 +847,21 @@ export class DatabaseQueries {
       description_score: row.description_score,
       behavior_score: row.behavior_score,
       owasp_coverage: row.owasp_coverage,
-      // Pre-migration: the columns do not yet exist. Return null for older
-      // scans; new scans will populate these once the migration ships.
-      coverage_band: null,
-      v2_sub_scores: null,
-      analysis_coverage: null,
+      coverage_band: row.coverage_band ?? null,
+      v2_sub_scores: allV2Present
+        ? {
+            schema_score: row.schema_score,
+            ecosystem_score: row.ecosystem_score,
+            protocol_score: row.protocol_score,
+            adversarial_score: row.adversarial_score,
+            compliance_score: row.compliance_score,
+            supply_chain_score: row.supply_chain_score,
+            infrastructure_score: row.infrastructure_score,
+          }
+        : null,
+      // pg auto-deserialises JSONB → object/null. Forward verbatim — the
+      // shape is locked by the scorer's AnalysisCoverageInput contract.
+      analysis_coverage: row.analysis_coverage ?? null,
     };
   }
 

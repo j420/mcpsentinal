@@ -29,10 +29,21 @@ import DeepDiveSidebar from "@/components/DeepDiveSidebar";
 import KillChainReel from "@/components/KillChainReel";
 import CapabilitySurface from "@/components/CapabilitySurface";
 import ProvenanceFooter from "@/components/ProvenanceFooter";
-import VerdictBar from "@/components/VerdictBar";
 import HeroBlock from "@/components/HeroBlock";
 import CoverageLedger from "@/components/CoverageLedger";
 import LensDensityControls from "@/components/LensDensityControls";
+// Phase 3 — Senior Security Architect verdict layer. The 8 panels render
+// the audit summary at the top of the page; the existing CategorySection
+// cascade is demoted into a <details> "Forensic Detail" appendix so
+// technical depth stays one click away.
+import VerdictPanel from "@/components/audit/VerdictPanel";
+import RecommendationPanel from "@/components/audit/RecommendationPanel";
+import TestingDepthPanel from "@/components/audit/TestingDepthPanel";
+import RiskSummaryPanel from "@/components/audit/RiskSummaryPanel";
+import AttackIntelPanel from "@/components/audit/AttackIntelPanel";
+import GapsPanel from "@/components/audit/GapsPanel";
+import ConfidencePanel from "@/components/audit/ConfidencePanel";
+import EvidenceTrustPanel from "@/components/audit/EvidenceTrustPanel";
 // `resolveLensDensity` lives in lib/ (server-callable). Importing it from
 // the "use client" controls module — as the original code did — produces
 // a Next-15 boundary-violation crash:
@@ -140,7 +151,23 @@ export default async function ServerDetailPage({
     ? dd.attack_chains
     : undefined;
   const safeRiskEdges = Array.isArray(dd.risk_edges) ? dd.risk_edges : undefined;
+  // Phase 3.1 — audit summary coercion. Stale SWR cache entries from
+  // before the Phase 2 wire-up will not carry `audit_summary`. A pre-
+  // 014_v2_score_persistence scan also produces a degraded summary
+  // (verdict pill conservative, recommendation NO, gaps empty). In both
+  // cases the panels render their own empty state — we just need to
+  // ensure the field exists as either a structured object or null so
+  // panel props are well-typed.
+  const safeAudit =
+    dd.audit_summary && typeof dd.audit_summary === "object"
+      ? dd.audit_summary
+      : null;
   const hasContent = safeCategories.length > 0;
+  // Phase 4.4 kill-switch — `MCPS_AUDIT_LAYOUT_DISABLED=1` reverts the
+  // page to the pre-redesign layout (audit panels skipped; detail
+  // cascade rendered top-level). Documented in agent_docs/architecture.md
+  // Recovery section.
+  const auditLayoutDisabled = process.env.MCPS_AUDIT_LAYOUT_DISABLED === "1";
 
   // Phase 4 lens + density. Resolved server-side from the URL so SSR and
   // first paint match the client's eventual hydration — no flash. The
@@ -177,18 +204,9 @@ export default async function ServerDetailPage({
           so an operator can pinpoint which block failed without server
           logs. */}
 
-      <SectionBoundary section="verdict-bar" label="Verdict bar">
-        <VerdictBar
-          serverName={dd.server?.name ?? slug}
-          coverage={dd.coverage}
-          categories={safeCategories}
-          attackChains={safeAttackChains}
-        />
-      </SectionBoundary>
-
-      {/* Suspense boundary required by Next 15 because the client
-          component reads useSearchParams. SectionBoundary catches any
-          render exception inside the controls. */}
+      {/* Phase 3.4 — view controls + breadcrumb stay above the fold so
+          the user can switch lens / density / navigate up regardless of
+          which layout (audit-summary or kill-switch) is active. */}
       <SectionBoundary section="lens-density-controls" label="View controls">
         <Suspense fallback={<div className="lds-controls-skeleton" aria-hidden="true" />}>
           <LensDensityControls lens={lens} density={density} />
@@ -197,18 +215,10 @@ export default async function ServerDetailPage({
 
       <nav className="sd-breadcrumb" aria-label="Breadcrumb">
         <a href="/">Home</a>
-        <span className="sd-bread-sep" aria-hidden="true">
-          /
-        </span>
+        <span className="sd-bread-sep" aria-hidden="true">/</span>
         <a href="/servers">Servers</a>
-        <span className="sd-bread-sep" aria-hidden="true">
-          /
-        </span>
+        <span className="sd-bread-sep" aria-hidden="true">/</span>
         <span className="sd-bread-current">{dd.server?.name ?? slug}</span>
-        {/* Forensic chip on the right — tiny mono pill anchoring the page
-            to the underlying scan. Reads like a case-file reference at
-            the top of a regulator's document. Gracefully absent when
-            provenance has no completed scan on file. */}
         {dd.provenance?.scan_id && (
           <span
             className="sd-bread-scan"
@@ -237,86 +247,154 @@ export default async function ServerDetailPage({
         />
       </SectionBoundary>
 
-      <div className="dd-story-lens">
-        <SectionBoundary section="kill-chain-reel" label="Attack stories">
-          <KillChainReel
-            chains={safeAttackChains}
-            currentServerSlug={dd.server?.slug ?? slug}
-          />
-        </SectionBoundary>
-        <SectionBoundary section="capability-surface" label="Capability surface">
-          <CapabilitySurface
-            node={dd.capability_node}
-            edges={safeRiskEdges}
-          />
-        </SectionBoundary>
-      </div>
-
-      <SectionBoundary section="coverage-ledger" label="Coverage ledger">
-        <CoverageLedger
-          coverage={dd.coverage}
-          categories={safeCategories}
-        />
-      </SectionBoundary>
-
-      {/* Phase 5 — Compliance lens. When ?lens=compliance, the per-rule
-          taxonomy is replaced by a framework-control restructure. The
-          other sections (verdict, controls, hero, story-lens block,
-          coverage ledger, provenance) stay rendered; CSS rules below
-          hide whichever ones aren't useful in this lens. */}
-      {lens === "compliance" ? (
-        <SectionBoundary section="compliance-view" label="Compliance posture">
-          <ComplianceLensView
-            serverSlug={dd.server?.slug ?? slug}
-            categories={safeCategories}
-            apiOrigin={PUBLIC_API_ORIGIN}
-          />
-        </SectionBoundary>
-      ) : (
-        <SectionBoundary section="taxonomy" label="Per-rule taxonomy">
-          {hasContent ? (
-            <DeepDiveLayout
-              sidebar={
-                <SectionBoundary section="taxonomy-sidebar" label="Sidebar">
-                  <Suspense fallback={null}>
-                    <DeepDiveSidebar categories={safeCategories} />
-                  </Suspense>
-                </SectionBoundary>
-              }
-              main={
-                <div className="dd-main">
-                  {safeCategories.map((cat, ci) => (
-                    <SectionBoundary
-                      key={cat?.id ?? `cat-${ci}`}
-                      section={`category-${cat?.id ?? "unknown"}`}
-                      label={cat?.title ?? cat?.id ?? "Category"}
-                    >
-                      <CategorySection cat={cat} />
-                    </SectionBoundary>
-                  ))}
-                </div>
-              }
+      {/* ── Audit Summary layer (Phase 2/3 redesign) ──────────────────
+          Renders the 8-section Senior Security Architect verdict at the
+          top. Falls back to the pre-redesign layout when:
+            (a) MCPS_AUDIT_LAYOUT_DISABLED=1 is set in the env, OR
+            (b) the deep-dive payload omits audit_summary (stale cache
+                during the rollout window).
+          Each panel is wrapped in its own SectionBoundary so a render
+          exception inside one panel degrades gracefully. */}
+      {!auditLayoutDisabled && safeAudit && (
+        <div className="audit-summary-stack" data-audit-layout="v1">
+          <SectionBoundary section="audit-verdict" label="Verdict">
+            <VerdictPanel verdict={safeAudit.verdict} />
+          </SectionBoundary>
+          <SectionBoundary section="audit-recommendation" label="Recommendation">
+            <RecommendationPanel recommendation={safeAudit.recommendation} />
+          </SectionBoundary>
+          <SectionBoundary section="audit-testing-depth" label="Testing depth">
+            <TestingDepthPanel depth={safeAudit.testing_depth} />
+          </SectionBoundary>
+          <SectionBoundary section="audit-risk-summary" label="Risk by category">
+            <RiskSummaryPanel summary={safeAudit.risk_summary} />
+          </SectionBoundary>
+          <SectionBoundary section="audit-attack-intel" label="Attack intelligence">
+            <AttackIntelPanel intel={safeAudit.attack_intelligence} />
+          </SectionBoundary>
+          <SectionBoundary section="audit-gaps" label="Gaps">
+            <GapsPanel gaps={safeAudit.gaps} />
+          </SectionBoundary>
+          <SectionBoundary section="audit-confidence" label="Confidence">
+            <ConfidencePanel confidence={safeAudit.confidence} />
+          </SectionBoundary>
+          <SectionBoundary section="audit-evidence-trust" label="Evidence trust">
+            <EvidenceTrustPanel
+              trust={safeAudit.evidence_trust}
+              apiOrigin={PUBLIC_API_ORIGIN}
             />
-          ) : (
-            <section className="dd-empty" aria-labelledby="dd-empty-title">
-              <h1 id="dd-empty-title" className="dd-empty-title">
-                {dd.server?.name ?? slug}
-              </h1>
-              <p className="dd-empty-msg">
-                Deep-dive evidence is not yet on file for this server. The
-                attack-vector taxonomy and rule-methodology manifest data
-                sources may not have been wired for this scan. Check back
-                after the next scheduled scan, or contact the registry
-                maintainers.
-              </p>
-            </section>
-          )}
-        </SectionBoundary>
+          </SectionBoundary>
+        </div>
       )}
 
-      <SectionBoundary section="provenance" label="Provenance footer">
-        <ProvenanceFooter provenance={dd.provenance} />
-      </SectionBoundary>
+      {/* ── Forensic Detail (drill-down) ────────────────────────────
+          When the audit layout is active, the detail cascade lives
+          inside a closed <details> so technical depth is one click
+          away — preserved verbatim per the user's hard requirement
+          ("Do NOT remove technical depth").
+          When the kill-switch is engaged or audit_summary is absent,
+          the same content renders top-level (the pre-redesign layout). */}
+      {(() => {
+        const detail = (
+          <>
+            <div className="dd-story-lens">
+              <SectionBoundary section="kill-chain-reel" label="Attack stories">
+                <KillChainReel
+                  chains={safeAttackChains}
+                  currentServerSlug={dd.server?.slug ?? slug}
+                />
+              </SectionBoundary>
+              <SectionBoundary section="capability-surface" label="Capability surface">
+                <CapabilitySurface
+                  node={dd.capability_node}
+                  edges={safeRiskEdges}
+                />
+              </SectionBoundary>
+            </div>
+
+            <SectionBoundary section="coverage-ledger" label="Coverage ledger">
+              <CoverageLedger
+                coverage={dd.coverage}
+                categories={safeCategories}
+              />
+            </SectionBoundary>
+
+            {lens === "compliance" ? (
+              <SectionBoundary section="compliance-view" label="Compliance posture">
+                <ComplianceLensView
+                  serverSlug={dd.server?.slug ?? slug}
+                  categories={safeCategories}
+                  apiOrigin={PUBLIC_API_ORIGIN}
+                />
+              </SectionBoundary>
+            ) : (
+              <SectionBoundary section="taxonomy" label="Per-rule taxonomy">
+                {hasContent ? (
+                  <DeepDiveLayout
+                    sidebar={
+                      <SectionBoundary section="taxonomy-sidebar" label="Sidebar">
+                        <Suspense fallback={null}>
+                          <DeepDiveSidebar categories={safeCategories} />
+                        </Suspense>
+                      </SectionBoundary>
+                    }
+                    main={
+                      <div className="dd-main">
+                        {safeCategories.map((cat, ci) => (
+                          <SectionBoundary
+                            key={cat?.id ?? `cat-${ci}`}
+                            section={`category-${cat?.id ?? "unknown"}`}
+                            label={cat?.title ?? cat?.id ?? "Category"}
+                          >
+                            <CategorySection cat={cat} />
+                          </SectionBoundary>
+                        ))}
+                      </div>
+                    }
+                  />
+                ) : (
+                  <section className="dd-empty" aria-labelledby="dd-empty-title">
+                    <h1 id="dd-empty-title" className="dd-empty-title">
+                      {dd.server?.name ?? slug}
+                    </h1>
+                    <p className="dd-empty-msg">
+                      Deep-dive evidence is not yet on file for this server. The
+                      attack-vector taxonomy and rule-methodology manifest data
+                      sources may not have been wired for this scan. Check back
+                      after the next scheduled scan, or contact the registry
+                      maintainers.
+                    </p>
+                  </section>
+                )}
+              </SectionBoundary>
+            )}
+
+            <SectionBoundary section="provenance" label="Provenance footer">
+              <ProvenanceFooter provenance={dd.provenance} />
+            </SectionBoundary>
+          </>
+        );
+
+        // When the audit layout is active, demote the detail cascade into
+        // a closed <details>. Otherwise render top-level (kill-switch path).
+        if (!auditLayoutDisabled && safeAudit) {
+          return (
+            <details className="audit-forensic-detail">
+              <summary className="audit-forensic-detail-summary">
+                Forensic detail — every rule, sub-category, finding, and
+                evidence chain
+              </summary>
+              <p className="audit-forensic-detail-hint">
+                Drill-down view of the same data the audit summary above is
+                derived from. Open this when you need to inspect a specific
+                rule's chain, framework cross-walk, or backing data.
+              </p>
+              {detail}
+            </details>
+          );
+        }
+        return detail;
+      })()}
 
       {/* Phase 5 — Forensic drawer. Mounts once at the page root; opens
           when the URL carries `?finding=<id>`. Renders nothing when the

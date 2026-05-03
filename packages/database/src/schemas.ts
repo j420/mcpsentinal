@@ -1288,6 +1288,184 @@ export const DeepDiveResponseSchema = z
   .passthrough();
 export type DeepDiveResponse = z.infer<typeof DeepDiveResponseSchema>;
 
+// ─── Audit Summary (Phase 2 — Senior Security Architect verdict layer) ─────
+//
+// The 8-section enterprise-grade audit verdict surfaced at the top of every
+// server detail page. Pure derivation from data the deep-dive endpoint
+// already loads — no new DB calls, no LLM (deterministic per ADR-006).
+//
+// Every section maps to a specific requirement in the redesign brief:
+//   §1 verdict           → SAFE / CAUTION / RISK + score + reasons + worst case
+//   §2 testing_depth     → categories + tests count + inputs + HIGH/MEDIUM/LOW
+//   §3 attack_intelligence → top 3-5 chains with source→sink + outcome
+//   §4 risk_summary      → per-category SAFE / CAUTION / UNKNOWN pills
+//   §5 gaps              → skipped rules + missing inputs + impact
+//   §6 recommendation    → YES / CONDITIONAL / NO + conditions + rationale
+//   §7 confidence        → HIGH / MEDIUM / LOW + factors
+//   §8 evidence_trust    → runtime + e2e preserved + signed receipt URL
+//
+// `.passthrough()` everywhere — additive future fields (new factor, new
+// rationale rule, new outcome state) MUST NOT silently null at the response
+// seam. The same lesson Cluster A/B/C learned the hard way.
+
+export const AuditVerdictPillSchema = z.enum(["SAFE", "CAUTION", "RISK"]);
+export type AuditVerdictPill = z.infer<typeof AuditVerdictPillSchema>;
+
+export const AuditScoreBandSchema = z.enum(["good", "moderate", "poor", "critical"]);
+export type AuditScoreBand = z.infer<typeof AuditScoreBandSchema>;
+
+export const AuditCoverageLevelSchema = z.enum(["HIGH", "MEDIUM", "LOW"]);
+export type AuditCoverageLevel = z.infer<typeof AuditCoverageLevelSchema>;
+
+export const AuditConfidenceLevelSchema = z.enum(["HIGH", "MEDIUM", "LOW"]);
+export type AuditConfidenceLevel = z.infer<typeof AuditConfidenceLevelSchema>;
+
+export const AuditAttackOutcomeSchema = z.enum(["BLOCKED", "NOT_OBSERVED", "VULNERABLE"]);
+export type AuditAttackOutcome = z.infer<typeof AuditAttackOutcomeSchema>;
+
+export const AuditCategoryStatusSchema = z.enum(["SAFE", "CAUTION", "UNKNOWN"]);
+export type AuditCategoryStatus = z.infer<typeof AuditCategoryStatusSchema>;
+
+export const AuditRecommendationSchema = z.enum(["YES", "CONDITIONAL", "NO"]);
+export type AuditRecommendationDecision = z.infer<typeof AuditRecommendationSchema>;
+
+export const AuditImpactSchema = z.enum(["LOW", "MEDIUM", "HIGH"]);
+export type AuditImpact = z.infer<typeof AuditImpactSchema>;
+
+/** §1 — top-line verdict the CISO reads in 30 seconds. */
+export const AuditVerdictSchema = z
+  .object({
+    pill: AuditVerdictPillSchema,
+    score: z.number().int().min(0).max(100),
+    band: AuditScoreBandSchema,
+    /** 2-3 concrete reasons for the verdict. Sourced from buildAutoNarrative bullets. */
+    reasons: z.array(z.string().min(1)).max(5),
+    /** One sentence describing what could go wrong. From top kill-chain narrative or top critical finding. */
+    worst_case: z.string(),
+  })
+  .passthrough();
+export type AuditVerdict = z.infer<typeof AuditVerdictSchema>;
+
+/** §2 — testing depth proof. */
+export const AuditTestingDepthSchema = z
+  .object({
+    categories_tested: z.array(z.string().min(1)),
+    tests_executed: z.number().int().nonnegative(),
+    tests_skipped_no_data: z.number().int().nonnegative(),
+    inputs_available: z
+      .object({
+        code: z.boolean(),
+        runtime: z.boolean(),
+        deps: z.boolean(),
+      })
+      .passthrough(),
+    coverage_level: AuditCoverageLevelSchema,
+  })
+  .passthrough();
+export type AuditTestingDepth = z.infer<typeof AuditTestingDepthSchema>;
+
+/** §3 — attack scenario rendered with explicit source → propagation → sink. */
+export const AuditAttackScenarioSchema = z
+  .object({
+    chain_id: z.string().min(1),
+    name: z.string().min(1),
+    /** Short prose describing the attack path. From attack-graph deterministic narrative. */
+    narrative: z.string(),
+    /** Structured chain links — exposed even when narrative is empty so the page can render the source/propagation/sink trio. */
+    source: z.string(),
+    propagation: z.array(z.string()),
+    sink: z.string(),
+    outcome: AuditAttackOutcomeSchema,
+  })
+  .passthrough();
+export type AuditAttackScenario = z.infer<typeof AuditAttackScenarioSchema>;
+
+export const AuditAttackIntelligenceSchema = z
+  .object({
+    scenarios: z.array(AuditAttackScenarioSchema).max(10),
+  })
+  .passthrough();
+export type AuditAttackIntelligence = z.infer<typeof AuditAttackIntelligenceSchema>;
+
+/** §4 — per-category status pills. */
+export const AuditRiskSummaryEntrySchema = z
+  .object({
+    category_id: z.string().min(1),
+    name: z.string().min(1),
+    status: AuditCategoryStatusSchema,
+  })
+  .passthrough();
+export type AuditRiskSummaryEntry = z.infer<typeof AuditRiskSummaryEntrySchema>;
+
+export const AuditRiskSummarySchema = z
+  .object({
+    categories: z.array(AuditRiskSummaryEntrySchema),
+  })
+  .passthrough();
+export type AuditRiskSummary = z.infer<typeof AuditRiskSummarySchema>;
+
+/** §5 — per-rule gaps. */
+export const AuditGapSchema = z
+  .object({
+    rule_id: z.string().min(1),
+    /** Rule name — surfaced verbatim so the page doesn't need a second lookup. */
+    name: z.string(),
+    missing_inputs: z.array(z.string().min(1)),
+    impact: AuditImpactSchema,
+  })
+  .passthrough();
+export type AuditGap = z.infer<typeof AuditGapSchema>;
+
+/** §6 — production recommendation with audit trail. */
+export const AuditRecommendationOutputSchema = z
+  .object({
+    use_in_production: AuditRecommendationSchema,
+    /** Empty unless decision is CONDITIONAL. */
+    conditions: z.array(z.string()),
+    /** Ordered list of decision-tree rules that fired. Auditable. */
+    rationale: z.array(z.string()),
+    /** Boilerplate caveat the page renders verbatim. */
+    disclaimer: z.string(),
+  })
+  .passthrough();
+export type AuditRecommendation = z.infer<typeof AuditRecommendationOutputSchema>;
+
+/** §7 — confidence in the verdict. */
+export const AuditConfidenceSchema = z
+  .object({
+    level: AuditConfidenceLevelSchema,
+    factors: z.array(z.string().min(1)),
+  })
+  .passthrough();
+export type AuditConfidence = z.infer<typeof AuditConfidenceSchema>;
+
+/** §8 — evidence trust statement. */
+export const AuditEvidenceTrustSchema = z
+  .object({
+    runtime_analysis: z.boolean(),
+    /** True iff every persisted finding carries an evidence_chain. */
+    e2e_chain_preserved: z.boolean(),
+    /** URL pattern the page renders into per-finding receipt links. */
+    receipt_url_pattern: z.string(),
+  })
+  .passthrough();
+export type AuditEvidenceTrust = z.infer<typeof AuditEvidenceTrustSchema>;
+
+/** Full §1-§8 audit summary. */
+export const AuditSummarySchema = z
+  .object({
+    verdict: AuditVerdictSchema,
+    testing_depth: AuditTestingDepthSchema,
+    attack_intelligence: AuditAttackIntelligenceSchema,
+    risk_summary: AuditRiskSummarySchema,
+    gaps: z.array(AuditGapSchema),
+    recommendation: AuditRecommendationOutputSchema,
+    confidence: AuditConfidenceSchema,
+    evidence_trust: AuditEvidenceTrustSchema,
+  })
+  .passthrough();
+export type AuditSummary = z.infer<typeof AuditSummarySchema>;
+
 // ─── API Response Schemas ────────────────────────────────────────────────────
 
 export const EcosystemStatsSchema = z.object({

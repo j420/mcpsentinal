@@ -96,26 +96,13 @@ interface Props {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-export function scoreBand(score: number): "good" | "moderate" | "poor" | "critical" {
-  if (score >= 80) return "good";
-  if (score >= 60) return "moderate";
-  if (score >= 40) return "poor";
-  return "critical";
-}
+// Phase 3.2 — `scoreBand` / `scoreToLetter` / `bandLabel` moved to
+// `@/lib/score-band` so the same thresholds drive the page hero, the
+// DeepDiveHeroChrome, and the API's audit-summary derivation. Re-exported
+// for backwards-compat with `EvidenceSummaryHero.test.tsx` etc.
+import { scoreBand, scoreToLetter, bandLabel } from "@/lib/score-band";
 
-export function scoreToLetter(score: number): string {
-  if (score >= 90) return "A";
-  if (score >= 80) return "A−";
-  if (score >= 70) return "B";
-  if (score >= 60) return "C";
-  if (score >= 50) return "D";
-  if (score >= 40) return "D−";
-  return "F";
-}
-
-function bandLabel(band: ReturnType<typeof scoreBand>): string {
-  return { good: "Good", moderate: "Moderate", poor: "Poor", critical: "Critical" }[band];
-}
+export { scoreBand, scoreToLetter };
 
 function deriveTransport(endpoint_url: string | null): string | null {
   if (!endpoint_url) return "stdio";
