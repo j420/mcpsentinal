@@ -122,8 +122,11 @@ export default async function ServerDetailPage({
               <CategoryRail
                 id={cat.id}
                 title={cat.title}
+                summary={cat.summary}
                 worstSeverity={cat.worstSeverity}
                 findingCount={cat.findingCount}
+                ruleCount={cat.ruleCount}
+                severity={cat.severity}
                 frameworks={cat.frameworks}
               />
               {cat.subCategories.map((sub) => (
@@ -131,7 +134,11 @@ export default async function ServerDetailPage({
                   <SubCategoryRail
                     id={sub.id}
                     title={sub.title}
+                    summary={sub.summary}
+                    worstSeverity={sub.worstSeverity}
                     findingCount={sub.findingCount}
+                    ruleCount={sub.rules.length}
+                    severity={sub.severity}
                   />
                   {sub.rules.map((rule) => (
                     <RuleCard key={rule.rule_id} rule={rule} />

@@ -105,4 +105,57 @@ describe("RuleCard", () => {
     expect(screen.getByText("Fix")).toBeInTheDocument();
     expect(screen.getByText("Use execFile.")).toBeInTheDocument();
   });
+
+  it("renders the TESTS panel inline with edge_case_strategies", () => {
+    render(<RuleCard rule={makeRule()} />);
+    expect(screen.getByText("Tests")).toBeInTheDocument();
+    expect(screen.getByText("sanitizer-verified-by-name")).toBeInTheDocument();
+    expect(screen.getByText("deep-pass-through")).toBeInTheDocument();
+    // technique chip surfaces on the tests row
+    expect(screen.getByText("ast-taint")).toBeInTheDocument();
+  });
+
+  it("renders the EVIDENCE panel header with finding count", () => {
+    const rule = makeRule({
+      findings: [
+        {
+          id: "f1",
+          severity: "high",
+          confidence: 0.8,
+          evidence: "first",
+          evidence_chain: null,
+          remediation: "fix",
+        },
+        {
+          id: "f2",
+          severity: "medium",
+          confidence: 0.7,
+          evidence: "second",
+          evidence_chain: null,
+          remediation: "fix",
+        },
+      ],
+    });
+    render(<RuleCard rule={rule} />);
+    expect(screen.getByText("Evidence")).toBeInTheDocument();
+    // Find the count next to the Evidence eyebrow specifically
+    const evidenceHead = screen.getByText("Evidence").closest("header");
+    expect(evidenceHead).not.toBeNull();
+    expect(evidenceHead?.textContent).toMatch(/2 findings/);
+  });
+
+  it("shows an honest empty state when no edge_case_strategies declared", () => {
+    const rule = makeRule({
+      methodology: {
+        technique: "",
+        verified_edge_cases: [],
+        edge_case_strategies: [],
+        confidence_cap: null,
+      },
+    });
+    render(<RuleCard rule={rule} />);
+    expect(
+      screen.getByText(/No edge-case strategies declared/i),
+    ).toBeInTheDocument();
+  });
 });
