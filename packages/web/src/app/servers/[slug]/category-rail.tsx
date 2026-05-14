@@ -61,7 +61,7 @@ export default function CategoryRail({
   const buckets = SEVERITY_ORDER.filter((s) => severity[s] > 0);
 
   return (
-    <header className="fv-cat-rail" id={categoryAnchor(id)} data-severity={worstSeverity}>
+    <div className="fv-cat-rail" data-severity={worstSeverity}>
       <div className="fv-cat-rail-row1">
         <span className="fv-cat-eyebrow">Category</span>
         <span
@@ -69,7 +69,9 @@ export default function CategoryRail({
           data-severity={worstSeverity}
           aria-hidden="true"
         />
-        <h2 className="fv-cat-title">{title}</h2>
+        <h2 className="fv-cat-title" id={categoryAnchor(id)}>
+          {title}
+        </h2>
         {frameworks.length > 0 && (
           <span className="fv-cat-frameworks" aria-label="Compliance frameworks">
             {frameworks.map((f) => (
@@ -79,13 +81,6 @@ export default function CategoryRail({
             ))}
           </span>
         )}
-        <a
-          className="fv-cat-permalink"
-          href={`#${categoryAnchor(id)}`}
-          aria-label={`Permalink to ${title}`}
-        >
-          #
-        </a>
       </div>
 
       {summary && <p className="fv-cat-summary">{summary}</p>}
@@ -120,6 +115,6 @@ export default function CategoryRail({
           <strong>{ruleCount}</strong> rule{ruleCount === 1 ? "" : "s"}
         </span>
       </div>
-    </header>
+    </div>
   );
 }

@@ -24,10 +24,257 @@
   color: var(--text);
 }
 
-.fv-main {
-  max-width: 1100px;
+/* Two-column layout: sticky TOC on the left, main on the right. */
+.fv-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 24px;
+  max-width: 1480px;
   margin: 0 auto;
-  padding: 32px 24px 96px;
+  padding: 0 24px;
+  align-items: start;
+}
+
+.fv-main {
+  padding: 32px 0 96px;
+  min-width: 0;
+}
+
+/* ── Sticky TOC sidebar ─────────────────────────────────────────── */
+
+.fv-toc {
+  position: sticky;
+  top: 56px;
+  max-height: calc(100vh - 72px);
+  overflow-y: auto;
+  padding: 24px 12px 24px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  border-right: 1px solid var(--border);
+}
+
+.fv-toc-eyebrow,
+.fv-toc-foot-eyebrow {
+  margin: 0 12px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.fv-toc-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fv-toc-row {
+  padding: 0;
+}
+
+.fv-toc-link {
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-2);
+  text-decoration: none;
+  border-radius: 6px;
+  border-left: 3px solid transparent;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.fv-toc-link:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.fv-toc-row[data-tone="findings"] .fv-toc-link {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.fv-toc-row[data-tone="findings"][data-severity="critical"] .fv-toc-link {
+  border-left-color: var(--sev-critical);
+}
+
+.fv-toc-row[data-tone="findings"][data-severity="high"] .fv-toc-link {
+  border-left-color: var(--sev-high);
+}
+
+.fv-toc-row[data-tone="findings"][data-severity="medium"] .fv-toc-link {
+  border-left-color: var(--sev-medium);
+}
+
+.fv-toc-row[data-tone="findings"][data-severity="low"] .fv-toc-link {
+  border-left-color: var(--sev-low);
+}
+
+.fv-toc-row[data-tone="skipped"] .fv-toc-link {
+  border-left-color: var(--text-3);
+  border-left-style: dashed;
+}
+
+.fv-toc-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-3);
+}
+
+.fv-toc-dot[data-severity="critical"] {
+  background: var(--sev-critical);
+}
+
+.fv-toc-dot[data-severity="high"] {
+  background: var(--sev-high);
+}
+
+.fv-toc-dot[data-severity="medium"] {
+  background: var(--sev-medium);
+}
+
+.fv-toc-dot[data-severity="low"] {
+  background: var(--sev-low);
+}
+
+.fv-toc-dot[data-severity="informational"] {
+  background: var(--sev-info);
+}
+
+.fv-toc-dot[data-severity="none"] {
+  background: var(--good);
+  opacity: 0.65;
+}
+
+.fv-toc-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fv-toc-meta {
+  font-size: 11px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.fv-toc-row[data-tone="findings"] .fv-toc-meta {
+  color: var(--sev-high);
+  font-weight: 600;
+}
+
+.fv-toc-foot {
+  margin-top: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.fv-toc-totals {
+  margin: 0;
+  padding: 0 12px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.fv-toc-totals li {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-2);
+}
+
+.fv-toc-totals strong {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.fv-toc-total-findings {
+  color: var(--sev-high) !important;
+}
+
+.fv-toc-total-skipped {
+  color: var(--text-3) !important;
+}
+
+.fv-toc-total-passed {
+  color: var(--good) !important;
+}
+
+/* ── Per-category <details> wrapper ─────────────────────────────── */
+
+.fv-cat-box {
+  margin: 32px 0 16px;
+  border-radius: 12px;
+  background: transparent;
+}
+
+.fv-cat-box[open] {
+  background: transparent;
+}
+
+.fv-cat-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 8px 4px 4px;
+  cursor: pointer;
+  list-style: none;
+  border-radius: 10px;
+  scroll-margin-top: 72px;
+}
+
+.fv-cat-summary::-webkit-details-marker {
+  display: none;
+}
+
+.fv-cat-summary:hover {
+  background: var(--surface-hover);
+}
+
+.fv-cat-summary-chev {
+  flex: 0 0 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-3);
+  transition: transform 160ms ease;
+  margin-top: 6px;
+}
+
+.fv-cat-box[open] > .fv-cat-summary .fv-cat-summary-chev {
+  transform: rotate(90deg);
+  color: var(--text);
+}
+
+.fv-cat-summary > .fv-cat-rail {
+  flex: 1 1 auto;
+  min-width: 0;
+  /* Inside summary the rail must NOT add its own bottom border — the
+     wrapper gives us the hairline separation already. */
+  margin: 0;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-md);
+}
+
+.fv-cat-box[open] > .fv-cat-summary > .fv-cat-rail {
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.fv-cat-body {
+  padding: 8px 0 0 24px;
 }
 
 /* ── Sticky header ─────────────────────────────────────────────────── */
@@ -2116,6 +2363,165 @@
   margin-left: auto;
 }
 
+/* ── CompactRuleRow — collapsed passed/skipped rules ──────────────── */
+
+.fv-crow {
+  margin: 6px 0 6px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  border-left-width: 4px;
+  border-left-style: solid;
+  border-left-color: var(--border);
+  overflow: hidden;
+  scroll-margin-top: 72px;
+}
+
+.fv-crow[data-status="passed"] {
+  border-left-color: var(--good);
+}
+
+.fv-crow[data-status="skipped"] {
+  border-left-color: var(--text-3);
+  border-left-style: dashed;
+}
+
+.fv-crow-summary {
+  display: grid;
+  grid-template-columns: 24px 56px 1fr auto auto 24px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.fv-crow-summary::-webkit-details-marker {
+  display: none;
+}
+
+.fv-crow-summary:hover {
+  background: var(--surface-2);
+}
+
+.fv-crow-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--surface-2);
+}
+
+.fv-crow-glyph-passed {
+  color: var(--good);
+  background: var(--good-sub);
+}
+
+.fv-crow-glyph-skipped {
+  color: var(--text-3);
+  background: var(--surface-3);
+}
+
+.fv-crow-id {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-2);
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  background: var(--surface-2);
+  border-radius: 4px;
+  text-align: center;
+}
+
+.fv-crow-name {
+  font-size: 14px;
+  color: var(--text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fv-crow-status {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+
+.fv-crow-status-passed {
+  color: var(--good);
+  background: var(--good-sub);
+}
+
+.fv-crow-status-skipped {
+  color: var(--text-3);
+  background: var(--surface-3);
+}
+
+.fv-crow-hint {
+  font-size: 12px;
+  color: var(--text-3);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.fv-crow-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-3);
+  transition: transform 160ms ease;
+}
+
+.fv-crow[open] .fv-crow-chevron {
+  transform: rotate(180deg);
+  color: var(--text);
+}
+
+.fv-crow-body {
+  padding: 4px 18px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.fv-crow-summary-prose {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.55;
+  max-width: 78ch;
+}
+
+.fv-crow-tests {
+  padding-top: 4px;
+}
+
+/* ── Tablet / small desktop (<= 960px) — drop the TOC sidebar ────── */
+
+@media (max-width: 960px) {
+  .fv-layout {
+    grid-template-columns: 1fr;
+    padding: 0 16px;
+  }
+
+  .fv-toc {
+    display: none;
+  }
+}
+
 /* ── Mobile (<= 720px) ─────────────────────────────────────────────── */
 
 @media (max-width: 720px) {
@@ -2193,5 +2599,27 @@
   .fv-skipped-rule-cat {
     margin-left: 0;
     width: 100%;
+  }
+
+  /* Compact row: hide the inline hint on mobile — it's redundant with
+     the status pill and crowds the row. */
+  .fv-crow {
+    margin-left: 0;
+  }
+
+  .fv-crow-summary {
+    grid-template-columns: 22px 48px 1fr auto 20px;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .fv-crow-hint {
+    display: none;
+  }
+
+  /* Per-category body: drop the indent on mobile so cards stay full
+     width. */
+  .fv-cat-body {
+    padding-left: 0;
   }
 }

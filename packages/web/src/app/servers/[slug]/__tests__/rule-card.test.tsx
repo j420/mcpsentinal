@@ -41,7 +41,7 @@ function makeRule(overrides: Partial<CascadeRule> = {}): CascadeRule {
   };
 }
 
-describe("RuleCard — findings state", () => {
+describe("RuleCard (findings only)", () => {
   it("renders rule id, name, severity pill, and OWASP/MITRE chips", () => {
     render(<RuleCard rule={makeRule()} />);
     expect(screen.getByText("C1")).toBeInTheDocument();
@@ -51,14 +51,14 @@ describe("RuleCard — findings state", () => {
     expect(screen.getByText("Critical")).toBeInTheDocument();
   });
 
-  it("renders the severity rail keyed on worstSeverity", () => {
+  it("renders the severity rail keyed on worstSeverity and data-status=findings", () => {
     const { container } = render(<RuleCard rule={makeRule()} />);
     const card = container.querySelector(".fv-rule");
     expect(card).toHaveAttribute("data-severity", "critical");
     expect(card).toHaveAttribute("data-status", "findings");
   });
 
-  it("renders the TESTS panel inline with humanized titles + raw ids", () => {
+  it("renders the TESTS panel with humanized titles + raw ids + technique", () => {
     render(<RuleCard rule={makeRule()} />);
     expect(screen.getByText("Tests")).toBeInTheDocument();
     expect(screen.getByText("sanitizer-verified-by-name")).toBeInTheDocument();
@@ -68,16 +68,9 @@ describe("RuleCard — findings state", () => {
     expect(screen.getByText(/Sanitiser verification/i)).toBeInTheDocument();
   });
 
-  it("renders the EVIDENCE panel with the structured chain fallback", () => {
+  it("renders the EVIDENCE panel with the prose fallback when chain is null", () => {
     render(<RuleCard rule={makeRule()} />);
     expect(screen.getByText("Evidence")).toBeInTheDocument();
-    // findings count appears in the section count
-    const evidenceHead = screen
-      .getByText("Evidence")
-      .closest("header");
-    expect(evidenceHead).not.toBeNull();
-    expect(evidenceHead?.textContent).toMatch(/1 finding/);
-    // prose fallback surfaces since the test chain is null
     expect(screen.getByText("exec(req.query.cmd)")).toBeInTheDocument();
   });
 
@@ -85,75 +78,5 @@ describe("RuleCard — findings state", () => {
     render(<RuleCard rule={makeRule()} />);
     expect(screen.getByText("Fix")).toBeInTheDocument();
     expect(screen.getByText("Use execFile.")).toBeInTheDocument();
-  });
-});
-
-describe("RuleCard — passed state", () => {
-  const passed = makeRule({
-    rule_id: "C2",
-    name: "Path Traversal",
-    status: "passed",
-    findings: [],
-    worstSeverity: null,
-  });
-
-  it("renders a 'Passed' status pill and a green data-status rail", () => {
-    const { container } = render(<RuleCard rule={passed} />);
-    expect(screen.getByText("Passed")).toBeInTheDocument();
-    const card = container.querySelector(".fv-rule");
-    expect(card).toHaveAttribute("data-status", "passed");
-  });
-
-  it("still renders the TESTS panel — tests visible for every status", () => {
-    render(<RuleCard rule={passed} />);
-    expect(screen.getByText("Tests")).toBeInTheDocument();
-    expect(screen.getByText("sanitizer-verified-by-name")).toBeInTheDocument();
-  });
-
-  it("renders the 'Tested cleanly' Evidence panel (not the chain)", () => {
-    const { container } = render(<RuleCard rule={passed} />);
-    expect(
-      screen.getByText(/Tested cleanly — no evidence of this attack vector/i),
-    ).toBeInTheDocument();
-    expect(container.querySelector(".fv-rule-clean")).toBeInTheDocument();
-  });
-});
-
-describe("RuleCard — skipped state", () => {
-  const skipped = makeRule({
-    rule_id: "K9",
-    name: "Dangerous Post-Install Hooks",
-    status: "skipped",
-    findings: [],
-    worstSeverity: null,
-    skip_reason: {
-      missing_inputs: ["source_code"],
-      summary: "Source code not yet ingested for this server.",
-    },
-  });
-
-  it("renders a 'Skipped' status pill and a dashed data-status rail", () => {
-    const { container } = render(<RuleCard rule={skipped} />);
-    expect(screen.getByText("Skipped")).toBeInTheDocument();
-    const card = container.querySelector(".fv-rule");
-    expect(card).toHaveAttribute("data-status", "skipped");
-  });
-
-  it("surfaces the skip reason and a labeled 'Needs · …' CTA per missing input", () => {
-    const { container } = render(<RuleCard rule={skipped} />);
-    expect(
-      screen.getByText(/Source code not yet ingested/i),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/Needs · Source code/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/Add a GitHub URL to your server registration/i),
-    ).toBeInTheDocument();
-    expect(container.querySelector(".fv-rule-skipped")).toBeInTheDocument();
-  });
-
-  it("still renders the TESTS panel — tests visible for every status", () => {
-    render(<RuleCard rule={skipped} />);
-    expect(screen.getByText("Tests")).toBeInTheDocument();
-    expect(screen.getByText("sanitizer-verified-by-name")).toBeInTheDocument();
   });
 });
