@@ -84,6 +84,14 @@ const LETHAL_TRIFECTA_RULE_IDS = new Set(["F1", "I13"]);
 
 // ── View-model output shapes ──────────────────────────────────────────
 
+export interface SeverityHistogram {
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+  informational: number;
+}
+
 export interface RuleWithFindings extends DeepDiveRule {
   /** Pre-computed: worst severity across this rule's findings. */
   worstSeverity: DeepDiveSeverity;
@@ -95,6 +103,7 @@ export interface SubCategoryWithFindings {
   summary: string;
   findingCount: number;
   worstSeverity: DeepDiveSeverity;
+  severity: SeverityHistogram;
   rules: RuleWithFindings[];
 }
 
@@ -105,6 +114,8 @@ export interface CategoryWithFindings {
   frameworks: string[];
   findingCount: number;
   worstSeverity: DeepDiveSeverity;
+  severity: SeverityHistogram;
+  ruleCount: number;
   subCategories: SubCategoryWithFindings[];
 }
 
@@ -166,6 +177,24 @@ function worstSeverityOf(
     if (severityRank(s) > severityRank(worst)) worst = s;
   }
   return worst;
+}
+
+function emptyHistogram(): SeverityHistogram {
+  return { critical: 0, high: 0, medium: 0, low: 0, informational: 0 };
+}
+
+function bumpHistogram(hist: SeverityHistogram, sev: DeepDiveSeverity): void {
+  hist[sev] += 1;
+}
+
+function addHistogram(a: SeverityHistogram, b: SeverityHistogram): SeverityHistogram {
+  return {
+    critical: a.critical + b.critical,
+    high: a.high + b.high,
+    medium: a.medium + b.medium,
+    low: a.low + b.low,
+    informational: a.informational + b.informational,
+  };
 }
 
 function isFindingsRule(r: DeepDiveRule): boolean {
@@ -282,12 +311,17 @@ export function buildViewModel(data: DeepDiveData): PageViewModel {
         );
         const subSeverities = findingsRules.map((r) => r.worstSeverity);
         const subWorst = worstSeverityOf(subSeverities);
+        const subHistogram = emptyHistogram();
+        for (const r of findingsRules) {
+          for (const f of r.findings) bumpHistogram(subHistogram, f.severity);
+        }
         subs.push({
           id: sub.id,
           title: sub.title ?? sub.id,
           summary: sub.summary ?? "",
           findingCount: subFindingCount,
           worstSeverity: subWorst,
+          severity: subHistogram,
           rules: findingsRules,
         });
         catFindingCount += subFindingCount;
@@ -300,6 +334,11 @@ export function buildViewModel(data: DeepDiveData): PageViewModel {
       subs.sort(
         (a, b) => severityRank(b.worstSeverity) - severityRank(a.worstSeverity),
       );
+      const catHistogram = subs.reduce(
+        (acc, s) => addHistogram(acc, s.severity),
+        emptyHistogram(),
+      );
+      const catRuleCount = subs.reduce((n, s) => n + s.rules.length, 0);
       findingsByCategory.push({
         id: cat.id,
         title: cat.title ?? cat.id,
@@ -307,6 +346,8 @@ export function buildViewModel(data: DeepDiveData): PageViewModel {
         frameworks: Array.isArray(cat.frameworks) ? cat.frameworks : [],
         findingCount: catFindingCount,
         worstSeverity: worstSeverityOf(catSeverities),
+        severity: catHistogram,
+        ruleCount: catRuleCount,
         subCategories: subs,
       });
     } else {

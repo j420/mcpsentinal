@@ -56,15 +56,16 @@ export default function MethodologyDrawer({
     edge_case_strategies: [],
     confidence_cap: null,
   };
-  const hasTechnique = typeof m.technique === "string" && m.technique.length > 0;
-  const tests = Array.isArray(m.edge_case_strategies)
-    ? m.edge_case_strategies
-    : [];
   const verified = Array.isArray(m.verified_edge_cases)
     ? m.verified_edge_cases
     : [];
+  const hasCap = m.confidence_cap !== null && m.confidence_cap !== undefined;
   const unspecified =
-    !hasTechnique && tests.length === 0 && verified.length === 0;
+    verified.length === 0 &&
+    frameworks.length === 0 &&
+    !backing &&
+    cveValidations.length === 0 &&
+    !hasCap;
 
   return (
     <details className="fv-method">
@@ -80,10 +81,10 @@ export default function MethodologyDrawer({
             />
           </svg>
         </span>
-        <span className="fv-method-sum-label">Methodology</span>
+        <span className="fv-method-sum-label">More — frameworks, edge cases, backing</span>
         <span className="fv-method-sum-meta">
-          {tests.length} test{tests.length === 1 ? "" : "s"}
-          {frameworks.length > 0 && ` · ${frameworks.length} framework${frameworks.length === 1 ? "" : "s"}`}
+          {verified.length > 0 && `${verified.length} edge case${verified.length === 1 ? "" : "s"}`}
+          {frameworks.length > 0 && `${verified.length > 0 ? " · " : ""}${frameworks.length} framework${frameworks.length === 1 ? "" : "s"}`}
           {cveValidations.length > 0 && ` · ${cveValidations.length} CVE replay${cveValidations.length === 1 ? "" : "s"}`}
         </span>
       </summary>
@@ -91,37 +92,11 @@ export default function MethodologyDrawer({
       <div className="fv-method-body">
         {unspecified ? (
           <p className="fv-method-unspec">
-            Methodology not on file for this rule. See the rule's CHARTER.md
-            in source for the authoritative description.
+            No secondary metadata on file — see the rule&apos;s CHARTER.md in
+            source for the authoritative description.
           </p>
         ) : (
           <dl className="fv-method-grid">
-            <dt>Technique</dt>
-            <dd>
-              {hasTechnique ? (
-                <code className="fv-method-tech">{m.technique}</code>
-              ) : (
-                <span className="fv-method-empty">unspecified</span>
-              )}
-            </dd>
-
-            <dt>
-              Tests <span className="fv-method-count">({tests.length})</span>
-            </dt>
-            <dd>
-              {tests.length === 0 ? (
-                <span className="fv-method-empty">none declared</span>
-              ) : (
-                <ol className="fv-method-tests">
-                  {tests.map((t, i) => (
-                    <li key={i}>
-                      <code>{t}</code>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </dd>
-
             <dt>
               Lethal edge cases{" "}
               <span className="fv-method-count">({verified.length})</span>

@@ -5,11 +5,14 @@
  *   - Severity-tinted left rail (6px) keyed to the worst finding severity.
  *   - Header row: rule_id + name + severity pill + OWASP/MITRE chips +
  *                 confidence value.
- *   - For each finding: `<EvidenceChainFlow/>` (the centrepiece), then
- *                       remediation prose.
- *   - Single `<MethodologyDrawer/>` footer link, closed by default.
- *
- * Layout target: 480-640px tall on desktop, single column on mobile.
+ *   - TESTS panel: the rule's edge_case_strategies as a numbered list,
+ *                  always visible. This is the "what we test for"
+ *                  surface that makes the page's `Tests` entity explicit.
+ *   - EVIDENCE panel: per-finding `<EvidenceChainFlow/>` (the
+ *                  centrepiece), then remediation prose.
+ *   - Single `<MethodologyDrawer/>` footer link, closed by default,
+ *                  carrying the secondary metadata (technique, lethal
+ *                  edge cases, frameworks, backing, CVE replays).
  *
  * Pure rendering. The drawer is a native `<details>` so the card needs
  * no React state.
@@ -44,8 +47,10 @@ function findingAnchor(findingId: string): string {
 export default function RuleCard({ rule }: RuleCardProps): React.ReactElement {
   const sev = rule.worstSeverity;
   const findings = rule.findings;
-  // Show prose summary only if findings list is empty for any reason
-  // (defensive — partition shouldn't put a rule here without findings).
+  const tests = Array.isArray(rule.methodology?.edge_case_strategies)
+    ? rule.methodology.edge_case_strategies
+    : [];
+  const technique = rule.methodology?.technique ?? "";
   const cveValidations = Array.isArray(rule.validated_by_cve)
     ? rule.validated_by_cve
     : [];
@@ -59,10 +64,13 @@ export default function RuleCard({ rule }: RuleCardProps): React.ReactElement {
     >
       <header className="fv-rule-head">
         <div className="fv-rule-id-block">
-          <span className="fv-rule-id">{rule.rule_id}</span>
-          <h4 id={`${ruleAnchor(rule.rule_id)}-h`} className="fv-rule-name">
-            {rule.name}
-          </h4>
+          <span className="fv-rule-eyebrow">Rule</span>
+          <div className="fv-rule-id-line">
+            <span className="fv-rule-id">{rule.rule_id}</span>
+            <h4 id={`${ruleAnchor(rule.rule_id)}-h`} className="fv-rule-name">
+              {rule.name}
+            </h4>
+          </div>
         </div>
         <div className="fv-rule-tags">
           <span
@@ -107,48 +115,99 @@ export default function RuleCard({ rule }: RuleCardProps): React.ReactElement {
 
       {rule.summary && <p className="fv-rule-summary">{rule.summary}</p>}
 
-      <div className="fv-rule-findings">
+      {/* ── TESTS panel — what this rule looks for ────────────────── */}
+      <section className="fv-rule-tests" aria-labelledby={`${ruleAnchor(rule.rule_id)}-tests`}>
+        <header className="fv-rule-section-head">
+          <span
+            className="fv-rule-section-eyebrow"
+            id={`${ruleAnchor(rule.rule_id)}-tests`}
+          >
+            Tests
+          </span>
+          {technique && (
+            <code className="fv-rule-tech" title="Detection technique">
+              {technique}
+            </code>
+          )}
+          <span className="fv-rule-section-count">
+            {tests.length} strateg{tests.length === 1 ? "y" : "ies"}
+          </span>
+        </header>
+        {tests.length === 0 ? (
+          <p className="fv-rule-tests-empty">
+            No edge-case strategies declared in the rule&apos;s CHARTER.md.
+          </p>
+        ) : (
+          <ol className="fv-rule-tests-list">
+            {tests.map((t, i) => (
+              <li key={i} className="fv-rule-test">
+                <span className="fv-rule-test-num">{i + 1}</span>
+                <code className="fv-rule-test-body">{t}</code>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
+
+      {/* ── EVIDENCE panel — the per-finding chains ───────────────── */}
+      <section
+        className="fv-rule-evidences"
+        aria-labelledby={`${ruleAnchor(rule.rule_id)}-evidence`}
+      >
+        <header className="fv-rule-section-head">
+          <span
+            className="fv-rule-section-eyebrow"
+            id={`${ruleAnchor(rule.rule_id)}-evidence`}
+          >
+            Evidence
+          </span>
+          <span className="fv-rule-section-count">
+            {findings.length} finding{findings.length === 1 ? "" : "s"}
+          </span>
+        </header>
         {findings.length === 0 ? (
           <p className="fv-rule-empty">No finding details on file.</p>
         ) : (
-          findings.map((f, i) => (
-            <section
-              key={f.id}
-              className="fv-finding"
-              id={findingAnchor(f.id)}
-              data-severity={f.severity}
-              aria-label={`Finding ${i + 1} of ${findings.length}`}
-            >
-              {findings.length > 1 && (
-                <header className="fv-finding-head">
-                  <span className="fv-finding-num">
-                    Finding {i + 1} of {findings.length}
-                  </span>
-                  <span
-                    className={`fv-pill fv-pill-sev fv-pill-sev-${f.severity}`}
-                  >
-                    {SEVERITY_LABEL[f.severity]}
-                  </span>
-                  <span className="fv-finding-conf">
-                    Confidence {Math.round(f.confidence * 100)}%
-                  </span>
-                </header>
-              )}
-              <EvidenceChainFlow
-                chain={f.evidence_chain}
-                fallbackEvidence={f.evidence}
-                findingId={findingAnchor(f.id)}
-              />
-              {f.remediation && (
-                <aside className="fv-finding-fix">
-                  <span className="fv-finding-fix-label">Fix</span>
-                  <p className="fv-finding-fix-body">{f.remediation}</p>
-                </aside>
-              )}
-            </section>
-          ))
+          <div className="fv-rule-findings">
+            {findings.map((f, i) => (
+              <section
+                key={f.id}
+                className="fv-finding"
+                id={findingAnchor(f.id)}
+                data-severity={f.severity}
+                aria-label={`Finding ${i + 1} of ${findings.length}`}
+              >
+                {findings.length > 1 && (
+                  <header className="fv-finding-head">
+                    <span className="fv-finding-num">
+                      Finding {i + 1} of {findings.length}
+                    </span>
+                    <span
+                      className={`fv-pill fv-pill-sev fv-pill-sev-${f.severity}`}
+                    >
+                      {SEVERITY_LABEL[f.severity]}
+                    </span>
+                    <span className="fv-finding-conf">
+                      Confidence {Math.round(f.confidence * 100)}%
+                    </span>
+                  </header>
+                )}
+                <EvidenceChainFlow
+                  chain={f.evidence_chain}
+                  fallbackEvidence={f.evidence}
+                  findingId={findingAnchor(f.id)}
+                />
+                {f.remediation && (
+                  <aside className="fv-finding-fix">
+                    <span className="fv-finding-fix-label">Fix</span>
+                    <p className="fv-finding-fix-body">{f.remediation}</p>
+                  </aside>
+                )}
+              </section>
+            ))}
+          </div>
         )}
-      </div>
+      </section>
 
       <footer className="fv-rule-foot">
         <MethodologyDrawer

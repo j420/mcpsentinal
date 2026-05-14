@@ -243,6 +243,38 @@ describe("buildViewModel — ordering", () => {
   });
 });
 
+describe("buildViewModel — severity histogram", () => {
+  it("counts findings into the severity histogram per sub-category and category", () => {
+    const data = dataOf([
+      rule("C1", "findings", [
+        finding({ severity: "critical" }),
+        finding({ severity: "high" }),
+      ]),
+      rule("C2", "findings", [finding({ severity: "medium" })]),
+      rule("C3", "findings", [finding({ severity: "low" })]),
+    ]);
+    const vm = buildViewModel(data);
+    const cat = vm.findingsByCategory[0];
+    expect(cat.severity).toEqual({
+      critical: 1,
+      high: 1,
+      medium: 1,
+      low: 1,
+      informational: 0,
+    });
+    const sub = cat.subCategories[0];
+    expect(sub.severity).toEqual(cat.severity);
+    expect(cat.ruleCount).toBe(3);
+  });
+
+  it("zeros every bucket when a category is empty", () => {
+    const data = dataOf([rule("C1", "passed"), rule("C2", "passed")]);
+    const vm = buildViewModel(data);
+    // No category appears in findingsByCategory; both are clean.
+    expect(vm.findingsByCategory).toHaveLength(0);
+  });
+});
+
 describe("buildViewModel — skipped grouping", () => {
   it("groups skipped rules by the set of missing inputs", () => {
     const data = dataOf([
