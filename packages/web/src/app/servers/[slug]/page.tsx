@@ -1,22 +1,26 @@
 /**
- * /servers/[slug] — five-entity cascade, complete.
+ * /servers/[slug] — five-entity cascade with navigable layout.
  *
- * One page, one job: render the testing taxonomy in full for every
- * server. Categories → Sub-categories → Rules → Tests → Evidence.
- * Every rule renders regardless of status:
- *   - findings → full hero card with vertical evidence cascade
- *   - passed   → medium card with Tests visible + "Tested cleanly" note
- *   - skipped  → medium card with Tests visible + "Needs X" CTA
+ * The page shows every rule in our taxonomy, but it's navigable rather
+ * than a single 50,000-pixel scroll. Layout:
  *
- * The page IS the proof of work. A clean server still shows what was
- * tested, how it was tested, and that nothing fired. A finding-heavy
- * server surfaces the structured proof chain for each finding.
+ *   ┌────────────────────────────────────────────────────────────────┐
+ *   │  Sticky HeaderRail                                              │
+ *   ├──────────────────┬──────────────────────────────────────────────┤
+ *   │  Sticky TocSidebar│ Cascade intro                                │
+ *   │  (categories,     │ Coverage-gaps banner (if any skipped)        │
+ *   │   severity dots,  │                                              │
+ *   │   counts)         │ <details> per category — open when the       │
+ *   │                   │   category has findings, closed when clean.  │
+ *   │                   │ Inside open category:                        │
+ *   │                   │   sub-category rails + rules:                │
+ *   │                   │     • findings → full RuleCard               │
+ *   │                   │     • passed   → CompactRuleRow (expandable) │
+ *   │                   │     • skipped  → CompactRuleRow (expandable) │
+ *   └──────────────────┴──────────────────────────────────────────────┘
  *
- * The verdict + counts live in a sticky header. All derivation happens
- * server-side in `buildViewModel`. Client components are pure
- * renderers. `<SectionBoundary/>` wraps each major section so a render
- * exception in one block degrades to a quiet skeleton instead of
- * taking down the whole route.
+ * A <HashOpener/> client island ensures clicking a TOC link auto-opens
+ * the matching `<details>` block and scrolls into view.
  */
 
 import React, { Fragment } from "react";
@@ -24,10 +28,13 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import SectionBoundary from "@/components/SectionBoundary";
 import HeaderRail from "./header-rail";
+import TocSidebar from "./toc-sidebar";
 import CategoryRail from "./category-rail";
 import SubCategoryRail from "./sub-category-rail";
 import RuleCard from "./rule-card";
+import CompactRuleRow from "./compact-rule-row";
 import SkippedRulesBlock from "./skipped-rules-block";
+import HashOpener from "./hash-opener";
 import { buildViewModel } from "./view-model";
 import type { DeepDiveResponse, DeepDiveData } from "@/lib/deep-dive";
 import "./findings-view.css";
@@ -95,82 +102,109 @@ export default async function ServerDetailPage({
         />
       </SectionBoundary>
 
-      <main className="fv-main">
-        {/* Coverage-gaps banner — slim CTA near the top when we are
-            missing inputs that block tests. Always above the cascade so
-            the reader sees the gap-context before they scroll. */}
-        {vm.skipped.length > 0 && (
-          <SectionBoundary section="coverage-gaps" label="Coverage gaps">
-            <SkippedRulesBlock groups={vm.skipped} />
-          </SectionBoundary>
-        )}
+      <div className="fv-layout">
+        <SectionBoundary section="toc" label="Table of contents">
+          <TocSidebar cascade={vm.cascade} counts={vm.counts} />
+        </SectionBoundary>
 
-        {/* Page-level explainer so the cascade is self-describing. */}
-        <section
-          className="fv-cascade-intro"
-          aria-labelledby="fv-cascade-intro-h"
-        >
-          <h2 id="fv-cascade-intro-h" className="fv-cascade-intro-h">
-            The five-entity audit cascade
-          </h2>
-          <p className="fv-cascade-intro-body">
-            Every rule in our 164-rule taxonomy is reported below — grouped
-            by <strong>category</strong> and <strong>sub-category</strong>,
-            with its <strong>test methodology</strong> always visible and a{" "}
-            <strong>structured evidence chain</strong> for every finding.
-            Rules that tested cleanly say so; rules we could not run say
-            what they would need.
-          </p>
-        </section>
-
-        {vm.cascade.length === 0 ? (
-          <section className="fv-empty" aria-labelledby="fv-empty-h">
-            <h2 id="fv-empty-h" className="fv-empty-title">
-              Deep-dive data not yet on file
+        <main className="fv-main">
+          <section className="fv-cascade-intro" aria-labelledby="fv-cascade-intro-h">
+            <h2 id="fv-cascade-intro-h" className="fv-cascade-intro-h">
+              The five-entity audit cascade
             </h2>
-            <p>
-              We have not yet ingested rule-level results for this server.
-              Check back after the next scheduled scan, or contact the
-              registry maintainers.
+            <p className="fv-cascade-intro-body">
+              Every rule in our 164-rule taxonomy is reported below — grouped
+              by <strong>category</strong> and <strong>sub-category</strong>,
+              with its <strong>test methodology</strong> always visible and a{" "}
+              <strong>structured evidence chain</strong> for every finding.
+              Categories with findings open automatically; clean categories
+              stay collapsed so the page is navigable. Click any category to
+              expand it, or use the table of contents on the left.
             </p>
           </section>
-        ) : (
-          vm.cascade.map((cat) => (
-            <SectionBoundary
-              key={cat.id}
-              section={`category-${cat.id}`}
-              label={cat.title}
-            >
-              <CategoryRail
-                id={cat.id}
-                title={cat.title}
-                summary={cat.summary}
-                worstSeverity={cat.worstSeverity ?? "informational"}
-                findingCount={cat.findingCount}
-                ruleCount={cat.ruleCounts.total}
-                severity={cat.severity}
-                frameworks={cat.frameworks}
-              />
-              {cat.subCategories.map((sub) => (
-                <Fragment key={sub.id}>
-                  <SubCategoryRail
-                    id={sub.id}
-                    title={sub.title}
-                    summary={sub.summary}
-                    worstSeverity={sub.worstSeverity ?? "informational"}
-                    findingCount={sub.findingCount}
-                    ruleCount={sub.rules.length}
-                    severity={sub.severity}
-                  />
-                  {sub.rules.map((rule) => (
-                    <RuleCard key={rule.rule_id} rule={rule} />
-                  ))}
-                </Fragment>
-              ))}
+
+          {vm.skipped.length > 0 && (
+            <SectionBoundary section="coverage-gaps" label="Coverage gaps">
+              <SkippedRulesBlock groups={vm.skipped} />
             </SectionBoundary>
-          ))
-        )}
-      </main>
+          )}
+
+          {vm.cascade.length === 0 ? (
+            <section className="fv-empty" aria-labelledby="fv-empty-h">
+              <h2 id="fv-empty-h" className="fv-empty-title">
+                Deep-dive data not yet on file
+              </h2>
+              <p>
+                We have not yet ingested rule-level results for this server.
+                Check back after the next scheduled scan, or contact the
+                registry maintainers.
+              </p>
+            </section>
+          ) : (
+            vm.cascade.map((cat) => {
+              const hasFindings = cat.findingCount > 0;
+              return (
+                <SectionBoundary
+                  key={cat.id}
+                  section={`category-${cat.id}`}
+                  label={cat.title}
+                >
+                  <details className="fv-cat-box" open={hasFindings}>
+                    <summary className="fv-cat-summary">
+                      <span className="fv-cat-summary-chev" aria-hidden="true">
+                        <svg viewBox="0 0 16 16" width="14" height="14" fill="none">
+                          <path
+                            d="M6 4l4 4-4 4"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </span>
+                      <CategoryRail
+                        id={cat.id}
+                        title={cat.title}
+                        summary={cat.summary}
+                        worstSeverity={cat.worstSeverity ?? "informational"}
+                        findingCount={cat.findingCount}
+                        ruleCount={cat.ruleCounts.total}
+                        severity={cat.severity}
+                        frameworks={cat.frameworks}
+                      />
+                    </summary>
+
+                    <div className="fv-cat-body">
+                      {cat.subCategories.map((sub) => (
+                        <Fragment key={sub.id}>
+                          <SubCategoryRail
+                            id={sub.id}
+                            title={sub.title}
+                            summary={sub.summary}
+                            worstSeverity={sub.worstSeverity ?? "informational"}
+                            findingCount={sub.findingCount}
+                            ruleCount={sub.rules.length}
+                            severity={sub.severity}
+                          />
+                          {sub.rules.map((rule) =>
+                            rule.status === "findings" ? (
+                              <RuleCard key={rule.rule_id} rule={rule} />
+                            ) : (
+                              <CompactRuleRow key={rule.rule_id} rule={rule} />
+                            ),
+                          )}
+                        </Fragment>
+                      ))}
+                    </div>
+                  </details>
+                </SectionBoundary>
+              );
+            })
+          )}
+        </main>
+      </div>
+
+      <HashOpener />
     </div>
   );
 }
