@@ -44,6 +44,41 @@ function findingAnchor(findingId: string): string {
   return `finding-${findingId}`;
 }
 
+// Humanise a kebab/snake-case test-strategy identifier into a title.
+// `ast-taint-interprocedural` → `AST taint · interprocedural`.
+// Falls back to title-casing each token when no recognised prefix applies.
+function humanizeStrategy(id: string): string {
+  if (!id) return "";
+  const tokens = id.split(/[-_]+/);
+  // Recognised prefix groups — render them as a leading "noun · qualifier"
+  // pair so the strategy reads like a clear technique name.
+  const head = tokens.slice(0, 2).join("-").toLowerCase();
+  const tail = tokens.slice(2).map((t) => t.toLowerCase()).join(" ");
+  const NAMED: Record<string, string> = {
+    "ast-taint": "AST taint analysis",
+    "taint-path": "Taint-path verification",
+    "sanitizer-verified": "Sanitiser verification",
+    "schema-shape": "Schema-shape inference",
+    "linguistic-pattern": "Linguistic pattern match",
+    "entropy-threshold": "Entropy threshold",
+    "structural-parse": "Structural parse",
+    "graph-traversal": "Capability-graph traversal",
+    "annotation-check": "Annotation conformance",
+    "regex-blocklist": "Pattern blocklist",
+    "version-compare": "Version comparison",
+    "similarity-levenshtein": "Levenshtein similarity",
+    "context-window": "Context-window analysis",
+  };
+  const named = NAMED[head];
+  if (named) {
+    return tail ? `${named} · ${tail}` : named;
+  }
+  // Generic humanisation: kebab-case → Title Case.
+  return tokens
+    .map((t) => (t.length === 0 ? t : t[0].toUpperCase() + t.slice(1)))
+    .join(" ");
+}
+
 export default function RuleCard({ rule }: RuleCardProps): React.ReactElement {
   const sev = rule.worstSeverity;
   const findings = rule.findings;
@@ -124,25 +159,36 @@ export default function RuleCard({ rule }: RuleCardProps): React.ReactElement {
           >
             Tests
           </span>
-          {technique && (
-            <code className="fv-rule-tech" title="Detection technique">
-              {technique}
-            </code>
-          )}
           <span className="fv-rule-section-count">
             {tests.length} strateg{tests.length === 1 ? "y" : "ies"}
           </span>
         </header>
+        <p className="fv-rule-section-intro">
+          How this rule decides. Each strategy below is a deterministic
+          analysis the detector runs against the MCP server&apos;s static
+          metadata, source code, and (when present) live connection
+          handshake.
+        </p>
+        {technique && (
+          <div className="fv-rule-tech-row">
+            <span className="fv-rule-tech-label">Primary technique</span>
+            <code className="fv-rule-tech">{technique}</code>
+          </div>
+        )}
         {tests.length === 0 ? (
           <p className="fv-rule-tests-empty">
             No edge-case strategies declared in the rule&apos;s CHARTER.md.
+            See the rule&apos;s source for the authoritative implementation.
           </p>
         ) : (
           <ol className="fv-rule-tests-list">
             {tests.map((t, i) => (
               <li key={i} className="fv-rule-test">
                 <span className="fv-rule-test-num">{i + 1}</span>
-                <code className="fv-rule-test-body">{t}</code>
+                <div className="fv-rule-test-body">
+                  <p className="fv-rule-test-title">{humanizeStrategy(t)}</p>
+                  <code className="fv-rule-test-id">{t}</code>
+                </div>
               </li>
             ))}
           </ol>
@@ -165,6 +211,15 @@ export default function RuleCard({ rule }: RuleCardProps): React.ReactElement {
             {findings.length} finding{findings.length === 1 ? "" : "s"}
           </span>
         </header>
+        <p className="fv-rule-section-intro">
+          What we found. Each finding below carries a structured proof
+          chain from <strong>source</strong> (where untrusted data enters)
+          through <strong>propagation</strong> (how it flows) to a{" "}
+          <strong>sink</strong> (where the dangerous operation occurs),
+          including any <strong>mitigations</strong> checked for and the
+          potential <strong>impact</strong> if exploited. Every link is
+          independently verifiable against the cited location.
+        </p>
         {findings.length === 0 ? (
           <p className="fv-rule-empty">No finding details on file.</p>
         ) : (

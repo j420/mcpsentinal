@@ -1,62 +1,77 @@
 /**
- * EvidenceChainFlow — the page's hero element.
+ * EvidenceChainFlow — the page's hero. Vertical forensic cascade.
  *
- * Renders the structured evidence chain (source → propagation* → sink →
- * mitigation* → impact) as a horizontal rail of pills connected by
- * chevron arrows. This is the visual proof: a CISO or funder sees the
- * chain at a glance and understands what was found, why, and where.
+ * Each link in the chain renders as a full-width block with EVERY
+ * field surfaced and labeled: a numbered step badge, the kind label
+ * (SOURCE / PROPAGATION / SINK / MITIGATION / IMPACT), the sub-type
+ * pill, and a definition-list of every backing field (where, what was
+ * observed, rationale / detail / scenario, CVE precedent, mitigation
+ * present/absent, scope, exploitability).
  *
- * Input is the wire-typed `evidence_chain: Record<string, unknown> | null`
- * straight off the DeepDiveFinding. We never trust the shape — every link
- * narrows defensively before rendering. A null or malformed chain falls
- * back to the prose `evidence` string so the rule card still has a body.
+ * Between links: a tall down-chevron arrow so the eye tracks the chain
+ * as a flow.
  *
- * Verification steps (when present) render as a small numbered strip
- * ABOVE the chain. Confidence factors and threat reference render BELOW.
+ * Confidence factors render inline below the chain — not hidden — so a
+ * reviewer sees exactly how the confidence number was assembled. Threat
+ * reference and verification steps render as their own labeled cards.
  *
- * Pure rendering. No hooks, no state, no fetch. Mobile: chain stacks
- * vertically via CSS, arrows rotate via CSS as well — no JS branch.
+ * Input is the wire-typed `evidence_chain: Record<string, unknown> | null`.
+ * Every link narrows defensively before rendering. A null / malformed
+ * chain falls back to the prose `evidence` string so the rule card
+ * still has a body.
  */
 
 import React from "react";
 
 // ── Local narrowing — duplicates analyzer's evidence.ts shapes ────────
-// We can't import from `@mcp-sentinel/analyzer` (boundary rule, see
-// web/CLAUDE.md). The wire ships `Record<string, unknown>`; we narrow
-// per-link to the minimum surface this component renders.
 
 type LinkKind = "source" | "propagation" | "sink" | "mitigation" | "impact";
 
 interface NormalizedLink {
   kind: LinkKind;
-  /** Short label for the pill heading, e.g. "user-parameter", "exec()". */
-  label: string;
-  /** Human location like "tools.run.input" or "src/index.ts:42". */
+  subtype: string;
   location: string;
-  /** The actual text / pattern observed at this point. */
   observed: string;
-  /** Optional rationale / detail (mitigation: detail; source: rationale). */
-  detail: string | null;
-  /** Optional CVE precedent — only on sink links. */
+  /** Source: rationale; Mitigation: detail; Impact: scenario. */
+  narrative: string | null;
   cvePrecedent: string | null;
-  /** Mitigation: was it present? (for present/absent badge). */
   mitigationPresent: boolean | null;
-  /** Impact: exploitability hint. */
-  exploitability: string | null;
+  /** Impact only. */
+  impactScope: string | null;
+  impactExploitability: string | null;
+}
+
+interface NormalizedConfidenceFactor {
+  factor: string;
+  adjustment: number;
+  rationale: string;
+}
+
+interface NormalizedThreatRef {
+  id: string;
+  title: string;
+  url?: string;
+  year: number | null;
+  relevance: string;
+}
+
+interface NormalizedVerification {
+  stepNumber: number;
+  stepType: string;
+  instruction: string;
+  target: string;
+  expected: string;
 }
 
 interface NormalizedChain {
   links: NormalizedLink[];
   confidence: number | null;
-  confidenceFactors: Array<{ factor: string; adjustment: number; rationale: string }>;
-  threatRef: { id: string; title: string; url?: string } | null;
-  verificationSteps: Array<{
-    stepNumber: number;
-    instruction: string;
-    target: string;
-    expected: string;
-  }>;
+  factors: NormalizedConfidenceFactor[];
+  threatRef: NormalizedThreatRef | null;
+  verificationSteps: NormalizedVerification[];
 }
+
+// ── Coercion helpers ─────────────────────────────────────────────────
 
 function asString(v: unknown): string | null {
   return typeof v === "string" ? v : null;
@@ -80,11 +95,6 @@ function asRecord(v: unknown): Record<string, unknown> | null {
     : null;
 }
 
-/**
- * Render a `Location` record (or prose) into a single human label.
- * Mirrors the analyzer's `renderLocation` but operates on the unknown wire
- * shape — we don't have the typed union here.
- */
 function renderLocation(loc: unknown): string {
   if (typeof loc === "string") return loc;
   const r = asRecord(loc);
@@ -102,9 +112,9 @@ function renderLocation(loc: unknown): string {
     case "tool":
       return `tool ${asString(r.tool_name) ?? ""}`;
     case "parameter":
-      return `tool ${asString(r.tool_name) ?? ""} parameter ${asString(r.parameter_path) ?? ""}`;
+      return `tool ${asString(r.tool_name) ?? ""} · parameter ${asString(r.parameter_path) ?? ""}`;
     case "schema":
-      return `tool ${asString(r.tool_name) ?? ""} schema ${asString(r.json_pointer) ?? ""}`;
+      return `tool ${asString(r.tool_name) ?? ""} · schema ${asString(r.json_pointer) ?? ""}`;
     case "dependency":
       return `${asString(r.ecosystem) ?? ""}:${asString(r.name) ?? ""}@${asString(r.version) ?? ""}`;
     case "config":
@@ -138,7 +148,7 @@ function isLinkKind(v: unknown): v is LinkKind {
   );
 }
 
-function linkLabel(kind: LinkKind, raw: Record<string, unknown>): string {
+function subtypeOf(kind: LinkKind, raw: Record<string, unknown>): string {
   switch (kind) {
     case "source":
       return asString(raw.source_type) ?? "source";
@@ -153,7 +163,7 @@ function linkLabel(kind: LinkKind, raw: Record<string, unknown>): string {
   }
 }
 
-function linkDetail(kind: LinkKind, raw: Record<string, unknown>): string | null {
+function narrativeOf(kind: LinkKind, raw: Record<string, unknown>): string | null {
   switch (kind) {
     case "source":
       return asString(raw.rationale);
@@ -175,28 +185,21 @@ function normalizeChain(chain: Record<string, unknown> | null): NormalizedChain 
     if (!rec) continue;
     const kind = rec.type;
     if (!isLinkKind(kind)) continue;
-    const observed =
-      kind === "impact"
-        ? asString(rec.scope) ?? ""
-        : asString(rec.observed) ?? "";
     links.push({
       kind,
-      label: linkLabel(kind, rec),
-      location:
-        kind === "impact"
-          ? "" // impact links have no `location`; surfaced via exploitability
-          : renderLocation(rec.location),
-      observed,
-      detail: linkDetail(kind, rec),
+      subtype: subtypeOf(kind, rec),
+      location: renderLocation(rec.location),
+      observed: asString(rec.observed) ?? "",
+      narrative: narrativeOf(kind, rec),
       cvePrecedent: kind === "sink" ? asString(rec.cve_precedent) : null,
       mitigationPresent: kind === "mitigation" ? asBool(rec.present) : null,
-      exploitability: kind === "impact" ? asString(rec.exploitability) : null,
+      impactScope: kind === "impact" ? asString(rec.scope) : null,
+      impactExploitability: kind === "impact" ? asString(rec.exploitability) : null,
     });
   }
   if (links.length === 0) return null;
 
-  const rawFactors = asArray(chain.confidence_factors);
-  const confidenceFactors = rawFactors
+  const factors: NormalizedConfidenceFactor[] = asArray(chain.confidence_factors)
     .map((f) => asRecord(f))
     .filter((f): f is Record<string, unknown> => f !== null)
     .map((f) => ({
@@ -205,21 +208,23 @@ function normalizeChain(chain: Record<string, unknown> | null): NormalizedChain 
       rationale: asString(f.rationale) ?? "",
     }));
 
-  const ref = asRecord(chain.threat_reference);
-  const threatRef = ref
+  const refRec = asRecord(chain.threat_reference);
+  const threatRef: NormalizedThreatRef | null = refRec
     ? {
-        id: asString(ref.id) ?? "",
-        title: asString(ref.title) ?? "",
-        url: asString(ref.url) ?? undefined,
+        id: asString(refRec.id) ?? "",
+        title: asString(refRec.title) ?? "",
+        url: asString(refRec.url) ?? undefined,
+        year: asNumber(refRec.year),
+        relevance: asString(refRec.relevance) ?? "",
       }
     : null;
 
-  const rawSteps = asArray(chain.verification_steps);
-  const verificationSteps = rawSteps
+  const verificationSteps: NormalizedVerification[] = asArray(chain.verification_steps)
     .map((s) => asRecord(s))
     .filter((s): s is Record<string, unknown> => s !== null)
     .map((s, i) => ({
       stepNumber: i + 1,
+      stepType: asString(s.step_type) ?? "",
       instruction: asString(s.instruction) ?? "",
       target: renderLocation(s.target),
       expected: asString(s.expected_observation) ?? "",
@@ -228,19 +233,44 @@ function normalizeChain(chain: Record<string, unknown> | null): NormalizedChain 
   return {
     links,
     confidence: asNumber(chain.confidence),
-    confidenceFactors,
+    factors,
     threatRef,
     verificationSteps,
   };
 }
 
-// ── Component ─────────────────────────────────────────────────────────
+// ── Field-label vocab ─────────────────────────────────────────────────
+// Each link kind has a different set of meaningful fields. The labels
+// here are intentionally plain-English so a non-engineer reads the chain
+// as a forensic narrative, not a dump.
+
+const KIND_LABEL: Record<LinkKind, string> = {
+  source: "Source",
+  propagation: "Propagation",
+  sink: "Sink",
+  mitigation: "Mitigation",
+  impact: "Impact",
+};
+
+function ordinal(n: number): string {
+  // Circled digits 1..10; fall back to plain "N." for n > 10.
+  const circled = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩"];
+  return n >= 1 && n <= 10 ? circled[n - 1] : `${n}.`;
+}
+
+// Humanise kebab/snake-case sub-types into title case for the pill copy.
+function humanizeSubtype(s: string): string {
+  if (!s) return "";
+  return s
+    .replace(/[-_]+/g, " ")
+    .replace(/\b([a-z])/g, (_, c) => c.toUpperCase());
+}
+
+// ── Component ────────────────────────────────────────────────────────
 
 export interface EvidenceChainFlowProps {
   chain: Record<string, unknown> | null;
-  /** Prose fallback used when chain is null/empty. */
   fallbackEvidence: string;
-  /** Stable id used to anchor the per-finding permalink (#finding-…). */
   findingId?: string;
 }
 
@@ -253,43 +283,37 @@ export default function EvidenceChainFlow({
 
   if (!norm) {
     return (
-      <div className="fv-chain fv-chain-empty" id={findingId}>
-        <p className="fv-chain-fallback">{fallbackEvidence}</p>
-        <p className="fv-chain-fallback-hint">
-          Structured evidence chain not on file for this finding.
-        </p>
+      <div className="fv-ev" id={findingId}>
+        <div className="fv-ev-fallback">
+          <p className="fv-ev-fallback-eyebrow">Evidence (prose only)</p>
+          <p className="fv-ev-fallback-body">{fallbackEvidence}</p>
+          <p className="fv-ev-fallback-hint">
+            Structured evidence chain not on file for this finding — the
+            detector emitted only narrative text.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="fv-chain" id={findingId}>
-      {norm.verificationSteps.length > 0 && (
-        <ol className="fv-chain-verify" aria-label="Verification steps">
-          {norm.verificationSteps.map((s) => (
-            <li key={s.stepNumber} className="fv-chain-verify-item">
-              <span className="fv-chain-verify-num">{s.stepNumber}</span>
-              <span className="fv-chain-verify-body">
-                <span className="fv-chain-verify-instr">{s.instruction}</span>
-                {s.target && (
-                  <code className="fv-chain-verify-target">{s.target}</code>
-                )}
-                {s.expected && (
-                  <span className="fv-chain-verify-expected">
-                    Expect: {s.expected}
-                  </span>
-                )}
-              </span>
-            </li>
-          ))}
-        </ol>
-      )}
+    <div className="fv-ev" id={findingId}>
+      {/* ── Chain narrative ────────────────────────────────────────── */}
+      <div className="fv-ev-narrative">
+        <p className="fv-ev-narrative-eyebrow">Proof chain</p>
+        <p className="fv-ev-narrative-body">
+          {norm.links.length} step{norm.links.length === 1 ? "" : "s"} from
+          untrusted source to potential impact. Each step is independently
+          verifiable against the cited location.
+        </p>
+      </div>
 
-      <div className="fv-chain-rail" role="list">
+      {/* ── Chain links ────────────────────────────────────────────── */}
+      <ol className="fv-ev-chain" aria-label="Evidence chain">
         {norm.links.map((link, i) => (
           <React.Fragment key={`${link.kind}-${i}`}>
-            <article
-              className={`fv-chain-node fv-chain-node-${link.kind}`}
+            <li
+              className={`fv-ev-link fv-ev-link-${link.kind}`}
               data-kind={link.kind}
               data-mitigation-present={
                 link.mitigationPresent === null
@@ -298,121 +322,239 @@ export default function EvidenceChainFlow({
                     ? "true"
                     : "false"
               }
-              role="listitem"
             >
-              <header className="fv-chain-node-head">
-                <span className="fv-chain-node-kind">{link.kind}</span>
-                <span className="fv-chain-node-label">{link.label}</span>
+              <header className="fv-ev-link-head">
+                <span className="fv-ev-link-num" aria-hidden="true">
+                  {ordinal(i + 1)}
+                </span>
+                <span className="fv-ev-link-kind">{KIND_LABEL[link.kind]}</span>
+                <span className="fv-ev-link-sub">{humanizeSubtype(link.subtype)}</span>
                 {link.kind === "mitigation" && link.mitigationPresent !== null && (
                   <span
-                    className={`fv-chain-node-mit ${
+                    className={
                       link.mitigationPresent
-                        ? "fv-chain-node-mit-present"
-                        : "fv-chain-node-mit-absent"
-                    }`}
+                        ? "fv-ev-mit-badge fv-ev-mit-present"
+                        : "fv-ev-mit-badge fv-ev-mit-absent"
+                    }
+                    role="status"
                   >
-                    {link.mitigationPresent ? "present" : "absent"}
+                    <span className="fv-ev-mit-icon" aria-hidden="true">
+                      {link.mitigationPresent ? "✓" : "✕"}
+                    </span>
+                    <span className="fv-ev-mit-text">
+                      {link.mitigationPresent ? "Present" : "Absent"}
+                    </span>
                   </span>
                 )}
               </header>
-              {link.location && (
-                <code className="fv-chain-node-loc">{link.location}</code>
-              )}
-              {link.observed && (
-                <pre className="fv-chain-node-observed">{link.observed}</pre>
-              )}
-              {link.detail && <p className="fv-chain-node-detail">{link.detail}</p>}
-              {link.cvePrecedent && (
-                <span className="fv-chain-node-cve">{link.cvePrecedent}</span>
-              )}
-              {link.exploitability && (
-                <span className="fv-chain-node-expl">
-                  {link.exploitability}
-                </span>
-              )}
-            </article>
+
+              <dl className="fv-ev-link-fields">
+                {link.location && (
+                  <>
+                    <dt>{link.kind === "impact" ? "Affected" : link.kind === "propagation" ? "At" : "Where"}</dt>
+                    <dd>
+                      <code className="fv-ev-loc">{link.location}</code>
+                    </dd>
+                  </>
+                )}
+
+                {link.kind === "impact" && link.impactScope && (
+                  <>
+                    <dt>Scope</dt>
+                    <dd className="fv-ev-fld-scope">{link.impactScope}</dd>
+                  </>
+                )}
+
+                {link.kind === "impact" && link.impactExploitability && (
+                  <>
+                    <dt>Exploitability</dt>
+                    <dd>
+                      <span
+                        className={`fv-ev-expl fv-ev-expl-${link.impactExploitability}`}
+                      >
+                        {humanizeSubtype(link.impactExploitability)}
+                      </span>
+                    </dd>
+                  </>
+                )}
+
+                {link.observed && link.kind !== "impact" && (
+                  <>
+                    <dt>{link.kind === "mitigation" ? "Pattern" : "Observed"}</dt>
+                    <dd>
+                      <pre className="fv-ev-observed">{link.observed}</pre>
+                    </dd>
+                  </>
+                )}
+
+                {link.narrative && (
+                  <>
+                    <dt>
+                      {link.kind === "source"
+                        ? "Why untrusted"
+                        : link.kind === "mitigation"
+                          ? "Detail"
+                          : "Scenario"}
+                    </dt>
+                    <dd className="fv-ev-narrative-cell">{link.narrative}</dd>
+                  </>
+                )}
+
+                {link.cvePrecedent && (
+                  <>
+                    <dt>CVE precedent</dt>
+                    <dd>
+                      <code className="fv-ev-cve">{link.cvePrecedent}</code>
+                    </dd>
+                  </>
+                )}
+              </dl>
+            </li>
+
             {i < norm.links.length - 1 && (
-              <span
-                className="fv-chain-arrow"
+              <li
+                className="fv-ev-arrow"
                 aria-hidden="true"
                 role="presentation"
               >
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
+                <svg viewBox="0 0 24 32" width="24" height="32" fill="none">
                   <path
-                    d="M5 12h14M13 6l6 6-6 6"
+                    d="M12 2v22"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeDasharray="2 4"
+                  />
+                  <path
+                    d="M6 22l6 6 6-6"
                     stroke="currentColor"
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   />
                 </svg>
-              </span>
+              </li>
             )}
           </React.Fragment>
         ))}
-      </div>
+      </ol>
 
-      {(norm.confidence !== null || norm.confidenceFactors.length > 0 || norm.threatRef) && (
-        <footer className="fv-chain-foot">
-          {norm.confidence !== null && (
-            <span className="fv-chain-conf">
-              <span className="fv-chain-conf-label">Confidence</span>
-              <span className="fv-chain-conf-val">
+      {/* ── Confidence breakdown (inline, NOT hidden) ──────────────── */}
+      {(norm.confidence !== null || norm.factors.length > 0) && (
+        <section className="fv-ev-conf" aria-labelledby={`${findingId}-conf-h`}>
+          <header className="fv-ev-sub-head">
+            <span className="fv-ev-sub-eyebrow" id={`${findingId}-conf-h`}>
+              Confidence
+            </span>
+            {norm.confidence !== null && (
+              <span className="fv-ev-conf-pct">
                 {Math.round(norm.confidence * 100)}%
               </span>
-            </span>
+            )}
+          </header>
+          {norm.factors.length > 0 ? (
+            <ul className="fv-ev-conf-factors">
+              {norm.factors.map((f, i) => (
+                <li key={i} className="fv-ev-conf-factor">
+                  <span
+                    className={
+                      f.adjustment >= 0
+                        ? "fv-ev-conf-adj fv-ev-conf-adj-pos"
+                        : "fv-ev-conf-adj fv-ev-conf-adj-neg"
+                    }
+                  >
+                    {f.adjustment >= 0 ? "+" : ""}
+                    {Math.round(f.adjustment * 100) / 100}
+                  </span>
+                  <div className="fv-ev-conf-text">
+                    <span className="fv-ev-conf-name">{f.factor}</span>
+                    {f.rationale && (
+                      <span className="fv-ev-conf-rat">{f.rationale}</span>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="fv-ev-conf-empty">
+              No factor breakdown on file — the detector emitted a single
+              confidence value without per-factor adjustments.
+            </p>
           )}
-          {norm.threatRef && (
-            <span className="fv-chain-threat">
-              <span className="fv-chain-threat-id">{norm.threatRef.id}</span>
-              {norm.threatRef.title && (
-                <span className="fv-chain-threat-title">
-                  {norm.threatRef.url ? (
-                    <a
-                      href={norm.threatRef.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {norm.threatRef.title}
-                    </a>
-                  ) : (
-                    norm.threatRef.title
-                  )}
-                </span>
+        </section>
+      )}
+
+      {/* ── Threat reference (real-world precedent) ─────────────────── */}
+      {norm.threatRef && (
+        <section className="fv-ev-threat">
+          <header className="fv-ev-sub-head">
+            <span className="fv-ev-sub-eyebrow">Real-world precedent</span>
+          </header>
+          <div className="fv-ev-threat-body">
+            <div className="fv-ev-threat-id-row">
+              <code className="fv-ev-threat-id">{norm.threatRef.id}</code>
+              {norm.threatRef.year !== null && (
+                <span className="fv-ev-threat-year">{norm.threatRef.year}</span>
               )}
+            </div>
+            <p className="fv-ev-threat-title">
+              {norm.threatRef.url ? (
+                <a
+                  href={norm.threatRef.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {norm.threatRef.title}
+                </a>
+              ) : (
+                norm.threatRef.title
+              )}
+            </p>
+            {norm.threatRef.relevance && (
+              <p className="fv-ev-threat-rel">{norm.threatRef.relevance}</p>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* ── Verification steps (how to reproduce / audit) ───────────── */}
+      {norm.verificationSteps.length > 0 && (
+        <section className="fv-ev-verify">
+          <header className="fv-ev-sub-head">
+            <span className="fv-ev-sub-eyebrow">
+              How to verify this finding
             </span>
-          )}
-          {norm.confidenceFactors.length > 0 && (
-            <details className="fv-chain-factors">
-              <summary className="fv-chain-factors-sum">
-                {norm.confidenceFactors.length} confidence factor
-                {norm.confidenceFactors.length === 1 ? "" : "s"}
-              </summary>
-              <ul className="fv-chain-factors-list">
-                {norm.confidenceFactors.map((f, i) => (
-                  <li key={i} className="fv-chain-factor">
-                    <span
-                      className={`fv-chain-factor-adj ${
-                        f.adjustment >= 0
-                          ? "fv-chain-factor-pos"
-                          : "fv-chain-factor-neg"
-                      }`}
-                    >
-                      {f.adjustment >= 0 ? "+" : ""}
-                      {Math.round(f.adjustment * 100) / 100}
-                    </span>
-                    <span className="fv-chain-factor-body">
-                      <span className="fv-chain-factor-name">{f.factor}</span>
-                      {f.rationale && (
-                        <span className="fv-chain-factor-rat">{f.rationale}</span>
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </details>
-          )}
-        </footer>
+            <span className="fv-ev-sub-count">
+              {norm.verificationSteps.length} step
+              {norm.verificationSteps.length === 1 ? "" : "s"}
+            </span>
+          </header>
+          <ol className="fv-ev-verify-list">
+            {norm.verificationSteps.map((s) => (
+              <li key={s.stepNumber} className="fv-ev-verify-item">
+                <span className="fv-ev-verify-num">{s.stepNumber}</span>
+                <div className="fv-ev-verify-body">
+                  {s.stepType && (
+                    <code className="fv-ev-verify-type">{s.stepType}</code>
+                  )}
+                  <p className="fv-ev-verify-instr">{s.instruction}</p>
+                  {s.target && (
+                    <p className="fv-ev-verify-target">
+                      <span className="fv-ev-verify-key">Target:</span>{" "}
+                      <code>{s.target}</code>
+                    </p>
+                  )}
+                  {s.expected && (
+                    <p className="fv-ev-verify-expected">
+                      <span className="fv-ev-verify-key">Expect:</span>{" "}
+                      {s.expected}
+                    </p>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
       )}
     </div>
   );
