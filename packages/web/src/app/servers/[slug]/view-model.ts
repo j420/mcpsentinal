@@ -5,15 +5,11 @@
  * `buildViewModel(data)` once at request time and passes the result to
  * the client components, which become pure renderers.
  *
- * Why a view-model and not derive-on-the-fly:
- *   - Score, verdict, severity sort, and the (findings / skipped / clean)
- *     partition all need the same severity histogram. Computing it once
- *     here means the rule cards, header, and skipped block all read the
- *     same numbers. No drift.
- *   - The page is the only file that should know the shape of
- *     `DeepDiveData`. Once we cross into `<RuleCard/>`, props are minimal.
- *   - Score is derived from findings here — we do NOT read
- *     `data.audit_summary` because the audit panels are killed.
+ * The cascade is COMPLETE: every category, every sub-category, every
+ * rule renders regardless of `status`. Findings rules surface their
+ * evidence chains; passed rules surface "Tested cleanly"; skipped
+ * rules surface "Needs <missing inputs>". The page IS the testing
+ * taxonomy — for a clean server, the cascade is the proof of work.
  *
  * Score algorithm (matches `agent_docs/scoring-algorithm.md`):
  *   score = 100 − Σ(severity weight × finding count), floored at 0.
@@ -28,14 +24,14 @@
  * Retired-rule filter:
  *   13 rules retired in 2026 with `enabled: false` in YAML. If the API
  *   still emits them in deep-dive (defensive), drop them at partition
- *   time so they never surface in the skipped block as fake coverage gaps.
+ *   time so they never surface anywhere.
  */
 
 import type {
   DeepDiveData,
   DeepDiveCategory,
-  DeepDiveSubCategory,
   DeepDiveRule,
+  DeepDiveRuleStatus,
   DeepDiveSeverity,
   DeepDiveSkipInput,
   AuditVerdictPill,
@@ -60,9 +56,14 @@ const SEVERITY_RANK: Record<DeepDiveSeverity, number> = {
   informational: 1,
 };
 
-// Retired rules that may still appear in deep-dive payloads. Filtering
-// here is defensive; the API should already exclude them via
-// `enabled: false` in YAML.
+// status ordering — findings rules rendered first so the most
+// actionable rows in a sub-category land at the top.
+const STATUS_RANK: Record<DeepDiveRuleStatus, number> = {
+  findings: 3,
+  skipped: 2,
+  passed: 1,
+};
+
 const RETIRED_RULE_IDS = new Set([
   "O1",
   "O2",
@@ -79,7 +80,6 @@ const RETIRED_RULE_IDS = new Set([
   "M3",
 ]);
 
-// Rules that cap total score at 40 when they fire (lethal trifecta).
 const LETHAL_TRIFECTA_RULE_IDS = new Set(["F1", "I13"]);
 
 // ── View-model output shapes ──────────────────────────────────────────
@@ -92,34 +92,52 @@ export interface SeverityHistogram {
   informational: number;
 }
 
-export interface RuleWithFindings extends DeepDiveRule {
-  /** Pre-computed: worst severity across this rule's findings. */
-  worstSeverity: DeepDiveSeverity;
+/**
+ * A rule as it surfaces in the cascade — preserves its DeepDiveRule
+ * shape and adds the worst-severity rollup of its findings (null when
+ * the rule has no findings, e.g. passed / skipped).
+ */
+export interface CascadeRule extends DeepDiveRule {
+  worstSeverity: DeepDiveSeverity | null;
 }
 
-export interface SubCategoryWithFindings {
+export interface CascadeSubCategory {
   id: string;
   title: string;
   summary: string;
+  /** Total findings across all rules in this sub-category. */
   findingCount: number;
-  worstSeverity: DeepDiveSeverity;
+  /** Rule status counts for the sub-category header. */
+  ruleCounts: {
+    findings: number;
+    passed: number;
+    skipped: number;
+    total: number;
+  };
+  /** Highest severity across this sub-category's findings; null when clean. */
+  worstSeverity: DeepDiveSeverity | null;
   severity: SeverityHistogram;
-  rules: RuleWithFindings[];
+  rules: CascadeRule[];
 }
 
-export interface CategoryWithFindings {
+export interface CascadeCategory {
   id: string;
   title: string;
   summary: string;
   frameworks: string[];
   findingCount: number;
-  worstSeverity: DeepDiveSeverity;
+  ruleCounts: {
+    findings: number;
+    passed: number;
+    skipped: number;
+    total: number;
+  };
+  worstSeverity: DeepDiveSeverity | null;
   severity: SeverityHistogram;
-  ruleCount: number;
-  subCategories: SubCategoryWithFindings[];
+  subCategories: CascadeSubCategory[];
 }
 
-export interface SkippedRule {
+export interface SkippedRulePointer {
   rule: DeepDiveRule;
   categoryId: string;
   categoryTitle: string;
@@ -128,19 +146,10 @@ export interface SkippedRule {
 }
 
 export interface SkippedGroup {
-  /** Stable key built from missing_inputs (sorted + joined). */
   key: string;
-  /** The set of missing inputs that defines this group. */
   missingInputs: DeepDiveSkipInput[];
-  /** Human label for the CTA, e.g. "Source code". */
   label: string;
-  rules: SkippedRule[];
-}
-
-export interface CleanCategory {
-  id: string;
-  title: string;
-  rulesTotal: number;
+  rules: SkippedRulePointer[];
 }
 
 export interface HeaderCounts {
@@ -151,9 +160,10 @@ export interface HeaderCounts {
 }
 
 export interface PageViewModel {
-  findingsByCategory: CategoryWithFindings[];
+  /** Every category renders, with every rule under it (any status). */
+  cascade: CascadeCategory[];
+  /** Skipped groupings for the "Coverage gaps" CTA banner. */
   skipped: SkippedGroup[];
-  cleanCategories: CleanCategory[];
   counts: HeaderCounts;
   score: number;
   band: ScoreBand;
@@ -170,8 +180,8 @@ function severityRank(sev: DeepDiveSeverity): number {
 
 function worstSeverityOf(
   severities: DeepDiveSeverity[],
-): DeepDiveSeverity {
-  if (severities.length === 0) return "informational";
+): DeepDiveSeverity | null {
+  if (severities.length === 0) return null;
   let worst = severities[0];
   for (const s of severities) {
     if (severityRank(s) > severityRank(worst)) worst = s;
@@ -198,7 +208,11 @@ function addHistogram(a: SeverityHistogram, b: SeverityHistogram): SeverityHisto
 }
 
 function isFindingsRule(r: DeepDiveRule): boolean {
-  return r.status === "findings" && Array.isArray(r.findings) && r.findings.length > 0;
+  return (
+    r.status === "findings" &&
+    Array.isArray(r.findings) &&
+    r.findings.length > 0
+  );
 }
 
 function isSkippedRule(r: DeepDiveRule): boolean {
@@ -210,12 +224,9 @@ function isRetired(r: DeepDiveRule): boolean {
 }
 
 function isCanonicalPlacement(r: DeepDiveRule): boolean {
-  // `is_canonical` is optional. Default to true when absent — the API only
-  // emits the flag on cross-reference placements where it's false.
   return r.is_canonical !== false;
 }
 
-// Skip-input label used in the CTA copy. Stable, deterministic.
 function skipInputLabel(input: DeepDiveSkipInput): string {
   switch (input) {
     case "source_code":
@@ -238,13 +249,8 @@ export function buildViewModel(data: DeepDiveData): PageViewModel {
     ? data.categories
     : [];
 
-  // Pass 1 — partition rules into (findings, skipped, passed) per
-  // (category, sub-category). Retired rules and non-canonical placements
-  // are dropped on the way in so they never surface anywhere.
-
-  const findingsByCategory: CategoryWithFindings[] = [];
-  const cleanCategories: CleanCategory[] = [];
-  const skipped: SkippedRule[] = [];
+  const cascade: CascadeCategory[] = [];
+  const skippedFlat: SkippedRulePointer[] = [];
 
   let findingsCount = 0;
   let skippedCount = 0;
@@ -253,15 +259,21 @@ export function buildViewModel(data: DeepDiveData): PageViewModel {
 
   for (const cat of categories) {
     if (!cat || typeof cat !== "object") continue;
-    const subs: SubCategoryWithFindings[] = [];
+    const subs: CascadeSubCategory[] = [];
     let catFindingCount = 0;
     const catSeverities: DeepDiveSeverity[] = [];
+    const catCounts = { findings: 0, passed: 0, skipped: 0, total: 0 };
 
     const safeSubs = Array.isArray(cat.sub_categories) ? cat.sub_categories : [];
 
     for (const sub of safeSubs) {
       if (!sub || typeof sub !== "object") continue;
-      const findingsRules: RuleWithFindings[] = [];
+      const subRules: CascadeRule[] = [];
+      const subCounts = { findings: 0, passed: 0, skipped: 0, total: 0 };
+      const subHistogram = emptyHistogram();
+      let subFindingCount = 0;
+      const subSeverities: DeepDiveSeverity[] = [];
+
       const safeRules = Array.isArray(sub.rules) ? sub.rules : [];
 
       for (const rule of safeRules) {
@@ -275,10 +287,16 @@ export function buildViewModel(data: DeepDiveData): PageViewModel {
           }
           const severities = rule.findings.map((f) => f.severity);
           const worst = worstSeverityOf(severities);
-          findingsRules.push({ ...rule, worstSeverity: worst });
+          subRules.push({ ...rule, worstSeverity: worst });
+          subFindingCount += rule.findings.length;
           findingsCount += rule.findings.length;
+          subCounts.findings += 1;
+          catCounts.findings += 1;
+          for (const f of rule.findings) bumpHistogram(subHistogram, f.severity);
+          if (worst !== null) subSeverities.push(worst);
         } else if (isSkippedRule(rule)) {
-          skipped.push({
+          subRules.push({ ...rule, worstSeverity: null });
+          skippedFlat.push({
             rule,
             categoryId: cat.id,
             categoryTitle: cat.title ?? cat.id,
@@ -286,111 +304,113 @@ export function buildViewModel(data: DeepDiveData): PageViewModel {
             subCategoryTitle: sub.title ?? sub.id,
           });
           skippedCount += 1;
+          subCounts.skipped += 1;
+          catCounts.skipped += 1;
         } else {
           // status === "passed"
+          subRules.push({ ...rule, worstSeverity: null });
           passedCount += 1;
+          subCounts.passed += 1;
+          catCounts.passed += 1;
         }
+        subCounts.total += 1;
+        catCounts.total += 1;
       }
 
-      if (findingsRules.length > 0) {
-        // Sort rules within a sub-category: worst severity first, then
-        // confidence desc, then rule id asc. The third key keeps the
-        // order stable when rules tie on the first two.
-        findingsRules.sort((a, b) => {
-          const sevDiff = severityRank(b.worstSeverity) - severityRank(a.worstSeverity);
-          if (sevDiff !== 0) return sevDiff;
-          const confA = a.findings[0]?.confidence ?? 0;
-          const confB = b.findings[0]?.confidence ?? 0;
-          if (confA !== confB) return confB - confA;
-          return a.rule_id.localeCompare(b.rule_id);
-        });
+      if (subRules.length === 0) continue;
 
-        const subFindingCount = findingsRules.reduce(
-          (n, r) => n + r.findings.length,
-          0,
-        );
-        const subSeverities = findingsRules.map((r) => r.worstSeverity);
-        const subWorst = worstSeverityOf(subSeverities);
-        const subHistogram = emptyHistogram();
-        for (const r of findingsRules) {
-          for (const f of r.findings) bumpHistogram(subHistogram, f.severity);
+      // Sort rules: findings first (severity-descending), then skipped,
+      // then passed. Within each status: rule id asc for stability.
+      subRules.sort((a, b) => {
+        const statusDiff = STATUS_RANK[b.status] - STATUS_RANK[a.status];
+        if (statusDiff !== 0) return statusDiff;
+        const sevA = a.worstSeverity;
+        const sevB = b.worstSeverity;
+        if (sevA && sevB && sevA !== sevB) {
+          return severityRank(sevB) - severityRank(sevA);
         }
-        subs.push({
-          id: sub.id,
-          title: sub.title ?? sub.id,
-          summary: sub.summary ?? "",
-          findingCount: subFindingCount,
-          worstSeverity: subWorst,
-          severity: subHistogram,
-          rules: findingsRules,
-        });
-        catFindingCount += subFindingCount;
-        catSeverities.push(subWorst);
-      }
+        return a.rule_id.localeCompare(b.rule_id);
+      });
+
+      const subWorst = worstSeverityOf(subSeverities);
+      subs.push({
+        id: sub.id,
+        title: sub.title ?? sub.id,
+        summary: sub.summary ?? "",
+        findingCount: subFindingCount,
+        ruleCounts: subCounts,
+        worstSeverity: subWorst,
+        severity: subHistogram,
+        rules: subRules,
+      });
+      catFindingCount += subFindingCount;
+      if (subWorst !== null) catSeverities.push(subWorst);
     }
 
-    if (subs.length > 0) {
-      // Sub-categories sorted by worst severity first.
-      subs.sort(
-        (a, b) => severityRank(b.worstSeverity) - severityRank(a.worstSeverity),
-      );
-      const catHistogram = subs.reduce(
-        (acc, s) => addHistogram(acc, s.severity),
-        emptyHistogram(),
-      );
-      const catRuleCount = subs.reduce((n, s) => n + s.rules.length, 0);
-      findingsByCategory.push({
-        id: cat.id,
-        title: cat.title ?? cat.id,
-        summary: cat.summary ?? "",
-        frameworks: Array.isArray(cat.frameworks) ? cat.frameworks : [],
-        findingCount: catFindingCount,
-        worstSeverity: worstSeverityOf(catSeverities),
-        severity: catHistogram,
-        ruleCount: catRuleCount,
-        subCategories: subs,
-      });
-    } else {
-      // No findings in any sub-category of this category — it's clean.
-      // Use the category's own counts.rules_total when present, else
-      // sum the per-sub totals (defensive).
-      const rulesTotal =
-        Number(cat.counts?.rules_total) ||
-        safeSubs.reduce((n, s) => n + (Number(s?.counts?.rules_total) || 0), 0);
-      cleanCategories.push({
-        id: cat.id,
-        title: cat.title ?? cat.id,
-        rulesTotal,
-      });
-    }
+    if (subs.length === 0) continue;
+
+    // Sub-categories sorted by worst severity first (clean ones drop to the
+    // bottom). Within equal severity, alphabetical title.
+    subs.sort((a, b) => {
+      const aw = a.worstSeverity;
+      const bw = b.worstSeverity;
+      if (aw && bw && aw !== bw) {
+        return severityRank(bw) - severityRank(aw);
+      }
+      if (aw && !bw) return -1;
+      if (!aw && bw) return 1;
+      return a.title.localeCompare(b.title);
+    });
+
+    const catHistogram = subs.reduce(
+      (acc, s) => addHistogram(acc, s.severity),
+      emptyHistogram(),
+    );
+
+    cascade.push({
+      id: cat.id,
+      title: cat.title ?? cat.id,
+      summary: cat.summary ?? "",
+      frameworks: Array.isArray(cat.frameworks) ? cat.frameworks : [],
+      findingCount: catFindingCount,
+      ruleCounts: catCounts,
+      worstSeverity: worstSeverityOf(catSeverities),
+      severity: catHistogram,
+      subCategories: subs,
+    });
   }
 
-  // Category-level sort: worst severity first, then alphabetical title.
-  findingsByCategory.sort((a, b) => {
-    const sevDiff = severityRank(b.worstSeverity) - severityRank(a.worstSeverity);
-    if (sevDiff !== 0) return sevDiff;
-    return a.title.localeCompare(b.title);
-  });
-
-  // Clean categories use canonical taxonomy order — preserve the order
-  // they arrived in `data.categories`. Build a position index then sort.
+  // Top-level category sort: worst severity first, clean categories at
+  // the bottom but in their original taxonomy order. We sort in two
+  // phases: severity-bearing categories alphabetically within their
+  // severity, then clean ones in taxonomy order.
   const taxonomyOrder = new Map<string, number>();
   categories.forEach((c, i) => {
     if (c && typeof c === "object") taxonomyOrder.set(c.id, i);
   });
-  cleanCategories.sort(
-    (a, b) => (taxonomyOrder.get(a.id) ?? 0) - (taxonomyOrder.get(b.id) ?? 0),
-  );
+  cascade.sort((a, b) => {
+    const aw = a.worstSeverity;
+    const bw = b.worstSeverity;
+    if (aw && bw && aw !== bw) {
+      return severityRank(bw) - severityRank(aw);
+    }
+    if (aw && !bw) return -1;
+    if (!aw && bw) return 1;
+    if (!aw && !bw) {
+      return (taxonomyOrder.get(a.id) ?? 0) - (taxonomyOrder.get(b.id) ?? 0);
+    }
+    return a.title.localeCompare(b.title);
+  });
 
   // ── Score + verdict ──────────────────────────────────────────────
 
-  // Penalty sum across every finding across every retained rule.
   let penalty = 0;
   let critical = 0;
   let high = 0;
-  for (const cat of findingsByCategory) {
+  for (const cat of cascade) {
     for (const sub of cat.subCategories) {
       for (const rule of sub.rules) {
+        if (rule.status !== "findings") continue;
         for (const f of rule.findings) {
           penalty += SEVERITY_PENALTY[f.severity] ?? 0;
           if (f.severity === "critical") critical += 1;
@@ -409,7 +429,7 @@ export function buildViewModel(data: DeepDiveData): PageViewModel {
   // ── Skipped groups ───────────────────────────────────────────────
 
   const skippedGroupMap = new Map<string, SkippedGroup>();
-  for (const s of skipped) {
+  for (const s of skippedFlat) {
     const inputs = Array.isArray(s.rule.skip_reason?.missing_inputs)
       ? [...new Set(s.rule.skip_reason!.missing_inputs)]
       : [];
@@ -428,40 +448,27 @@ export function buildViewModel(data: DeepDiveData): PageViewModel {
   const skippedGroups = [...skippedGroupMap.values()].sort((a, b) =>
     a.label.localeCompare(b.label),
   );
-  // Within each group, sort by rule id for stable rendering.
   for (const g of skippedGroups) {
     g.rules.sort((a, b) => a.rule.rule_id.localeCompare(b.rule.rule_id));
   }
 
-  // ── Counts ───────────────────────────────────────────────────────
+  // ── Counts (always defensive vs coverage payload) ────────────────
 
-  // `total` is the sum of executed + skipped rules. Some older scans
-  // count skipped rules inside `rules_executed`; we recompute defensively
-  // from our partition so the header always agrees with what's rendered.
-  const total = findingsCount > 0 || skippedCount > 0 || passedCount > 0
-    ? // sum of unique rules across the partition (findings counted by
-      // RULE not finding count)
-      (() => {
-        let rules = 0;
-        for (const cat of findingsByCategory) {
-          for (const sub of cat.subCategories) rules += sub.rules.length;
-        }
-        return rules + skippedCount + passedCount;
-      })()
-    : Number(data.coverage?.total_rules) || 0;
-
-  const counts: HeaderCounts = {
-    findings: findingsCount,
-    skipped: skippedCount,
-    passed: passedCount,
-    total,
-  };
+  let totalRules = 0;
+  for (const cat of cascade) totalRules += cat.ruleCounts.total;
+  if (totalRules === 0) {
+    totalRules = Number(data.coverage?.total_rules) || 0;
+  }
 
   return {
-    findingsByCategory,
+    cascade,
     skipped: skippedGroups,
-    cleanCategories,
-    counts,
+    counts: {
+      findings: findingsCount,
+      skipped: skippedCount,
+      passed: passedCount,
+      total: totalRules,
+    },
     score,
     band,
     verdict,

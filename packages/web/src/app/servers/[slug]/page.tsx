@@ -1,22 +1,22 @@
 /**
- * /servers/[slug] — five-entity cascade.
+ * /servers/[slug] — five-entity cascade, complete.
  *
- * One page, one job: surface findings (and the proofs behind them) as
- * the page's hero. Categories → Sub-categories → Rules → Tests → Evidence.
- * Everything else (audit panels, lens controls, mobile FAB, kill-chain
- * reel, capability surface, coverage ledger, forensic drawer, sidebar)
- * has been removed. The verdict + counts live in a sticky header; the
- * skipped rules live in a single collapsed block at the bottom that
- * doubles as the "give us more context" CTA; the clean categories live
- * in a one-row footer underneath.
+ * One page, one job: render the testing taxonomy in full for every
+ * server. Categories → Sub-categories → Rules → Tests → Evidence.
+ * Every rule renders regardless of status:
+ *   - findings → full hero card with vertical evidence cascade
+ *   - passed   → medium card with Tests visible + "Tested cleanly" note
+ *   - skipped  → medium card with Tests visible + "Needs X" CTA
  *
- * Rules + evidence chains are the hero. Category and sub-category
- * dividers are typographic — no card chrome.
+ * The page IS the proof of work. A clean server still shows what was
+ * tested, how it was tested, and that nothing fired. A finding-heavy
+ * server surfaces the structured proof chain for each finding.
  *
- * All derivation happens server-side in `buildViewModel`. Client
- * components are pure renderers. `<SectionBoundary/>` wraps each major
- * section so a render exception in one block degrades to a quiet
- * skeleton instead of taking down the whole route.
+ * The verdict + counts live in a sticky header. All derivation happens
+ * server-side in `buildViewModel`. Client components are pure
+ * renderers. `<SectionBoundary/>` wraps each major section so a render
+ * exception in one block degrades to a quiet skeleton instead of
+ * taking down the whole route.
  */
 
 import React, { Fragment } from "react";
@@ -28,7 +28,6 @@ import CategoryRail from "./category-rail";
 import SubCategoryRail from "./sub-category-rail";
 import RuleCard from "./rule-card";
 import SkippedRulesBlock from "./skipped-rules-block";
-import CleanCategoriesFooter from "./clean-categories-footer";
 import { buildViewModel } from "./view-model";
 import type { DeepDiveResponse, DeepDiveData } from "@/lib/deep-dive";
 import "./findings-view.css";
@@ -62,13 +61,13 @@ export async function generateMetadata({
     const totalFindings = Number(dd.coverage?.total_findings) || 0;
     const totalRules = Number(dd.coverage?.total_rules) || 0;
     return {
-      title: `${name} security findings`,
-      description: `${totalFindings} finding${
+      title: `${name} — security audit`,
+      description: `Full five-entity audit cascade for ${name}: ${totalRules} rules tested, ${totalFindings} finding${
         totalFindings === 1 ? "" : "s"
-      } across ${totalRules} detection rules. Sub-categories, rules, tests, and evidence chains for ${name}.`,
+      }. Categories, sub-categories, rule-by-rule test methodology, and structured evidence chains for every finding.`,
     };
   } catch {
-    return { title: "Security findings" };
+    return { title: "Security audit" };
   }
 }
 
@@ -97,23 +96,46 @@ export default async function ServerDetailPage({
       </SectionBoundary>
 
       <main className="fv-main">
-        {vm.findingsByCategory.length === 0 ? (
+        {/* Coverage-gaps banner — slim CTA near the top when we are
+            missing inputs that block tests. Always above the cascade so
+            the reader sees the gap-context before they scroll. */}
+        {vm.skipped.length > 0 && (
+          <SectionBoundary section="coverage-gaps" label="Coverage gaps">
+            <SkippedRulesBlock groups={vm.skipped} />
+          </SectionBoundary>
+        )}
+
+        {/* Page-level explainer so the cascade is self-describing. */}
+        <section
+          className="fv-cascade-intro"
+          aria-labelledby="fv-cascade-intro-h"
+        >
+          <h2 id="fv-cascade-intro-h" className="fv-cascade-intro-h">
+            The five-entity audit cascade
+          </h2>
+          <p className="fv-cascade-intro-body">
+            Every rule in our 164-rule taxonomy is reported below — grouped
+            by <strong>category</strong> and <strong>sub-category</strong>,
+            with its <strong>test methodology</strong> always visible and a{" "}
+            <strong>structured evidence chain</strong> for every finding.
+            Rules that tested cleanly say so; rules we could not run say
+            what they would need.
+          </p>
+        </section>
+
+        {vm.cascade.length === 0 ? (
           <section className="fv-empty" aria-labelledby="fv-empty-h">
             <h2 id="fv-empty-h" className="fv-empty-title">
-              No findings on file
+              Deep-dive data not yet on file
             </h2>
             <p>
-              {vm.counts.passed > 0
-                ? `${vm.counts.passed} rule${vm.counts.passed === 1 ? "" : "s"} tested cleanly.`
-                : "Deep-dive data is not yet on file for this server."}
-              {vm.counts.skipped > 0 &&
-                ` ${vm.counts.skipped} rule${
-                  vm.counts.skipped === 1 ? "" : "s"
-                } need more context — see below.`}
+              We have not yet ingested rule-level results for this server.
+              Check back after the next scheduled scan, or contact the
+              registry maintainers.
             </p>
           </section>
         ) : (
-          vm.findingsByCategory.map((cat) => (
+          vm.cascade.map((cat) => (
             <SectionBoundary
               key={cat.id}
               section={`category-${cat.id}`}
@@ -123,9 +145,9 @@ export default async function ServerDetailPage({
                 id={cat.id}
                 title={cat.title}
                 summary={cat.summary}
-                worstSeverity={cat.worstSeverity}
+                worstSeverity={cat.worstSeverity ?? "informational"}
                 findingCount={cat.findingCount}
-                ruleCount={cat.ruleCount}
+                ruleCount={cat.ruleCounts.total}
                 severity={cat.severity}
                 frameworks={cat.frameworks}
               />
@@ -135,7 +157,7 @@ export default async function ServerDetailPage({
                     id={sub.id}
                     title={sub.title}
                     summary={sub.summary}
-                    worstSeverity={sub.worstSeverity}
+                    worstSeverity={sub.worstSeverity ?? "informational"}
                     findingCount={sub.findingCount}
                     ruleCount={sub.rules.length}
                     severity={sub.severity}
@@ -147,18 +169,6 @@ export default async function ServerDetailPage({
               ))}
             </SectionBoundary>
           ))
-        )}
-
-        {vm.skipped.length > 0 && (
-          <SectionBoundary section="skipped" label="Skipped rules">
-            <SkippedRulesBlock groups={vm.skipped} />
-          </SectionBoundary>
-        )}
-
-        {vm.cleanCategories.length > 0 && (
-          <SectionBoundary section="clean" label="Clean categories">
-            <CleanCategoriesFooter categories={vm.cleanCategories} />
-          </SectionBoundary>
         )}
       </main>
     </div>

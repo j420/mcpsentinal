@@ -6,7 +6,7 @@ import type {
   DeepDiveFinding,
 } from "@/lib/deep-dive";
 
-// ── Fixture builders (tiny, no `any`) ─────────────────────────────────
+// ── Fixture builders ──────────────────────────────────────────────────
 
 function finding(
   overrides: Partial<DeepDiveFinding> & { severity: DeepDiveFinding["severity"] },
@@ -117,8 +117,8 @@ function dataOf(rules: DeepDiveRule[]): DeepDiveData {
 
 // ── Tests ─────────────────────────────────────────────────────────────
 
-describe("buildViewModel — partition", () => {
-  it("partitions rules into findings / skipped / passed buckets", () => {
+describe("buildViewModel — full cascade", () => {
+  it("includes findings, passed, and skipped rules together in the cascade", () => {
     const data = dataOf([
       rule("C1", "findings", [finding({ severity: "high" })]),
       rule("C2", "passed"),
@@ -127,26 +127,42 @@ describe("buildViewModel — partition", () => {
       }),
     ]);
     const vm = buildViewModel(data);
+    expect(vm.cascade).toHaveLength(1);
+    const sub = vm.cascade[0].subCategories[0];
+    expect(sub.rules).toHaveLength(3);
+    expect(sub.rules.map((r) => r.status).sort()).toEqual([
+      "findings",
+      "passed",
+      "skipped",
+    ]);
     expect(vm.counts).toEqual({ findings: 1, skipped: 1, passed: 1, total: 3 });
-    expect(vm.findingsByCategory).toHaveLength(1);
-    expect(vm.findingsByCategory[0].subCategories[0].rules).toHaveLength(1);
-    expect(vm.skipped).toHaveLength(1);
-    expect(vm.skipped[0].missingInputs).toEqual(["source_code"]);
   });
 
-  it("filters retired rules out of every bucket", () => {
+  it("orders rules: findings first (by severity), then skipped, then passed", () => {
     const data = dataOf([
-      rule("O1", "skipped"), // retired
-      rule("M3", "findings", [finding({ severity: "critical" })]), // retired
-      rule("C1", "findings", [finding({ severity: "high" })]), // live
+      rule("C5", "passed"),
+      rule("C4", "skipped"),
+      rule("C1", "findings", [finding({ severity: "low" })]),
+      rule("C2", "findings", [finding({ severity: "critical" })]),
+      rule("C3", "findings", [finding({ severity: "medium" })]),
     ]);
     const vm = buildViewModel(data);
-    expect(vm.counts.findings).toBe(1);
-    expect(vm.counts.skipped).toBe(0);
-    const ruleIds = vm.findingsByCategory[0].subCategories[0].rules.map(
-      (r) => r.rule_id,
-    );
+    const ids = vm.cascade[0].subCategories[0].rules.map((r) => r.rule_id);
+    // findings by severity → C2, C3, C1; then skipped C4; then passed C5
+    expect(ids).toEqual(["C2", "C3", "C1", "C4", "C5"]);
+  });
+
+  it("filters retired rules out of every status", () => {
+    const data = dataOf([
+      rule("O1", "skipped"),
+      rule("M3", "findings", [finding({ severity: "critical" })]),
+      rule("C1", "passed"),
+    ]);
+    const vm = buildViewModel(data);
+    const ruleIds = vm.cascade[0].subCategories[0].rules.map((r) => r.rule_id);
     expect(ruleIds).toEqual(["C1"]);
+    expect(vm.counts.findings).toBe(0);
+    expect(vm.counts.skipped).toBe(0);
   });
 
   it("drops non-canonical placements (is_canonical === false)", () => {
@@ -157,15 +173,16 @@ describe("buildViewModel — partition", () => {
       }),
     ]);
     const vm = buildViewModel(data);
-    expect(vm.findingsByCategory[0].subCategories[0].rules).toHaveLength(1);
+    expect(vm.cascade[0].subCategories[0].rules).toHaveLength(1);
   });
 
-  it("classifies a category as clean when it has no findings", () => {
+  it("a clean category still appears in the cascade (no cleanCategories bucket)", () => {
     const data = dataOf([rule("C1", "passed"), rule("C2", "passed")]);
     const vm = buildViewModel(data);
-    expect(vm.findingsByCategory).toHaveLength(0);
-    expect(vm.cleanCategories).toHaveLength(1);
-    expect(vm.cleanCategories[0].id).toBe("code-vulnerabilities");
+    expect(vm.cascade).toHaveLength(1);
+    expect(vm.cascade[0].subCategories[0].rules).toHaveLength(2);
+    expect(vm.cascade[0].worstSeverity).toBeNull();
+    expect(vm.cascade[0].ruleCounts.passed).toBe(2);
   });
 });
 
@@ -184,7 +201,6 @@ describe("buildViewModel — score + verdict", () => {
         rule("C2", "findings", [finding({ severity: "medium" })]),
       ]),
     );
-    // 100 − 15 − 8 = 77
     expect(vm.score).toBe(77);
     expect(vm.verdict).toBe("CAUTION");
   });
@@ -215,34 +231,6 @@ describe("buildViewModel — score + verdict", () => {
   });
 });
 
-describe("buildViewModel — ordering", () => {
-  it("sorts rules within a sub-category by worst severity first", () => {
-    const data = dataOf([
-      rule("C1", "findings", [finding({ severity: "low" })]),
-      rule("C2", "findings", [finding({ severity: "critical" })]),
-      rule("C3", "findings", [finding({ severity: "medium" })]),
-    ]);
-    const vm = buildViewModel(data);
-    const ids = vm.findingsByCategory[0].subCategories[0].rules.map(
-      (r) => r.rule_id,
-    );
-    expect(ids).toEqual(["C2", "C3", "C1"]);
-  });
-
-  it("computes worstSeverity on each rule from its findings", () => {
-    const data = dataOf([
-      rule("C1", "findings", [
-        finding({ severity: "low" }),
-        finding({ severity: "high" }),
-      ]),
-    ]);
-    const vm = buildViewModel(data);
-    expect(vm.findingsByCategory[0].subCategories[0].rules[0].worstSeverity).toBe(
-      "high",
-    );
-  });
-});
-
 describe("buildViewModel — severity histogram", () => {
   it("counts findings into the severity histogram per sub-category and category", () => {
     const data = dataOf([
@@ -254,7 +242,7 @@ describe("buildViewModel — severity histogram", () => {
       rule("C3", "findings", [finding({ severity: "low" })]),
     ]);
     const vm = buildViewModel(data);
-    const cat = vm.findingsByCategory[0];
+    const cat = vm.cascade[0];
     expect(cat.severity).toEqual({
       critical: 1,
       high: 1,
@@ -264,14 +252,20 @@ describe("buildViewModel — severity histogram", () => {
     });
     const sub = cat.subCategories[0];
     expect(sub.severity).toEqual(cat.severity);
-    expect(cat.ruleCount).toBe(3);
+    expect(cat.ruleCounts.total).toBe(3);
   });
 
-  it("zeros every bucket when a category is empty", () => {
+  it("zeros every histogram bucket when a category has no findings", () => {
     const data = dataOf([rule("C1", "passed"), rule("C2", "passed")]);
     const vm = buildViewModel(data);
-    // No category appears in findingsByCategory; both are clean.
-    expect(vm.findingsByCategory).toHaveLength(0);
+    expect(vm.cascade[0].severity).toEqual({
+      critical: 0,
+      high: 0,
+      medium: 0,
+      low: 0,
+      informational: 0,
+    });
+    expect(vm.cascade[0].worstSeverity).toBeNull();
   });
 });
 
@@ -325,8 +319,7 @@ describe("buildViewModel — empty / null defenses", () => {
       },
       categories: [],
     });
-    expect(vm.findingsByCategory).toEqual([]);
-    expect(vm.cleanCategories).toEqual([]);
+    expect(vm.cascade).toEqual([]);
     expect(vm.score).toBe(100);
     expect(vm.verdict).toBe("SAFE");
   });
