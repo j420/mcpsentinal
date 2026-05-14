@@ -106,13 +106,23 @@ describe("RuleCard", () => {
     expect(screen.getByText("Use execFile.")).toBeInTheDocument();
   });
 
-  it("renders the TESTS panel inline with edge_case_strategies", () => {
+  it("renders the TESTS panel inline with humanized titles + raw ids", () => {
     render(<RuleCard rule={makeRule()} />);
     expect(screen.getByText("Tests")).toBeInTheDocument();
+    // Raw ids are surfaced as code chips
     expect(screen.getByText("sanitizer-verified-by-name")).toBeInTheDocument();
     expect(screen.getByText("deep-pass-through")).toBeInTheDocument();
-    // technique chip surfaces on the tests row
+    // Technique row shows the primary technique
+    expect(screen.getByText("Primary technique")).toBeInTheDocument();
     expect(screen.getByText("ast-taint")).toBeInTheDocument();
+    // Humanized titles surface in the test rows
+    expect(screen.getByText(/Sanitiser verification/i)).toBeInTheDocument();
+  });
+
+  it("renders the section intros above TESTS and EVIDENCE", () => {
+    render(<RuleCard rule={makeRule()} />);
+    expect(screen.getByText(/How this rule decides/i)).toBeInTheDocument();
+    expect(screen.getByText(/What we found/i)).toBeInTheDocument();
   });
 
   it("renders the EVIDENCE panel header with finding count", () => {
