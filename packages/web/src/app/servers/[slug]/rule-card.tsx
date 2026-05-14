@@ -1,31 +1,34 @@
 /**
- * RuleCard — the only card on the page. Hero unit.
+ * RuleCard — the only card on the page. Renders for every rule in the
+ * cascade regardless of status, so the page is the testing taxonomy.
  *
- * Composition:
- *   - Severity-tinted left rail (6px) keyed to the worst finding severity.
- *   - Header row: rule_id + name + severity pill + OWASP/MITRE chips +
- *                 confidence value.
- *   - TESTS panel: the rule's edge_case_strategies as a numbered list,
- *                  always visible. This is the "what we test for"
- *                  surface that makes the page's `Tests` entity explicit.
- *   - EVIDENCE panel: per-finding `<EvidenceChainFlow/>` (the
- *                  centrepiece), then remediation prose.
- *   - Single `<MethodologyDrawer/>` footer link, closed by default,
- *                  carrying the secondary metadata (technique, lethal
- *                  edge cases, frameworks, backing, CVE replays).
+ * State variants:
+ *   - findings  → full hero card. Tests panel + full vertical Evidence
+ *                 cascade. Severity-tinted left rail.
+ *   - passed    → medium card. Tests panel + small "Tested cleanly"
+ *                 evidence panel. Green left rail.
+ *   - skipped   → medium card. Tests panel + small "Skipped because we
+ *                 need X" evidence panel listing required inputs.
+ *                 Muted left rail.
  *
- * Pure rendering. The drawer is a native `<details>` so the card needs
- * no React state.
+ * Tests panel is always visible — this is the "what we look for" surface
+ * that makes the five-entity model honest for clean and skipped rules.
+ *
+ * Methodology drawer footer stays on every variant so a reviewer can
+ * drill into frameworks / backing / CVE replays / lethal edge cases.
  */
 
 import React from "react";
 import EvidenceChainFlow from "./evidence-chain-flow";
 import MethodologyDrawer from "./methodology-drawer";
-import type { RuleWithFindings } from "./view-model";
-import type { DeepDiveSeverity } from "@/lib/deep-dive";
+import type { CascadeRule } from "./view-model";
+import type {
+  DeepDiveSeverity,
+  DeepDiveSkipInput,
+} from "@/lib/deep-dive";
 
 export interface RuleCardProps {
-  rule: RuleWithFindings;
+  rule: CascadeRule;
 }
 
 const SEVERITY_LABEL: Record<DeepDiveSeverity, string> = {
@@ -44,14 +47,9 @@ function findingAnchor(findingId: string): string {
   return `finding-${findingId}`;
 }
 
-// Humanise a kebab/snake-case test-strategy identifier into a title.
-// `ast-taint-interprocedural` → `AST taint · interprocedural`.
-// Falls back to title-casing each token when no recognised prefix applies.
 function humanizeStrategy(id: string): string {
   if (!id) return "";
   const tokens = id.split(/[-_]+/);
-  // Recognised prefix groups — render them as a leading "noun · qualifier"
-  // pair so the strategy reads like a clear technique name.
   const head = tokens.slice(0, 2).join("-").toLowerCase();
   const tail = tokens.slice(2).map((t) => t.toLowerCase()).join(" ");
   const NAMED: Record<string, string> = {
@@ -73,13 +71,35 @@ function humanizeStrategy(id: string): string {
   if (named) {
     return tail ? `${named} · ${tail}` : named;
   }
-  // Generic humanisation: kebab-case → Title Case.
   return tokens
     .map((t) => (t.length === 0 ? t : t[0].toUpperCase() + t.slice(1)))
     .join(" ");
 }
 
+function skipInputLabel(input: DeepDiveSkipInput): string {
+  switch (input) {
+    case "source_code":
+      return "Source code";
+    case "connection":
+      return "Live connection";
+    case "dependencies":
+      return "Dependency manifest";
+  }
+}
+
+function skipInputCTA(input: DeepDiveSkipInput): string {
+  switch (input) {
+    case "source_code":
+      return "Add a GitHub URL to your server registration.";
+    case "connection":
+      return "Register a live MCP endpoint we can reach.";
+    case "dependencies":
+      return "Expose a package manifest (package.json / pyproject.toml).";
+  }
+}
+
 export default function RuleCard({ rule }: RuleCardProps): React.ReactElement {
+  const status = rule.status;
   const sev = rule.worstSeverity;
   const findings = rule.findings;
   const tests = Array.isArray(rule.methodology?.edge_case_strategies)
@@ -90,10 +110,45 @@ export default function RuleCard({ rule }: RuleCardProps): React.ReactElement {
     ? rule.validated_by_cve
     : [];
 
+  // Header pills vary per status. Findings = severity pill; passed =
+  // green PASSED chip; skipped = muted SKIPPED chip.
+  let statusBadge: React.ReactElement;
+  if (status === "findings" && sev) {
+    statusBadge = (
+      <span
+        className={`fv-pill fv-pill-sev fv-pill-sev-${sev}`}
+        aria-label={`Severity: ${SEVERITY_LABEL[sev]}`}
+      >
+        {SEVERITY_LABEL[sev]}
+      </span>
+    );
+  } else if (status === "passed") {
+    statusBadge = (
+      <span
+        className="fv-pill fv-pill-status fv-pill-status-passed"
+        aria-label="Status: tested cleanly"
+      >
+        <span aria-hidden="true">✓ </span>
+        Passed
+      </span>
+    );
+  } else {
+    statusBadge = (
+      <span
+        className="fv-pill fv-pill-status fv-pill-status-skipped"
+        aria-label="Status: not yet tested"
+      >
+        <span aria-hidden="true">○ </span>
+        Skipped
+      </span>
+    );
+  }
+
   return (
     <article
       className="fv-rule"
-      data-severity={sev}
+      data-status={status}
+      data-severity={sev ?? "none"}
       id={ruleAnchor(rule.rule_id)}
       aria-labelledby={`${ruleAnchor(rule.rule_id)}-h`}
     >
@@ -108,12 +163,7 @@ export default function RuleCard({ rule }: RuleCardProps): React.ReactElement {
           </div>
         </div>
         <div className="fv-rule-tags">
-          <span
-            className={`fv-pill fv-pill-sev fv-pill-sev-${sev}`}
-            aria-label={`Severity: ${SEVERITY_LABEL[sev]}`}
-          >
-            {SEVERITY_LABEL[sev]}
-          </span>
+          {statusBadge}
           {rule.owasp && (
             <span className="fv-pill fv-pill-frame" title="OWASP mapping">
               {rule.owasp}
@@ -150,8 +200,11 @@ export default function RuleCard({ rule }: RuleCardProps): React.ReactElement {
 
       {rule.summary && <p className="fv-rule-summary">{rule.summary}</p>}
 
-      {/* ── TESTS panel — what this rule looks for ────────────────── */}
-      <section className="fv-rule-tests" aria-labelledby={`${ruleAnchor(rule.rule_id)}-tests`}>
+      {/* ── TESTS panel — always visible ───────────────────────────── */}
+      <section
+        className="fv-rule-tests"
+        aria-labelledby={`${ruleAnchor(rule.rule_id)}-tests`}
+      >
         <header className="fv-rule-section-head">
           <span
             className="fv-rule-section-eyebrow"
@@ -195,7 +248,7 @@ export default function RuleCard({ rule }: RuleCardProps): React.ReactElement {
         )}
       </section>
 
-      {/* ── EVIDENCE panel — the per-finding chains ───────────────── */}
+      {/* ── EVIDENCE panel — variant per status ────────────────────── */}
       <section
         className="fv-rule-evidences"
         aria-labelledby={`${ruleAnchor(rule.rule_id)}-evidence`}
@@ -208,58 +261,113 @@ export default function RuleCard({ rule }: RuleCardProps): React.ReactElement {
             Evidence
           </span>
           <span className="fv-rule-section-count">
-            {findings.length} finding{findings.length === 1 ? "" : "s"}
+            {status === "findings"
+              ? `${findings.length} finding${findings.length === 1 ? "" : "s"}`
+              : status === "passed"
+                ? "Tested cleanly"
+                : "Not yet tested"}
           </span>
         </header>
-        <p className="fv-rule-section-intro">
-          What we found. Each finding below carries a structured proof
-          chain from <strong>source</strong> (where untrusted data enters)
-          through <strong>propagation</strong> (how it flows) to a{" "}
-          <strong>sink</strong> (where the dangerous operation occurs),
-          including any <strong>mitigations</strong> checked for and the
-          potential <strong>impact</strong> if exploited. Every link is
-          independently verifiable against the cited location.
-        </p>
-        {findings.length === 0 ? (
-          <p className="fv-rule-empty">No finding details on file.</p>
+
+        {status === "findings" ? (
+          <>
+            <p className="fv-rule-section-intro">
+              What we found. Each finding below carries a structured proof
+              chain from <strong>source</strong> (where untrusted data
+              enters) through <strong>propagation</strong> (how it flows)
+              to a <strong>sink</strong> (where the dangerous operation
+              occurs), including any <strong>mitigations</strong> checked
+              for and the potential <strong>impact</strong> if exploited.
+              Every link is independently verifiable against the cited
+              location.
+            </p>
+            {findings.length === 0 ? (
+              <p className="fv-rule-empty">No finding details on file.</p>
+            ) : (
+              <div className="fv-rule-findings">
+                {findings.map((f, i) => (
+                  <section
+                    key={f.id}
+                    className="fv-finding"
+                    id={findingAnchor(f.id)}
+                    data-severity={f.severity}
+                    aria-label={`Finding ${i + 1} of ${findings.length}`}
+                  >
+                    {findings.length > 1 && (
+                      <header className="fv-finding-head">
+                        <span className="fv-finding-num">
+                          Finding {i + 1} of {findings.length}
+                        </span>
+                        <span
+                          className={`fv-pill fv-pill-sev fv-pill-sev-${f.severity}`}
+                        >
+                          {SEVERITY_LABEL[f.severity]}
+                        </span>
+                        <span className="fv-finding-conf">
+                          Confidence {Math.round(f.confidence * 100)}%
+                        </span>
+                      </header>
+                    )}
+                    <EvidenceChainFlow
+                      chain={f.evidence_chain}
+                      fallbackEvidence={f.evidence}
+                      findingId={findingAnchor(f.id)}
+                    />
+                    {f.remediation && (
+                      <aside className="fv-finding-fix">
+                        <span className="fv-finding-fix-label">Fix</span>
+                        <p className="fv-finding-fix-body">{f.remediation}</p>
+                      </aside>
+                    )}
+                  </section>
+                ))}
+              </div>
+            )}
+          </>
+        ) : status === "passed" ? (
+          <div className="fv-rule-clean">
+            <span className="fv-rule-clean-icon" aria-hidden="true">
+              ✓
+            </span>
+            <div className="fv-rule-clean-body">
+              <p className="fv-rule-clean-headline">
+                Tested cleanly — no evidence of this attack vector on file.
+              </p>
+              <p className="fv-rule-clean-detail">
+                The strategies listed above were applied to this server and
+                no triggering pattern was found. Absence of evidence is not
+                proof of absence; a future scan with richer inputs may
+                still surface findings.
+              </p>
+            </div>
+          </div>
         ) : (
-          <div className="fv-rule-findings">
-            {findings.map((f, i) => (
-              <section
-                key={f.id}
-                className="fv-finding"
-                id={findingAnchor(f.id)}
-                data-severity={f.severity}
-                aria-label={`Finding ${i + 1} of ${findings.length}`}
-              >
-                {findings.length > 1 && (
-                  <header className="fv-finding-head">
-                    <span className="fv-finding-num">
-                      Finding {i + 1} of {findings.length}
-                    </span>
-                    <span
-                      className={`fv-pill fv-pill-sev fv-pill-sev-${f.severity}`}
-                    >
-                      {SEVERITY_LABEL[f.severity]}
-                    </span>
-                    <span className="fv-finding-conf">
-                      Confidence {Math.round(f.confidence * 100)}%
-                    </span>
-                  </header>
+          // skipped
+          <div className="fv-rule-skipped">
+            <span className="fv-rule-skipped-icon" aria-hidden="true">
+              ○
+            </span>
+            <div className="fv-rule-skipped-body">
+              <p className="fv-rule-skipped-headline">
+                {rule.skip_reason?.summary ??
+                  "Not yet tested for this server."}
+              </p>
+              {rule.skip_reason?.missing_inputs &&
+                rule.skip_reason.missing_inputs.length > 0 && (
+                  <ul className="fv-rule-skipped-needs">
+                    {rule.skip_reason.missing_inputs.map((input) => (
+                      <li key={input} className="fv-rule-skipped-need">
+                        <span className="fv-rule-skipped-need-label">
+                          Needs · {skipInputLabel(input)}
+                        </span>
+                        <span className="fv-rule-skipped-need-cta">
+                          {skipInputCTA(input)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
                 )}
-                <EvidenceChainFlow
-                  chain={f.evidence_chain}
-                  fallbackEvidence={f.evidence}
-                  findingId={findingAnchor(f.id)}
-                />
-                {f.remediation && (
-                  <aside className="fv-finding-fix">
-                    <span className="fv-finding-fix-label">Fix</span>
-                    <p className="fv-finding-fix-body">{f.remediation}</p>
-                  </aside>
-                )}
-              </section>
-            ))}
+            </div>
           </div>
         )}
       </section>
