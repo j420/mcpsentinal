@@ -309,6 +309,14 @@ export default async function HomePage({
             <span className="hero-meta-value">8 mapped</span>
           </span>
         </div>
+        <div className="hero-cta">
+          <a href="/scan" className="btn-primary hero-cta-btn">
+            Scan your MCP server →
+          </a>
+          <span className="hero-cta-note">
+            Paste a URL, config, or GitHub repo — get a security report in seconds.
+          </span>
+        </div>
       </section>
 
       {/* ── Stats Cards ──────────────────────────────── */}

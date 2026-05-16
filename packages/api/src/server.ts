@@ -52,6 +52,8 @@ import {
   signFinding,
   type FindingReceipt,
 } from "@mcp-sentinel/compliance-reports";
+import { ScanJobRunner } from "./scan-job-runner.js";
+import type { AdHocScanInput } from "@mcp-sentinel/scanner";
 
 // Sentinel + rules version — mirrors the constants in compliance-report-routes.ts
 // so the Posture Matrix endpoint stamps the same `rules_version` value
@@ -95,6 +97,22 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
 // ─── CORS ─────────────────────────────────────────────────────────────────────
 // Public read-only API — allow all origins, but restrict to safe methods.
 // Preflight results are cached for 24 hours to reduce OPTIONS traffic.
+//
+// EXCEPTION: the ad-hoc scan surface (`/api/v1/scan`) accepts POST. A
+// scan-scoped CORS handler is mounted FIRST so the POST preflight for those
+// paths is approved; every other path keeps the read-only GET/HEAD/OPTIONS
+// policy. A scan POST body can carry a pasted MCP config, so the scan paths
+// also get a larger JSON body limit than the 16kb read-only default.
+app.use(
+  "/api/v1/scan",
+  cors({
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Accept"],
+    maxAge: 86400,
+  }),
+);
+app.use("/api/v1/scan", express.json({ limit: "1200kb" }));
+
 app.use(
   cors({
     methods: ["GET", "HEAD", "OPTIONS"],
@@ -103,7 +121,7 @@ app.use(
   })
 );
 
-app.use(express.json({ limit: "16kb" })); // Small limit — API only receives GET requests
+app.use(express.json({ limit: "16kb" })); // Small limit — read-only API only receives GET requests
 
 // ─── Request Logging ──────────────────────────────────────────────────────────
 app.use((req: Request, _res: Response, next: NextFunction) => {
@@ -162,6 +180,45 @@ function rateLimitMiddleware(max = RATE_MAX_REQUESTS) {
   };
 }
 
+// ─── Scan Rate Limiter ───────────────────────────────────────────────────────
+// The ad-hoc scan POST does real work (network connections, rule analysis,
+// sometimes source fetches). It gets a dedicated, much tighter budget than
+// the general read-only API: a small number of scans per IP per hour.
+// In-memory + single-instance, same caveat as the general limiter.
+const scanRateLimitStore = new Map<string, number[]>();
+const RATE_SCAN_WINDOW_MS = 60 * 60_000; // 1 hour
+const RATE_MAX_SCAN = 5; // scans per IP per hour
+
+setInterval(() => {
+  const cutoff = Date.now() - RATE_SCAN_WINDOW_MS;
+  for (const [ip, times] of scanRateLimitStore.entries()) {
+    const recent = times.filter((t) => t > cutoff);
+    if (recent.length === 0) scanRateLimitStore.delete(ip);
+    else scanRateLimitStore.set(ip, recent);
+  }
+}, RATE_SCAN_WINDOW_MS);
+
+function checkScanRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const cutoff = now - RATE_SCAN_WINDOW_MS;
+  const times = (scanRateLimitStore.get(ip) ?? []).filter((t) => t > cutoff);
+  times.push(now);
+  scanRateLimitStore.set(ip, times);
+  return times.length <= RATE_MAX_SCAN;
+}
+
+function scanRateLimitMiddleware(req: Request, res: Response, next: NextFunction): void {
+  const ip = req.socket.remoteAddress ?? "unknown";
+  if (!checkScanRateLimit(ip)) {
+    res.status(429).json({
+      error: `Scan limit reached — at most ${RATE_MAX_SCAN} scans per hour. Please try again later.`,
+      retry_after_seconds: 3600,
+    });
+    return;
+  }
+  next();
+}
+
 // ─── Input Validation Helpers ─────────────────────────────────────────────────
 
 // Slugs are auto-generated from server names: lowercase, hyphens, alphanumeric.
@@ -205,6 +262,18 @@ const pool = new pg.Pool({
   connectionTimeoutMillis: 5_000,
 });
 const db = new DatabaseQueries(pool);
+
+// In-process runner for ad-hoc scan jobs (P21 — Public Scan Surface).
+const scanJobRunner = new ScanJobRunner(db);
+
+// ─── Ad-Hoc Scan input validation ────────────────────────────────────────────
+// Mirrors `AdHocScanInput` in @mcp-sentinel/scanner. The config string cap
+// matches the 1.2 MB body limit on the scan route.
+const ScanRequestSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("url"), url: z.string().min(1).max(2048) }),
+  z.object({ kind: z.literal("config"), config: z.string().min(1).max(1_000_000) }),
+  z.object({ kind: z.literal("source"), ref: z.string().min(1).max(512) }),
+]);
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
@@ -1424,6 +1493,66 @@ app.get("/", (_req: Request, res: Response) => {
   res.json({ name: "MCP Sentinel API", version: "1.0.0", docs: "/api/v1" });
 });
 
+// ─── Ad-Hoc Scan (P21 — Public Scan Surface) ─────────────────────────────────
+
+// POST /api/v1/scan — submit an ad-hoc scan. Validates the input, opens a
+// job row, enqueues the background scan, and returns 202 immediately. The
+// scan itself runs asynchronously — clients poll GET /api/v1/scan/:id.
+app.post("/api/v1/scan", scanRateLimitMiddleware, async (req: Request, res: Response) => {
+  const parsed = ScanRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid scan request", issues: parsed.error.issues });
+    return;
+  }
+  const input = parsed.data as AdHocScanInput;
+  // input_ref is for display/debug only — NEVER persist a raw config blob
+  // (it may contain private endpoints or env hints).
+  const inputRef =
+    input.kind === "url"
+      ? input.url
+      : input.kind === "source"
+        ? input.ref
+        : "config scan";
+  try {
+    const jobId = await db.createScanJob(input.kind, inputRef);
+    scanJobRunner.enqueue(jobId, input);
+    res.status(202).json({ id: jobId, status: "queued" });
+  } catch (err) {
+    logger.error(err, "Failed to create scan job");
+    res.status(500).json({ error: "Could not start the scan. Please try again." });
+  }
+});
+
+// GET /api/v1/scan/:id — poll an ad-hoc scan job.
+app.get("/api/v1/scan/:id", rateLimitMiddleware(), async (req: Request, res: Response) => {
+  const id = req.params.id;
+  if (!isValidUuid(id)) {
+    res.status(400).json({ error: "Invalid scan id" });
+    return;
+  }
+  try {
+    const job = await db.getScanJob(id);
+    if (!job) {
+      res.status(404).json({ error: "Scan not found or expired" });
+      return;
+    }
+    res.json({
+      id: job.id,
+      status: job.status,
+      input_type: job.input_type,
+      coverage_band: job.coverage_band,
+      result: job.result,
+      error: job.error,
+      registered_server_slugs: job.registered_server_slugs,
+      created_at: job.created_at,
+      completed_at: job.completed_at,
+    });
+  } catch (err) {
+    logger.error(err, "Failed to fetch scan job");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // GET /health — Health check
 // Note: Returns only status + uptime. Never expose OS version, memory, DB
 // details, or env vars here (rule J4: Health Endpoint Information Disclosure).
@@ -1447,6 +1576,9 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
 
 const PORT = parseInt(process.env["PORT"] ?? "3100", 10);
 
+/** How often expired scan_jobs are swept. */
+const SCAN_JOB_CLEANUP_INTERVAL_MS = 60 * 60_000; // hourly
+
 async function start() {
   if (dbUrl) {
     try {
@@ -1455,6 +1587,24 @@ async function start() {
     } catch (err) {
       logger.error(err, "Migration failed — continuing without migration");
     }
+
+    // Recover scan jobs orphaned by a previous process restart: any job
+    // still queued/running after 10 minutes could not be in flight.
+    try {
+      const swept = await db.sweepStaleRunningJobs(10);
+      if (swept > 0) logger.info({ swept }, "Recovered stale scan jobs");
+    } catch (err) {
+      logger.error(err, "Stale scan-job sweep failed — non-fatal");
+    }
+
+    // Periodic TTL cleanup of expired scan jobs.
+    setInterval(() => {
+      db.deleteExpiredScanJobs()
+        .then((removed) => {
+          if (removed > 0) logger.info({ removed }, "Expired scan jobs purged");
+        })
+        .catch((err) => logger.error(err, "Scan-job TTL cleanup failed"));
+    }, SCAN_JOB_CLEANUP_INTERVAL_MS);
   } else {
     logger.warn("DATABASE_URL not set, skipping migrations");
   }
@@ -1479,4 +1629,5 @@ export { app };
 // Call this in beforeEach to prevent rate-limit state from leaking between tests.
 export function _resetRateLimiters(): void {
   rateLimitStore.clear();
+  scanRateLimitStore.clear();
 }

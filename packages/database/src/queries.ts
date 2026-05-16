@@ -1,4 +1,5 @@
 import pg from "pg";
+import { randomUUID } from "node:crypto";
 import type {
   ComplianceAgentRun,
   ComplianceFindingRecord,
@@ -6,6 +7,7 @@ import type {
   ComplianceTestCache,
   DiscoveredServer,
   FindingInput,
+  ScanJobRow,
   Server,
   ServerListQuery,
 } from "./schemas.js";
@@ -2123,6 +2125,174 @@ export class DatabaseQueries {
       total_servers_scanned: parseInt(totals.rows[0]?.cnt ?? "0", 10) || 0,
       last_scan_at: (totals.rows[0]?.last_at as Date | null) ?? null,
     };
+  }
+
+  // ─── Ad-Hoc Scan Jobs (P21 — Public Scan Surface) ──────────────────────────
+
+  /**
+   * Open a new ad-hoc scan job in the `queued` state. Returns the job id,
+   * which becomes the `/scan/:id` slug.
+   *
+   * `inputRef` MUST NOT contain a raw config blob — pass a short
+   * non-sensitive descriptor for config scans.
+   */
+  async createScanJob(inputType: string, inputRef: string | null): Promise<string> {
+    const result = await this.pool.query(
+      `INSERT INTO scan_jobs (status, input_type, input_ref)
+       VALUES ('queued', $1, $2) RETURNING id`,
+      [inputType, inputRef],
+    );
+    return result.rows[0].id;
+  }
+
+  /** Fetch one scan job by id. Returns null for unknown or expired ids. */
+  async getScanJob(id: string): Promise<ScanJobRow | null> {
+    const result = await this.pool.query(
+      `SELECT id, status, input_type, input_ref, result, error, coverage_band,
+              registered_server_slugs, created_at, started_at, completed_at, expires_at
+       FROM scan_jobs
+       WHERE id = $1 AND expires_at > NOW()`,
+      [id],
+    );
+    const row = result.rows[0];
+    if (!row) return null;
+    return {
+      id: row.id,
+      status: row.status,
+      input_type: row.input_type,
+      input_ref: row.input_ref,
+      result: row.result ?? null,
+      error: row.error ?? null,
+      coverage_band: row.coverage_band ?? null,
+      registered_server_slugs: Array.isArray(row.registered_server_slugs)
+        ? row.registered_server_slugs
+        : [],
+      created_at: row.created_at,
+      started_at: row.started_at ?? null,
+      completed_at: row.completed_at ?? null,
+      expires_at: row.expires_at,
+    };
+  }
+
+  /** Transition a job to `running`. */
+  async markScanJobRunning(id: string): Promise<void> {
+    await this.pool.query(
+      `UPDATE scan_jobs SET status = 'running', started_at = NOW() WHERE id = $1`,
+      [id],
+    );
+  }
+
+  /** Transition a job to `succeeded` with its result snapshot. */
+  async completeScanJob(
+    id: string,
+    result: Record<string, unknown>,
+    coverageBand: string | null,
+    registeredSlugs: string[],
+  ): Promise<void> {
+    await this.pool.query(
+      `UPDATE scan_jobs SET
+         status = 'succeeded',
+         completed_at = NOW(),
+         result = $2,
+         coverage_band = $3,
+         registered_server_slugs = $4
+       WHERE id = $1`,
+      [id, JSON.stringify(result), coverageBand, JSON.stringify(registeredSlugs)],
+    );
+  }
+
+  /** Transition a job to `failed` with a human-readable error message. */
+  async failScanJob(id: string, error: string): Promise<void> {
+    await this.pool.query(
+      `UPDATE scan_jobs SET status = 'failed', completed_at = NOW(), error = $2
+       WHERE id = $1`,
+      [id, error.substring(0, 2000)],
+    );
+  }
+
+  /** Delete expired jobs. Returns the number removed. */
+  async deleteExpiredScanJobs(): Promise<number> {
+    const result = await this.pool.query(
+      `DELETE FROM scan_jobs WHERE expires_at <= NOW()`,
+    );
+    return result.rowCount ?? 0;
+  }
+
+  /**
+   * Mark `running` and `queued` jobs older than `olderThanMinutes` as failed.
+   * Run at API startup to recover jobs orphaned by a process restart — the
+   * in-process job queue does not survive a restart, so a stale queued job
+   * would otherwise hang forever.
+   */
+  async sweepStaleRunningJobs(olderThanMinutes: number): Promise<number> {
+    const result = await this.pool.query(
+      `UPDATE scan_jobs
+       SET status = 'failed', completed_at = NOW(),
+           error = 'Scan interrupted — the scanner process restarted mid-job.'
+       WHERE status IN ('running', 'queued')
+         AND created_at < NOW() - ($1 || ' minutes')::interval`,
+      [String(olderThanMinutes)],
+    );
+    return result.rowCount ?? 0;
+  }
+
+  /**
+   * Create a fresh registry entry for an ad-hoc-scanned server.
+   *
+   * ALWAYS inserts a new `servers` row (per the ad-hoc scan product spec —
+   * re-scanning a server produces a distinct, scan-time-stamped entry).
+   * The slug carries a timestamp + random suffix so duplicates coexist.
+   *
+   * Canonical identifier columns (github_url / npm_package / pypi_package)
+   * are intentionally left NULL: migration 008 puts UNIQUE indexes on them,
+   * which would block a second scan of the same repo. The identifiers are
+   * preserved in the `sources.raw_metadata` JSONB instead.
+   */
+  async createSelfSubmittedServer(input: {
+    name: string;
+    description: string | null;
+    category: string | null;
+    language: string | null;
+    endpoint_url: string | null;
+    connection_status: string | null;
+    raw_identity: Record<string, unknown>;
+  }): Promise<{ server_id: string; slug: string }> {
+    const base = this.slugify(input.name) || "mcp-server";
+    const stamp = new Date()
+      .toISOString()
+      .replace(/[^0-9]/g, "")
+      .substring(0, 14);
+    const suffix = randomUUID().substring(0, 6);
+    const slug = `${base}-${stamp}-${suffix}`.substring(0, 500);
+
+    const server = await this.pool.query(
+      `INSERT INTO servers (name, slug, description, category, language, endpoint_url, connection_status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id`,
+      [
+        input.name,
+        slug,
+        input.description,
+        input.category,
+        input.language,
+        input.endpoint_url,
+        input.connection_status,
+      ],
+    );
+    const serverId = server.rows[0].id;
+
+    await this.pool.query(
+      `INSERT INTO sources (server_id, source_name, source_url, external_id, raw_metadata)
+       VALUES ($1, 'self-submitted', $2, $3, $4)`,
+      [
+        serverId,
+        input.endpoint_url,
+        slug,
+        JSON.stringify(input.raw_identity),
+      ],
+    );
+
+    return { server_id: serverId, slug };
   }
 
   // ─── Helpers ───────────────────────────────────────────────────────────────

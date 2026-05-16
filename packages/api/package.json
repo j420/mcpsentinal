@@ -17,6 +17,7 @@
     "@mcp-sentinel/database": "workspace:*",
     "@mcp-sentinel/red-team": "workspace:*",
     "@mcp-sentinel/risk-matrix": "workspace:*",
+    "@mcp-sentinel/scanner": "workspace:*",
     "express": "^4.21.0",
     "cors": "^2.8.5",
     "zod": "^3.23.0",

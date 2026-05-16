@@ -684,6 +684,47 @@ const MIGRATIONS = [
         WHERE coverage_band IS NOT NULL;
     `,
   },
+  {
+    id: "015_scan_jobs",
+    sql: `
+      -- Ad-hoc public scan jobs (P21 — Public Scan Surface Engineer).
+      --
+      -- Backs the home-page "Scan your MCP server" feature. One row per
+      -- anonymous scan request. Unlike findings/scores, scan_jobs is MUTABLE
+      -- working state — the row transitions queued → running → succeeded /
+      -- failed and is swept after expires_at. ADR-008 (append-only) still
+      -- governs the findings/scores rows that a successful job registers.
+      --
+      -- input_ref: the URL or source ref for url/source scans; for config
+      --   scans a short non-sensitive descriptor — the raw config JSON is
+      --   NEVER stored (it may contain private endpoints / env hints).
+      -- result: the full AdHocScanResult snapshot, rendered by /scan/:id.
+      -- registered_server_slugs: slugs of the registry entries this job
+      --   created (one per scanned server; a config scan can create several).
+      CREATE TABLE IF NOT EXISTS scan_jobs (
+        id                      UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
+        status                  VARCHAR(20)  NOT NULL DEFAULT 'queued',
+        input_type              VARCHAR(20)  NOT NULL,
+        input_ref               TEXT,
+        result                  JSONB,
+        error                   TEXT,
+        coverage_band           VARCHAR(10),
+        registered_server_slugs JSONB        NOT NULL DEFAULT '[]',
+        created_at              TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+        started_at              TIMESTAMPTZ,
+        completed_at            TIMESTAMPTZ,
+        expires_at              TIMESTAMPTZ  NOT NULL DEFAULT (NOW() + INTERVAL '7 days')
+      );
+
+      -- Drain query: "which jobs are still queued/running?"
+      CREATE INDEX IF NOT EXISTS idx_scan_jobs_status
+        ON scan_jobs(status);
+
+      -- TTL cleanup: "which jobs have expired?"
+      CREATE INDEX IF NOT EXISTS idx_scan_jobs_expires_at
+        ON scan_jobs(expires_at);
+    `,
+  },
 ];
 
 export async function migrate(connectionString: string): Promise<void> {

@@ -9,6 +9,21 @@
 export { ScanPipeline, type PipelineConfig } from "./pipeline.js";
 export { SourceFetcher, type FetchedSource } from "./fetcher.js";
 export { DependencyAuditor } from "./auditor.js";
+export {
+  runAdHocScan,
+  getScanEngine,
+  AdHocScanError,
+  type AdHocScanInput,
+  type AdHocScanResult,
+  type ScannedServer,
+  type AdHocFinding,
+} from "./ad-hoc-scanner.js";
+export {
+  assertSafe,
+  parseAndValidate,
+  classifyAddress,
+  UrlGuardError,
+} from "./url-guard.js";
 export type {
   ScanOptions,
   ScanRunStats,
