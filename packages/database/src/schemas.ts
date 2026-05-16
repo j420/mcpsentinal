@@ -59,6 +59,10 @@ export const SourceName = z.enum([
   "official-registry",
   "awesome-mcp-servers",
   "manual",
+  // Servers added to the registry by the public ad-hoc scanner
+  // (home-page "Scan your MCP server"). Tagged so they can be filtered
+  // or moderated separately from crawler-discovered servers.
+  "self-submitted",
   "other",
 ]);
 export type SourceName = z.infer<typeof SourceName>;
@@ -1479,3 +1483,28 @@ export const EcosystemStatsSchema = z.object({
   ),
 });
 export type EcosystemStats = z.infer<typeof EcosystemStatsSchema>;
+
+// ─── Ad-Hoc Scan Jobs (P21 — Public Scan Surface) ────────────────────────────
+
+/**
+ * One row of the `scan_jobs` table — an anonymous ad-hoc scan request.
+ *
+ * Unlike findings/scores this is MUTABLE working state: the row transitions
+ * queued → running → succeeded / failed and is swept after `expires_at`.
+ */
+export interface ScanJobRow {
+  id: string;
+  status: "queued" | "running" | "succeeded" | "failed";
+  input_type: "url" | "config" | "source";
+  input_ref: string | null;
+  /** Full AdHocScanResult snapshot on success; null otherwise. */
+  result: Record<string, unknown> | null;
+  error: string | null;
+  coverage_band: string | null;
+  /** Slugs of the registry entries this job created. */
+  registered_server_slugs: string[];
+  created_at: Date;
+  started_at: Date | null;
+  completed_at: Date | null;
+  expires_at: Date;
+}

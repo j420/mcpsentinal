@@ -4,7 +4,8 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import type { ToolEnumeration } from "@mcp-sentinel/database";
 import pino from "pino";
 
-const logger = pino({ name: "connector" });
+// Log to stderr so stdout stays clean for callers that parse it (CLI --json).
+const logger = pino({ name: "connector" }, process.stderr);
 
 const CONNECTION_TIMEOUT_MS = 30_000;
 

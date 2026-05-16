@@ -45,6 +45,20 @@ vi.mock("@mcp-sentinel/database", () => {
     // that don't configure a scan / finding row see the honest-gap path.
     getLatestCompletedScanForServer: vi.fn().mockResolvedValue(null),
     getFindingByIdWithProvenance: vi.fn().mockResolvedValue(null),
+    // P21 — ad-hoc scan job surface
+    createScanJob: vi.fn().mockResolvedValue("11111111-1111-1111-1111-111111111111"),
+    getScanJob: vi.fn().mockResolvedValue(null),
+    markScanJobRunning: vi.fn().mockResolvedValue(undefined),
+    completeScanJob: vi.fn().mockResolvedValue(undefined),
+    failScanJob: vi.fn().mockResolvedValue(undefined),
+    deleteExpiredScanJobs: vi.fn().mockResolvedValue(0),
+    sweepStaleRunningJobs: vi.fn().mockResolvedValue(0),
+    createSelfSubmittedServer: vi.fn().mockResolvedValue({ server_id: "s1", slug: "scanned-x" }),
+    createScan: vi.fn().mockResolvedValue("scan-1"),
+    insertFindings: vi.fn().mockResolvedValue(undefined),
+    insertScore: vi.fn().mockResolvedValue(undefined),
+    completeScan: vi.fn().mockResolvedValue(undefined),
+    upsertTools: vi.fn().mockResolvedValue(undefined),
   };
 
   // Real Zod schema for ScoreDetailResponse — kept in sync with
@@ -113,6 +127,20 @@ vi.mock("@mcp-sentinel/red-team", () => ({
   getCveValidationIndex: vi.fn().mockResolvedValue({}),
 }));
 
+// ─── Mock the scanner — its real load pulls in @mcp-sentinel/analyzer (164
+// rules). The scan-job runner lazy-imports it; the mock keeps the suite fast
+// and hermetic (no live network, no rule engine).
+vi.mock("@mcp-sentinel/scanner", () => ({
+  runAdHocScan: vi.fn().mockResolvedValue({
+    input_type: "url",
+    rules_version: "test",
+    servers: [],
+    unscannable_stdio: [],
+    warnings: [],
+  }),
+  AdHocScanError: class AdHocScanError extends Error {},
+}));
+
 // ─── Mock pg to avoid real connection pools ───────────────────────────────────
 vi.mock("pg", () => ({
   default: {
@@ -148,6 +176,9 @@ type MockDb = {
   // Cluster D follow-on — provenance triple + per-finding receipt endpoint
   getLatestCompletedScanForServer: ReturnType<typeof vi.fn>;
   getFindingByIdWithProvenance: ReturnType<typeof vi.fn>;
+  // P21 — ad-hoc scan job surface
+  createScanJob: ReturnType<typeof vi.fn>;
+  getScanJob: ReturnType<typeof vi.fn>;
 };
 const { _mockDb: db } = (await import("@mcp-sentinel/database")) as unknown as {
   _mockDb: MockDb;
@@ -3075,5 +3106,93 @@ describe("Finding receipt endpoint (GET /api/v1/findings/:id/receipt)", () => {
     );
     const result = verifyFinding(tampered, resolveSigningContextFromEnv());
     expect(result.valid).toBe(false);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Ad-Hoc Scan endpoints (P21 — Public Scan Surface)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("POST /api/v1/scan", () => {
+  it("accepts a valid url scan and returns 202 with a job id", async () => {
+    const res = await request(app)
+      .post("/api/v1/scan")
+      .send({ kind: "url", url: "https://example.com/mcp" });
+    expect(res.status).toBe(202);
+    expect(res.body.id).toBeDefined();
+    expect(res.body.status).toBe("queued");
+    expect(db.createScanJob).toHaveBeenCalledWith("url", "https://example.com/mcp");
+  });
+
+  it("accepts a config scan but never stores the raw config as input_ref", async () => {
+    const res = await request(app)
+      .post("/api/v1/scan")
+      .send({ kind: "config", config: '{"mcpServers":{"x":{"url":"https://e.com"}}}' });
+    expect(res.status).toBe(202);
+    expect(db.createScanJob).toHaveBeenCalledWith("config", "config scan");
+  });
+
+  it("rejects a malformed request body with 400", async () => {
+    const res = await request(app).post("/api/v1/scan").send({ kind: "nonsense" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBeDefined();
+  });
+
+  it("rejects a missing url field with 400", async () => {
+    const res = await request(app).post("/api/v1/scan").send({ kind: "url" });
+    expect(res.status).toBe(400);
+  });
+
+  it("enforces the per-IP scan rate limit (6th scan in an hour → 429)", async () => {
+    for (let i = 0; i < 5; i++) {
+      const ok = await request(app)
+        .post("/api/v1/scan")
+        .send({ kind: "url", url: "https://example.com/mcp" });
+      expect(ok.status).toBe(202);
+    }
+    const sixth = await request(app)
+      .post("/api/v1/scan")
+      .send({ kind: "url", url: "https://example.com/mcp" });
+    expect(sixth.status).toBe(429);
+    expect(sixth.body.retry_after_seconds).toBe(3600);
+  });
+});
+
+describe("GET /api/v1/scan/:id", () => {
+  it("rejects an invalid (non-UUID) scan id with 400", async () => {
+    const res = await request(app).get("/api/v1/scan/not-a-uuid");
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 404 for an unknown scan id", async () => {
+    db.getScanJob.mockResolvedValueOnce(null);
+    const res = await request(app).get(
+      "/api/v1/scan/11111111-2222-3333-4444-555555555555",
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it("returns the job status and result for a known scan id", async () => {
+    db.getScanJob.mockResolvedValueOnce({
+      id: "11111111-2222-3333-4444-555555555555",
+      status: "succeeded",
+      input_type: "url",
+      input_ref: "https://example.com/mcp",
+      result: { input_type: "url", servers: [] },
+      error: null,
+      coverage_band: "medium",
+      registered_server_slugs: ["scanned-x"],
+      created_at: new Date(),
+      started_at: new Date(),
+      completed_at: new Date(),
+      expires_at: new Date(),
+    });
+    const res = await request(app).get(
+      "/api/v1/scan/11111111-2222-3333-4444-555555555555",
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("succeeded");
+    expect(res.body.coverage_band).toBe("medium");
+    expect(res.body.registered_server_slugs).toEqual(["scanned-x"]);
   });
 });
