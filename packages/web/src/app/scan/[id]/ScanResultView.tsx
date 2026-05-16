@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3100";
 const POLL_INTERVAL_MS = 2000;
@@ -64,6 +65,7 @@ function scoreLabel(score: number): { label: string; cls: string } {
 }
 
 export default function ScanResultView({ id }: { id: string }) {
+  const router = useRouter();
   const [job, setJob] = useState<ScanJob | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [networkError, setNetworkError] = useState(false);
@@ -101,6 +103,20 @@ export default function ScanResultView({ id }: { id: string }) {
       if (timer) clearTimeout(timer);
     };
   }, [id]);
+
+  // A successful single-server scan lands directly on the registered
+  // server's detail page — that page renders the FULL report (categories,
+  // sub-categories, rules, tests, passed/skipped, evidence chains). The
+  // /scan/:id page is only the queued/running/failed surface plus the
+  // multi-server config summary.
+  useEffect(() => {
+    if (
+      job?.status === "succeeded" &&
+      job.registered_server_slugs.length === 1
+    ) {
+      router.replace(`/servers/${job.registered_server_slugs[0]}`);
+    }
+  }, [job, router]);
 
   if (notFound) {
     return (
@@ -153,6 +169,24 @@ export default function ScanResultView({ id }: { id: string }) {
         <h1 className="scan-state-title">Nothing to report</h1>
         <p>The scan completed but produced no analysable server.</p>
         <a className="btn-primary" href="/scan">Start a new scan</a>
+      </div>
+    );
+  }
+
+  // Single-server scan → the redirect effect is taking us to the full
+  // report. Show a brief hand-off rather than flashing the summary.
+  if (job.registered_server_slugs.length === 1) {
+    return (
+      <div className="scan-state">
+        <div className="scan-spinner" aria-hidden="true" />
+        <h1 className="scan-state-title">Scan complete</h1>
+        <p>Opening the full report…</p>
+        <a
+          className="btn-primary"
+          href={`/servers/${job.registered_server_slugs[0]}`}
+        >
+          View the full report →
+        </a>
       </div>
     );
   }
@@ -240,10 +274,16 @@ function ServerReport({ server }: { server: ScannedServer }) {
 
       {server.registered_slug && (
         <p className="scan-registered">
-          Added to the public registry →{" "}
-          <a href={`/servers/${server.registered_slug}`}>
-            /servers/{server.registered_slug}
+          <a
+            className="btn-primary"
+            href={`/servers/${server.registered_slug}`}
+          >
+            View the full report →
           </a>
+          <span className="scan-registered-note">
+            Categories, sub-categories, every rule, its tests and the full
+            evidence chains — plus passed and skipped rules.
+          </span>
         </p>
       )}
 
