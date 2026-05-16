@@ -122,6 +122,38 @@ export class AdHocScanError extends Error {
   }
 }
 
+/**
+ * Turn a raw MCP connection error into a clear, user-facing failure.
+ *
+ * Auth-required servers — the common case for hosted enterprise MCP servers
+ * (Supabase, Notion, Linear, …) — get an explicit explanation instead of a
+ * raw transport error: the public scanner connects anonymously and cannot
+ * scan a server that demands an OAuth token or API key.
+ */
+function describeConnectionFailure(
+  label: string,
+  rawError: string | null,
+): { message: string; reason: string } {
+  const err = rawError ?? "unknown error";
+  const looksLikeAuth =
+    /unauthorized|invalid[_ ]token|missing.{0,30}token|access token|\b401\b|\b403\b|forbidden/i.test(
+      err,
+    );
+  if (looksLikeAuth) {
+    return {
+      reason: "auth-required",
+      message:
+        `${label} requires authentication. The public scanner connects ` +
+        `anonymously (initialize + tools/list only, with no credentials) and ` +
+        `cannot scan MCP servers that require an OAuth token or API key.`,
+    };
+  }
+  return {
+    reason: "connection-failed",
+    message: `Could not connect to the MCP server at ${label}: ${err}`,
+  };
+}
+
 // ─── Engine (lazily loaded + cached) ─────────────────────────────────────────
 
 interface ScanEngine {
@@ -214,10 +246,11 @@ async function scanUrlInput(
   const scanned = await scanLiveEndpoint(url.toString(), scanEngine);
 
   if (!scanned.connection_success) {
-    throw new AdHocScanError(
-      `Could not connect to the MCP server at ${url.hostname}: ${scanned.connection_error ?? "unknown error"}`,
-      "connection-failed",
+    const { message, reason } = describeConnectionFailure(
+      url.hostname,
+      scanned.connection_error,
     );
+    throw new AdHocScanError(message, reason);
   }
 
   return {
@@ -316,7 +349,8 @@ async function scanConfigInput(
       servers.push(scanned);
       if (!scanned.connection_success) {
         warnings.push(
-          `Could not connect to "${entry.name}": ${scanned.connection_error ?? "unknown error"}`,
+          `"${entry.name}": ` +
+            describeConnectionFailure(entry.name, scanned.connection_error).message,
         );
       }
     } catch (err) {
