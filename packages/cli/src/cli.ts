@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 import { MCPConnector } from "@mcp-sentinel/connector";
 import { AnalysisEngine, loadRules, getRulesVersion } from "@mcp-sentinel/analyzer";
 import { computeScore } from "@mcp-sentinel/scorer";
+import { scanEndpoint, getScanEngine } from "@mcp-sentinel/scanner";
 import { RiskMatrixAnalyzer } from "@mcp-sentinel/risk-matrix";
 import { DynamicTester } from "@mcp-sentinel/dynamic-tester";
 import type { DynamicReport } from "@mcp-sentinel/dynamic-tester";
@@ -762,37 +763,40 @@ async function runScan(args: string[]): Promise<never> {
     process.exit(EXIT.INPUT_ERROR);
   }
 
-  // ── Load rules ────────────────────────────────────────────────────────────
-  let rules;
+  // ── Load engine metadata + run the scan ───────────────────────────────────
+  // The CLI shares ONE scan code path with the public API: `scanEndpoint()`
+  // from @mcp-sentinel/scanner. Unlike the public /api/v1/scan path, the CLI
+  // deliberately does NOT apply the SSRF guard — scanning localhost is the
+  // primary local-developer workflow.
+  let rulesVersion: string;
   try {
-    rules = loadRules(RULES_DIR);
+    rulesVersion = getScanEngine(RULES_DIR).rulesVersion;
   } catch (err) {
     console.error(`Error loading rules: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(EXIT.INTERNAL_ERROR);
-  }
-  const rulesVersion = getRulesVersion(rules);
-  const engine = new AnalysisEngine(rules);
-  const ruleCategories: Record<string, string> = {};
-  for (const rule of rules) {
-    ruleCategories[rule.id] = rule.category;
   }
 
   if (!jsonOutput) {
     console.log(`\nMCP Sentinel — Live Security Scan`);
     console.log(`   Endpoint  : ${sanitizeForTerminal(endpoint, 120)}`);
-    console.log(`   Rules     : ${rules.length} rules loaded (v${rulesVersion})`);
+    console.log(`   Rules     : v${rulesVersion}`);
     if (filterRule) {
       console.log(`   Filter    : rule ${sanitizeForTerminal(filterRule, 20)} only`);
     }
     console.log("\nStep 1/3  Connecting and enumerating tools...");
   }
 
-  // ── Step 1: Enumerate tools from live server ──────────────────────────────
-  const connector = new MCPConnector({ timeout: 30_000 });
-  const enumResult = await connector.enumerate("cli-scan", endpoint);
+  // ── Step 1+2+3: enumerate + analyze + score via the shared core ───────────
+  let scanned;
+  try {
+    scanned = await scanEndpoint(endpoint, undefined, RULES_DIR);
+  } catch (err) {
+    console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
+    process.exit(EXIT.INTERNAL_ERROR);
+  }
 
-  if (!enumResult.connection_success) {
-    const errMsg = sanitizeForTerminal(enumResult.connection_error ?? "unknown error", 200);
+  if (!scanned.connection_success) {
+    const errMsg = sanitizeForTerminal(scanned.connection_error ?? "unknown error", 200);
     if (jsonOutput) {
       console.log(JSON.stringify({
         endpoint,
@@ -808,78 +812,30 @@ async function runScan(args: string[]): Promise<never> {
   }
 
   if (!jsonOutput) {
-    console.log(`          ✓ Connected — ${enumResult.tools.length} tool(s) found`);
-    if (enumResult.server_version) {
-      console.log(`            Server version: ${sanitizeForTerminal(enumResult.server_version, 60)}`);
-    }
-    if (enumResult.server_instructions) {
-      console.log(`            Instructions field: present (${enumResult.server_instructions.length} chars)`);
+    console.log(`          ✓ Connected — ${scanned.tool_count} tool(s) found`);
+    if (scanned.server_version) {
+      console.log(`            Server version: ${sanitizeForTerminal(scanned.server_version, 60)}`);
     }
     console.log("\nStep 2/3  Running analysis rules...");
   }
 
-  // ── Step 2: Build analysis context from enumeration result ────────────────
-  const context: AnalysisContext = {
-    server: {
-      id: "cli-scan",
-      name: sanitizeForTerminal(new URL(endpoint).hostname, 100),
-      description: null,
-      github_url: null,
-    },
-    tools: enumResult.tools.map((t) => ({
-      name: t.name,
-      description: t.description ?? null,
-      input_schema: t.input_schema as Record<string, unknown> | null ?? null,
-      annotations: (t as { annotations?: Record<string, unknown> }).annotations ?? null,
-    })),
-    source_code: null,       // not fetched in CLI scan — run pnpm scan for full pipeline
-    dependencies: [],        // not audited in CLI scan
-    connection_metadata: {
-      auth_required: false,
-      transport: endpoint.startsWith("https") ? "streamable-http" : "sse",
-      response_time_ms: enumResult.response_time_ms ?? 0,
-    },
-    initialize_metadata: {
-      server_version: enumResult.server_version ?? null,
-      server_instructions: enumResult.server_instructions ?? null,
-    },
-    resources: (enumResult.resources ?? []).map((r) => ({
-      uri: r.uri,
-      name: r.name,
-      description: r.description ?? null,
-      mimeType: r.mimeType ?? null,
-    })),
-    prompts: (enumResult.prompts ?? []).map((p) => ({
-      name: p.name,
-      description: p.description ?? null,
-      arguments: (p.arguments ?? []).map((a) => ({
-        name: a.name,
-        description: a.description ?? null,
-        required: a.required ?? false,
-      })),
-    })),
-    roots: enumResult.roots ?? [],
-    declared_capabilities: enumResult.declared_capabilities ?? null,
-  };
-
-  // ── Step 3: Profile-aware analysis + score ────────────────────────────────
-  const profileResult = engine.analyzeWithProfile(context);
-  let findings = profileResult.scored_findings;
-
-  // Optionally filter to a single rule for focused testing
+  // Optionally filter to a single rule for focused testing. Filtering changes
+  // the finding set, so the score is recomputed over the filtered findings.
+  let findings = scanned.findings;
+  let scoreResult = scanned.score;
   if (filterRule) {
     const ruleUpper = filterRule.toUpperCase();
     findings = findings.filter((f) => f.rule_id === ruleUpper);
+    scoreResult = computeScore(
+      findings as unknown as Parameters<typeof computeScore>[0],
+      getScanEngine(RULES_DIR).ruleCategories,
+    );
   }
 
-  const scoreResult = computeScore(findings, ruleCategories);
-
   if (!jsonOutput) {
-    const rawCount = profileResult.all_annotated.length;
-    const filteredOut = rawCount - profileResult.scored_findings.length;
-    console.log(`          ✓ Analysis complete — ${findings.length} finding(s) (${filteredOut} filtered as irrelevant)\n`);
-    if (profileResult.profile.attack_surfaces.length > 0) {
-      console.log(`          Attack surfaces: ${profileResult.profile.attack_surfaces.join(", ")}`);
+    console.log(`          ✓ Analysis complete — ${findings.length} finding(s) (${scanned.profile.filtered_findings} filtered as irrelevant)\n`);
+    if (scanned.profile.attack_surfaces.length > 0) {
+      console.log(`          Attack surfaces: ${scanned.profile.attack_surfaces.join(", ")}`);
     }
   }
 
@@ -890,8 +846,8 @@ async function runScan(args: string[]): Promise<never> {
     console.log(JSON.stringify({
       endpoint,
       rules_version: rulesVersion,
-      server_version: enumResult.server_version ?? null,
-      tools_enumerated: enumResult.tools.length,
+      server_version: scanned.server_version,
+      tools_enumerated: scanned.tool_count,
       score: scoreResult.total_score,
       sub_scores: {
         code: scoreResult.code_score,
@@ -901,13 +857,11 @@ async function runScan(args: string[]): Promise<never> {
         behavior: scoreResult.behavior_score,
       },
       profile: {
-        attack_surfaces: profileResult.profile.attack_surfaces,
-        capabilities: profileResult.profile.capabilities
-          .filter((c) => c.confidence >= 0.5)
-          .map((c) => ({ capability: c.capability, confidence: Math.round(c.confidence * 100) / 100 })),
-        threats_checked: profileResult.threats.map((t) => t.id),
-        total_raw_findings: profileResult.all_annotated.length,
-        filtered_as_irrelevant: profileResult.all_annotated.length - profileResult.scored_findings.length,
+        attack_surfaces: scanned.profile.attack_surfaces,
+        capabilities: scanned.profile.capabilities,
+        threats_checked: scanned.profile.threats,
+        total_raw_findings: scanned.profile.raw_findings,
+        filtered_as_irrelevant: scanned.profile.filtered_findings,
       },
       findings_count: findings.length,
       findings: findings.map((f) => ({
@@ -940,17 +894,17 @@ async function runScan(args: string[]): Promise<never> {
 
   // Tools summary
   console.log(divider);
-  console.log(`TOOLS ENUMERATED (${enumResult.tools.length})`);
+  console.log(`TOOLS ENUMERATED (${scanned.tool_count})`);
   console.log(divider);
-  for (const tool of enumResult.tools.slice(0, 20)) {
+  for (const tool of scanned.tools.slice(0, 20)) {
     const toolName = sanitizeForTerminal(tool.name, 40);
     const hasFindings = findings.some(
       (f) => f.evidence.includes(`tool:${tool.name}`) || f.evidence.includes(tool.name)
     );
     console.log(`  ${hasFindings ? "⚠" : "✓"}  ${toolName}`);
   }
-  if (enumResult.tools.length > 20) {
-    console.log(`  ... and ${enumResult.tools.length - 20} more`);
+  if (scanned.tool_count > 20) {
+    console.log(`  ... and ${scanned.tool_count - 20} more`);
   }
   console.log();
 

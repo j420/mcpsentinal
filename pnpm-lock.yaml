@@ -180,6 +180,9 @@ importers:
       '@mcp-sentinel/risk-matrix':
         specifier: workspace:*
         version: link:../risk-matrix
+      '@mcp-sentinel/scanner':
+        specifier: workspace:*
+        version: link:../scanner
       '@mcp-sentinel/scorer':
         specifier: workspace:*
         version: link:../scorer

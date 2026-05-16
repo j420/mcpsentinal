@@ -11,11 +11,13 @@ export { SourceFetcher, type FetchedSource } from "./fetcher.js";
 export { DependencyAuditor } from "./auditor.js";
 export {
   runAdHocScan,
+  scanEndpoint,
   getScanEngine,
   AdHocScanError,
   type AdHocScanInput,
   type AdHocScanResult,
   type ScannedServer,
+  type ScannedServerProfile,
   type AdHocFinding,
 } from "./ad-hoc-scanner.js";
 export {

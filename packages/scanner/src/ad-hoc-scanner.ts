@@ -67,6 +67,17 @@ export interface AdHocFinding {
   evidence_chain: unknown | null;
 }
 
+/** Server capability profile summary — surfaced for CLI output + the web UI. */
+export interface ScannedServerProfile {
+  attack_surfaces: string[];
+  capabilities: Array<{ capability: string; confidence: number }>;
+  threats: string[];
+  /** Total findings before relevance filtering. */
+  raw_findings: number;
+  /** Findings filtered out as irrelevant / not meeting the evidence standard. */
+  filtered_findings: number;
+}
+
 /** The result of scanning one MCP server. */
 export interface ScannedServer {
   name: string;
@@ -76,6 +87,8 @@ export interface ScannedServer {
   pypi_package: string | null;
   connection_success: boolean;
   connection_error: string | null;
+  /** MCP initialize serverInfo.version, when a live connection was made. */
+  server_version: string | null;
   tool_count: number;
   tools: Array<{
     name: string;
@@ -85,6 +98,7 @@ export interface ScannedServer {
   score: ScoreResult;
   findings: AdHocFinding[];
   coverage: AnalysisCoverage;
+  profile: ScannedServerProfile;
 }
 
 export interface AdHocScanResult {
@@ -170,6 +184,23 @@ export async function runAdHocScan(
     case "source":
       return scanSourceInput(input.ref, scanEngine);
   }
+}
+
+/**
+ * Scan one live MCP endpoint and return a `ScannedServer`.
+ *
+ * This is the lower-level shared core: it does NOT apply the SSRF guard.
+ * Callers exposed to untrusted input (the public `/api/v1/scan` path) MUST
+ * call `assertSafe()` first — `runAdHocScan` does. The CLI uses this
+ * function directly because scanning `localhost` is a legitimate
+ * local-developer workflow, not an SSRF risk.
+ */
+export async function scanEndpoint(
+  endpoint: string,
+  displayName?: string,
+  rulesDir?: string,
+): Promise<ScannedServer> {
+  return scanLiveEndpoint(endpoint, getScanEngine(rulesDir), displayName);
 }
 
 // ─── URL input ───────────────────────────────────────────────────────────────
@@ -479,6 +510,7 @@ async function scanSourceInput(
     pypi_package: resolved.pypi_package,
     connection_success: true,
     connection_error: null,
+    server_version: null,
   });
 
   return {
@@ -525,6 +557,7 @@ async function scanLiveEndpoint(
       pypi_package: null,
       connection_success: false,
       connection_error: enumeration.connection_error,
+      server_version: null,
     });
   }
 
@@ -579,6 +612,7 @@ async function scanLiveEndpoint(
     pypi_package: null,
     connection_success: true,
     connection_error: null,
+    server_version: enumeration.server_version ?? null,
   });
 }
 
@@ -600,6 +634,7 @@ interface ServerIdentity {
   pypi_package: string | null;
   connection_success: boolean;
   connection_error: string | null;
+  server_version: string | null;
 }
 
 /** Run the engine on an assembled context and shape the result. */
@@ -661,6 +696,7 @@ function analyzeContext(
     pypi_package: identity.pypi_package,
     connection_success: identity.connection_success,
     connection_error: identity.connection_error,
+    server_version: identity.server_version,
     tool_count: context.tools.length,
     tools: context.tools.map((t) => ({
       name: t.name,
@@ -670,5 +706,18 @@ function analyzeContext(
     score,
     findings,
     coverage: profileResult.coverage,
+    profile: {
+      attack_surfaces: profileResult.profile.attack_surfaces,
+      capabilities: profileResult.profile.capabilities
+        .filter((c) => c.confidence >= 0.5)
+        .map((c) => ({
+          capability: c.capability,
+          confidence: Math.round(c.confidence * 100) / 100,
+        })),
+      threats: profileResult.threats.map((t) => t.id),
+      raw_findings: profileResult.all_annotated.length,
+      filtered_findings:
+        profileResult.all_annotated.length - profileResult.scored_findings.length,
+    },
   };
 }
